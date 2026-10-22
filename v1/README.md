@@ -1,5 +1,13 @@
 # TaskVex v1 development
 
+Latest microphone correction: Microphone On/Off is a user preference. Normal
+Stop and terminal model errors now return to local waiting after confirmed
+completion, without replaying the failed request. Off remains Off until the
+user turns it on. Device/permission/disconnect blocks remain separate; On
+cannot override an unknown-result command lock. Capture still requires Live
+mode and a loaded model. The preference is not newly persisted. Step 5 was
+manually accepted and committed as 78c292a; REST audio remains the next step.
+
 Latest slice (step 5): an armed but quiet microphone stays idle; speech shows
 listening, local silence during an active turn thinking, and output speaking.
 Activity is display-only. Normal confirmed Stop/late closed feed no longer

@@ -188,14 +188,20 @@ let playbackOnly = false;
 let preparingAudio = false, cancelBeforeSend = false;
 let connectionRevision = 0;
 let micRevision = 0;
-let autoListening = true, nativeInitialized = false;
+// Kullanıcının On/Off tercihi; model başarısı/Stop bu değeri değiştirmez.
+let microphoneEnabled = true, nativeInitialized = false;
+let micBlocked = false;
 let replyMicRequest = null, pendingBargeIn = null;
 function paintMic() {
   const button = document.getElementById('micB');
   button.classList.toggle('on', liveMic.active);
-  button.lastChild.textContent = autoListening ? 'Pause listening' : 'Resume listening';
-  button.setAttribute('aria-pressed', String(autoListening));
-  button.disabled = textOperation.uncertain;
+  button.lastChild.textContent = microphoneEnabled ? 'Microphone On' : 'Microphone Off';
+  button.setAttribute('aria-pressed', String(microphoneEnabled));
+  button.title = textOperation.uncertain ? 'Result unknown. Microphone capture is blocked; check saved actions.'
+    : micBlocked ? 'Microphone unavailable or disconnected. Toggle Off and On to retry after checking settings.'
+    : liveMic.waitingForSpeech ? 'Microphone is on. Waiting locally for speech.'
+    : liveMic.active ? 'Microphone is on. Conversation audio may stream to the provider.' : 'Microphone is waiting for Live mode and a ready model.';
+  button.disabled = false; // Belirsizlikte bile kullanıcı tercihini Off yapabilsin.
 }
 function cancelMic(message = 'Recording cancelled. Nothing sent.') {
   micRevision++;
@@ -208,8 +214,10 @@ function cancelMic(message = 'Recording cancelled. Nothing sent.') {
   }
   paintMic();
 }
-function pauseListening(message) {
-  autoListening = false; cancelMic(message);
+function blockMicrophone(message) {
+  // Donanım/izin/belirsizlik engeli kullanıcı tercihi değildir. Sonsuz izin
+  // isteme döngüsü yoktur; açık On işlemi veya yeni bağlantı hazırlığı gerekir.
+  micBlocked = true; cancelMic(message);
   // İzin reddinde kaynak henüz açılmamıştır; yine de hazırlık yazısı kalmamalı.
   if (message) document.getElementById('textStatus').textContent = message;
   if (textBusy && getState() === 'listening') setState('thinking', true);
@@ -218,33 +226,34 @@ function resetLiveAudio(pause = true) {
   liveTranscript.finish(activeTextRequest, {}, 'interrupted');
   connectionRevision++; if (preparingAudio) cancelBeforeSend = true;
   liveAudio.close();
-  if (pause) autoListening = false;
+  if (pause) micBlocked = true;
   cancelMic();
 }
 
 /** Hazır Live modelinde veya çalan yanıtta yerel konuşma adayı bekler.
  * Yanıtta yeni ses eski turun gerçek bitişine kadar tamponda kalır.
- * Hata/Stop/Disconnect sonrasında kendiliğinden
- * tekrar denemez. Eski izin/callback yeni dinlemeyi veya yeni mesajı etkileyemez.
+ * Kesin biten Stop/model hatasından sonra yalnız yeni konuşmayı bekler; eski
+ * komut tekrar edilmez. Donanım/Disconnect/unknown engeli ayrıca korunur.
  */
-async function listenAutomatically(replyRequest = null) {
-  if (!autoListening || !nativeInitialized || !isBackendAvailable() || (textBusy && replyRequest !== activeTextRequest) ||
+async function listenAutomatically(replyRequest = null, preserveStatus = false) {
+  if (!microphoneEnabled || micBlocked || !nativeInitialized || !isBackendAvailable() || (textBusy && replyRequest !== activeTextRequest) ||
       textOperation.uncertain || liveMic.active ||
       !document.getElementById('liveLatencyTest').checked || !document.getElementById('mSel').value) return;
   if (replyRequest && (!textBusy || replyRequest !== activeTextRequest)) return;
   replyMicRequest = replyRequest;
   const revision = ++micRevision;
-  if (!replyRequest) document.getElementById('textStatus').textContent = 'Preparing automatic listening…';
+  const previousStatus = document.getElementById('textStatus').textContent;
+  if (!replyRequest && !preserveStatus) document.getElementById('textStatus').textContent = 'Preparing automatic listening…';
   try {
     const started = await liveMic.prepareStream(() => {
       if (revision !== micRevision) return;
       const target = activeTextRequest;
-      pauseListening('Microphone disconnected, input limit reached or streaming failed. Listening paused.');
+      blockMicrophone('Microphone disconnected, input limit reached or streaming failed. Check Audio settings, then toggle Microphone Off and On.');
       if (target && !playbackOnly) emit('stop_task', {request_id:target});
     }, getAudioDeviceId('dIn'), speaking => {
       // Yalnız mevcut mikrofonun yerel enerji geçişi görünümü etkiler.
       // Sessizce hazır beklemek listening değildir; model yanıtında speaking korunur.
-      if (revision !== micRevision || !autoListening || textOperation.uncertain) return;
+      if (revision !== micRevision || !microphoneEnabled || textOperation.uncertain) return;
       if (speaking) setState('listening', true);
       else if (pendingBargeIn || !replyMicRequest) setState(textBusy ? 'thinking' : 'idle', true);
       if (textBusy && !replyMicRequest) document.getElementById('textStatus').textContent = speaking
@@ -254,7 +263,7 @@ async function listenAutomatically(replyRequest = null) {
     if (!started || revision !== micRevision) return;
     queryDevices();
     liveMic.waitForSpeech(() => {
-      if (revision !== micRevision || !autoListening) return;
+      if (revision !== micRevision || !microphoneEnabled) return;
       // Yanıt bittiyse aynı dinleyici artık boşta çalışır; closure içindeki
       // eski request_id yeni konuşmayı yanlışlıkla engellememeli.
       const target = replyMicRequest;
@@ -275,18 +284,20 @@ async function listenAutomatically(replyRequest = null) {
     }, !!replyRequest);
     paintMic();
     if (!replyRequest) {
-      document.getElementById('textStatus').textContent = 'Listening for speech · speak without pressing a button. Audio stays local until speech starts.';
+      document.getElementById('textStatus').textContent = preserveStatus
+        ? previousStatus + ' · Listening for speech'
+        : 'Listening for speech · speak without pressing a button. Audio stays local until speech starts.';
       setState('idle', true);
     }
   } catch {
     if (revision !== micRevision) return;
-    pauseListening('Microphone unavailable or permission denied. Check Audio settings, then Resume listening.');
+    blockMicrophone('Microphone unavailable or permission denied. Check Audio settings, then toggle Microphone Off and On.');
   }
 }
 const textOperation = createPendingOperation(() => {
   liveTranscript.finish(activeTextRequest, {}, 'unknown');
   liveAudio.close();
-  pauseListening();
+  blockMicrophone();
   setState('idle', true);
   document.getElementById('textStatus').textContent = 'Result unknown. Reopen the app and check notes before retrying.';
   setConnectionStatus('offline', 'TEXT RESULT UNKNOWN');
@@ -338,7 +349,7 @@ async function streamMicrophone(requestId) {
           return ack.ok;
         }, () => {
           if (activeTextRequest === requestId) {
-            pauseListening('Input limit reached. Listening paused.'); emit('stop_task', {request_id:requestId});
+            blockMicrophone('Input limit reached. Toggle Microphone Off and On to start a new recording.'); emit('stop_task', {request_id:requestId});
           }
         });
         document.getElementById('textStatus').textContent = liveMic.speaking
@@ -368,7 +379,7 @@ async function sendText(text = null, audio = null) {
     let outputDevice = '';
     try { if (liveTest) outputDevice = getAudioDeviceId('dOut'); }
     catch {
-      if (audio?.stream) pauseListening();
+      if (audio?.stream) blockMicrophone();
       document.getElementById('textStatus').textContent = 'Select an available speaker in Audio settings.'; return;
     }
     if (!liveTest && !canSendNativeText()) {
@@ -480,10 +491,10 @@ async function sendText(text = null, audio = null) {
     if (!textOperation.isCurrent(revision)) return;
     const handoff = pendingBargeIn;
     const canHandoff = handoff && handoff.requestId === activeTextRequest && handoff.revision === micRevision &&
-      handoff.connection === connectionRevision && autoListening && liveMic.active &&
+      handoff.connection === connectionRevision && microphoneEnabled && liveMic.active &&
       report?.completed === true && (report.ok === true || report.stopped === true);
-    const keepListening = !handoff && replyMicRequest === activeTextRequest && autoListening &&
-      report?.ok === true && report.completed === true && !report.audio_error && !playbackProblem &&
+    const keepListening = !handoff && replyMicRequest === activeTextRequest && microphoneEnabled &&
+      !micBlocked && report?.completed === true && !report.audio_error && !playbackProblem &&
       replyConnectionRevision === connectionRevision && liveMic.continueListening();
     if (keepListening) replyMicRequest = null;
     else if (!canHandoff && replyMicRequest === activeTextRequest) cancelMic();
@@ -496,14 +507,17 @@ async function sendText(text = null, audio = null) {
     setState('idle');
     controls.forEach(el => { el.disabled = false; });
     textBusy = false;
-    if (canHandoff && handoff.revision === micRevision && handoff.connection === connectionRevision && autoListening && liveMic.active) {
+    if (canHandoff && handoff.revision === micRevision && handoff.connection === connectionRevision && microphoneEnabled && liveMic.active) {
       replyMicRequest = pendingBargeIn = null;
       void sendText('', {stream:true});
-    } else if (!report?.ok || report?.audio_error || playbackProblem || replyConnectionRevision !== connectionRevision) pauseListening();
-    else if (keepListening) {
+    } else if (keepListening) {
       label.textContent += ' · Listening for speech';
       setState('idle', true);
-    } else void listenAutomatically();
+    } else if (report?.completed === true && replyConnectionRevision === connectionRevision) {
+      // Yalnız kesin bitişten sonra boşta yerel dinleme açılır; eski ses,
+      // başarısız araç veya aynı model mesajı yeniden gönderilmez.
+      void listenAutomatically(null, true);
+    }
     return;
   }
   if (typeof window.vex?.onEvent !== 'function') {
@@ -934,13 +948,16 @@ document.addEventListener('DOMContentLoaded', () => {
   if (micB) {
     micB.addEventListener('click', async function () {
       if (isBackendAvailable()) {
-        if (textOperation.uncertain) return;
-        if (autoListening) {
+        if (microphoneEnabled) {
           const wasStreaming = textBusy && liveMic.active && replyMicRequest === null;
-          pauseListening('Listening paused.');
+          microphoneEnabled = false;
+          cancelMic('Microphone Off.');
           if (wasStreaming) document.getElementById('stopTask').click();
         } else {
-          autoListening = true; paintMic(); void listenAutomatically();
+          microphoneEnabled = true; micBlocked = false; paintMic();
+          if (textOperation.uncertain) {
+            document.getElementById('textStatus').textContent = 'Result unknown. Microphone capture remains blocked; reopen and check notes.';
+          } else void listenAutomatically(textBusy && !pendingBargeIn ? activeTextRequest : null);
         }
         return;
       }
@@ -1031,7 +1048,7 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('taskvex-key-saved', () => resetLiveAudio());
   document.getElementById('mSel')?.addEventListener('change', () => resetLiveAudio(false));
   window.addEventListener('taskvex-live-model-ready', event => {
-    if (event.detail.ready) void listenAutomatically();
+    if (event.detail.ready) { micBlocked = false; void listenAutomatically(); }
     else cancelMic('Load a Live model to start automatic listening.');
   });
   document.getElementById('liveLatencyTest')?.addEventListener('change', event => {
@@ -1068,7 +1085,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Stop task button
   if (stopTask) {
     stopTask.addEventListener('click', async () => {
-      if (autoListening || liveMic.active) { pauseListening('Listening paused by Stop.'); if (!textBusy) return; }
+      // Stop yalnız bu turu ve eski ses tamponunu durdurur; On tercihini kapatmaz.
+      if (liveMic.active) cancelMic();
+      if (!textBusy && microphoneEnabled) { void listenAutomatically(); return; }
       sfx.del();
       if (!isBackendAvailable()) {
         addLog('Cannot stop task: Backend offline', true);

@@ -1,5 +1,22 @@
 # UI/backend sözleşmesi
 
+## Güncel ara düzeltme — Microphone On/Off
+
+Yeni event veya payload yok. microphoneEnabled UI oturum tercihi, micBlocked
+kaynak engelidir. Stop/model hatası tercihi Off yapmaz. completed:true ve kesin
+host bitişinden sonra, kapsam değişmediyse On tercihi yerelde yeni konuşma bekler.
+Hata/Stop tanısı korunur. Eski ses/araç/model mesajı tekrar edilmez; sessizlik
+API isteği oluşturmaz. Bekleyen yeni sesin eski görev sonuçlanmadan devredilmesi
+ve unknown kilidi kuralları aynıdır. Off seçimi geç callback/model-ready ile açılmaz.
+
+Mic düğmesi Microphone On/Off ve aria-pressed ile tercihi, on sınıfıyla gerçek
+capture'ı gösterir. Unknown'da da Off yapılabilir; On komut kilidini aşmaz.
+İzin/cihaz/giriş sınırı engelinde otomatik izin döngüsü yoktur. Disconnect veya
+anahtar değişimi kaynağı bırakır; kullanıcı tercihini değiştirmez. Hazır model
+bildirimi veya açık Off→On yeniden hazırlayabilir; uncertain yine engeldir.
+Tercih RAM'dedir; kalıcı ayar, REST mikrofon yolu veya yeni izin eklenmedi.
+Live model/mod hazır olma şartı sürer. Sessiz capture idle, konuşma listening'dir.
+
 ## Güncel: adım 5 — aktivite, kapanış ve süre tanısı
 
 Yeni public event yok. AudioWorklet'in yerel activity:boolean mesajı yalnız

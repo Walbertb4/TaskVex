@@ -6,6 +6,12 @@ Kaynak: `JARVIS_AKIS_DIYAGRAMLARI.html` içindeki proje notları ve 16 diyagram.
 
 ## 1. Bugünkü durum ve belgeyi kullanma
 
+En güncel ara düzeltme mikrofon On/Off tercihidir: Stop ve kesin biten model
+hatası tercihi kapatmaz; yalnız yeni konuşma beklenir, eski istek tekrarlanmaz.
+Donanım/izin/Disconnect ve unknown capture engeli ayrı tutulur; On kilidi aşamaz.
+UI değişikliğidir, yeni araç/worker veya REST ses yolu yoktur. Adım 5 kullanıcı
+onayından sonra 78c292a commit'ine alındı. REST ses adımı sonraya bırakıldı.
+
 En güncel dilim adım 5'tir: sessiz hazır mikrofon idle, yerel konuşma listening,
 model bekleme thinking, ses çıkışı speaking gösterir. Aktivite bir gösterimdir;
 yeni yürütücü veya sunucu VAD yerine geçmez. Normal Stop/kapanış hata logundan

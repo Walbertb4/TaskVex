@@ -1,6 +1,27 @@
 # TaskVex — Kullanıcının katılacağı gerçek kullanım kontrolleri
 
-## Güncel: adım 5 — durum ve Stop/log kısa testi
+## Güncel: Microphone On/Off ve hata sonrası dinleme
+
+Kullanıcı kabulü: 22 Ekim 2026 tarihinde On/Off ve hata sonrası dinleme
+testleri başarılı bildirildi. Aktif girişte Off'un yanıtı kesmemesi sonraki
+küçük düzeltme olarak istendi.
+
+1. Live modelini yükle, Microphone On kalsın. Olmayan bir geçici notu silmesini
+   iste. Ret/açıklama sonrasında düğmeye basmadan yeni bir soru sor; yanıt gelmeli.
+2. Uzun bir yanıtı Stop ile kes. Gerçek bitişten sonra On ve sessizlikte idle
+   kalmalı. Yeni bir soru sor; eski komut kendiliğinden tekrarlanmamalı.
+3. Yanıt sırasında Microphone Off yap, sonra Stop'a bas. Mikrofon kapalı
+   kalmalı; sonraki yazılı mesajdan sonra veya model yüklenince de açılmamalı.
+   Açıkça On yapınca yeni konuşmanı almalı.
+4. İzin/cihaz sorunu veya Disconnect varsa ayarı/bağlantıyı düzeltip Off→On
+   kullan. Belirsiz araç sonucunda bu düğme komut kilidini kaldırmamalı; uygulamayı
+   yeniden açıp kaydı kontrol etmek gerekir. On tercihi engeli aşma yetkisi değildir.
+
+765 pytest, 6 Node süiti ve 10/10 WebView2 fazı geçti.
+Bu ara istek tek başına uygulandı; REST ses çıkışı sonraki ayrı adımdır.
+Testler geçici profil ve sentetik ses/sağlayıcı kullanır; fiziksel kabul bekleniyor.
+
+## Önceki: adım 5 — durum ve Stop/log kısa testi
 
 Kullanıcı kabulü: 22 Ekim 2026 tarihinde durum/log/süre ve idle/listening
 testleri kullanıcı tarafından başarılı bildirildi; adım 5 manuel kabulü tamamlandı.

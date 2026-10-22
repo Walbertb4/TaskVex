@@ -128,6 +128,12 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                         if text == 'Native profile probe':
                             frames.append(audio_reply('Native profile probe Live'))
                             return
+                        if text == 'Native microphone rejected note':
+                            # Var olmayan hedef reddedilmeli; kayıt/izin hattı
+                            # üretim kodudur. Model hatası mikrofonu Off yapmaz.
+                            frames.append({'toolCall':{'functionCalls':[{'id':'missing-note-call','name':'notes.delete',
+                                'args':{'id':'missing-synthetic-note'}}]}})
+                            return
                         if text == 'Native barge active':
                             frames.append({'toolCall':{'functionCalls':[{'id':'native-barge-note','name':'notes.add',
                                 'args':{'text':'Committed before barge-in'}}]}})
@@ -376,6 +382,8 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 # Yeni otomatik başlangıç fiziksel mikrofona hiç ulaşmasın.
                 # Her izin çağrısı taze, sessiz bir sentetik track alır.
                 js("window.defaultMicContext=new AudioContext();window.defaultMicTracks=[];"
+                   "window.testMicOff=()=>{const b=document.getElementById('micB');if(b.getAttribute('aria-pressed')==='true')b.click();};"
+                   "window.testMicOn=()=>{testMicOff();document.getElementById('micB').click();};"
                    "Object.defineProperty(navigator.mediaDevices,'getUserMedia',{configurable:true,value:async()=>{"
                    "const d=defaultMicContext.createMediaStreamDestination();defaultMicTracks.push(...d.stream.getTracks());return d.stream;}});return true;")
                 wait_until(lambda: window.evaluate_js("document.getElementById('dIn').options.length>0 && document.getElementById('dOut').options.length>0"))
@@ -388,7 +396,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 assert len(live_state['sent']) == silent_requests
                 assert not window.evaluate_js("document.getElementById('inp').disabled")
                 outcome['automatic_listening_after_catalog_without_click_or_idle_api'] = True
-                js("document.getElementById('micB').click();return true;")
+                js("testMicOff();return true;")
                 def native_crud(mode, target):
                     """Gerçek gönder düğmesiyle done/edit/delete; UI dosyadan yenilensin."""
                     from app.storage.json_store import JsonStore
@@ -580,7 +588,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                    "Object.defineProperty(navigator.mediaDevices,'getUserMedia',{configurable:true,value:async()=>{"
                    "const d=testMicContext.createMediaStreamDestination();testMicDestinations.push(d);"
                    "if(testMicDestinations.length===1)testMicOsc.connect(d);return d.stream;}});"
-                   "document.getElementById('micB').click();return true;")
+                   "testMicOn();return true;")
                 wait_until(lambda: 'Native microphone answer' in window.evaluate_js("document.getElementById('msgs').textContent"))
                 wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
                 assert 'Native microphone hello' in window.evaluate_js("document.getElementById('msgs').textContent")
@@ -594,10 +602,48 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 js("testMicOsc.connect(testMicDestinations.at(-1));return true;")
                 wait_until(lambda: window.evaluate_js("document.getElementById('msgs').textContent.split('Native microphone answer').length===3"))
                 wait_until(lambda: 'Listening for speech' in window.evaluate_js("document.getElementById('textStatus').textContent"))
-                js("document.getElementById('micB').click();testMicOsc.stop();await testMicContext.close();return true;")
+                js("testMicOff();testMicOsc.stop();await testMicContext.close();return true;")
                 assert window.evaluate_js("testMicDestinations.every(d=>d.stream.getTracks().every(t=>t.readyState==='ended'))")
                 outcome['two_voice_turns_automatic_rearm_without_second_click'] = True
                 outcome['microphone_stream_worklet_pcm_transcript_and_cleanup'] = True
+                # Kullanıcı On tercihi Stop/model reddinden bağımsızdır.
+                # Sessizlikte yeniden API isteği olmadan yeni konuşma beklenir.
+                js("window.persistentMicContext=new AudioContext();window.persistentMicOsc=persistentMicContext.createOscillator();"
+                   "window.persistentMicDestinations=[];persistentMicOsc.start();await persistentMicContext.resume();"
+                   "Object.defineProperty(navigator.mediaDevices,'getUserMedia',{configurable:true,value:async()=>{"
+                   "const d=persistentMicContext.createMediaStreamDestination();persistentMicDestinations.push(d);return d.stream;}});"
+                   "testMicOn();return true;")
+                wait_until(lambda: 'Listening for speech' in window.evaluate_js("document.getElementById('textStatus').textContent"))
+                unchanged_notes = (home / 'notes.json').read_bytes()
+                js("document.getElementById('inp').value='Native microphone rejected note';document.getElementById('send').click();return true;")
+                wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
+                wait_until(lambda: js("const m=await import('./js/live_mic.js');return m.liveMic.waitingForSpeech;"))
+                assert window.evaluate_js("document.getElementById('micB').textContent.includes('Microphone On')")
+                assert (home / 'notes.json').read_bytes() == unchanged_notes
+                sent_after_error = len(live_state['sent'])
+                time.sleep(.3)
+                assert len(live_state['sent']) == sent_after_error  # Eski komut/retry yok.
+                js("document.getElementById('inp').value='Native barge waiting';document.getElementById('send').click();return true;")
+                wait_until(lambda: api._chat.busy and js("const m=await import('./js/live_mic.js');return m.liveMic.waitingForSpeech;"))
+                js("document.getElementById('stopTask').click();return true;")
+                wait_until(lambda: not api._chat.busy and not window.evaluate_js("document.getElementById('send').disabled"))
+                wait_until(lambda: js("const m=await import('./js/live_mic.js');return m.liveMic.waitingForSpeech;"))
+                assert window.evaluate_js("document.getElementById('micB').getAttribute('aria-pressed')==='true' && window.vex.state==='idle'")
+                previous_voice_answers = window.evaluate_js("document.getElementById('msgs').textContent.split('Native microphone answer').length")
+                js("persistentMicOsc.connect(persistentMicDestinations.at(-1));return true;")
+                wait_until(lambda: window.evaluate_js("document.getElementById('msgs').textContent.split('Native microphone answer').length") > previous_voice_answers)
+                wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
+                # Off kararı daha sonraki Stop veya model-ready olayıyla kaldırılmaz.
+                wait_until(lambda: js("const m=await import('./js/live_mic.js');return m.liveMic.waitingForSpeech;"))
+                js("document.getElementById('inp').value='Native barge waiting';document.getElementById('send').click();return true;")
+                wait_until(lambda: api._chat.busy and js("const m=await import('./js/live_mic.js');return m.liveMic.waitingForSpeech;"))
+                js("testMicOff();document.getElementById('stopTask').click();return true;")
+                wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
+                js("window.dispatchEvent(new CustomEvent('taskvex-live-model-ready',{detail:{ready:true}}));return true;")
+                assert js("const m=await import('./js/live_mic.js');return !m.liveMic.active && document.getElementById('micB').textContent.includes('Microphone Off');")
+                js("persistentMicOsc.stop();await persistentMicContext.close();return true;")
+                outcome['microphone_on_survives_rejected_note_and_stop_without_replay'] = True
+                outcome['manual_microphone_off_survives_stop_and_model_ready'] = True
                 # Gerçek AudioWorklet ile sessiz bekleme/konuşma/yanıt ayrımı.
                 # Sağlayıcı taklidi 1.5 s sessizlikte yanıtlar; yerel 700 ms
                 # gösterim geçişi sunucu tamamlanması diye yorumlanmamalı.
@@ -606,7 +652,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                    "statusOsc.start();await statusContext.resume();"
                    "Object.defineProperty(navigator.mediaDevices,'getUserMedia',{configurable:true,value:async()=>{"
                    "const d=statusContext.createMediaStreamDestination();statusDestinations.push(d);return d.stream;}});"
-                   "document.getElementById('micB').click();return true;")
+                   "testMicOn();return true;")
                 wait_until(lambda: 'Listening for speech' in window.evaluate_js("document.getElementById('textStatus').textContent"))
                 assert window.evaluate_js('window.vex.state') == 'idle'
                 js("statusOsc.connect(statusDestinations.at(-1));return true;")
@@ -617,7 +663,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 wait_until(lambda: window.evaluate_js('window.vex.state') == 'speaking')
                 wait_until(lambda: 'Listening for speech' in window.evaluate_js("document.getElementById('textStatus').textContent"))
                 assert window.evaluate_js('window.vex.state') == 'idle'
-                js("document.getElementById('micB').click();statusOsc.stop();await statusContext.close();return true;")
+                js("testMicOff();statusOsc.stop();await statusContext.close();return true;")
                 live_state['hold_microphone_reply'] = False
                 outcome['idle_waiting_listening_speech_thinking_and_speaking'] = True
                 # Aynı gerçek WebView mikrofonu eski yanıtı keser; yeni tur
@@ -628,7 +674,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                        "bargeOsc.start();await bargeContext.resume();"
                        "Object.defineProperty(navigator.mediaDevices,'getUserMedia',{configurable:true,value:async()=>{"
                        "const d=bargeContext.createMediaStreamDestination();bargeDestinations.push(d);return d.stream;}});"
-                       "document.getElementById('micB').click();return true;")
+                       "testMicOn();return true;")
                     wait_until(lambda: 'Listening for speech' in window.evaluate_js("document.getElementById('textStatus').textContent"))
                     js("document.getElementById('inp').value=" + json.dumps(prompt) + ";document.getElementById('send').click();return true;")
                     wait_until(lambda: window.evaluate_js("document.getElementById('send').disabled && document.getElementById('micB').classList.contains('on')"))
@@ -655,7 +701,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                     if prompt.endswith('active'):
                         from app.storage.json_store import JsonStore
                         assert sum(n['text']=='Committed before barge-in' for n in (JsonStore(home/'notes.json').read() or {})['notes']) == 1
-                    js("document.getElementById('micB').click();bargeOsc.stop();await bargeContext.close();return true;")
+                    js("testMicOff();bargeOsc.stop();await bargeContext.close();return true;")
                     assert window.evaluate_js("bargeDestinations.every(d=>d.stream.getTracks().every(t=>t.readyState==='ended'))")
                 outcome['barge_in_active_preserved_commit_and_playback_handoff'] = True
                 outcome['short_noise_did_not_interrupt_active_or_playback_reply'] = True
@@ -669,7 +715,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                    "return bargeOriginalEvent(name,data);};"
                    "Object.defineProperty(navigator.mediaDevices,'getUserMedia',{configurable:true,value:async()=>{"
                    "const d=bargeContext.createMediaStreamDestination();bargeDestinations.push(d);return d.stream;}});"
-                   "document.getElementById('micB').click();return true;")
+                   "testMicOn();return true;")
                 wait_until(lambda: 'Listening for speech' in window.evaluate_js("document.getElementById('textStatus').textContent"))
                 js("document.getElementById('inp').value='Native barge waiting';document.getElementById('send').click();return true;")
                 wait_until(lambda: js("const m=await import('./js/live_mic.js');return document.getElementById('send').disabled && m.liveMic.waitingForSpeech;"))
@@ -684,19 +730,21 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 outcome['barge_in_waited_for_real_completion_disconnect_dropped_buffer'] = True
                 mic_packets = len(live_state['sent'])
                 js("Object.defineProperty(navigator.mediaDevices,'getUserMedia',{configurable:true,value:async()=>{throw new Error('Synthetic denied');}});"
-                   "document.getElementById('micB').click();return true;")
+                   "testMicOn();return true;")
                 wait_until(lambda: 'permission denied' in window.evaluate_js("document.getElementById('textStatus').textContent"))
                 assert not window.evaluate_js("document.getElementById('send').disabled || document.getElementById('micB').classList.contains('on')")
-                js("window.cancelMicContext=new AudioContext();window.cancelMicDestination=cancelMicContext.createMediaStreamDestination();"
-                   "Object.defineProperty(navigator.mediaDevices,'getUserMedia',{configurable:true,value:async()=>cancelMicDestination.stream});"
-                   "document.getElementById('micB').click();return true;")
+                js("window.cancelMicContext=new AudioContext();window.cancelMicDestinations=[];"
+                   "Object.defineProperty(navigator.mediaDevices,'getUserMedia',{configurable:true,value:async()=>{"
+                   "const d=cancelMicContext.createMediaStreamDestination();cancelMicDestinations.push(d);return d.stream;}});"
+                   "testMicOn();return true;")
                 wait_until(lambda: 'Listening for speech' in window.evaluate_js("document.getElementById('textStatus').textContent"))
                 js("document.getElementById('stopTask').click();return true;")
                 wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
-                assert 'Listening paused by Stop' in window.evaluate_js("document.getElementById('textStatus').textContent")
-                assert window.evaluate_js("cancelMicDestination.stream.getTracks().every(t=>t.readyState==='ended')")
+                wait_until(lambda: 'Listening for speech' in window.evaluate_js("document.getElementById('textStatus').textContent"))
+                assert window.evaluate_js("cancelMicDestinations[0].stream.getTracks().every(t=>t.readyState==='ended')")
+                assert window.evaluate_js("cancelMicDestinations.at(-1).stream.getTracks().every(t=>t.readyState==='live')")
                 assert not any('tool_response' in p for p in live_state['sent'][mic_packets:])
-                js("await cancelMicContext.close();return true;")
+                js("testMicOff();await cancelMicContext.close();return true;")
                 outcome['microphone_permission_denied_and_stop_discard'] = True
                 # Otomatik listeleme getUserMedia çağırmamalı; izin Mic'e aittir.
                 js("window.deviceContext=new AudioContext();window.deviceStream=deviceContext.createMediaStreamDestination().stream;"
@@ -709,7 +757,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 wait_until(lambda: window.evaluate_js("Array.from(document.getElementById('dIn').options).some(o=>o.value==='12345')"))
                 assert window.evaluate_js("window.lastMicOptions===undefined && deviceStream.getTracks().every(t=>t.readyState==='live')")
                 js("document.getElementById('dIn').value='12345';document.getElementById('dIn').onchange();"
-                   "document.getElementById('micB').click();return true;")
+                   "testMicOn();return true;")
                 wait_until(lambda: 'Listening for speech' in window.evaluate_js("document.getElementById('textStatus').textContent"))
                 assert window.evaluate_js("lastMicOptions.audio.deviceId.exact==='12345'")
                 js("window.deviceList=deviceList.filter(d=>d.kind!=='audioinput');navigator.mediaDevices.dispatchEvent(new Event('devicechange'));return true;")
@@ -801,7 +849,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                    "window.pywebview.api.event=(name,data)=>{if(name==='live_audio_start')window.unknownNewTurns++;return unknownOriginalEvent(name,data);};"
                    "Object.defineProperty(navigator.mediaDevices,'getUserMedia',{configurable:true,value:async()=>{"
                    "const d=unknownContext.createMediaStreamDestination();unknownDestinations.push(d);return d.stream;}});"
-                   "document.getElementById('micB').click();return true;")
+                   "testMicOn();return true;")
                 wait_until(lambda: 'Listening for speech' in window.evaluate_js("document.getElementById('textStatus').textContent"))
                 js("document.getElementById('inp').value='Native barge waiting';document.getElementById('send').click();return true;")
                 wait_until(lambda: js("const m=await import('./js/live_mic.js');return document.getElementById('send').disabled && m.liveMic.waitingForSpeech;"))
@@ -810,6 +858,10 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 assert window.evaluate_js("document.getElementById('send').disabled && document.getElementById('noteAdd').disabled")
                 assert window.evaluate_js('window.unknownNewTurns') == 0
                 assert window.evaluate_js("unknownDestinations.every(d=>d.stream.getTracks().every(t=>t.readyState==='ended'))")
+                assert window.evaluate_js("document.getElementById('micB').getAttribute('aria-pressed')==='true'")
+                js("testMicOff();document.getElementById('micB').click();return true;")
+                assert js("const m=await import('./js/live_mic.js');return !m.liveMic.active && document.getElementById('send').disabled;")
+                assert window.evaluate_js('window.unknownNewTurns') == 0
                 js("window.pywebview.api.event=unknownOriginalEvent;unknownOsc.stop();await unknownContext.close();return true;")
                 api._chat.run_live = original_run_live
                 outcome['barge_in_unknown_result_dropped_buffer_and_locked_controls'] = True

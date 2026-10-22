@@ -7,7 +7,50 @@ handler'ına doğrudan erişmez. İlk ModelTools diliminde bağımlılık eklenm
 
 ## Sıra ve güncel durum
 
-### Güncel: adım 5 — durum, log ve süre sınırları
+### Güncel ara düzeltme — mikrofon tercihi model sonucundan bağımsız
+
+Kullanıcı kabulü: 22 Ekim 2026 tarihinde On/Off ve hata sonrası dinleme
+testleri başarılı bildirildi. Aktif girişte Off'un yanıtı kesmemesi sonraki
+küçük düzeltme olarak istendi.
+
+Kullanıcı adım 5 testlerini onayladı; `78c292a` ile commit edildi. Yeni isteği
+ayrı dilim olarak uygulandı; REST ses adımına geçilmedi. Bu dilim manuel kabul
+bekliyor ve henüz commit edilmedi; push yok.
+
+Header düğmesi Microphone On / Off oldu. microphoneEnabled yalnız kullanıcının
+tercihidir; model reddi, hedef bulunamaması veya Stop bu tercihi değiştirmez.
+Stop eski ses/ön tamponu bırakır; gerçek host bitişi doğrulanınca On ise yerelde
+yeni konuşma beklenir. Tamamlanmış hata yanıtı da aynı şekilde yeniden dinler.
+Eski model mesajı/araç veya yakalanmış başarısız ses tekrar gönderilmez. Sessiz
+beklemede yeni sağlayıcı isteği yoktur; hata/Stop tanısı durum satırında korunur.
+Kullanıcının Off seçimi aktif yanıtın bitişi, Stop veya model-ready bildirimiyle
+kaldırılmaz. Off, kaynakları hemen bırakır; etkin giriş sürüyorsa mevcut tur
+iptali de istenir. Yanıt çalarken Off yalnız mikrofonu kapatır.
+
+micBlocked ayrı bir kaynak engelidir: izin reddi/cihaz hatası, giriş sınırı,
+Disconnect/anahtar değişimi ve unknown durumunda capture kapanır. Otomatik izin
+veya bağlantı tekrar döngüsü yoktur. Model hazır bildirimi veya açık Off→On
+kaynak engelini kaldırabilir; textOperation.uncertain kilidi yine aşılamaz.
+Unknown'da düğme Off yapılabilir, tekrar On yapmak komut veya capture başlatmaz.
+On/aria-pressed tercih durumunu; renkli on sınıfı gerçek capture durumunu gösterir.
+Engel tooltip/durum satırındadır. Bu tercih mevcut oturum RAM'indedir; yeni
+kalıcı mikrofon ayarı eklenmedi. Otomatik capture hâlâ Live modu ve yüklenmiş
+bir Live model ister; REST'e yeni mikrofon/STT yolu eklenmedi.
+
+Hedefli [gerçek WebView2/sentetik sağlayıcı](stage5-mic-toggle-native.json)
+kontrolü reddedilen not silmede sıfır mutasyon/tekrar, Stop sonrası On/idle ve
+sonraki gerçek AudioWorklet konuşmasının gönderimi, aktif yanıtta Off seçiminin
+Stop/model-ready sonrasında korunması, izin reddi ve unknown'da Off→On ile
+kilidin aşılamamasını doğruladı. Native testlerin başlangıç/temizleme adımları
+artık Stop'un Off yapmasına güvenmez; düğmeden açıkça On/Off seçer.
+Yeni backend olayı, CRUD mantığı, worker veya bağımlılık yoktur. Kullanıcı notu,
+gerçek mikrofon/hesap veya ücretli API kullanılmadı. Gerçek donanım kabulü açık.
+Tam kontrol: 765 pytest, 6 Node süiti, JS syntax ve native betiğinde 0
+Pyright hatası. [10/10 tam WebView2 fazı geçti](stage5-mic-toggle-full-native.json);
+son ek kontrolde Off aktif yanıt sırasında seçilip ardından Stop ile doğrulandı.
+Sonraki ayrı iş REST ses çıkışı; Aşama 5 henüz kapanmadı.
+
+### Önceki: adım 5 — durum, log ve süre sınırları
 
 Kullanıcı kabulü: 22 Ekim 2026 tarihinde durum/log/süre ve idle/listening
 testleri kullanıcı tarafından başarılı bildirildi; adım 5 manuel kabulü tamamlandı.

@@ -1,5 +1,10 @@
 # TaskVex — Mark LVI incelemesi ve core başlangıç planı
 
+Güncel ara istek: Microphone On/Off tercihi Stop/model hatasından ayrıldı;
+kesin bitişte yeni konuşma beklenir. Eski komut tekrar edilmez, kaynak/unknown
+engelleri korunur. Adım 5 kullanıcı kabulüyle 78c292a commit'ine alındı.
+Bu dilimin manuel kabulünden sonra sıradaki ayrı iş hâlâ REST ses çıkışıdır.
+
 En güncel adım 5: durum/log/süre yönetimi ve istenen idle/listening ayrımı
 uygulandı. Araç ve iptal kanıtı korunur; normal Stop hata sayılmaz. Kanıtlar
 STAGE5_MODEL.md'dedir. Adım 4 kullanıcı onayıyla 73a87df commit'ine alındı.
