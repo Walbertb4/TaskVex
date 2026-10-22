@@ -199,7 +199,7 @@ class PersistentLive:
 
     def ask(self, text: str, model: str, tools: ModelTools | None = None, *, request_id: str | None = None, audio_sink=None,
             transcript_sink=None, audio_input: bytes | LiveInput | None = None, profile: dict | None = None) -> dict:
-        """İstek kendi 25 saniye timeout'unu yönetir; host otomatik replay yapmaz."""
+        """İstek olay/toplam süre sınırını yönetir; host otomatik replay yapmaz."""
         self._start()
         assert self._loop is not None
         # Sinyal her kullanıcı turuna özeldir. Eski Stop yeni mesaja taşınamaz;
@@ -220,14 +220,14 @@ class PersistentLive:
         with self._guard:
             stream = self._input
             if not self._pending or self._pending[0] != request_id or stream is None:
-                return {"ok": False, "closed": True}
+                return {"ok": False, "closed": True, "failed": False}
             if sequence is None:
                 return {"ok": True, "ready": stream.ready, "closed": stream.closed}
             accepted = stream.feed(sequence, data)
             failed = stream.failed
         if failed:
             self.stop(request_id)
-        return {"ok": accepted, "closed": stream.closed}
+        return {"ok": accepted, "closed": stream.closed, "failed": failed}
 
     def stop(self, request_id: str) -> bool:
         """Yalnız eşleşen aktif tura iptal isteği ver; True bitiş kanıtı değildir."""

@@ -7,7 +7,69 @@ handler'ına doğrudan erişmez. İlk ModelTools diliminde bağımlılık eklenm
 
 ## Sıra ve güncel durum
 
-### Güncel: adım 4 — seçilen dil ve temel kişiselleştirme
+### Güncel: adım 5 — durum, log ve süre sınırları
+
+Kullanıcı kabulü: 22 Ekim 2026 tarihinde durum/log/süre ve idle/listening
+testleri kullanıcı tarafından başarılı bildirildi; adım 5 manuel kabulü tamamlandı.
+
+Dil/kişiselleştirme adımını kullanıcı onayladı; `73a87df` ile commit edildi.
+Bu yeni adım manuel kabul bekler, commit/push yapılmadı. Kullanıcının küçük
+idle/listening isteği aynı durum akışı içinde bu adıma dahil edildi.
+
+Mikrofon açık ama sessizce aday bekliyorsa reactor idle kalır. Yerel aday
+algılandığında listening, konuşmada yaklaşık 700 ms enerji sessizliği olduğunda
+model turu hâlâ aktifse thinking görünür. Kullanıcı yeniden konuşursa listening'e
+döner. Çıktı PCM'i speaking, başarılı yanıt sonrası aynı bekleyen mikrofon idle
+olur. AudioWorklet yalnız aktivite değişimini bildirir; sunucu VAD'sinin
+konuşmayı bitirmesi veya bir aracın tamamlanması yerine geçmez. Stop/hata/cihaz
+kapanışında eski aktivite yeni mikrofonu etkileyemez. Unknown'da ses kaynakları
+kapanır ve mevcut komut kilidi korunur; idle rengi kilidin açıldığı anlamına gelmez.
+
+Normal, kimliği eşleşen completed/stopped/code:stopped ve unknown olmayan
+sohbet dönüşü emit tarafında hâlâ ok:false'dur; taşıma hatası logu üretilmez.
+UI normal bir durdurma kaydı ve gerçek araç sonuçlarını gösterir. Mikrofon feed
+sonucu failed:false/closed:true ise normal geç paket kapanışı olarak ele alınır;
+bozuk sıra, taşma ve failed:true gizlenmez veya başarıya çevrilmez. Backend
+PersistentLive.input bu failed alanını ayrıca döndürür. Stop kabulü hâlâ bitiş
+kanıtı değildir; eski kimlikli Stop/geç metin/ses ve unknown kuralları korunur.
+
+Engine log tek addLog kaynağında son 200 DOM kaydı, kayıt başına 2.000 karakter
+ile sınırlıdır. Şema uyarıları da aynı boyut/adet sınırında tutulur. addLog güvenli
+textContent kullanır; mevcut sır maskelemesine AQ biçimi de eklendi. Log dosyası,
+sınırsız geçmiş veya ikinci logger eklenmedi; transkriptler loga taşınmadı.
+
+Live'ın eski 25 saniyelik toplam tur sınırı ikiye ayrıldı: sağlayıcıdan olay
+beklemesi en çok 25 s, bütün tur en çok 120 s. Parça gelmeye devam ediyorsa ilk
+25 s'de kesilmez; kontrol olayı sonsuz döngüsü de 120 s üst sınırını aşamaz.
+Hatalar live_idle_timeout/live_timeout ve timeout_seconds ile ayrılır. Timeout
+otomatik retry/resume/fallback değildir; kısmi metin ve tamamlanmış araç sonucu
+korunur, çözülemeyen araç unknown bırakılır. UI bekleme sınırı Live 210 s,
+REST 240 s'dir; bu süre aşımı gerçek iptal sayılmaz ve geç yanıt kilidi açmaz.
+Mikrofon 15 s, setup tamponu 3 s, çalma kuyruğu 20 s, PCM çıkış toplamı 60 s,
+metin/parça/araç sınırları korunur; 120 s sınırsız ses üretimi vaadi değildir.
+
+Kanıt: 765 pytest, 6 Node süiti, değişen Python/native/test modüllerinde 0
+Pyright hatası ve JS syntax kontrolü geçti. Üç yeni Python testi idle timeout'ta
+tek kalıcı notun korunmasını, ilerleyen olayların idle süresini aşabilmesini,
+toplam timeout'un yine işlemesini ve normal/bozuk feed ayrımını doğrular.
+Yeni Node süiti normal Stop/unknown/kimlik farkı/gerçek hata log ayrımını,
+maskeleme/adet/boyut sınırını ve eski/unknown deadline davranışını sınar.
+Mevcut mikrofon süiti 700 ms aktivite geçişini ve kaynak sahipliğini de kapsar.
+[Hedefli gerçek WebView2](stage5-status-native.json) gerçek AudioWorklet ile
+idle/listening/thinking/speaking/idle sırası, normal Stop logu, log sınırı ve
+önceki not/Stop/resume/unknown/ses regresyonlarını doğruladı. Sağlayıcı ve ses
+sentetik, kayıt geçicidir; kullanıcı notu veya ücretli/gerçek API kullanılmadı.
+
+Tam native regresyon: [10/10 faz geçti](stage5-status-full-native.json);
+ayar/not/import/export/kimlik deposu ve kurtarma kontrolleri korundu. Son
+unknown log ayrımı da hedefli Node testinden geçti.
+
+Sonraki ayrı adım REST ses çıkışı açığıdır. Ardından gerçek entegre kabul,
+hedefli UI temizliği/debloat ve son kapanış belgeleri kalır. Not şüphesi incelemesi
+kullanıcının isteğiyle erteli; aynı socket tam çift yönlü interruption ve
+fiziksel yankı kalibrasyonu bu adımda eklenmedi. Aşama 5 kapanmadı.
+
+### Önceki: adım 4 — seçilen dil ve temel kişiselleştirme
 
 Kullanıcı kabulü: 22 Ekim 2026 tarihinde dil/kişiselleştirme adımının
 testleri kullanıcı tarafından başarılı bildirildi; adım 4 manuel kabulü tamamlandı.

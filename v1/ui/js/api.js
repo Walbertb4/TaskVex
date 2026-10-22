@@ -30,20 +30,25 @@ export function sanitizeError(err) {
   str = str.replace(/\b(?:authorization\s*:\s*)?bearer\s+[^\s,'";]+/gi, 'Bearer [REDACTED]');
   str = str.replace(/(?:api[_-]?key|secret|token|password|auth|bearer)\s*[:=]\s*['"]?[^\s,'"]+['"]?/gi, '[REDACTED]');
   str = str.replace(/AIza[0-9A-Za-z-_]{35}/g, '[REDACTED]');
+  str = str.replace(/AQ\.[0-9A-Za-z_-]{30,}/g, '[REDACTED]');
   str = str.replace(/ey[A-Za-z0-9-_]{20,}\.[A-Za-z0-9-_]{20,}\.[A-Za-z0-9-_]{20,}/g, '[REDACTED_JWT]');
   return str;
 }
 
-export function logBridgeError(name, err) {
-  const safeName = sanitizeError(name);
-  const safeMsg = sanitizeError(err);
+/** Uzun oturumda log DOM'u sınırsız büyümesin; sır/HTML metin olarak kalır. */
+export function addLog(message, isSub = false) {
   const logEl = document.getElementById('log');
   if (logEl) {
     const d = document.createElement('div');
-    d.className = 'l4';
-    d.textContent = `› Failed to send ${safeName}: ${safeMsg}`;
+    if (isSub) d.className = 'l4';
+    d.textContent = (isSub ? '↳ ' : '› ') + sanitizeError(message).slice(0, 2000);
     logEl.prepend(d);
+    while (logEl.childElementCount > 200) logEl.lastElementChild.remove();
   }
+}
+
+export function logBridgeError(name, err) {
+  addLog(`Failed to send ${sanitizeError(name)}: ${sanitizeError(err)}`, true);
 }
 
 export function isBackendAvailable() {
@@ -58,11 +63,11 @@ export function createPendingOperation(onUnknown, timeout = 12000) {
     get pending() { return phase === 'pending'; },
     get uncertain() { return phase === 'unknown'; },
     isCurrent(id) { return revision === id; },
-    begin() {
+    begin(deadline = timeout) {
       clear();
       phase = 'pending';
       const id = ++revision;
-      timer = setTimeout(() => { if (revision === id) operation.markUnknown(); }, timeout);
+      timer = setTimeout(() => { if (revision === id) operation.markUnknown(); }, deadline);
       return id;
     },
     finish() { clear(); phase = 'idle'; revision++; },
@@ -95,7 +100,14 @@ export async function emit(name, data = null) {
   } catch (error) {
     // Anahtar taşıyan bir event'in hatası da ham yanıtı da sır içerebilir.
     const safeError = name === 'apikey' ? new Error('API key storage was not confirmed') : error;
-    logBridgeError(name, safeError);
+    // Beklenen kapanış hata spam'i değildir; dönüş hâlâ ok:false kalır.
+    // Belirsiz/başarısız iptal ve bozuk/taşmış ses kuyruğu gizlenmez.
+    const stopped = ['text', 'live_text', 'live_audio', 'live_audio_start'].includes(name) &&
+      typeof data?.request_id === 'string' && response?.request_id === data.request_id &&
+      response?.code === 'stopped' && response.stopped === true && response.completed === true && !response.unknown;
+    const closed = name === 'live_audio_feed' && response?.closed === true && response.failed === false &&
+      !response.unknown && !response.error;
+    if (!stopped && !closed) logBridgeError(name, safeError);
     return { ok: false, error: safeError, response: name === 'apikey' ? null : response };
   }
   if (native && typeof observer === 'function') {

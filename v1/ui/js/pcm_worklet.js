@@ -15,6 +15,7 @@ class MicrophonePCM extends AudioWorkletProcessor {
       this.waiting = event?.data === 'listen' || event?.data === 'barge';
       this.replyPlaying = event?.data === 'barge';
       this.previous = this.filtered = this.noise = 0;
+      this.speaking = false; this.silent = 0;
       this.prefix = []; this.limited = false;
     };
   }
@@ -39,12 +40,12 @@ class MicrophonePCM extends AudioWorkletProcessor {
         // Wire biçimi platform endian'ından bağımsız olarak little-endian'dır.
         const bytes = new Uint8Array(3200), view = new DataView(bytes.buffer);
         for (let j = 0; j < 1600; j++) view.setInt16(j * 2, this.samples[j], true);
+        const rms = Math.sqrt(this.energy / 1600);
         if (this.waiting) {
           // Yanıtı kesmek için daha güçlü 300 ms, boşta 200 ms aday gerekir.
           // Kısa tık/darbe kesmez; 500 ms ön tampon ilk heceleri saklar.
           this.prefix.push(bytes.buffer);
           if (this.prefix.length > 5) this.prefix.shift();
-          const rms = Math.sqrt(this.energy / 1600);
           const threshold = Math.max(this.replyPlaying ? .025 : .015, this.noise * 3);
           this.voiced = rms >= threshold ? this.voiced + 1 : 0;
           // Aday sesi gürültü tabanına katmak konuşmanın kendi eşiğini yükseltir.
@@ -53,10 +54,19 @@ class MicrophonePCM extends AudioWorkletProcessor {
           // fiziksel kabul yetersizse ayrı VAD eklemeden önce cihazı kalibre et.
           if (this.voiced >= (this.replyPlaying ? 3 : 2)) {
             this.waiting = false; this.packets = this.prefix.length;
+            this.speaking = true; this.silent = 0;
             this.port.postMessage({speech:this.prefix}, this.prefix);
             this.prefix = [];
           }
         } else {
+          // Yalnız değişimde küçük durum bildirimi; sessizlik PCM'i sunucu
+          // VAD'sine akmaya devam eder. Bu yerel gösterim turu bitirmez.
+          if (rms >= Math.max(.015, this.noise * 3)) {
+            this.silent = 0;
+            if (!this.speaking) { this.speaking = true; this.port.postMessage({activity:true}); }
+          } else if (this.speaking && ++this.silent >= 7) {
+            this.speaking = false; this.port.postMessage({activity:false});
+          }
           this.port.postMessage(bytes.buffer, [bytes.buffer]);
           this.packets++;
         }

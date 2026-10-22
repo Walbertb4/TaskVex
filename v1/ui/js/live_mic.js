@@ -22,7 +22,8 @@ export const liveMic = {
   get active() { return current !== null; },
   get ready() { return current?.recorder?.state === 'recording'; },
   get waitingForSpeech() { return !!current?.waiting && !current.triggered; },
-  async prepareStream(onError, deviceId = '') {
+  get speaking() { return current?.speaking === true; },
+  async prepareStream(onError, deviceId = '', onActivity = null) {
     // İzin/setup beklerken ses gönderilmez; activateStream açık hazır el
     // sıkışmasından sonra 100 ms paket akışını başlatır. Eski izin sonucu
     // iptal edilen/yeni kaydı açamaz.
@@ -45,12 +46,19 @@ export const liveMic = {
       state.node.onprocessorerror = state.fail;
       state.node.port.onmessage = event => {
         if (current !== state) return;
+        if (typeof event.data?.activity === 'boolean' && (state.triggered || state.armed)) {
+          state.speaking = event.data.activity;
+          onActivity?.(event.data.activity);
+          return;
+        }
         if (event.data?.limit) { state.fail(); return; }
         if (Array.isArray(event.data?.speech) && state.waiting && !state.triggered) {
           const prefix = event.data.speech;
           if (!prefix.length || prefix.length > 5 || prefix.some(b => !(b instanceof ArrayBuffer) || b.byteLength !== 3200)) { state.fail(); return; }
           state.triggered = true;
+          state.speaking = true;
           state.queue.push(...prefix.map(buffer => new Uint8Array(buffer)));
+          onActivity?.(true);
           state.onSpeech();
           return;
         }

@@ -19,6 +19,11 @@ from app.core.contracts import ContractError, TaskStatus
 from app.session.model_tools import ModelTools, NoteTargetError
 from app.storage.credentials import CredentialError, load_gemini_key
 
+# Parçaları gelmeye devam eden uzun yanıt eski 25 s toplam sürede kesilmesin.
+# Olay sessizliği ve toplam tur sınırı ayrıdır; hiçbiri tekrar gönderim yapmaz.
+LIVE_TURN_SECONDS = 120
+LIVE_IDLE_SECONDS = 25
+
 
 async def _next_message(messages, sender):
     """Gönderici hata verirse gelen yanıtı/deadline'ı beklemeden aynı turu bitir."""
@@ -39,7 +44,7 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
                           audio_sink: Callable[[bytes, str], bool] | None = None,
                           transcript_sink: Callable[[str, str, int], bool] | None = None,
                           audio_input: bytes | LiveInput | None = None, profile: dict | None = None) -> dict:
-    """Bir turu 25 saniyeyle sınırla; yeniden kullanım ve güvenli ölçümleri döndür.
+    """25 s olay sessizliği / 120 s toplam tur; süre aşımı tekrar izni değildir.
 
     first_event_ms ilk içerik/ses parçasını, first_text_ms ilk transkript/metni
     ölçer. elapsed_ms bağlantı ve kapanış dahil toplamdır. Ses üretilmesi sağlayıcı
@@ -79,7 +84,7 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
         if not key:
             report.update(code="missing_api_key", error="Save a Gemini key before the Live test.")
             return report
-        async with asyncio.timeout(25):
+        async with asyncio.timeout(LIVE_TURN_SECONDS):
             async with connection.open(model, key, tools, audio_input='stream' if streaming else audio_input is not None,
                                        profile=profile) as session:
                 report["session_reused"] = connection.reused
@@ -114,7 +119,16 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
                 incoming = session.receive().__aiter__()
                 while True:
                     try:
-                        message = await _next_message(incoming, sender)
+                        idle = asyncio.timeout(LIVE_IDLE_SECONDS)
+                        try:
+                            async with idle:
+                                message = await _next_message(incoming, sender)
+                        except TimeoutError:
+                            if not idle.expired():
+                                raise
+                            report.update(code='live_idle_timeout', timeout_seconds=LIVE_IDLE_SECONDS,
+                                error='Live event wait timed out. This message was not retried; check existing tool results.')
+                            return report
                     except StopAsyncIteration:
                         break
                     messages += 1
@@ -276,7 +290,8 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
             error="Live response stopped. Completed actions were not undone." if not unresolved else
                   "Model stopped but a tool is unresolved. Reopen and check notes before retrying.")
     except TimeoutError:
-        report.update(code="live_timeout", error="Live turn exceeded 25 seconds. Check any existing tool results before retrying.")
+        report.update(code="live_timeout", timeout_seconds=LIVE_TURN_SECONDS,
+            error="Live turn time limit reached. This message was not retried; check existing tool results.")
     except CredentialError:
         report.update(code="missing_api_key", error="Gemini key is missing or unavailable. Save it in Settings.")
     except ContractError:

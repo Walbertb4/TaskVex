@@ -1,5 +1,14 @@
 # TaskVex v1 development
 
+Latest slice (step 5): an armed but quiet microphone stays idle; speech shows
+listening, local silence during an active turn thinking, and output speaking.
+Activity is display-only. Normal confirmed Stop/late closed feed no longer
+produce transport failure spam; real failures/unknown results remain visible.
+The engine log retains 200 entries of up to 2,000 characters. Live now has a
+25 s event-wait and 120 s total turn limit; UI waits 210 s for Live / 240 s for
+REST before locking unknown. No automatic retry was added. Step 4 was manually
+accepted and committed as 73a87df. REST audio remains the next separate step.
+
 Latest slice (step 4): saved pLang/pIns preferences build a shared REST/Live
 system instruction. The native host reads a per-request disk snapshot; these
 preferences grant no tool permissions. Effective instruction changes start a

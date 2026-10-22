@@ -1,5 +1,10 @@
 # TaskVex — Mark LVI incelemesi ve core başlangıç planı
 
+En güncel adım 5: durum/log/süre yönetimi ve istenen idle/listening ayrımı
+uygulandı. Araç ve iptal kanıtı korunur; normal Stop hata sayılmaz. Kanıtlar
+STAGE5_MODEL.md'dedir. Adım 4 kullanıcı onayıyla 73a87df commit'ine alındı.
+Sonraki ayrı iş REST ses çıkışı, sonra entegre kabul ve hedefli debloat/kapanıştır.
+
 En güncel adım 4: pLang/pIns ortak REST/Live talimatına bağlandı. Kaydedilmiş
 profil tura özel snapshot'tır; Live'da etkili değişiklik yeni bağlam açar.
 Core/araç yetkileri aynı kalır. Kontrollü test kanıtı STAGE5_MODEL.md'dedir;

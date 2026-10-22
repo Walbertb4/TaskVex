@@ -1,6 +1,29 @@
 # TaskVex — Kullanıcının katılacağı gerçek kullanım kontrolleri
 
-## Güncel: adım 4 — dil ve temel kişiselleştirme
+## Güncel: adım 5 — durum ve Stop/log kısa testi
+
+Kullanıcı kabulü: 22 Ekim 2026 tarihinde durum/log/süre ve idle/listening
+testleri kullanıcı tarafından başarılı bildirildi; adım 5 manuel kabulü tamamlandı.
+
+1. Live modelini yükle, birkaç saniye sus: mikrofon hazır olsa da merkez idle
+   kalmalı. Normal sesle konuşunca listening; susup yanıt bekleyince thinking,
+   Vex'in sesi çalarken speaking, bitişte yeniden idle görünmeli. Yerel algı
+   yaklaşık 200 ms başlangıç/700 ms sessizlik içerir; sözcük bazlı ölçüm değildir.
+2. Tekrar konuş veya yanıta araya gir. Eski ses/metin yeni tura karışmamalı;
+   gerçek araç sonucu beklenmeden yeni konuşma yürütülmemeli.
+3. Yanıt sırasında Stop kullan. Kontroller gerçek bitişten sonra açılmalı;
+   Engine log'da normal durdurma kaydı bulunmalı, aynı Stop için Failed to send
+   live_audio_start yazmamalı. Gerçek API/cihaz veya belirsiz sonuç hataları gizlenmemeli.
+4. REST'te yazılı yanıt ve Stop'u da dene. Önceden tamamlanan geçici not korunmalı.
+   Uzun kullanımda log paneli son 200 kaydı tutar; eski tanı kayıtları düşer.
+
+765 Python testi, 6 Node süiti ve sentetik sağlayıcılı 10/10 WebView2 fazı geçti.
+25 s olay bekleme / 120 s toplam Live sınırları kontrollü testlerde küçültülerek
+sınandı; gerçek API'de bu kadar uzun bekleme veya ücretli çağrı yapılmadı.
+Süre aşımında otomatik tekrar yoktur; unknown kontrolleri kilitli tutar.
+Manuel kabul bekleniyor. REST ses çıkışı sonraki ayrı adımdır.
+
+## Önceki: adım 4 — dil ve temel kişiselleştirme
 
 Kullanıcı kabulü: 22 Ekim 2026 tarihinde dil/kişiselleştirme adımının
 testleri kullanıcı tarafından başarılı bildirildi; adım 4 manuel kabulü tamamlandı.

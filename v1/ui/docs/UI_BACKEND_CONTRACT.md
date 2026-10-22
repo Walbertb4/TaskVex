@@ -1,5 +1,29 @@
 # UI/backend sözleşmesi
 
+## Güncel: adım 5 — aktivite, kapanış ve süre tanısı
+
+Yeni public event yok. AudioWorklet'in yerel activity:boolean mesajı yalnız
+mevcut liveMic kaynağında işlenir. prepareStream(onError, deviceId, onActivity)
+ve speaking getter gösterim içindir: hazır sessizlik idle, konuşma listening,
+aktif turda 700 ms sessizlik thinking, çıktı PCM'i speaking'dir. Bu bildirim
+sunucu turunu bitirmez, araç/komut başlatmaz. Eski kaynak callback'i yok sayılır.
+
+PersistentLive.input feed dönüşüne failed:boolean ekler; kapalı/eski istekte
+failed:false, bozuk sıra/taşmada true olur. emit normal failed:false/closed:true
+reddini loglamaz, ok:false dönüşünü korur. Model çağrısında yalnız eşleşen
+request_id + code:stopped + stopped:true + completed:true + unknown olmayan
+sonuç normal durdurmadır; unknown veya gerçek hatalar bastırılmaz. İptal kabulü
+kontrolleri açmaz. Normal feed kapanışında eski mikrofon bırakılır; çalan yanıtın
+yeni mikrofonuna dokunulmaz. Yeni araç yolu/worker veya otomatik replay yoktur.
+
+Ortak addLog son 200 kayıt/2.000 karakteri, textContent ve sır maskelemesini
+uygular; schema uyarıları da boyut/adet sınırlıdır. Transkript loglanmaz.
+Live backend 25 s olay sessizliği / 120 s toplam tur sınırı kullanır:
+live_idle_timeout ve live_timeout kodları timeout_seconds tanısı taşır.
+UI createPendingOperation.begin(deadline) Live 210 s / REST 240 s bekler.
+UI süresinin dolması iptal/tamamlanma değildir; eski yanıt yeni isteği açamaz.
+Önceki mikrofon, tampon, çalma ve araç boyut sınırları aynıdır.
+
 ## Güncel: adım 4 — kaydedilmiş model tercihleri
 
 Yeni public event veya payload alanı yok. save/saved/completed doğrulaması

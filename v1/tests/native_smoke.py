@@ -105,6 +105,15 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                             # SDK'nin wire biçimi URL-safe base64'dür;
                             # standart decoder '-'/'_' örneklerini bozabilir.
                             from base64 import urlsafe_b64decode
+                            if live_state.get('hold_microphone_reply'):
+                                if any(urlsafe_b64decode(incoming['audio']['data'])):
+                                    live_state['voice_seen'] = True
+                                    live_state['quiet_packets'] = 0
+                                elif live_state.get('voice_seen'):
+                                    live_state['quiet_packets'] = live_state.get('quiet_packets', 0) + 1
+                                    if live_state['quiet_packets'] == 15:
+                                        frames.append(audio_reply('Native status reply', 12000))
+                                return
                             if any(urlsafe_b64decode(incoming['audio']['data'])):
                                 frames.append({'serverContent':{'inputTranscription':{'text':'Native microphone hello'}}})
                                 frames.append(audio_reply('Native microphone answer'))
@@ -589,6 +598,28 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 assert window.evaluate_js("testMicDestinations.every(d=>d.stream.getTracks().every(t=>t.readyState==='ended'))")
                 outcome['two_voice_turns_automatic_rearm_without_second_click'] = True
                 outcome['microphone_stream_worklet_pcm_transcript_and_cleanup'] = True
+                # Gerçek AudioWorklet ile sessiz bekleme/konuşma/yanıt ayrımı.
+                # Sağlayıcı taklidi 1.5 s sessizlikte yanıtlar; yerel 700 ms
+                # gösterim geçişi sunucu tamamlanması diye yorumlanmamalı.
+                live_state['hold_microphone_reply'] = True
+                js("window.statusContext=new AudioContext();window.statusOsc=statusContext.createOscillator();window.statusDestinations=[];"
+                   "statusOsc.start();await statusContext.resume();"
+                   "Object.defineProperty(navigator.mediaDevices,'getUserMedia',{configurable:true,value:async()=>{"
+                   "const d=statusContext.createMediaStreamDestination();statusDestinations.push(d);return d.stream;}});"
+                   "document.getElementById('micB').click();return true;")
+                wait_until(lambda: 'Listening for speech' in window.evaluate_js("document.getElementById('textStatus').textContent"))
+                assert window.evaluate_js('window.vex.state') == 'idle'
+                js("statusOsc.connect(statusDestinations.at(-1));return true;")
+                wait_until(lambda: api._chat.busy and window.evaluate_js('window.vex.state') == 'listening')
+                js("statusOsc.disconnect();return true;")
+                wait_until(lambda: window.evaluate_js('window.vex.state') == 'thinking')
+                assert api._chat.busy and window.evaluate_js("document.getElementById('send').disabled")
+                wait_until(lambda: window.evaluate_js('window.vex.state') == 'speaking')
+                wait_until(lambda: 'Listening for speech' in window.evaluate_js("document.getElementById('textStatus').textContent"))
+                assert window.evaluate_js('window.vex.state') == 'idle'
+                js("document.getElementById('micB').click();statusOsc.stop();await statusContext.close();return true;")
+                live_state['hold_microphone_reply'] = False
+                outcome['idle_waiting_listening_speech_thinking_and_speaking'] = True
                 # Aynı gerçek WebView mikrofonu eski yanıtı keser; yeni tur
                 # yalnız host'un eski araç sonucunu kesinleştirmesinden sonra açılır.
                 for prompt in ['Native barge active', 'Native barge playback']:
@@ -629,6 +660,8 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 outcome['barge_in_active_preserved_commit_and_playback_handoff'] = True
                 outcome['short_noise_did_not_interrupt_active_or_playback_reply'] = True
                 outcome['live_transcript_interrupted_text_preserved_without_duplicate'] = True
+                assert 'Failed to send live_audio_start: Live response stopped' not in window.evaluate_js("document.getElementById('log').textContent")
+                outcome['normal_stop_not_logged_as_transport_failure'] = True
                 js("window.bargeContext=new AudioContext();window.bargeOsc=bargeContext.createOscillator();window.bargeDestinations=[];"
                    "bargeOsc.start();await bargeContext.resume();window.newBargeTurns=0;window.bargeOriginalEvent=window.pywebview.api.event;"
                    "window.pywebview.api.event=(name,data)=>{if(name==='live_audio_start')window.newBargeTurns++;"
@@ -752,6 +785,9 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 assert api._chat._live._connection.logical_id != old_profile_session
                 assert 'scope_changed' in window.evaluate_js("document.getElementById('textStatus').textContent")
                 outcome['saved_profile_form_shared_rest_live_instruction_and_scope_reset'] = True
+                js("const a=await import('./js/api.js');for(let i=0;i<250;i++)a.addLog('Native bounded entry '+i);return true;")
+                assert window.evaluate_js("document.getElementById('log').childElementCount") == 200
+                outcome['engine_log_bounded_to_200_entries'] = True
                 js("document.getElementById('disc').click();return true;")
                 # Socket, loop/thread temizliğinden önce kapanır. Ara durumu
                 # bitiş sanma; host tüm kaynakları bırakana kadar bekle.

@@ -2,7 +2,7 @@
  * app.js - Main entry point and module coordinator for TaskVex UI
  */
 
-import { initApi, emit, setConnectionStatus, isBackendAvailable, sanitizeError, createPendingOperation } from './api.js';
+import { initApi, emit, addLog, setConnectionStatus, isBackendAvailable, sanitizeError, createPendingOperation } from './api.js';
 import { initCredentials } from './credentials.js';
 import { uniqueRecordId } from './schema.js';
 import { sfx } from './sfx.js';
@@ -132,15 +132,6 @@ function user(t) {
   return msg('u', '› ' + t);
 }
 
-function addLog(t, isSub = false) {
-  const logEl = document.getElementById('log');
-  if (!logEl) return;
-  const d = document.createElement('div');
-  d.textContent = (isSub ? '↳ ' : '› ') + t;
-  if (isSub) d.className = 'l4';
-  logEl.prepend(d);
-}
-
 function task(id, t) {
   sfx.start();
   const msgs = document.getElementById('msgs');
@@ -189,7 +180,7 @@ function updateAudioListeningUI(d) {
   }
 }
 
-// Ağ turu 7 x 30 saniyeye ulaşabilir. Süre aşımı iptal/başarı değildir;
+// REST ağ turu retry/fallback ile uzayabilir. Süre aşımı iptal/başarı değildir;
 // geç yanıt yeni komut başlatmamalı, yeniden açılana kadar kontroller kilitlidir.
 let textBusy = false;
 let activeTextRequest = null;
@@ -220,7 +211,8 @@ function cancelMic(message = 'Recording cancelled. Nothing sent.') {
 function pauseListening(message) {
   autoListening = false; cancelMic(message);
   // İzin reddinde kaynak henüz açılmamıştır; yine de hazırlık yazısı kalmamalı.
-  if (message && !textBusy) document.getElementById('textStatus').textContent = message;
+  if (message) document.getElementById('textStatus').textContent = message;
+  if (textBusy && getState() === 'listening') setState('thinking', true);
 }
 function resetLiveAudio(pause = true) {
   liveTranscript.finish(activeTextRequest, {}, 'interrupted');
@@ -249,7 +241,16 @@ async function listenAutomatically(replyRequest = null) {
       const target = activeTextRequest;
       pauseListening('Microphone disconnected, input limit reached or streaming failed. Listening paused.');
       if (target && !playbackOnly) emit('stop_task', {request_id:target});
-    }, getAudioDeviceId('dIn'));
+    }, getAudioDeviceId('dIn'), speaking => {
+      // Yalnız mevcut mikrofonun yerel enerji geçişi görünümü etkiler.
+      // Sessizce hazır beklemek listening değildir; model yanıtında speaking korunur.
+      if (revision !== micRevision || !autoListening || textOperation.uncertain) return;
+      if (speaking) setState('listening', true);
+      else if (pendingBargeIn || !replyMicRequest) setState(textBusy ? 'thinking' : 'idle', true);
+      if (textBusy && !replyMicRequest) document.getElementById('textStatus').textContent = speaking
+        ? 'Listening live · pause to finish · maximum 15 s. Stop cancels.'
+        : 'Waiting for Live reply · Stop cancels. No new message will be sent automatically.';
+    });
     if (!started || revision !== micRevision) return;
     queryDevices();
     liveMic.waitForSpeech(() => {
@@ -264,6 +265,7 @@ async function listenAutomatically(replyRequest = null) {
         pendingBargeIn = {requestId:target, revision, connection:connectionRevision};
         liveTranscript.interrupt(target);
         liveAudio.stop(target);
+        setState(liveMic.speaking ? 'listening' : 'thinking', true);
         document.getElementById('textStatus').textContent = 'Speech detected · stopping previous reply before sending the new turn…';
         if (!playbackOnly) void emit('stop_task', {request_id:target});
         return;
@@ -274,7 +276,7 @@ async function listenAutomatically(replyRequest = null) {
     paintMic();
     if (!replyRequest) {
       document.getElementById('textStatus').textContent = 'Listening for speech · speak without pressing a button. Audio stays local until speech starts.';
-      setState('listening', true);
+      setState('idle', true);
     }
   } catch {
     if (revision !== micRevision) return;
@@ -285,6 +287,7 @@ const textOperation = createPendingOperation(() => {
   liveTranscript.finish(activeTextRequest, {}, 'unknown');
   liveAudio.close();
   pauseListening();
+  setState('idle', true);
   document.getElementById('textStatus').textContent = 'Result unknown. Reopen the app and check notes before retrying.';
   setConnectionStatus('offline', 'TEXT RESULT UNKNOWN');
 }, 240000);
@@ -325,15 +328,23 @@ async function streamMicrophone(requestId) {
         liveMic.activateStream(async data => {
           if (activeTextRequest !== requestId) return false;
           const ack = await emit('live_audio_feed', {request_id:requestId, sequence:sequence++, data});
-          if (ack.response?.closed && !ack.ok) { if (replyMicRequest !== requestId) liveMic.cancel(); return true; }
+          if (ack.response?.closed && !ack.ok && ack.response.failed === false) {
+            if (replyMicRequest !== requestId) {
+              liveMic.cancel(); paintMic();
+              if (getState() !== 'speaking') setState('thinking', true);
+            }
+            return true;
+          }
           return ack.ok;
         }, () => {
           if (activeTextRequest === requestId) {
             pauseListening('Input limit reached. Listening paused.'); emit('stop_task', {request_id:requestId});
           }
         });
-        document.getElementById('textStatus').textContent = 'Listening live · pause to finish · maximum 15 s. Stop cancels.';
-        setState('listening', true);
+        document.getElementById('textStatus').textContent = liveMic.speaking
+          ? 'Listening live · pause to finish · maximum 15 s. Stop cancels.'
+          : 'Waiting for Live reply · Stop cancels.';
+        setState(liveMic.speaking ? 'listening' : 'thinking', true);
         return await result;
       }
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -377,8 +388,10 @@ async function sendText(text = null, audio = null) {
     const label = document.getElementById('textStatus');
     label.textContent = liveTest ? 'Live session…' : 'Thinking…';
     if (!audio) user(v);
-    setState('thinking');
-    const revision = textOperation.begin();
+    setState(audio?.stream && liveMic.speaking ? 'listening' : 'thinking', !!audio?.stream);
+    // Live: 120 s tur + araç temizliği/çalma payı. Bu UI bekleme sınırıdır;
+    // aşımı gerçek iptal veya güvenli yeniden deneme anlamına gelmez.
+    const revision = textOperation.begin(liveTest ? 210000 : 240000);
     const replyConnectionRevision = connectionRevision;
     cancelBeforeSend = false;
     if (liveTest) {
@@ -413,6 +426,7 @@ async function sendText(text = null, audio = null) {
       liveAudio.close();
       label.textContent = 'Stopped. Completed actions were not undone.';
       setConnectionStatus('offline', liveTest ? 'LIVE STOPPED · new session on next message' : 'REST STOPPED');
+      addLog('Response stopped. Completed actions were not undone.');
     } else if (result.ok && report?.completed === true && typeof report.text === 'string') {
       if (!liveTest) msg('j', report.text);
       label.textContent = 'Answered by ' + report.model + ' · ' + report.model_attempts.length + ' model request(s)' +
@@ -450,6 +464,8 @@ async function sendText(text = null, audio = null) {
         provider_error: 'Gemini service returned an error.',
         network_timeout: 'Gemini response timed out.',
         network_error: 'Could not reach Gemini.',
+        live_idle_timeout: 'Live stopped receiving events for 25 s. The message was not retried.',
+        live_timeout: 'Live reached its 120 s turn limit. The message was not retried.',
       }[report?.code];
       label.textContent = (message || sanitizeError(result.error || report?.error || 'Text request was not confirmed')) + textDiagnostics(report);
       if (report?.tool_results?.length) label.textContent += ' Earlier tool results may already be saved; check notes before retrying.';
@@ -486,7 +502,7 @@ async function sendText(text = null, audio = null) {
     } else if (!report?.ok || report?.audio_error || playbackProblem || replyConnectionRevision !== connectionRevision) pauseListening();
     else if (keepListening) {
       label.textContent += ' · Listening for speech';
-      setState('listening', true);
+      setState('idle', true);
     } else void listenAutomatically();
     return;
   }

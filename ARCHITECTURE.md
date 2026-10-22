@@ -6,6 +6,13 @@ Kaynak: `JARVIS_AKIS_DIYAGRAMLARI.html` içindeki proje notları ve 16 diyagram.
 
 ## 1. Bugünkü durum ve belgeyi kullanma
 
+En güncel dilim adım 5'tir: sessiz hazır mikrofon idle, yerel konuşma listening,
+model bekleme thinking, ses çıkışı speaking gösterir. Aktivite bir gösterimdir;
+yeni yürütücü veya sunucu VAD yerine geçmez. Normal Stop/kapanış hata logundan
+ayrıldı, Engine log sınırlı tutulur. Live olay sessizliği/toplam tur süreleri
+25/120 s, UI Live/REST beklemesi 210/240 s'dir; timeout belirsizlik kilidini
+açmaz. Adım 4 kullanıcı kabulünden sonra 73a87df ile commit edildi.
+
 En güncel dilim adım 4'tür: kaydedilmiş pLang/pIns aynı ortak model_instruction
 üreticisinden REST ve Live'a gider. Host profil snapshot'ını diskten alır;
 tercihler araç yetkisi vermez. Etkili talimat değişimi sonraki Live mesajında

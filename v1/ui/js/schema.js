@@ -40,8 +40,9 @@ function logToUI(msg) {
     if (logEl) {
       const d = document.createElement('div');
       d.className = 'l4';
-      d.textContent = '› ' + msg;
+      d.textContent = '› ' + String(msg).slice(0, 2000);
       logEl.prepend(d);
+      while (logEl.childElementCount > 200) logEl.lastElementChild.remove();
     }
   }
 }
