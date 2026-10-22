@@ -52,6 +52,15 @@ export const liveMic = {
           return;
         }
         if (event.data?.limit) { state.fail(); return; }
+        if (state.localWake && event.data instanceof ArrayBuffer) {
+          if (event.data.byteLength !== 3200 || state.wakeQueue.length >= 10) { state.fail(); return; }
+          const bytes = new Uint8Array(event.data);
+          state.prefix.push({bytes, sequence:state.wakeSequence++});
+          if (state.prefix.length > 30) state.prefix.shift();
+          state.wakeQueue.push(bytes);
+          if (!state.sendingWake) state.drainWake();
+          return;
+        }
         if (Array.isArray(event.data?.speech) && state.waiting && !state.triggered) {
           const prefix = event.data.speech;
           if (!prefix.length || prefix.length > 5 || prefix.some(b => !(b instanceof ArrayBuffer) || b.byteLength !== 3200)) { state.fail(); return; }
@@ -81,6 +90,37 @@ export const liveMic = {
     if (!state?.node || state.armed) return false;
     state.waiting = true; state.onSpeech = onSpeech;
     state.node.port.postMessage(replyPlaying ? 'barge' : 'listen');
+    return true;
+  },
+  waitForWake(onPacket, onWake) {
+    // Aynı mikrofon 100 ms PCM'i yalnız yerel KWS'ye taşır. 3 s ön tampon
+    // wake-word ile aynı cümledeki isteğin başını korur; kuyruk en çok 1 s.
+    const state = current;
+    if (!state?.node || state.armed) return false;
+    state.localWake = true; state.prefix = []; state.wakeQueue = []; state.wakeSequence = 0;
+    state.drainWake = async () => {
+      state.sendingWake = true;
+      try {
+        while (current === state && state.localWake && state.wakeQueue.length) {
+          const bytes = state.wakeQueue.shift();
+          const detected = await onPacket(btoa(String.fromCharCode(...bytes)));
+          if (current !== state || !state.localWake) return;
+          if (detected?.detected === true && Number.isInteger(detected.start_sequence) && detected.start_sequence >= 0) {
+            if (!state.prefix.length || detected.start_sequence < state.prefix[0].sequence ||
+                detected.start_sequence > state.prefix.at(-1).sequence) throw new Error('wake_prefix_expired');
+            state.localWake = false; state.triggered = true; state.waiting = true;
+            // Önceki ortam konuşmasını değil yalnız algılanan hit'in başından
+            // sonraki PCM'i devret. KWS fonem zamanı 100 ms paketlere yuvarlanır.
+            state.queue = state.prefix.filter(p => p.sequence >= detected.start_sequence).map(p => p.bytes);
+            state.prefix = []; state.wakeQueue = [];
+            state.speaking = true; state.node.port.postMessage('wake-to-live'); onWake(); return;
+          }
+          if (detected !== false) throw new Error('local_wake_failed');
+        }
+      } catch { state.fail(); }
+      finally { state.sendingWake = false; }
+    };
+    state.node.port.postMessage('wake');
     return true;
   },
   continueListening() {

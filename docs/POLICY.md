@@ -64,6 +64,10 @@ işlemler bu aşamada yoktur. İleride yeni araç eklendiğinde core izin tablos
 gerekli hedef/parametre kısıtları birlikte incelenmelidir. Sırf registry'ye kayıt
 olmak veya istek arguments alanına onay yazmak yetki vermez.
 
+## Dolaylı Prompt Enjeksiyonu ve Taint Tracking (Güvenilmeyen Dış Veri)
+
+L2 (DOM), L4 (ekran/OCR), Web, gelen e-posta veya harici dosyalardan okunan içerik model bağlamına girdiğinde oturum kirlenmiş (`tainted`) sayılır. Model bu veriyi talimat sanıp tehlikeli araçlar çağırsa bile, PolicyEngine tainted oturumda yan etkili/kritik araçları (`terminal.exec`, `gmail.send`, `notes.delete`, `files.delete` vb.) otomatik izin (`ALLOW`) vermez; mutlaka arayüzde kullanıcıdan fiziksel onay isteyen `CONFIRM` kararına yükseltir. Yetki kararı promptun iddiasına değil, RequestContext ve oturumun taint durumuna göre verilir.
+
 ## Doğrulama
 
 `v1` dizininde `.\.venv\Scripts\python.exe -m pytest -q -W error`:

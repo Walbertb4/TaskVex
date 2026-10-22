@@ -17,6 +17,7 @@ from app.session.live_session import LiveConnection
 from app.session.live_input import LiveInput
 from app.core.contracts import ContractError, TaskStatus
 from app.session.model_tools import ModelTools, NoteTargetError
+from app.session.sleep_intent import wants_sleep
 from app.storage.credentials import CredentialError, load_gemini_key
 
 # Parçaları gelmeye devam eden uzun yanıt eski 25 s toplam sürede kesilmesin.
@@ -164,6 +165,14 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
                         if bound_tools:
                             bound_tools.begin_turn(report["input_text"])
                         await publish('u', report['input_text'])
+                        if (content.input_transcription.finished is True and not report['tool_results']
+                                and wants_sleep(report['input_text'])):
+                            # Uyku host kontrolüdür; bu açık isteği araç/model
+                            # yanıtına çevirme. Socket kapanır, RAM sohbet kalır.
+                            await connection.reset('sleep_requested')
+                            report.update(ok=True, sleep_requested=True, mode='local_sleep')
+                            transcript.append('Sleep mode requested.')
+                            return report
                     if message.tool_call:
                         calls = message.tool_call.function_calls or []
                         if not bound_tools or not calls or len(report["tool_results"]) + len(calls) > 8:
@@ -264,6 +273,12 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
                     if report["tool_results"] and "extended-thinking" in model:
                         finished = status == types.InteractionStatus.IDLE
                     if finished and not message.tool_call:
+                        if not report['tool_results'] and wants_sleep(report.get('input_text', '')):
+                            await connection.reset('sleep_requested')
+                            report.update(ok=True, sleep_requested=True, mode='local_sleep')
+                            if not transcript and not plain:
+                                transcript.append('Sleep mode requested.')
+                            return report
                         answer = "".join(transcript or plain)
                         if answer.strip():
                             report.update(ok=True, text=answer)

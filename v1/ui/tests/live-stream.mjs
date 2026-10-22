@@ -123,4 +123,27 @@ permission=new Promise(resolve=>{grant=resolve;});
 const pending=liveMic.prepareStream(()=>assert.fail(),'12345');liveMic.cancel();
 const lateTrack={stop(){this.closed=true;}};
 grant({getTracks:()=>[lateTrack]});assert.equal(await pending,false);assert.ok(lateTrack.closed);
-console.log('PASS filtered/adaptive candidates, barge-in duration, preserved listener, streaming bounds and Stop');
+// Uyku paketleri yalnız yerel alıcıya gider; wake sonrası aynı kaynağın ön
+// tamponu mevcut Live akışına devredilir ve 15 s sınırı yeniden uygulanır.
+packets.length=0;processor.port.onmessage({data:'wake'});
+for(let i=0;i<180;i++)processor.process([[new Float32Array(1600)]]);
+assert.equal(packets.filter(p=>p?.byteLength===3200).length,180);
+assert.equal(packets.filter(p=>p.limit).length,0);
+processor.process([[new Float32Array(800)]]);
+assert.equal(processor.offset,800);
+processor.port.onmessage({data:'wake-to-live'});
+assert.equal(processor.offset,800); // Kaynak/yarım paket devri aynı konuşmayı kırpmaz.
+processor.process([[new Float32Array(800)]]);
+assert.equal(processor.offset,0);
+track={stop(){this.closed=true;}};
+await liveMic.prepareStream(()=>assert.fail(),'12345');
+let localPackets=0,wakes=0;
+liveMic.waitForWake(async()=>++localPackets===3 ? {detected:true,start_sequence:2} : false,()=>wakes++);
+assert.equal(command,'wake');
+for(let i=0;i<3;i++)node.port.onmessage({data:new ArrayBuffer(3200)});
+for(let i=0;i<20;i++)await Promise.resolve();
+assert.equal(wakes,1);assert.equal(command,'wake-to-live');assert.ok(liveMic.active);
+sent=[];liveMic.activateStream(async data=>{sent.push(data);return true;},()=>assert.fail());
+for(let i=0;i<20;i++)await Promise.resolve();
+assert.equal(sent.length,1);liveMic.cancel(); // Hit öncesi ortam paketleri devredilmedi.
+console.log('PASS filtered/adaptive candidates, local wake handoff, streaming bounds and Stop');

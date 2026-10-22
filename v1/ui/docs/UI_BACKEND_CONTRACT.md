@@ -1,5 +1,40 @@
 # UI/backend sözleşmesi
 
+## Güncel: tek seferlik uyku ve yerel wake PCM
+
+pWake, profilde 1–64 karakter/1–3 ASCII İngilizce sözcüktür; default Vex.
+Kaydedilir, modele system instruction olarak verilmez; yerel motor sonraki
+uykuda sözlük/fonem desteğini ayrıca doğrular. Uyku tercihi RAM'dedir.
+
+- sleep_start(): hazır/idle host Live'ı kapatır, RAM sohbeti korur, yerel
+  WakeWord oluşturur; {ok,completed,request_id,wake_word} döner. Başarısız
+  motorda sleeping:true kalır, otomatik Live fallback olmaz.
+- wake_feed({request_id,sequence,data}): tek base64 3200-byte PCM16LE/16kHz
+  paketi. Sıra 0'dan artar. {ok,completed,detected,start_sequence} döner;
+  start_sequence hit başlangıcının 100 ms paket indeksidir. Eski ID, yanlış
+  sıra/encoding/taşma reddedilir; bozuk kaynak bırakılır, uyku korunur.
+- wake_close(request_id): yalnız eşleşen yerel kaynağı bırakır, uykuyu kaldırmaz.
+- wake(): idle/hazır host manuel olarak uyandırır ve yerel kaynağı bırakır.
+
+sleep_start kabulünden sonra Live audio start/clip host'ta sleeping koduyla
+reddedilir. Algılanmış hit veya açık yazılı Live isteği bu engeli kaldırır.
+UI da ayrı sleep kapısı tutar; sıradan enerji adayı uyandırma sayılmaz. Wake
+butonu/typed istek açık kullanıcı eylemidir. New Chat uyku durumunu temizler.
+Uyurken Mic Off kaynakları bırakır; On yeniden yerel dinleme açar.
+
+Typed tam uyku ifadesi local_sleep/sleep_requested:true raporuyla modellenmeden
+karşılanır. Sesli ifadede yalnız finished transkript veya gerçek tur sonundaki
+tam ifade kabul edilir; yarım soru komut olmaz. Yan etkili araç başlamış tur
+uykuya çevrilmez. UI gerçek bitişten sonra sleep_requested'ı uygular.
+Bu yaşam döngüsü kontrolüdür; ikinci tool worker/CRUD/registry hattı eklenmedi.
+
+Mevcut liveMic kaynağı waitForWake ile yalnız yerel paket yollar. 1 s bekleyen
+IPC ve 3 s ön tampon sınırı vardır. Hit başlangıcından önceki PCM bırakılır;
+sonrası aynı kaynaktan mevcut LiveInput hattına geçer. Yetersiz/eski tampon
+kırpılarak komut çalıştırmaz; capture engeli gösterilir. Geç callback'ler
+micRevision/session ID ile korunur. 60 s model stream yenileme sınırında
+wake kaçabilir; fiziksel kabul açıktır. Otomatik tekrar uyuma/süre ayarı yoktur.
+
 ## Güncel küçük düzeltme — gösterim
 
 Yeni host event/payload yok. paintMic on sınıfı artık native/Live modeli hazır,

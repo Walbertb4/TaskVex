@@ -1,0 +1,136 @@
+"""Uyku host kontrolü, yerel PCM sınırı ve Live'a ses sızmaması.
+
+Gerçek sherpa ağırlığının SAPI deneyi ayrı rapordadır; pytest taşımayı sahte
+algılayıcıyla denetler. Kullanıcı hesabı/sesi/notları veya ücretli API yoktur.
+"""
+from base64 import b64encode
+from types import SimpleNamespace
+from pathlib import Path
+
+import pytest
+
+from app.session.sleep_intent import wants_sleep
+from app.session.text_chat import TextChat
+from app.bootstrap import create_core
+from app.session import wake_word
+from test_native_bridge import bridge, ready
+from test_live_probe import socket, frame
+
+
+@pytest.mark.parametrize('text', ['Vex uyku moduna geç.', 'uyu', 'go to sleep', 'Vex, enter sleep mode'])
+def test_explicit_sleep_phrase(text):
+    assert wants_sleep(text)
+
+
+@pytest.mark.parametrize('text', ['Uyku moduna geç ne demek?', '"uyku moduna geç"', 'uyu ve not ekle',
+    'bundan sonra uyku modunda kal', 'sleep mode is useful'])
+def test_quoted_ambiguous_or_persistent_mode_not_mistaken_for_one_time_sleep(text):
+    assert not wants_sleep(text)
+
+
+def test_typed_sleep_does_not_call_provider_and_keeps_memory():
+    with create_core() as core:
+        chat=TextChat(core)
+        chat._memory.remember('Fact', {'ok':True,'text':'Understood'})
+        report=chat.run_live('Vex uyku moduna geç', 'future-live')
+        assert report['sleep_requested'] and report['completed'] and report['ok']
+        assert chat._live._thread is None and chat._memory.snapshot()
+        assert chat.close()
+
+
+def test_voice_sleep_closes_live_without_starting_model_tool(socket):
+    socket.frames=[{'setupComplete':{}}, {'serverContent':{'inputTranscription':{'text':'Vex uyku moduna geç','finished':True}}}]
+    with create_core() as core:
+        chat=TextChat(core)
+        report=chat.run_live('', 'future-live', audio_input=bytes(3200))
+        assert report['sleep_requested'] and report['ok'] and socket.closed
+        assert not report['tool_results'] and chat._memory.snapshot()
+        assert chat.close()
+
+
+def test_partial_sleep_transcript_does_not_consume_a_question(socket):
+    socket.frames=[{'setupComplete':{}},
+        {'serverContent':{'inputTranscription':{'text':'uyku moduna geç'}}},
+        {'serverContent':{'inputTranscription':{'text':' ne demek?','finished':True}}}, frame('Explanation',complete=True)]
+    with create_core() as core:
+        chat=TextChat(core)
+        report=chat.run_live('', 'future-live', audio_input=bytes(3200))
+        assert report['ok'] and not report.get('sleep_requested')
+        assert chat.close()
+
+
+def test_local_wake_gate_order_and_stale_packets(bridge, monkeypatch):
+    assert ready(bridge)['ok']
+    class Detector:
+        id='synthetic-wake'
+        def __init__(self, word): self.sequence=0
+        def feed(self, seq, pcm):
+            assert len(pcm)==3200 and seq==self.sequence
+            self.sequence+=1
+            return seq==1
+    monkeypatch.setattr('app.bridge.webview_bridge.WakeWord',Detector)
+    started=bridge.event('sleep_start')
+    assert started['ok'] and bridge._sleeping
+    assert bridge.event('live_audio_start',{'request_id':'blocked'})['code']=='sleeping'
+    packet={'request_id':started['request_id'],'sequence':0,'data':b64encode(bytes(3200)).decode()}
+    assert not bridge.event('wake_feed',packet)['detected']
+    assert not bridge.event('wake_feed',{**packet,'request_id':'old'})['ok'] and bridge._sleeping
+    assert bridge.event('wake_feed',{**packet,'sequence':1})['detected']
+    assert not bridge._sleeping and bridge._wake is None
+    assert not bridge.event('wake_feed',packet)['ok']
+
+
+def test_missing_model_or_bad_packet_stays_asleep_manual_wake_recovers(bridge, monkeypatch):
+    assert ready(bridge)['ok']
+    def missing(word):raise FileNotFoundError('synthetic')
+    monkeypatch.setattr('app.bridge.webview_bridge.WakeWord',missing)
+    assert not bridge.event('sleep_start')['ok'] and bridge._sleeping
+    assert bridge.event('live_audio_start',{'request_id':'blocked'})['code']=='sleeping'
+    assert bridge.event('wake')['completed'] and not bridge._sleeping
+    bridge._wake=SimpleNamespace(id='one',feed=lambda *args: (_ for _ in ()).throw(ValueError()))
+    bridge._sleeping=True
+    result=bridge.event('wake_feed',{'request_id':'one','sequence':0,'data':'bad'})
+    assert not result['ok'] and bridge._sleeping and bridge._wake is None
+
+
+def test_model_setup_rejects_changed_archive_before_writing(monkeypatch, taskvex_home):
+    from io import BytesIO
+    monkeypatch.setattr('urllib.request.urlopen',lambda *a,**k:BytesIO(b'not the pinned archive'))
+    with pytest.raises(ValueError,match='integrity'):
+        wake_word.setup()
+    assert not taskvex_home.exists()
+
+
+def test_bad_word_and_missing_model_fail_before_native_kernel(monkeypatch,tmp_path):
+    monkeypatch.setattr(wake_word,'model_home',lambda:tmp_path)
+    with pytest.raises(ValueError):wake_word.WakeWord('../bad')
+    with pytest.raises(FileNotFoundError):wake_word.WakeWord('Vex')
+
+
+def test_pcm_sequence_endian_and_keyword_boundary(monkeypatch,tmp_path):
+    import sherpa_onnx
+    from hashlib import sha256
+    files={'tokens.txt':b'V 0\nEH1 1\nK 2\nS 3','en.phone':b'VEX V EH1 K S'}
+    for name,data in files.items():(tmp_path/name).write_bytes(data)
+    monkeypatch.setattr(wake_word,'model_home',lambda:tmp_path)
+    monkeypatch.setattr(wake_word,'FILES',{n:sha256(v).hexdigest() for n,v in files.items()})
+    state=SimpleNamespace(ready=False,samples=[],hit=False)
+    class Kernel:
+        def __init__(self,**kwargs):
+            assert 'V EH1 K S' in Path(kwargs['keywords_file']).read_text()
+            self.keyword_spotter=self
+        def create_stream(self):return self
+        def accept_waveform(self,rate,samples):
+            assert rate==16000
+            state.samples=samples;state.ready=True
+        def is_ready(self,s):return state.ready
+        def decode_stream(self,s):state.ready=False
+        def get_result(self,s):return SimpleNamespace(keyword='WAKE' if state.hit else '',timestamps=[0.1])
+    monkeypatch.setattr(sherpa_onnx,'KeywordSpotter',Kernel)
+    detector=wake_word.WakeWord('Vex')
+    assert not list(tmp_path.glob('keyword-*'))
+    with pytest.raises(ValueError):detector.feed(True,bytes(3200))
+    assert not detector.feed(0,b'\x00\x80'*1600)
+    assert state.samples[0]==-1
+    state.hit=True
+    assert detector.feed(1,bytes(3200)) and detector.start_sequence==1

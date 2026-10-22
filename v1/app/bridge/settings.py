@@ -19,6 +19,7 @@ _FIELDS = {
                ["idle", "listening", "thinking", "speaking", "executing", "activating"]}, "additionalProperties": False},
     "prof": {"type": "object", "properties": {
         **{k: _TEXT for k in ["pLang", "pBr", "pIns", "pMem", "pSc", "pSys", "pGreet"]},
+        "pWake": {"type":"string", "minLength":1, "maxLength":64, "pattern":"^[A-Za-z]+(?: [A-Za-z]+){0,2}$"},
         "pTab": {"type": "boolean"}, "pApp": {"type": "boolean"}}, "additionalProperties": False},
     "devs": {"type": "object", "properties": {k: {"type": ["string", "integer", "null"]}
              for k in ["dIn", "dOut", "dCam"]}, "additionalProperties": False},

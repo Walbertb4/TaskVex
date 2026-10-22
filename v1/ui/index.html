@@ -111,6 +111,7 @@
       <button class="cb" id="mute" title="Mute voice replies; sound effects are separate">Mute</button>
       <button class="cb" id="disc">Disconnect</button>
       <button class="cb" id="newChat" title="Clear temporary conversation memory; keep saved notes">New Chat</button>
+      <button class="cb" id="sleep" title="Sleep until the local wake word; Wake exits sleep">Sleep</button>
     </div>
   </div>
 
@@ -188,6 +189,7 @@
   <div class="f sec"><label>Personal instructions (how should V.EX. behave?)</label><textarea class="ta" id="pIns" maxlength="16000"></textarea></div>
   <div class="f sec"><label>Base System Instruction (BASE_SYSTEM_INSTRUCTION)</label><textarea class="ta" id="pSys" style="min-height:140px;font-family:var(--mono);font-size:11px"></textarea></div>
   <div class="f"><label>Startup Greeting Prompt</label><input class="mi" id="pGreet" style="width:100%"></div>
+  <div class="f"><label>Wake word (local English pronunciation)</label><input class="mi" id="pWake" value="Vex" maxlength="64" placeholder="Vex" style="width:100%"><div class="sub">One to three dictionary words, e.g. Vex, Hey Vex, Computer. Changes apply on the next sleep. No audio upload while asleep.</div></div>
   <div class="f"><label>Memory rules (one rule per line, can also be added by voice)</label><textarea class="ta" id="pMem"></textarea></div>
   <div class="f"><label>Custom command / shortcut mappings (e.g. movie = Netflix)</label><textarea class="ta" id="pSc"></textarea></div>
   <button class="cb on" id="btnSaveProf" style="width:100%">▣ Save profile</button>

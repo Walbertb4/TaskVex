@@ -23,6 +23,53 @@ import traceback
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 
+def check_local_sleep(window, api, js, wait_until, live_state, wake_state, outcome):
+    """Tek uyku kabul senaryosunu ayrı tut; native kontrol akışını büyütme."""
+    # Uyku trafiği yalnız yerel bridge'e gider. Sıradan ses KWS
+    # hit'i olmadan Live açmaz; aynı kaynak ön tamponuyla uyanır.
+    js("window.wakeContext=new AudioContext();window.wakeOsc=wakeContext.createOscillator();window.wakeDestinations=[];wakeOsc.start();"
+       "Object.defineProperty(navigator.mediaDevices,'getUserMedia',{configurable:true,value:async()=>{const d=wakeContext.createMediaStreamDestination();wakeDestinations.push(d);return d.stream;}});"
+       "testMicOn();return true;")
+    wait_until(lambda: js("const m=await import('./js/live_mic.js');return m.liveMic.waitingForSpeech;"))
+    js("document.getElementById('inp').value='Vex uyku moduna geç';document.getElementById('send').click();return true;")
+    wait_until(lambda: 'Asleep · say' in window.evaluate_js("document.getElementById('textStatus').textContent"))
+    live_before_sleep = (live_state['opened'], len(live_state['sent']))
+    local_before = wake_state['packets']
+    js("wakeOsc.connect(wakeDestinations.at(-1));return true;")
+    wait_until(lambda: wake_state['packets'] >= local_before + 5)
+    assert (live_state['opened'], len(live_state['sent'])) == live_before_sleep
+    assert api._sleeping and not api._chat.busy
+    js("testMicOff();return true;")
+    wait_until(lambda: api._wake is None)
+    after_off = wake_state['packets']; time.sleep(.2)
+    assert wake_state['packets'] == after_off
+    js("testMicOn();return true;")
+    wait_until(lambda: 'Asleep · say' in window.evaluate_js("document.getElementById('textStatus').textContent"))
+    wake_state['detect'] = True
+    js("wakeOsc.connect(wakeDestinations.at(-1));return true;")
+    wait_until(lambda: 'Native microphone answer' in window.evaluate_js("document.getElementById('msgs').textContent"))
+    wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
+    assert not api._sleeping
+    assert window.evaluate_js("document.getElementById('sleep').textContent") == 'Sleep'
+    js("const p=await import('./js/panels.js');p.openM('mProf');document.getElementById('pWake').value='Computer';document.getElementById('btnSaveProf').click();return true;")
+    wait_until(lambda: api._store.read().get('prof',{}).get('pWake') == 'Computer')
+    wake_state['detect'] = False
+    js("document.getElementById('sleep').click();return true;")
+    wait_until(lambda: 'say "Computer"' in window.evaluate_js("document.getElementById('textStatus').textContent"))
+    js("document.getElementById('sleep').click();return true;")
+    wait_until(lambda: not api._sleeping)
+    js("testMicOff();wakeOsc.stop();await wakeContext.close();return true;")
+    # Mikrofon kapalıyken de uyku backend'e ulaşmalı; yalnız UI etiketi değişmemeli.
+    js("document.getElementById('sleep').click();return true;")
+    wait_until(lambda: api._sleeping and 'Asleep · Microphone Off' in window.evaluate_js("document.getElementById('textStatus').textContent"))
+    wait_until(lambda: api._wake is None)
+    assert js("const m=await import('./js/live_mic.js');return !m.liveMic.active;")
+    js("document.getElementById('sleep').click();return true;")
+    wait_until(lambda: not api._sleeping)
+    outcome['sleep_with_microphone_off_closed_live_without_capture'] = True
+    outcome['one_time_sleep_local_only_pcm_wake_handoff_mic_off_and_profile_word'] = True
+
+
 def child(home: Path, phase: str, debug: bool = False) -> None:
     """Üretimdeki main() kurulumunu gerçek native motorla çalıştır."""
     os.environ["TASKVEX_HOME"] = str(home)
@@ -46,6 +93,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
     text_started, release_text = Event(), Event()
     rest_stop_started, release_rest_stop = Event(), Event()
     text_requests = []
+    wake_state = {'packets':0, 'detect':False, 'instances':0}
     speech_state = {'requests': [], 'fail': False, 'block': False, 'started': Event(), 'release': Event()}
     text_payloads = []  # Yalnız geçici test profilinin SDK talimatını denetler.
     live_state: dict = {"opened": 0, "closed": False, "sent": [], "waiting": Event(), "stall": False,
@@ -54,6 +102,19 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
         # Gerçek SDK/core/native DOM; yalnız HTTP taşıması sentetiktir.
         # Üretim anahtarı okunmaz ve dış ağa istek çıkmaz.
         import httpx
+        from app.bridge import webview_bridge as bridge_module
+        class SyntheticWake:
+            """Yalnız algılama sınırı sahte; gerçek PCM/bridge/Live devri denenir."""
+            def __init__(self, word):
+                wake_state['instances'] += 1
+                self.id = 'native-local-wake-' + str(wake_state['instances'])
+                self.sequence = 0
+            def feed(self, sequence, pcm):
+                assert sequence == self.sequence and len(pcm) == 3200
+                self.sequence += 1
+                wake_state['packets'] += 1
+                return wake_state['detect'] and any(pcm)
+        bridge_module.WakeWord = SyntheticWake
         from app.session import gemini
         from contextlib import asynccontextmanager
         from google.genai import live
@@ -985,6 +1046,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
                 assert 'Native remembered name: unknown' in window.evaluate_js("document.getElementById('msgs').textContent")
                 outcome['temporary_memory_after_stop_new_chat_confirmation_and_notes_preserved'] = True
+                check_local_sleep(window, api, js, wait_until, live_state, wake_state, outcome)
                 js("const a=await import('./js/api.js');for(let i=0;i<250;i++)a.addLog('Native bounded entry '+i);return true;")
                 assert window.evaluate_js("document.getElementById('log').childElementCount") == 200
                 outcome['engine_log_bounded_to_200_entries'] = True

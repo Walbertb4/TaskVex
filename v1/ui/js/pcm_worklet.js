@@ -6,6 +6,12 @@ class MicrophonePCM extends AudioWorkletProcessor {
   constructor() {
     super(); this.samples = new Int16Array(1600); this.offset = 0; this.packets = 0; this.active = false;
     this.port.onmessage = event => {
+      if (event?.data === 'wake-to-live') {
+        // Aynı cümlenin yarım PCM paketini atma; yalnız hedef/limit değişir.
+        this.localWake = this.waiting = false; this.packets = 0;
+        this.speaking = true; this.silent = 0;
+        return;
+      }
       // Yanıt bitince aynı mikrofon/ön tampon kalır; yalnız aday eşiği değişir.
       if (typeof event?.data?.replyPlaying === 'boolean') {
         this.replyPlaying = event.data.replyPlaying;
@@ -13,6 +19,7 @@ class MicrophonePCM extends AudioWorkletProcessor {
       }
       this.active = true; this.offset = this.packets = this.energy = this.voiced = 0;
       this.waiting = event?.data === 'listen' || event?.data === 'barge';
+      this.localWake = event?.data === 'wake';
       this.replyPlaying = event?.data === 'barge';
       this.previous = this.filtered = this.noise = 0;
       this.speaking = false; this.silent = 0;
@@ -24,7 +31,7 @@ class MicrophonePCM extends AudioWorkletProcessor {
     // Ana thread geçici donsa bile mesaj kuyruğunda 15 saniyeden fazla PCM
     // birikmez. Mikrofonu fiziksel olarak kapatma sorumluluğu ana thread'dedir.
     if (!this.active || !channels?.length) return true;
-    if (this.packets >= 150) {
+    if (!this.localWake && this.packets >= 150) {
       if (!this.limited) { this.port.postMessage({limit:true}); this.limited = true; }
       return true;
     }

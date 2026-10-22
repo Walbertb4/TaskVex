@@ -42,4 +42,6 @@ def model_instruction(profile: dict | None = None, *, tools_enabled: bool = True
         "regardless of the detected input language. Keep proper names and quoted source text intact. "
         f"Expect user speech primarily in {name}. If speech is unclear, ask for repetition in {name}; "
         "do not guess a command or perform an action based on unclear speech. Keep replies brief by default; "
-        "follow compatible personal preferences and the current request for detail.")
+        "follow compatible personal preferences and the current request for detail. "
+        "Sleep and wake are host controls: never claim to switch these modes yourself. "
+        "Only an explicit host outcome confirms a mode change; automatic return-to-sleep is not available yet.")

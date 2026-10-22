@@ -1,5 +1,68 @@
 # Aşama 5 — Model, araç çağrıları ve ses
 
+### Güncel uygulama adımı — yerel wake-word ve tek seferlik uyku
+
+Önceki Stop gösterge düzeltmesi kullanıcı kabulüyle `515a531` commit'ine
+alındı; push yok. Bu yeni dilim manuel kabul bekler, henüz commit edilmedi.
+Otomatik geri uyuma, saniye ayarı ve kalıcı kullanıcı hafızası eklenmedi.
+
+**Davranış:** Live açıkken Sleep düğmesi veya tam "Vex uyku moduna geç" /
+"Vex, go to sleep" isteği tek seferlik uyku açar. Uyurken mikrofon yalnız
+local sherpa-onnx KWS'ye 16 kHz/mono/PCM16LE 100 ms paketler verir; Live
+socket kapatılır, yerel algıdan önce bu yol Live'a kullanıcı sesi göndermez.
+Microphone Off yerel dinlemeyi de kapatır, uyku tercihini kaldırmaz. On
+tekrar yerel uyandırmayı hazırlar. Wake düğmesi veya açık yazılı mesaj da
+uyandırabilir. Uyandıktan sonra normal sürekli konuşma sürer; iş sonunda
+kendiliğinden tekrar uyumaz. New Chat uyku durumunu temizler; Stop/unknown
+kuralları ve tamamlanmış not sonuçları korunur.
+
+Typed uyku isteği host'ta, model/API çağrısı yapmadan karşılanır. Seste
+transkript finished:true veya gerçek tur bitişi beklenir; yarım transkriptte
+"uyku moduna geç ne demek?" sorusunun başı komut sanılmaz. Yalnız tam ve dar
+TR/EN ifadeler kabul edilir; alıntı/ek iş/persistent istek tahmin edilmez.
+Uyku/wake modelin keyfi iddiasıyla değil host kontrolüyle gerçekleşir.
+
+**Yerel motor:** sherpa-onnx ve sherpa-onnx-core 1.13.8 kuruldu/pinlendi.
+Upstream zh-en 3M 2025-12-20, chunk8 int8 encoder/joiner ve fp32 decoder
+kullanılır. Vex İngilizce V EH1 K S fonemleriyle aranır. Kişiselleştirme'de
+pWake alanı 1–3 İngilizce sözlük sözcüğü seçer (Vex/Hey Vex/Computer örnekleri);
+her serbest Türkçe/özel ad desteklenmez. Ayar diskte saklanır, sonraki uykuya
+uygulanır. Eski Wake sensitivity alanı henüz KWS eşiğine bağlanmadı; kullanılan
+eşik 0.25/tek trailing blank'tir. Türkçe konuşma yanıtı pLang ile aynı kalır.
+
+**Kaynak ve sınırlar:** mevcut tek mikrofon/AudioWorklet kullanılır. KWS
+bridge'in kısa kilidinde seri CPU işlemi yapar; yeni tool executor/TaskManager
+worker yoktur. Yerel IPC kuyruğu en çok 1 s; wake ön tamponu en çok 3 s'dir.
+Algılanan sözcüğün fonem zamanından önceki tampon paketleri Live'a aktarılmaz;
+sınır 100 ms PCM paketine yuvarlanır. Aynı cümlenin hit'ten sonraki kısmı aynı
+mikrofondan mevcut Live girişine devredilir. Hit tamponun dışına düşmüşse
+kırpılmış komut yürütmek yerine kaynak hatasıyla kapatılır; kullanıcı Wake ile
+çıkıp isteği tekrarlar. Yerel stream en çok 60 s'de yenilenir; tam sınırdaki
+sözcük kaçabilir. Ses diske yazılmaz. Eski request_id/sequence kapanmış kaynağa
+veya yeni oturuma yazamaz. Gerçek donanımda yanlış uyanma/kaçırma henüz ölçülmedi.
+
+Model dosyaları kod deposunda değil get_data_home()/models/wake altındadır.
+Bu makinede kuruldu. Başka kurulumda: v1 içinden
+`python -m app.session.wake_word --setup`. İndirme uygulama açılışında otomatik
+yapılmaz. Sabit upstream arşiv SHA256'sı ve tek tek dosya hash'leri doğrulanır;
+serbest archive extract yoktur. Model/keyword kullanılamazsa uyku açık kalır,
+Live fallback yapılmaz; kullanıcı Wake ile çıkar. Üçüncü taraf ağırlıklar
+TaskVex MIT lisansı altında yeniden etiketlenmez; THIRD_PARTY_NOTES.md'ye bak.
+Kaynak: [resmi KWS rehberi](https://k2-fsa.github.io/sherpa/onnx/kws/pretrained_models/index.html).
+
+**Doğrulama:** gerçek yerel motor + Windows SAPI sentetik 16 kHz konuşması
+"Vex, tell me the time" örneğinde 0.7 s noktasında hit verdi; negatif kontrol
+cümlesi hit vermedi. Bu tek sentetik çift fiziksel başarı oranı değildir.
+Native kabulde yalnız algılayıcı sınırı taklit edildi; gerçek AudioWorklet,
+bridge, core ve Live socket hattında uyurken sıfır Live trafiği, Mic Off,
+aynı-kaynak handoff ve kaydedilmiş Computer seçimi doğrulandı. Gerçek hesap ve
+ücretli API kullanılmadı. Kanıtlar: stage5-wake-local-engine.json,
+stage5-wake-native.json, stage5-wake-full-native.json. Gerçek kullanıcı
+mikrofonu/Türkçe telaffuz ve canlı sağlayıcı kabulü açık kalır.
+
+Sıradaki ayrı adım her işten sonra geri uyuma tercihi ve uygun boşta süre
+ayarının uygulanmasıdır. UI temizliği/debloat Aşama 5 kapanışında kalır.
+
 ### Güncel küçük düzeltme — Stop ve kesilme göstergeleri
 
 Geçici hafıza kullanıcı tarafından manuel kabul edildi; `dc79318` ile commit

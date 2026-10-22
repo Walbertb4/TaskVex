@@ -139,6 +139,7 @@ export function saveAll(options = {}) {
   const p = store.prof;
   const pFields = [
     ['pLang', 'value'],
+    ['pWake', 'value'],
     ['pBr', 'value'],
     ['pTab', 'checked'],
     ['pApp', 'checked'],
@@ -634,7 +635,7 @@ export function loadStore(o, options = {}) {
   });
 
   const P = store.prof || {};
-  ['pLang', 'pBr', 'pIns', 'pMem', 'pSc', 'pSys', 'pGreet'].forEach(i => {
+  ['pLang', 'pBr', 'pIns', 'pMem', 'pSc', 'pSys', 'pGreet', 'pWake'].forEach(i => {
     const el = document.getElementById(i);
     if (P[i] != null && el) el.value = P[i];
   });
@@ -994,7 +995,7 @@ export function initSettings(options = {}) {
 
   // Load profile values into inputs
   const P = store.prof || {};
-  ['pLang', 'pBr', 'pIns', 'pMem', 'pSc', 'pSys', 'pGreet'].forEach(i => {
+  ['pLang', 'pBr', 'pIns', 'pMem', 'pSc', 'pSys', 'pGreet', 'pWake'].forEach(i => {
     const el = document.getElementById(i);
     if (P[i] != null && el) el.value = P[i];
   });

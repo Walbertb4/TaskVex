@@ -1,5 +1,16 @@
 # TaskVex — Mark LVI incelemesi ve core başlangıç planı
 
+## Güncel dilim — tek seferlik uyku ve yerel wake-word
+
+Stop göstergeleri kullanıcı onayıyla 515a531 commit'ine alındı; push yok.
+Bu yeni dilim manuel kabul bekler. Uyurken PCM yalnız yerel sherpa-onnx'e
+gider; hit veya açık Wake/yazılı istek sonrasında tek mevcut Live hattı açılır.
+Kişiselleştirme pWake seçimi kaydedilir; default Vex, destekli İngilizce sözlük
+sözcükleri. Aynı mikrofon/AudioWorklet ve sınırlı tampon kullanılır; yeni core
+worker yoktur. Model dosyaları yerel veri cache'indedir ve MIT diye
+etiketlenmez. Fiziksel mikrofon kabulü açık. Sonraki adım otomatik geri uyuma
+ve saniye ayarıdır; UI temizliği Aşama 5 sonunda. Ayrıntı STAGE5_MODEL.md.
+
 ## Güncel küçük düzeltme — Stop göstergeleri
 
 Geçici hafıza kullanıcı kabulüyle dc79318 commit'ine alındı; push yok.

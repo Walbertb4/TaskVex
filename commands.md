@@ -75,11 +75,40 @@ connection, history is supplied as data without replaying old tool calls.
 Reused/resumed sessions do not receive duplicate history. This is not perfect
 recall or a substitute for reading current saved notes. Restart loses it.
 
+## One-time sleep and wake — available in desktop Live mode
+
+| Say, type or select | What happens |
+| --- | --- |
+| `Vex, go to sleep.` / `Enter sleep mode.` | Enters one-time sleep. Exact Turkish equivalents include `Vex uyku moduna geç` and `uykuya geç`. Quotes, questions and compound requests are not treated as sleep commands. |
+| **Sleep** button | Enters the same sleep mode after the current turn has finished. |
+| Say `Vex` while asleep | The local detector wakes Vex. Normal conversation continues afterward; it does not automatically sleep again. |
+| `Vex, tell me something interesting.` while asleep | Wakes and forwards the addressed utterance through the existing Live input. |
+| **Wake** button or an explicit typed Live message | Exits sleep without needing the wake word. |
+| **Personalization → Wake word** | Saves the keyword used for the next sleep. Default: Vex. Supports 1–3 words in the local English pronunciation dictionary, such as Hey Vex or Computer. |
+
+While asleep, microphone PCM is processed locally rather than streamed to
+Gemini. Mic Off also disables local wake detection; turning it On resumes
+local detection if still asleep. Only the detected utterance buffer from the
+keyword boundary is eligible for Live handoff. Capture is bounded; an expired
+buffer is rejected instead of executing a clipped request. Sleep/wake keeps
+saved notes and temporary conversation memory. Unknown-result locks still apply.
+
+The pinned local model must be installed. It is installed on this development
+machine; on a new installation, run the following from `v1` once:
+
+```powershell
+.\.venv\Scripts\python.exe -m app.session.wake_word --setup
+```
+
+If the model or keyword is unavailable, sleep stays active; use Wake to exit.
+The local stream refreshes every 60 seconds and can miss a word at that
+boundary. Real microphone/accent accuracy is pending manual acceptance.
+The existing Wake sensitivity slider is not yet connected to this detector.
+
 ## Planned — not available yet
 
 - Persistent user facts and editable/forgettable user memory in Personalization.
-- Wake-word selection in Personalization and a working local wake-word detector.
-- One-time sleep and automatic return-to-sleep after an interaction.
+- Automatic return-to-sleep after an interaction.
 - A sleep-delay setting in Settings.
 - Model-driven skill/routine/calendar/weather/Google/Telegram/Discord actions.
 

@@ -193,6 +193,7 @@ let micRevision = 0;
 let microphoneEnabled = true, nativeInitialized = false;
 let micBlocked = false;
 let replyMicRequest = null, pendingBargeIn = null;
+let sleeping = false, wakeSession = null, preparingWake = false;
 function paintMic() {
   const button = document.getElementById('micB');
   // Işık hazır On tercihini gösterir; Stop'taki kısa kaynak devri Off değildir.
@@ -209,6 +210,7 @@ function paintMic() {
   button.disabled = false; // Belirsizlikte bile kullanıcı tercihini Off yapabilsin.
 }
 function cancelMic(message = 'Recording cancelled. Nothing sent.') {
+  if (wakeSession) { void emit('wake_close', wakeSession); wakeSession = null; }
   micRevision++;
   replyMicRequest = pendingBargeIn = null;
   const active = liveMic.active;
@@ -241,6 +243,7 @@ function resetLiveAudio(pause = true) {
  * komut tekrar edilmez. Donanım/Disconnect/unknown engeli ayrıca korunur.
  */
 async function listenAutomatically(replyRequest = null, preserveStatus = false) {
+  if (sleeping) { if (!textBusy) void listenForWake(); return; }
   if (!microphoneEnabled || micBlocked || !nativeInitialized || !isBackendAvailable() || (textBusy && (!activeTextRequest || replyRequest !== activeTextRequest)) ||
       textOperation.uncertain || liveMic.active ||
       !document.getElementById('liveLatencyTest').checked || !document.getElementById('mSel').value) return;
@@ -307,6 +310,60 @@ const textOperation = createPendingOperation(() => {
   document.getElementById('textStatus').textContent = 'Result unknown. Reopen the app and check notes before retrying.';
   setConnectionStatus('offline', 'TEXT RESULT UNKNOWN');
 }, 240000);
+
+async function listenForWake() {
+  if (!sleeping || preparingWake || textBusy || liveMic.active ||
+      textOperation.uncertain || !nativeInitialized || !isBackendAvailable()) return;
+  preparingWake = true;
+  const revision = micRevision;
+  let session = null;
+  try {
+    const started = await emit('sleep_start');
+    if (!started.ok || !started.response?.request_id) throw new Error('Local wake unavailable. Run wake setup or choose a supported English wake word. Use Wake to exit sleep.');
+    session = started.response.request_id;
+    if (revision !== micRevision || !sleeping || !microphoneEnabled || micBlocked) {
+      void emit('wake_close', session);
+      if (sleeping && !microphoneEnabled) document.getElementById('textStatus').textContent = 'Asleep · Microphone Off. Turn On for local wake or use Wake.';
+      return;
+    }
+    wakeSession = session;
+    let sequence = 0;
+    const prepared = await liveMic.prepareStream(() => {
+      if (revision === micRevision) blockMicrophone('Local wake microphone failed. Sleep remains active; use Wake or check Audio settings.');
+    }, getAudioDeviceId('dIn'), speaking => {
+      if (!sleeping && revision === micRevision && microphoneEnabled && !textOperation.uncertain)
+        setState(speaking ? 'listening' : textBusy ? 'thinking' : 'idle', true);
+    });
+    if (!prepared || revision !== micRevision || !sleeping) return;
+    liveMic.waitForWake(async data => {
+      if (wakeSession !== session) return null;
+      const ack = await emit('wake_feed', {request_id:session, sequence:sequence++, data});
+      return ack.ok ? ack.response?.detected ? ack.response : false : null;
+    }, () => {
+      if (revision !== micRevision || wakeSession !== session || !sleeping) return;
+      wakeSession = null; sleeping = false;
+      document.getElementById('sleep').textContent = 'Sleep';
+      void sendText('', {stream:true});
+    });
+    paintMic(); setState('idle', true);
+    setConnectionStatus('idle', 'ASLEEP · LOCAL WAKE');
+    document.getElementById('textStatus').textContent = 'Asleep · say "' + started.response.wake_word + '" to wake. Audio is processed locally.';
+  } catch (error) {
+    if (session) void emit('wake_close', session);
+    if (revision === micRevision) blockMicrophone(sanitizeError(error));
+  } finally {
+    preparingWake = false;
+    if (revision !== micRevision && sleeping && microphoneEnabled && !micBlocked) void listenForWake();
+  }
+}
+
+function enterSleep() {
+  sleeping = true; resetLiveAudio(false);
+  document.getElementById('sleep').textContent = 'Wake';
+  document.getElementById('textStatus').textContent = 'Sleep mode · local wake preparation…';
+  setConnectionStatus('idle', 'ASLEEP');
+  void listenForWake();
+}
 
 /** Sağlayıcı ham hatası yerine host'un güvenli kodlarını ve ölçülen süreyi göster. */
 function textDiagnostics(report) {
@@ -398,6 +455,9 @@ async function sendText(text = null, audio = null) {
   if (!v && !audio) return;
   if (isBackendAvailable()) {
     if (textBusy || textOperation.uncertain) return;
+    if (sleeping && !audio) {
+      sleeping = false; cancelMic(); document.getElementById('sleep').textContent = 'Sleep';
+    }
     if (liveMic.active && !audio?.stream) {
       if (!liveMic.waitingForSpeech) return;
       cancelMic(); // Yazılı mesaj bekleyen mikrofonla yarışmaz; yanıt sonrası yeniden açılır.
@@ -419,7 +479,7 @@ async function sendText(text = null, audio = null) {
     if (v.length > 20000) { addLog('Message is too long (maximum 20000 characters).', true); return; }
     textBusy = true;
     setNotesChatLock(true);
-    const controls = ['inp', 'send', 'stopTask', 'liveLatencyTest', 'newChat'].map(id => document.getElementById(id)).filter(Boolean);
+    const controls = ['inp', 'send', 'stopTask', 'liveLatencyTest', 'newChat', 'sleep'].map(id => document.getElementById(id)).filter(Boolean);
     controls.forEach(el => { el.disabled = true; });
     const liveStop = document.getElementById('stopTask');
     const originalStopLabel = liveStop?.textContent;
@@ -565,7 +625,9 @@ async function sendText(text = null, audio = null) {
     setState('idle');
     controls.forEach(el => { el.disabled = false; });
     textBusy = false;
-    if (canHandoff && handoff.revision === micRevision && handoff.connection === connectionRevision && microphoneEnabled && liveMic.active) {
+    if (report?.sleep_requested && replyConnectionRevision === connectionRevision) {
+      enterSleep();
+    } else if (canHandoff && handoff.revision === micRevision && handoff.connection === connectionRevision && microphoneEnabled && liveMic.active) {
       replyMicRequest = pendingBargeIn = null;
       void sendText('', {stream:true});
     } else if (keepListening) {
@@ -1149,6 +1211,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (result.ok && result.response?.completed === true && result.response.memory_cleared === true) {
       document.getElementById('msgs').replaceChildren(); streamReset();
+      sleeping = false; document.getElementById('sleep').textContent = 'Sleep';
       document.getElementById('textStatus').textContent = 'New chat. Temporary conversation memory cleared; saved notes preserved.';
       setConnectionStatus('offline', 'NEW CHAT');
     } else {
@@ -1160,6 +1223,25 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Disconnect button
+  document.getElementById('sleep')?.addEventListener('click', async () => {
+    if (textBusy || textOperation.uncertain || !isBackendAvailable()) return;
+    if (!sleeping) { enterSleep(); return; }
+    sleeping = false; // Geç sleep_start sonucu tekrar yerel dinleme başlatamaz.
+    cancelMic();
+    const button = document.getElementById('sleep');
+    textBusy = true;
+    const controls = [button, document.getElementById('send'), document.getElementById('inp')];
+    controls.forEach(el => { el.disabled = true; });
+    const result = await emit('wake');
+    textBusy = false; controls.forEach(el => { el.disabled = false; });
+    if (!result.ok || result.response?.completed !== true) {
+      sleeping = true; blockMicrophone('Wake was not confirmed. Sleep remains active; try Wake again.'); return;
+    }
+    sleeping = false; document.getElementById('sleep').textContent = 'Sleep';
+    document.getElementById('textStatus').textContent = 'Awake. Waiting for speech.';
+    void listenAutomatically();
+  });
+
   const disc = document.getElementById('disc');
   if (disc) {
     disc.addEventListener('click', () => {

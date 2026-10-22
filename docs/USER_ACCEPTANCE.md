@@ -1,5 +1,30 @@
 # TaskVex — Kullanıcının katılacağı gerçek kullanım kontrolleri
 
+## Güncel kısa test — tek seferlik uyku / wake-word
+
+Önceki Stop gösterge testleri kullanıcı tarafından başarılı bildirildi
+(515a531). Yeni uyku dilimi manuel kabul bekler. Uygulamayı yeniden aç,
+Live modelini yükle ve Microphone On kullan.
+
+1. "Vex uyku moduna geç" de veya Sleep'e bas. Asleep / LOCAL WAKE görünmeli.
+   Vex demeden konuş; cevap/model turu başlamamalı.
+2. "Vex, bana kısa bir selam ver" de. Aynı cümledeki istek cevaplanmalı.
+   Ardından Vex demeden başka soru sor: normal konuşma devam etmeli; bu
+   tek seferlik uykudur, kendiliğinden tekrar uyumamalı.
+3. Yeniden Sleep'e bas. Microphone Off iken Vex de: uyanmamalı. On yapıp
+   tekrar dene. Wake düğmesiyle de çıkabilmelisin; yazılı mesaj açıkça uyandırır.
+4. Kişiselleştirme → Wake word: Computer kaydet. Sonraki uykuda Computer
+   gösterilmeli ve bu sözcükle uyanmalı. Sonra istersen Vex'e geri dön.
+5. "uyku moduna geç ne demek?" sorusu doğrudan uyutmamalı. Önceki notlar ve
+   geçici sohbet bağlamı uyku/uyanışta korunmalı. Unknown kilidinde Sleep/Wake
+   yeni görev başlatmak veya kilidi kaldırmak için kullanılmamalı.
+
+Yerel model bu makinede kuruldu. Eksik kurulumda v1 içinden:
+`.\.venv\Scripts\python.exe -m app.session.wake_word --setup`
+Desteklenmeyen sözcük/model hatasında uyku açık kalır; Wake ile çıkıp Vex
+seçimini düzelt. Gerçek mikrofon başarısı henüz ölçülmedi. 60 s stream sınırında
+kaçırırsa sözcüğü tekrar söyle. Otomatik geri uyuma ve saniye ayarı sonraki adım.
+
 ## Güncel kısa test — Stop göstergeleri
 
 Geçici hafıza testleri kullanıcı tarafından başarılı bildirildi (`dc79318`).

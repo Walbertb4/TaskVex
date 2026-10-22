@@ -25,6 +25,7 @@ from app.session.gemini import DEFAULT_MODEL
 from app.session.text_chat import TextChat
 from app.session.live_input import LiveInput
 from app.session.catalog import load_live_catalog
+from app.session.wake_word import WakeWord
 
 
 class NativeBridge:
@@ -41,6 +42,8 @@ class NativeBridge:
         self._window: Window | None = None
         self._ready = False
         self._notes_ready = False
+        self._wake: WakeWord | None = None
+        self._sleeping = False
         self._restart_requested = False
         self._lock = RLock()
         self._chat = TextChat(core, audio_sink=self._audio_chunk, transcript_sink=self._transcript)
@@ -233,6 +236,47 @@ class NativeBridge:
             return {"ok": False, "unknown": submitted,
                     "error": "Note operation could not be confirmed" if submitted else "Note command was rejected"}
 
+    def _wake_event(self, name: str, data) -> dict:
+        """Yerel uyku/KWS taşıması; event kilidi tutulurken çağrılır, araç yürütmez."""
+        if name == 'sleep_start':
+            if not self._ready or data is not None or not self._chat.reset_live():
+                return {'ok':False, 'error':'Wait for the active turn before sleeping'}
+            self._sleeping = True
+            self._wake = None
+            try:
+                word = self._load_settings().get('prof', {}).get('pWake', 'Vex')
+                self._wake = WakeWord(word)
+            except Exception:
+                return {'ok':False, 'sleeping':True, 'error':'Local wake unavailable. Run wake setup or choose a supported English wake word; use Wake to exit sleep.'}
+            return {'ok':True, 'completed':True, 'request_id':self._wake.id, 'wake_word':word}
+        if name == 'wake_feed':
+            if (type(data) is not dict or set(data) != {'request_id','sequence','data'} or
+                    not self._wake or data['request_id'] != self._wake.id):
+                return {'ok':False, 'error':'No matching local wake input'}
+            try:
+                if not isinstance(data['data'], str) or len(data['data']) != 4268:
+                    raise ValueError()
+                detected = self._wake.feed(data['sequence'], b64decode(data['data'], validate=True))
+            except Exception:
+                self._wake = None
+                return {'ok':False, 'error':'Local wake input rejected; sleep remains active'}
+            start = getattr(self._wake, 'start_sequence', data['sequence']) if detected else None
+            if detected:
+                self._wake = None
+                self._sleeping = False
+            return {'ok':True, 'completed':True, 'detected':detected, 'start_sequence':start}
+        if name == 'wake_close':
+            if self._wake and data == self._wake.id:
+                self._wake = None
+            return {'ok':True, 'completed':True}
+        if name == 'wake':
+            if not self._ready or data is not None or self._chat.busy:
+                return {'ok':False, 'error':'Cannot wake during an active turn'}
+            self._wake = None
+            self._sleeping = False
+            return {'ok':True, 'completed':True}
+        return {"ok":False, "error":"Unsupported sleep control"}
+
     def event(self, name: str, data=None) -> dict:
         """UI isteğine kesin sonuç ver; gizli payload/hata ayrıntısını döndürme.
 
@@ -293,6 +337,8 @@ class NativeBridge:
             with self._lock:
                 if not self._ready:
                     return {"ok": False, "error": "Native startup is incomplete. Retry startup or reopen the app."}
+                if self._sleeping and name in {'live_audio', 'live_audio_start'}:
+                    return {'ok':False, 'completed':True, 'code':'sleeping', 'error':'Local wake word required before Live audio'}
                 model = self._model
                 notes_ready = self._notes_ready
                 live_model = self._live_model
@@ -330,10 +376,16 @@ class NativeBridge:
                     return {"ok": False, "error": "Invalid chat request envelope"}
                 request_id, data = data["request_id"], data["text"]
             if name == "live_text":
+                if isinstance(data, str) and data.strip() and len(data) <= 20000:
+                    with self._lock:
+                        self._wake = None
+                        self._sleeping = False  # Açık yazılı UI isteği uyandırır.
                 return self._chat.run_live(data, live_model, notes_ready=notes_ready, request_id=request_id, profile=profile)
             return self._chat.run(data, model, notes_ready=notes_ready, request_id=request_id, profile=profile)
         with self._lock:
             try:
+                if name in {'sleep_start', 'wake_feed', 'wake_close', 'wake'}:
+                    return self._wake_event(name, data)
                 if name in {"notes_init", "note_add", "note_done", "note_del", "notes_replace"}:
                     return self._notes_event(name, data)
                 if name == "ui_ready":
@@ -381,6 +433,8 @@ class NativeBridge:
                     if not self._ready or data is not None or not self._chat.reset_live(clear_memory=True):
                         return {'ok': False, 'error': 'Wait for the active request before starting a new chat'}
                     self._push('online', False, 'MODEL OFFLINE')
+                    self._wake = None
+                    self._sleeping = False
                     return {'ok': True, 'completed': True, 'memory_cleared': True}
                 if name == "disconnect":
                     if data is not None or not self._chat.reset_live():

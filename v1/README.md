@@ -1,5 +1,20 @@
 # TaskVex v1 development
 
+Current slice: one-time sleep with local sherpa-onnx wake-word detection.
+Use Sleep or say/type "Vex, go to sleep" in Live mode. While asleep, PCM goes
+only to the local detector; a hit hands the addressed utterance to the existing
+Live input. Wake or an explicit typed message also wakes. Normal conversation
+then continues; automatic return-to-sleep and its delay are not added yet.
+Personalization → Wake word saves 1–3 supported English dictionary words;
+default Vex. Microphone Off disables local detection too. Real microphone
+acceptance is pending; synthetic engine and native transport checks are separate.
+
+Install dependencies from requirements-dev.lock.txt. For a new installation,
+run `.\.venv\Scripts\python.exe -m app.session.wake_word --setup` once.
+It downloads a pinned/hash-checked model into the local TaskVex data directory;
+startup never silently downloads it. The model is already installed on this
+machine. Model weights are not part of TaskVex's MIT source or Git tree.
+
 Current slice: bounded temporary Live conversation memory is owned by
 TextChat, survives Stop/Disconnect and restores data to fresh sessions without
 replaying tool calls. New Chat clears RAM/messages after confirmation while
