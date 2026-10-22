@@ -1,5 +1,23 @@
 # TaskVex — Mimari ve geliştirme rehberi
 
+## Güncel dilim — REST ses çıkışı ve Mic Off giriş sonu
+
+Önceki mikrofon tercihi kullanıcı kabulüyle `f35a13e` olarak commit edildi;
+push yapılmadı. Bu dilim kullanıcı tarafından 22 Ekim 2026 tarihinde
+manuel testleri başarılı bildirilerek kabul edildi.
+REST metni önce UI'a döner. Native UI, host'ta o request_id için saklanan
+başarılı cevabı `read_reply` ile yalnız bir kez seslendirir. Mevcut TextChat
+kilidi/Stop kimliği ve PCM çıkışı kullanılır; yeni araç yürütücüsü yoktur.
+Araçsız Gemini TTS ayrı API isteğidir; başarısızlığı metni veya tamamlanan
+notu geri almaz, model/araç retry'si başlatmaz. CLI/bot açıkça read_reply
+çağırmadığında sessizdir. REST mikrofon/STT eklenmedi.
+
+Microphone Off artık yalnız capture'ı kapatır ve mevcut sıralı Live girişine
+`audio_stream_end` bildirir; setup beklerken de Stop göndermez. Live yanıtı
+ve çalması devam eder. Stop ayrı iptal davranışını korur. Ayrıntı ve sınırlar
+STAGE5_MODEL.md ile UI/backend sözleşmesindedir. Sonraki adım gerçek bütünleşik
+kullanıcı kabulüdür; Aşama 5 kapanışı ve UI/debloat henüz yapılmadı.
+
 Bu belge ajanlar ve geliştiriciler için mimari başvuru kaynağıdır. Genel çalışma kuralları `AGENTS.md` içindedir. Buradaki hedef ağaç ve aşamalar, bütün bileşenlerin bugün var olduğu anlamına gelmez; yalnız kullanıcı tarafından istenen aşama uygulanır.
 
 Kaynak: `JARVIS_AKIS_DIYAGRAMLARI.html` içindeki proje notları ve 16 diyagram. Aktarım tarihi: 20 Ekim 2026. HTML değiştirilmedi. Kaynakta kalan Jarvis, JARVIS_HOME, jarvis.spec gibi adlar eski planın adlarıdır; bunlar mevcut kodu veya veri yollarını topluca yeniden adlandırma talimatı değildir. Ürün adı TaskVex'tir.

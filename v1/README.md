@@ -1,5 +1,15 @@
 # TaskVex v1 development
 
+Current slice: REST text replies can be read by a separate tool-free Gemini
+TTS request after the text is displayed. The existing TextChat lock, Stop
+identity and PCM player are reused; audio failure preserves text/tool results.
+Mute skips new TTS requests; default voice is Kore. REST microphone/STT is
+not added. Microphone Off only ends Live input (including during setup),
+without stopping generation/playback. Explicit Stop still cancels the turn.
+Previous mic-preference fix was accepted and committed as f35a13e; this new
+slice awaits manual acceptance. No push. See STAGE5_MODEL.md and
+USER_ACCEPTANCE.md for API cost, limits and unchecked real-device acceptance.
+
 Latest microphone correction: Microphone On/Off is a user preference. Normal
 Stop and terminal model errors now return to local waiting after confirmed
 completion, without replaying the failed request. Off remains Off until the

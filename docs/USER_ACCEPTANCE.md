@@ -1,6 +1,30 @@
 # TaskVex — Kullanıcının katılacağı gerçek kullanım kontrolleri
 
-## Güncel: Microphone On/Off ve hata sonrası dinleme
+## Güncel: REST ses ve yanıtı kesmeyen Microphone Off
+
+Önceki mikrofon tercihi testleri kullanıcı tarafından kabul edildi (`f35a13e`).
+Kullanıcı 22 Ekim 2026 tarihinde bu dilimin manuel testlerini başarılı bildirdi.
+Aşağıdaki liste tekrar kontrol içindir:
+
+1. Live açıkken uzun bir yanıt iste. Konuşurken veya yanıt çalarken Microphone
+   Off yap: yalnız mikrofon kapanmalı; model konuşmaya/yazmaya devam etmeli.
+   Stop'a ayrıca basarsan yanıt durmalı. Off tercihi kendiliğinden açılmamalı.
+2. Live kutusunu kapat, Mute kapalı olsun. Yazıyla kısa bir Türkçe soru gönder:
+   metin göründükten sonra ses gelmeli; durum playback finished olmalı.
+3. REST'te Mute açıp mesaj gönder: metin gelmeli, ses gelmemeli. Unmute yap.
+   Uzun yanıtın sesi hazırlanırken/çalarken Stop'a bas; metin ve tamamlanan
+   not işlemleri korunmalı. Bekleyen HTTP varsa bitmeden yeni mesaj açılmamalı.
+4. TTS kota/erişim hatası olursa metin ekranda kalmalı, audio unavailable
+   görünmeli. Mesajı/not işlemini kendiliğinden tekrar göndermemeli. Bu hata
+   metin modelinin başarısız olduğu anlamına gelmez.
+
+REST TTS ayrı API isteği/kotası kullanır; Kore varsayılanı sabittir. Live ses
+seçimi REST sesini henüz değiştirmez. REST mikrofon/STT eklenmedi.
+Otomasyon: 780 pytest, 6 Node süiti, 10/10 native fazı ve Pyright 0 hata.
+Gerçek hesap ve fiziksel cihaz bu geliştirmede kullanılmadı; sentetik testte
+sessiz PCM çalması gerçek hoparlörden duyulduğu kanıtı sayılmaz.
+
+## Önceki: Microphone On/Off ve hata sonrası dinleme
 
 Kullanıcı kabulü: 22 Ekim 2026 tarihinde On/Off ve hata sonrası dinleme
 testleri başarılı bildirildi. Aktif girişte Off'un yanıtı kesmemesi sonraki

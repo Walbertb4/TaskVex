@@ -54,6 +54,16 @@ def ready(bridge):
     return bridge.event("ui_ready", {"version": "1.0"})
 
 
+@pytest.mark.parametrize('payload', [None, {}, 'text', {'request_id':''}, {'request_id':'x' * 129},
+    {'request_id':'x', 'text':'UI cannot choose speech text'}])
+def test_read_reply_accepts_only_host_reply_identity(bridge, payload):
+    """Serbest metin/ek alan ve hazır olmayan host ses isteği başlatamaz."""
+    assert bridge.event('read_reply', {'request_id':'missing'})['audio_error'] == 'invalid_speech_request'
+    assert ready(bridge)['ok']
+    assert bridge.event('read_reply', payload)['audio_error'] == 'invalid_speech_request'
+    assert bridge.event('read_reply', {'request_id':'missing'})['audio_error'] == 'speech_not_pending'
+
+
 def test_ready_is_idempotent_and_snapshot_omits_collections(bridge):
     assert ready(bridge)["ok"]
     before = list(bridge._window.calls)

@@ -186,6 +186,7 @@ let textBusy = false;
 let activeTextRequest = null;
 let playbackOnly = false;
 let preparingAudio = false, cancelBeforeSend = false;
+let microphoneInput = null;
 let connectionRevision = 0;
 let micRevision = 0;
 // Kullanıcının On/Off tercihi; model başarısı/Stop bu değeri değiştirmez.
@@ -327,18 +328,37 @@ async function streamMicrophone(requestId) {
   let finished = false;
   result.then(() => { finished = true; });
   let sequence = 0;
+  let delivery = Promise.resolve(true);
+  // EOS (giriş sonu) Stop değildir. PCM ve son bildirim aynı sıradan geçer;
+  // Off setup'tan önce seçilirse hazır olunca yalnız EOS gönderilir.
+  const input = {ready:false, ending:!microphoneEnabled, ended:false, finish() {
+    this.ending = true;
+    if (!this.ready || this.ended) return;
+    this.ended = true;
+    delivery = delivery.then(() => activeTextRequest === requestId
+      ? emit('live_audio_feed', {request_id:requestId, sequence:sequence++, data:null}) : true);
+  }};
+  microphoneInput = input;
   try {
     for (let attempt = 0; attempt < 100 && !finished && activeTextRequest === requestId; attempt++) {
       const status = await emit('live_audio_feed', {request_id:requestId});
       if (finished || activeTextRequest !== requestId) break;
       if (status.response?.ready && !status.response.closed) {
-        if (cancelBeforeSend || !liveMic.active) {
+        input.ready = true;
+        if (cancelBeforeSend) {
           await emit('stop_task', {request_id:requestId});
           return await result;
         }
+        if (input.ending) { input.finish(); return await result; }
+        if (!liveMic.active) {
+          await emit('stop_task', {request_id:requestId}); return await result;
+        }
         liveMic.activateStream(async data => {
-          if (activeTextRequest !== requestId) return false;
-          const ack = await emit('live_audio_feed', {request_id:requestId, sequence:sequence++, data});
+          if (activeTextRequest !== requestId || input.ending) return false;
+          const ack = await (delivery = delivery.then(() => {
+            if (activeTextRequest !== requestId || input.ending) return {ok:true};
+            return emit('live_audio_feed', {request_id:requestId, sequence:sequence++, data});
+          }));
           if (ack.response?.closed && !ack.ok && ack.response.failed === false) {
             if (replyMicRequest !== requestId) {
               liveMic.cancel(); paintMic();
@@ -362,7 +382,10 @@ async function streamMicrophone(requestId) {
     }
     if (!finished && activeTextRequest === requestId) await emit('stop_task', {request_id:requestId});
     return await result;
-  } finally { if (activeTextRequest === requestId && replyMicRequest !== requestId) liveMic.cancel(); }
+  } finally {
+    if (microphoneInput === input) microphoneInput = null;
+    if (activeTextRequest === requestId && replyMicRequest !== requestId) liveMic.cancel();
+  }
 }
 
 async function sendText(text = null, audio = null) {
@@ -376,11 +399,14 @@ async function sendText(text = null, audio = null) {
       cancelMic(); // Yazılı mesaj bekleyen mikrofonla yarışmaz; yanıt sonrası yeniden açılır.
     }
     const liveTest = document.getElementById('liveLatencyTest')?.checked === true;
-    let outputDevice = '';
-    try { if (liveTest) outputDevice = getAudioDeviceId('dOut'); }
+    let outputDevice = '', outputProblem = null;
+    try { outputDevice = getAudioDeviceId('dOut'); }
     catch {
-      if (audio?.stream) blockMicrophone();
-      document.getElementById('textStatus').textContent = 'Select an available speaker in Audio settings.'; return;
+      if (liveTest) {
+        if (audio?.stream) blockMicrophone();
+        document.getElementById('textStatus').textContent = 'Select an available speaker in Audio settings.'; return;
+      }
+      outputProblem = 'output_device_unavailable'; // Metin sohbeti hoparlör hatasıyla iptal edilmez.
     }
     if (!liveTest && !canSendNativeText()) {
       document.getElementById('textStatus').textContent = 'A note operation is pending or unknown. Finish it, or reopen the app to check notes.';
@@ -402,10 +428,10 @@ async function sendText(text = null, audio = null) {
     setState(audio?.stream && liveMic.speaking ? 'listening' : 'thinking', !!audio?.stream);
     // Live: 120 s tur + araç temizliği/çalma payı. Bu UI bekleme sınırıdır;
     // aşımı gerçek iptal veya güvenli yeniden deneme anlamına gelmez.
-    const revision = textOperation.begin(liveTest ? 210000 : 240000);
+    let revision = textOperation.begin(liveTest ? 210000 : 240000);
     const replyConnectionRevision = connectionRevision;
     cancelBeforeSend = false;
-    if (liveTest) {
+    if (!outputProblem) {
       preparingAudio = true;
       await liveAudio.begin(activeTextRequest, outputDevice);
       preparingAudio = false;
@@ -458,6 +484,32 @@ async function sendText(text = null, audio = null) {
         label.textContent += problem === 'output_device_unavailable'
           ? ' · Selected speaker unavailable. Choose an available speaker or System default in Audio settings.'
           : problem ? ' · audio unavailable: ' + sanitizeError(problem) : ' · playback ' + audio.status;
+      } else if (!liveTest) {
+        // Araçlı model turu bitmiştir; yalnız host'un sakladığı cevabı okut.
+        // TTS hatası metni/not sonucunu bozmaz ve modeli yeniden çağırmaz.
+        if (cancelBeforeSend || replyConnectionRevision !== connectionRevision) {
+          liveAudio.close(); label.textContent += ' · playback stopped';
+        } else if (liveAudio.muted || outputProblem) {
+          liveAudio.close(); playbackProblem = outputProblem;
+          label.textContent += outputProblem ? ' · audio unavailable: ' + outputProblem : ' · playback muted';
+        } else {
+          revision = textOperation.begin(110000);
+          label.textContent += ' · Preparing speech…';
+          const spoken = await emit('read_reply', {request_id:activeTextRequest});
+          if (!textOperation.isCurrent(revision)) return;
+          if (spoken.response?.completed !== true || spoken.response?.unknown) {
+            textOperation.markUnknown(); return;
+          }
+          if (!spoken.ok) liveAudio.fail(activeTextRequest, spoken.response.audio_error || 'speech_unavailable');
+          playbackOnly = true;
+          const playback = await liveAudio.finish(activeTextRequest);
+          playbackOnly = false;
+          if (!textOperation.isCurrent(revision)) return;
+          playbackProblem = playback.error || spoken.response.audio_error;
+          label.textContent = label.textContent.replace(' · Preparing speech…', '') +
+            (spoken.response.stopped ? ' · playback stopped; completed actions were not undone'
+              : playbackProblem ? ' · audio unavailable: ' + sanitizeError(playbackProblem) : ' · playback ' + playback.status);
+        }
       }
       // Çalma beklenirken anahtar/model/Disconnect değişmiş olabilir; eski
       // başarılı metin yeni bağlantıyı online gösteremez.
@@ -831,7 +883,8 @@ document.addEventListener('DOMContentLoaded', () => {
       // istek başlayınca eski kimlik zaten normal alıcı tarafından reddedilir.
       if (pendingBargeIn?.requestId === packet?.request_id && packet?.request_id === activeTextRequest) return true;
       const accepted = liveAudio.chunk(packet);
-      if (accepted && packet?.request_id === activeTextRequest && textBusy && replyMicRequest !== activeTextRequest) {
+      if (accepted && packet?.request_id === activeTextRequest && textBusy && replyMicRequest !== activeTextRequest &&
+          document.getElementById('liveLatencyTest')?.checked === true) {
         liveMic.cancel(); paintMic(); void listenAutomatically(activeTextRequest);
       }
       if (accepted && getState() !== 'speaking') setState('speaking');
@@ -949,10 +1002,9 @@ document.addEventListener('DOMContentLoaded', () => {
     micB.addEventListener('click', async function () {
       if (isBackendAvailable()) {
         if (microphoneEnabled) {
-          const wasStreaming = textBusy && liveMic.active && replyMicRequest === null;
           microphoneEnabled = false;
           cancelMic('Microphone Off.');
-          if (wasStreaming) document.getElementById('stopTask').click();
+          microphoneInput?.finish();
         } else {
           microphoneEnabled = true; micBlocked = false; paintMic();
           if (textOperation.uncertain) {
@@ -1112,6 +1164,8 @@ document.addEventListener('DOMContentLoaded', () => {
           addLog('Stop was not accepted: ' + sanitizeError(response.error), true);
         } else if (response.response?.waiting_for === 'http_response') {
           document.getElementById('textStatus').textContent = 'Cancellation requested. Waiting for the current HTTP request to finish; no new actions will start.';
+        } else if (response.response?.waiting_for?.startsWith('speech_')) {
+          document.getElementById('textStatus').textContent = 'Speech stop requested. Waiting for synthesis to finish; completed text and actions are preserved.';
         }
         return;
       }

@@ -46,6 +46,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
     text_started, release_text = Event(), Event()
     rest_stop_started, release_rest_stop = Event(), Event()
     text_requests = []
+    speech_state = {'requests': [], 'fail': False, 'block': False, 'started': Event(), 'release': Event()}
     text_payloads = []  # Yalnız geçici test profilinin SDK talimatını denetler.
     live_state: dict = {"opened": 0, "closed": False, "sent": [], "waiting": Event(), "stall": False,
                         "resumed": False}
@@ -101,6 +102,11 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                         live_state["resumed"] = True
                     if "realtime_input" in message:
                         incoming = message['realtime_input']
+                        if incoming.get('audioStreamEnd'):
+                            live_state['input_ended'] = live_state.get('input_ended', 0) + 1
+                            if live_state.get('hold_microphone_reply'):
+                                frames.append(audio_reply('Native microphone Off answer'))
+                            return
                         if 'audio' in incoming:
                             # SDK'nin wire biçimi URL-safe base64'dür;
                             # standart decoder '-'/'_' örneklerini bozabilir.
@@ -186,6 +192,11 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                             frames.extend([{"sessionResumptionUpdate": {"resumable": True,
                                 "newHandle": "NATIVE_SYNTHETIC_RESUME_HANDLE"}}, {"goAway": {"timeLeft": "10s"}}])
                 async def recv(self, **kwargs):
+                    if frames and 'setupComplete' in frames[0] and live_state.get('hold_setup'):
+                        import asyncio
+                        live_state['setup_waiting'] = True
+                        while live_state.get('hold_setup'):
+                            await asyncio.sleep(.001)
                     while not frames and not live_state["stall"]:
                         import asyncio
                         await asyncio.sleep(.001)  # Akış göndericisinin eklediği yanıtı da uyandır.
@@ -215,6 +226,17 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
         ]
 
         def handle_text(request):
+            if request.url.path.endswith('/interactions'):
+                from base64 import b64encode
+                speech_state['requests'].append(json.loads(request.content))
+                if speech_state['block']:
+                    speech_state['started'].set()
+                    assert speech_state['release'].wait(10)
+                if speech_state['fail']:
+                    return httpx.Response(503, json={'error':{'message':'SECRET'}})
+                return httpx.Response(200, json={'id':'native-tts', 'status':'completed', 'steps':[
+                    {'type':'model_output', 'content':[{'type':'audio', 'mime_type':'audio/l16',
+                     'sample_rate':24000, 'data':b64encode(bytes(4800)).decode()}]}]})
             if request.method == "GET":
                 return httpx.Response(200, json={"models": [
                     {"name": "models/text-only", "supportedGenerationMethods": ["generateContent"]},
@@ -466,6 +488,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 assert "Chat synthetic note" in state["notes"] and "Saved <img" in state["answer"]
                 assert state["safe"] and state["input"] == "" and "gemini-3.5-flash-lite" in state["online"]
                 assert len(text_requests) == 5 and "gemini-3.5-flash-lite" in text_requests[-1]
+                assert 'playback finished' in window.evaluate_js("document.getElementById('textStatus').textContent")
                 from app.core.contracts import ToolRequest
                 from uuid import uuid4
                 task = api._core.submit(ToolRequest(request_id=uuid4().hex, source="desktop",
@@ -483,6 +506,37 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 assert "FAILED" in window.evaluate_js("document.getElementById('netP').textContent")
                 assert "SECRET" not in window.evaluate_js("document.getElementById('log').textContent")
                 assert (home / "notes.json").read_bytes() == document
+                assert len(speech_state['requests']) == 2
+                assert speech_state['requests'][-1]['input'][0]['content'][0]['text'] == 'Saved <img src=x onerror=alert(1)>'
+                assert 'tools' not in speech_state['requests'][-1]
+                # Ses hatası metni korur; Mute yeni TTS isteğini başlatmaz.
+                speech_state['fail'] = True
+                js("document.getElementById('inp').value='Native profile probe';document.getElementById('send').click();return true;")
+                wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
+                assert 'audio unavailable: speech_unavailable' in window.evaluate_js("document.getElementById('textStatus').textContent")
+                assert len(speech_state['requests']) == 3  # 503 TTS tekrarına dönüşmez.
+                assert 'Native profile probe REST' in window.evaluate_js("document.getElementById('msgs').textContent")
+                speech_state['fail'] = False
+                speech_count = len(speech_state['requests'])
+                js("document.getElementById('mute').click();document.getElementById('inp').value='Native profile probe';document.getElementById('send').click();return true;")
+                wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
+                assert len(speech_state['requests']) == speech_count
+                assert 'playback muted' in window.evaluate_js("document.getElementById('textStatus').textContent")
+                js("document.getElementById('mute').click();return true;")
+                # Metin görünürken sentez HTTP'si bekleyebilir. Stop kabulü,
+                # gerçek HTTP bitmeden kontrolleri açmaz; kayıt geri alınmaz.
+                speech_state['block'] = True
+                js("document.getElementById('inp').value='Native profile probe';document.getElementById('send').click();return true;")
+                assert speech_state['started'].wait(5)
+                assert 'Native profile probe REST' in window.evaluate_js("document.getElementById('msgs').textContent")
+                js("document.getElementById('stopTask').click();return true;")
+                wait_until(lambda: 'Speech stop requested' in window.evaluate_js("document.getElementById('textStatus').textContent"))
+                assert window.evaluate_js("document.getElementById('send').disabled") and api._chat.busy
+                speech_state['release'].set()
+                wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
+                speech_state['block'] = False
+                assert (home / 'notes.json').read_bytes() == document
+                outcome['rest_speech_text_first_failure_preserved_no_retry_mute_and_stop'] = True
                 before_rest_stop = len(text_requests)
                 js("document.getElementById('inp').value='Native REST Stop';document.getElementById('send').click();return true;")
                 assert rest_stop_started.wait(5)
@@ -637,7 +691,12 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 wait_until(lambda: js("const m=await import('./js/live_mic.js');return m.liveMic.waitingForSpeech;"))
                 js("document.getElementById('inp').value='Native barge waiting';document.getElementById('send').click();return true;")
                 wait_until(lambda: api._chat.busy and js("const m=await import('./js/live_mic.js');return m.liveMic.waitingForSpeech;"))
-                js("testMicOff();document.getElementById('stopTask').click();return true;")
+                js("testMicOff();return true;")
+                time.sleep(.1)
+                assert api._chat.busy and window.evaluate_js("document.getElementById('send').disabled")
+                assert js("return document.querySelector('#msgs .m.j[data-request-id]:last-child').dataset.state;") == 'live'
+                outcome['microphone_off_preserves_active_output_until_explicit_stop'] = True
+                js("document.getElementById('stopTask').click();return true;")
                 wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
                 js("window.dispatchEvent(new CustomEvent('taskvex-live-model-ready',{detail:{ready:true}}));return true;")
                 assert js("const m=await import('./js/live_mic.js');return !m.liveMic.active && document.getElementById('micB').textContent.includes('Microphone Off');")
@@ -666,6 +725,41 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 js("testMicOff();statusOsc.stop();await statusContext.close();return true;")
                 live_state['hold_microphone_reply'] = False
                 outcome['idle_waiting_listening_speech_thinking_and_speaking'] = True
+                # Mic Off yalnız EOS yollar; aktif model turu Stop sayılmaz.
+                live_state['hold_microphone_reply'] = True
+                ended_before = live_state.get('input_ended', 0)
+                live_state['voice_seen'] = False
+                js("window.offContext=new AudioContext();window.offOsc=offContext.createOscillator();offOsc.start();"
+                   "Object.defineProperty(navigator.mediaDevices,'getUserMedia',{configurable:true,value:async()=>{"
+                   "const d=offContext.createMediaStreamDestination();offOsc.connect(d);return d.stream;}});"
+                   "testMicOn();return true;")
+                wait_until(lambda: api._chat.busy and live_state.get('voice_seen'))
+                js("testMicOff();return true;")
+                wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
+                assert live_state.get('input_ended', 0) == ended_before + 1
+                assert 'Native microphone Off answer' in window.evaluate_js("document.getElementById('msgs').textContent")
+                assert 'Stopped' not in window.evaluate_js("document.getElementById('textStatus').textContent")
+                assert window.evaluate_js("document.getElementById('micB').getAttribute('aria-pressed')==='false'")
+                js("offOsc.stop();await offContext.close();return true;")
+                live_state['hold_microphone_reply'] = False
+                outcome['microphone_off_ends_input_without_stopping_answer'] = True
+                # Setup bitmeden Off da aynı giriş sonu yolunu kullanır.
+                assert api._chat.reset_live()
+                live_state.update(hold_setup=True, setup_waiting=False, hold_microphone_reply=True)
+                ended_before = live_state.get('input_ended', 0)
+                js("window.earlyContext=new AudioContext();window.earlyOsc=earlyContext.createOscillator();earlyOsc.start();"
+                   "Object.defineProperty(navigator.mediaDevices,'getUserMedia',{configurable:true,value:async()=>{"
+                   "const d=earlyContext.createMediaStreamDestination();earlyOsc.connect(d);return d.stream;}});"
+                   "testMicOn();return true;")
+                wait_until(lambda: live_state.get('setup_waiting'))
+                js("testMicOff();return true;")
+                live_state['hold_setup'] = False
+                wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
+                assert live_state.get('input_ended', 0) == ended_before + 1
+                assert 'Stopped' not in window.evaluate_js("document.getElementById('textStatus').textContent")
+                js("earlyOsc.stop();await earlyContext.close();return true;")
+                live_state['hold_microphone_reply'] = False
+                outcome['microphone_off_before_setup_ends_input_without_stop'] = True
                 # Aynı gerçek WebView mikrofonu eski yanıtı keser; yeni tur
                 # yalnız host'un eski araç sonucunu kesinleştirmesinden sonra açılır.
                 for prompt in ['Native barge active', 'Native barge playback']:

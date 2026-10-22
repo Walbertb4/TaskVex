@@ -1,4 +1,4 @@
-/** Live PCM çıkışının tek sahibi: mikrofon açmaz, dosyaya/önbelleğe ses yazmaz.
+/** Live ve REST TTS PCM çıkışının tek sahibi: mikrofon/disk/önbellek kullanmaz.
  * Her kullanıcı isteği ayrı kaynak grubu alır. Kuyruk en çok 20 saniye/512
  * parçadır; Stop ve sayfa kapanışı kaynakları durdurup AudioContext'i bırakır.
  * Web Audio'nun bitişi fiziksel hoparlörden duyulduğunun kanıtı değildir.

@@ -1,5 +1,14 @@
 # TaskVex — Mark LVI incelemesi ve core başlangıç planı
 
+## Güncel ilerleme — Aşama 5 REST ses dilimi
+
+Kullanıcı önceki mikrofon tercihi düzeltmesini kabul etti; `f35a13e` commit'i
+kaydedildi, push yok. Sıradaki REST ses boşluğu aynı TextChat/PCM yoluyla,
+araçsız ayrı TTS isteği olarak tamamlandı. Metin önce görünür; ses hatası metni
+ve tamamlanan notları bozmaz. Mic Off yalnız giriş sonu bildirir, Live yanıtını
+kesmez. Bu yeni dilim manuel kabul bekler. Sonraki ayrı adım bütünleşik gerçek
+kabul; sonra hedefli UI/debloat ve son regresyon/belge kapanışı. Aşama 5 açık.
+
 Güncel ara istek: Microphone On/Off tercihi Stop/model hatasından ayrıldı;
 kesin bitişte yeni konuşma beklenir. Eski komut tekrar edilmez, kaynak/unknown
 engelleri korunur. Adım 5 kullanıcı kabulüyle 78c292a commit'ine alındı.

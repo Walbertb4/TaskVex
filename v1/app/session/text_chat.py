@@ -15,6 +15,7 @@ from app.session.model_tools import ModelTools
 from app.storage.credentials import CredentialError
 from app.session.live_session import PersistentLive
 from app.session.live_input import LiveInput
+from app.session.speech import GeminiSpeech
 
 
 class TextChat:
@@ -27,7 +28,8 @@ class TextChat:
         self._closed = False
         self._live = PersistentLive()
         self._rest_guard = Lock()
-        self._rest: tuple[str, GeminiText] | None = None
+        self._rest: tuple[str, GeminiText | GeminiSpeech] | None = None
+        self._speech_reply: tuple[str, str] | None = None
         self._audio_sink = audio_sink
         self._transcript_sink = transcript_sink
 
@@ -45,6 +47,7 @@ class TextChat:
         if not self._lock.acquire(blocking=False):
             return False
         try:
+            self._speech_reply = None
             if not self._live.close():
                 return False
             self._closed = True
@@ -57,6 +60,7 @@ class TextChat:
         if not self._lock.acquire(blocking=False):
             return False
         try:
+            self._speech_reply = None
             return self._live.close()
         finally:
             self._lock.release()
@@ -66,9 +70,13 @@ class TextChat:
         with self._rest_guard:
             if self._rest and self._rest[0] == request_id:
                 waiting = self._rest[1].stop()
-                return {"ok": waiting is not None, "completed": False, "request_id": request_id,
-                        **({"accepted": True, "waiting_for": waiting} if waiting is not None else
-                           {"error": "REST request already finished"})}
+                if waiting is not None:
+                    return {'ok': True, 'completed': False, 'request_id': request_id,
+                            'accepted': True, 'waiting_for': waiting}
+            if self._speech_reply and self._speech_reply[0] == request_id:
+                self._speech_reply = None
+                return {'ok': True, 'completed': False, 'accepted': True, 'request_id': request_id,
+                        'waiting_for': 'speech_completion'}
         accepted = self._live.stop(request_id)
         return {"ok": accepted, "completed": False, "request_id": request_id,
                 **({"accepted": True} if accepted else {"error": "No matching active request"})}
@@ -87,6 +95,8 @@ class TextChat:
         if not self._lock.acquire(blocking=False):
             return {"ok": False, "error": "A model request is already running"}
         try:
+            with self._rest_guard:
+                self._speech_reply = None
             if self._closed:
                 return {"ok": False, "error": "Text session is closed; reopen the app"}
             allowed = ("apps.catalog", "system.status")
@@ -113,6 +123,30 @@ class TextChat:
         """Uzun sohbet kilidini beklemeden kendi Live kuyruğuna sınırlı teslim yap."""
         return self._live.input(request_id, sequence, data)
 
+    def read_reply(self, request_id: str) -> dict:
+        """Yalnız son başarılı REST cevabını bir kez oku; UI metin seçemez.
+
+        Aynı kilit ve Stop kimliği kullanılır. Ses hatası, daha önce tamamlanmış
+        metin/araç sonucunu geçersiz yapmaz. Bot/CLI bu metodu çağırmazsa sessizdir.
+        """
+        if not self._lock.acquire(blocking=False):
+            return {'ok': False, 'completed': True, 'audio_error': 'speech_busy'}
+        try:
+            with self._rest_guard:
+                pending = self._speech_reply
+                if self._closed or not pending or pending[0] != request_id or not self._audio_sink:
+                    return {'ok': False, 'completed': True, 'request_id': request_id, 'audio_error': 'speech_not_pending'}
+                self._speech_reply = None
+                speech = GeminiSpeech()
+                self._rest = (request_id, speech)
+            output = self._audio_sink
+            result = speech.run(pending[1], lambda data, mime: output(request_id, data, mime))
+            return {**result, 'request_id': request_id}
+        finally:
+            with self._rest_guard:
+                self._rest = None
+            self._lock.release()
+
     def run(self, text: object, model: str, *, notes_ready: bool = True, request_id: str | None = None,
             profile: dict | None = None) -> dict:
         """Hazır host'tan tek mesaj al; bitiş sonucu veya açık ret döndür.
@@ -130,6 +164,8 @@ class TextChat:
         if not self._lock.acquire(blocking=False):
             return {"ok": False, "error": "A text request is already running"}
         try:
+            with self._rest_guard:
+                self._speech_reply = None
             if self._closed:
                 return {"ok": False, "error": "Text session is closed; reopen the app"}
             # Not aktarımı bekliyor diye normal sohbet kapatılmaz. Aynı durum
@@ -152,6 +188,9 @@ class TextChat:
                 with self._rest_guard:
                     self._rest = (request_id or uuid4().hex, client)
                 result = client.run(text)
+                if result.get('ok') and request_id and self._audio_sink:
+                    with self._rest_guard:
+                        self._speech_reply = (request_id, result['text'])
             return {**result, "completed": True, "request_id": request_id}
         except Exception:
             return {"ok": False, "unknown": True,

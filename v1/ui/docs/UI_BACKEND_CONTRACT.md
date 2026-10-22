@@ -1,5 +1,35 @@
 # UI/backend sözleşmesi
 
+## Güncel: REST read_reply ve Microphone Off
+
+`text` başarılı metni/araç raporunu önce döndürür. Native UI bu metni hemen
+gösterir; ardından `read_reply` event'ine yalnız `{request_id:string(1..128)}`
+gönderir. Hazır host ve son başarılı REST cevabıyla eşleşme gerekir; ek alan
+ve serbest metin reddedilir. Yanlış ID bekleyen cevabı tüketmez. Doğru cevap
+bir kez tüketilir; yeni sohbet/Stop/Disconnect/kapanış eski metni bırakır.
+
+Ses aynı TextChat kilidinde, aynı request_id ile mevcut audioChunk alıcısına
+PCM16LE/24 kHz/mono gider. Sonuç `ok`, `completed:true`, `request_id`,
+`speech_model`, `audio_bytes_forwarded`, `audio_error` taşır. Stop sonucunda
+`code:stopped, stopped:true` eklenir. İlk metin/araç raporu ayrı kalır; TTS
+hatası bunları başarısız veya geri alınmış saymaz. UI notları backend'den
+okur; ikinci not mutasyonu/save yoktur. Mute açıkken yeni TTS çağrısı atlanır;
+çalarken Mute mevcut sesi susturur. Özel hoparlör hatasında sessiz varsayılan
+cihaz fallback'i yoktur. Metin/araç/TTS otomatik tekrarlanmaz.
+
+Stop kabulü `completed:false, waiting_for:speech_response|speech_completion`
+olabilir; senkron HTTP bitmeden UI kilidi açılmaz. Ses aşaması UI sınırı110 s;
+geç PCM eski request_id ile yeni yanıta yazamaz. TextChat sahipliği ve bilinmeyen
+sonuç kilidi korunur. TTS tek ayrı API isteğidir; araç/deklarasyon yok, store:false,
+Kore, gemini-3.8-flash-lite-tts; model listesine TTS eklenmez. Limitler:
+20.000 karakter, 20 s HTTP, 60 s PCM; bot/CLI read_reply çağırmadan sessizdir.
+
+Mic Off, `live_audio_feed({request_id,sequence,data:null})` ile giriş sonunu
+bildirir. PCM ve EOS seri gönderilir; EOS yalnız bir kez, setup onayından sonra
+gider. Donanım hemen kapanır; Live yanıtı/transkript/output kesilmez. Stop ayrı
+iptal yoludur. Off setup sırasında da Stop'a çevrilmez. Gönderilmiş ses geri
+alınmaz; hiç ses ulaşmamışsa sağlayıcı yanıt vermeyebilir. REST mikrofon yolu yok.
+
 ## Güncel ara düzeltme — Microphone On/Off
 
 Yeni event veya payload yok. microphoneEnabled UI oturum tercihi, micBlocked

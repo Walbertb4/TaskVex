@@ -281,6 +281,12 @@ class NativeBridge:
                 self._chat.stop(data['request_id'])
                 return {'ok': False, 'error': 'Invalid microphone stream encoding'}
             return self._chat.audio_input(data['request_id'], data['sequence'], chunk)
+        if name == 'read_reply':
+            with self._lock:
+                if (not self._ready or type(data) is not dict or set(data) != {'request_id'}
+                        or not isinstance(data['request_id'], str) or not 1 <= len(data['request_id']) <= 128):
+                    return {'ok': False, 'completed': True, 'audio_error': 'invalid_speech_request'}
+            return self._chat.read_reply(data['request_id'])
         if name in {"text", "live_text", "live_audio", "live_audio_start"}:
             # Ağ beklerken ayarlar, pencere ve diğer kısa API istekleri aynı
             # RLock arkasında beklememeli. TextChat kendi tek-tur kilidini tutar.

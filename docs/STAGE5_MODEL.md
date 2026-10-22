@@ -1,5 +1,58 @@
 # Aşama 5 — Model, araç çağrıları ve ses
 
+### Güncel: adım 6 — REST ses çıkışı ve Mic Off
+
+Önceki mikrofon düzeltmesi kullanıcı kabulünden sonra `f35a13e` ile commit
+edildi; push yok. Bu dilim kullanıcı tarafından 22 Ekim 2026 tarihinde
+manuel testleri başarılı bildirilerek kabul edildi.
+
+REST'in doğrulanmış nihai metni önce UI'a gösterilir; araç sonuçları korunur.
+`read_reply({request_id})` yalnız host'un RAM'deki son başarılı REST metnini
+bir kez okutur. UI serbest metin veya model seçemez; yanlış/eski ID geçerli
+bekleyen cevabı tüketmez. Yeni sohbet, Stop, Disconnect veya kapanış cache'i
+bırakır. TextChat'in aynı kilidi kullanılır; ikinci worker/core/CRUD yolu yoktur.
+
+[Resmi speech-generation sözleşmesi](https://ai.google.dev/gemini-api/docs/speech-generation)
+ve kurulu google-genai 2.32 ile doğrulanan
+araçsız Interactions TTS kullanıldı: `gemini-3.8-flash-lite-tts`, Kore sesi,
+`store:false`, 24 kHz mono PCM. Metin TTS'ye aynen okunacak içeriktir; araç
+bildirimi/çağrısı yoktur. Canlı model seçimi listesi değiştirilmedi. TTS tek
+ayrı API isteğidir; Mute gönderim öncesinde açıksa istek yapılmaz. CLI/bot
+kendiliğinden ses üretmez. UI'daki Live ses seçimi bu REST Kore varsayılanını
+henüz değiştirmez. REST mikrofon/STT bu dilimde eklenmedi.
+
+Metin en çok 20.000 karakter, ham PCM en çok 60 saniye/2.880.000 byte'tır.
+Sentez unary HTTP yanıtıdır: ses metin yanıtından sonra hazırlanır, Live kadar
+erken başlayacağı iddia edilmez. HTTP 20 s sınırına tabidir; PCM mevcut 20 s
+Web Audio kuyruğuna en çok 1 s'lik parçalarla gerçek zaman hızında verilir.
+Ses aşamasının UI bekleme sınırı 110 s'dir. Stop HTTP'yi anında kesmez; kabul
+`completed:false, waiting_for:speech_response|speech_completion` olur. Gerçek
+bitiş gelene kadar kontroller kapalıdır, sonraki PCM reddedilir. Tamamlanmış
+metin ve notlar geri alınmış sayılmaz. Ses hatası ayrı `audio_error` ile
+gösterilir; metin/model/araç veya TTS otomatik yeniden denenmez. SDK 2.32'nin
+0 retry'yi 1'e dönüştürmesi Interactions resource kurulmadan düzeltilmiştir;
+503'te tek HTTP ve sıfır tekrar testi vardır. SDK yükseltmesinde bu kontrol korunmalı.
+
+Microphone Off yalnız track'leri kapatır. Mevcut giriş akışına PCM ile aynı
+sıradan, bir kez null/EOS gönderir; setup bekliyorsa hazır olduğunda gönderir.
+Off nedeniyle Stop yoktur; modelin yanıtı/transkripti/çalması devam eder.
+Daha önce yakalanmış/gönderilmiş ses geri alınmaz. Stop hâlâ açık iptaldir.
+
+Hedefli gerçek SDK/sentetik HTTP testleri ve WebView2 kontrolleri; metnin önce
+görünmesi, tek not mutasyonu, ses hatasında metnin korunması, Mute'ta sıfır
+TTS, HTTP Stop bitişi, eski ID/tekrar reddi, Mic Off giriş sonu ve aktif çıktının
+korunmasını kapsar. Kanıt: stage5-rest-audio-native.json ve
+stage5-rest-audio-full-native.json. Gerçek hesap/kota, fiziksel hoparlör ve
+sağlayıcının TTS erişimi test edilmedi; gerçek kabul açık. Yeni bağımlılık,
+sesli REST giriş yolu, UI temizliği veya başka entegrasyon yapılmadı.
+
+Son doğrulama: 780 pytest, 6 Node süiti, 10/10 gerçek WebView2 fazı ve
+incelenen Python dosyalarında Pyright 0 hata. WebView2; setup öncesi Off,
+aktif girişte EOS ve aktif çıktıda Off sonrası açık Stop ayrımını doğruladı.
+
+Sonraki adımlar: gerçek bütünleşik kabul, hedefli UI temizliği/debloat,
+son regresyon/belge kapanışı. Aşama 5 henüz kapanmadı.
+
 Bu belge modelin mevcut core'u nasıl kullanacağını ve bugün hangi parçanın
 gerçekten hazır olduğunu anlatır. Model yeni yürütücü/worker değildir; araç
 handler'ına doğrudan erişmez. İlk ModelTools diliminde bağımlılık eklenmedi;
@@ -7,7 +60,7 @@ handler'ına doğrudan erişmez. İlk ModelTools diliminde bağımlılık eklenm
 
 ## Sıra ve güncel durum
 
-### Güncel ara düzeltme — mikrofon tercihi model sonucundan bağımsız
+### Önceki ara düzeltme — mikrofon tercihi model sonucundan bağımsız
 
 Kullanıcı kabulü: 22 Ekim 2026 tarihinde On/Off ve hata sonrası dinleme
 testleri başarılı bildirildi. Aktif girişte Off'un yanıtı kesmemesi sonraki
