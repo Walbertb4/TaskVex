@@ -81,9 +81,9 @@ TaskVex evaluates and executes tasks according to strict safety invariants:
 ## 🚀 Status of Features
 
 In accordance with [`ARCHITECTURE.md`](ARCHITECTURE.md) and [`CORE_START_PLAN.md`](CORE_START_PLAN.md), capabilities are categorized as:
-* **✅ Çalışıyor** (Implemented, verified with automated tests and active in core)
-* **🧪 Test aşamasında** (Coded, undergoing unit / local manual verification)
-* **🗓️ Planlı** (Architecturally mapped, scheduled for future stages)
+* **✅ Operational** (Implemented, verified with automated tests and active in core)
+* **🧪 In Testing** (Coded, undergoing unit / local manual verification)
+* **🗓️ Planned** (Architecturally mapped, scheduled for future stages)
 
 ### Core & Execution
 * ✅ **Single-Worker FIFO TaskManager:** Deterministic serial task execution with zero race conditions.
@@ -107,7 +107,7 @@ In accordance with [`ARCHITECTURE.md`](ARCHITECTURE.md) and [`CORE_START_PLAN.md
 * ✅ **Temporary Conversation Memory:** In-memory context retention (bounded to 12 turns / 16,000 characters).
 * ✅ **Gemini REST ReAct Loop:** Multi-turn ReAct reasoning and tool calling via `gemini-3.8-flash` / `gemini-3.6-flash`.
 * 🧪 **Local Wake-Word Detection:** Local "Vex" keyword spotting using `sherpa-onnx` ONNX models running on CPU.
-* 🧪 **Single-Turn Sleep Mode:** Sleep intent detection ("uyku moduna geç", "sleep") with local socket shutdown and wake capability.
+* 🧪 **Single-Turn Sleep Mode:** Sleep intent detection ("go to sleep", "sleep", "enter sleep mode") with local socket shutdown and wake capability.
 * 🧪 **REST TTS Playback:** Isolated text-to-speech voice playback for REST replies via `gemini-3.8-flash-lite-tts`.
 * 🗓️ **Automatic Return-to-Sleep:** Auto-sleep timer in settings after interaction completion.
 * 🗓️ **Persistent Long-Term Memory:** Personalized user facts, memory management, and editable memory entries.
