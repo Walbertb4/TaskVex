@@ -54,6 +54,26 @@ def ready(bridge):
     return bridge.event("ui_ready", {"version": "1.0"})
 
 
+def test_new_chat_clears_memory_only_after_ready_and_preserves_notes(bridge):
+    """Yeni sohbet yanlış payload'da silmez; açık onay ayrı UI işidir."""
+    bridge._chat._memory.remember('Synthetic fact', {'ok':True, 'text':'Understood'})
+    assert not bridge.event('new_chat')['ok']
+    assert ready(bridge)['ok']
+    assert not bridge.event('new_chat', {})['ok']
+    assert bridge._chat._memory.snapshot()
+    assert bridge.event('new_chat') == {'ok':True, 'completed':True, 'memory_cleared':True}
+    assert not bridge._chat._memory.snapshot()
+
+
+def test_key_update_clears_memory_but_disconnect_preserves_it(bridge):
+    """Aynı sohbet yeniden bağlanabilir; farklı hesap/anahtara tarihçe taşınmaz."""
+    assert ready(bridge)['ok']
+    bridge._chat._memory.remember('Synthetic fact', {'ok':True, 'text':'Understood'})
+    assert bridge.event('disconnect')['ok'] and bridge._chat._memory.snapshot()
+    assert bridge.event('apikey', 'SYNTHETIC-MEMORY-KEY')['ok']
+    assert not bridge._chat._memory.snapshot()
+
+
 @pytest.mark.parametrize('payload', [None, {}, 'text', {'request_id':''}, {'request_id':'x' * 129},
     {'request_id':'x', 'text':'UI cannot choose speech text'}])
 def test_read_reply_accepts_only_host_reply_identity(bridge, payload):

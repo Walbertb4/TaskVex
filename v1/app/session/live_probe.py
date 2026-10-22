@@ -43,7 +43,8 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
                           tools: ModelTools | None = None, stop_event: Event | None = None,
                           audio_sink: Callable[[bytes, str], bool] | None = None,
                           transcript_sink: Callable[[str, str, int], bool] | None = None,
-                          audio_input: bytes | LiveInput | None = None, profile: dict | None = None) -> dict:
+                          audio_input: bytes | LiveInput | None = None, profile: dict | None = None,
+                          context: str = '') -> dict:
     """25 s olay sessizliği / 120 s toplam tur; süre aşımı tekrar izni değildir.
 
     first_event_ms ilk içerik/ses parçasını, first_text_ms ilk transkript/metni
@@ -86,7 +87,8 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
             return report
         async with asyncio.timeout(LIVE_TURN_SECONDS):
             async with connection.open(model, key, tools, audio_input='stream' if streaming else audio_input is not None,
-                                       profile=profile) as session:
+                                       profile=profile, context=context) as session:
+                report['memory_restored'] = connection.context_restored
                 report["session_reused"] = connection.reused
                 report["session_resumed"] = connection.resumed
                 report["logical_session_id"] = connection.logical_id

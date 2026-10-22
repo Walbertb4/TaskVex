@@ -1,5 +1,26 @@
 # TaskVex — Kullanıcının katılacağı gerçek kullanım kontrolleri
 
+## Güncel manuel test — geçici sohbet hafızası
+
+Uygulamayı yeniden aç. Live modeli yüklendikten sonra:
+
+1. "Bu sohbet için sevdiğim renk mor" de/yaz; ardından "Hangi rengi söyledim?"
+   diye sor. Aynı konuşmayı takip etmeli; kalıcı profil kaydı iddia etmemeli.
+2. Uzun bir yanıt iste ve Stop'a bas. Kontroller açılınca rengi tekrar sor.
+   Yeni socket açılırsa recent conversation restored tanısı görülebilir;
+   önceki renk hatırlanmalı, eski komut/not işlemi tekrar çalışmamalı.
+3. Disconnect sonrası yeniden Live mesajı göndererek aynı bilgiyi sor.
+   Yakın geçmiş korunmalı. Çok eski/uzun konuşma sınıra takılabilir.
+4. New Chat'e basıp onayı reddet: mesajlar/bağlam kalmalı. Tekrar basıp onayla:
+   konuşma temizlenmeli; notlar ve ayarlar kalmalı. Rengi sorunca eski sohbet
+   bilgisi bu yeni sohbetin hafızasından gelmemeli.
+5. Uygulamayı kapatıp açınca bu geçici hafıza kalmamalı. New Chat aktif turda
+   veya unknown sonuç kilidinde kullanılmamalı; kurtarma düğmesi değildir.
+
+Otomasyon: 787 pytest, 6 Node süiti, 10/10 WebView2 fazı ve Pyright 0 hata.
+Bu dilim manuel kabul bekler; gerçek hesap veya ücretli API ile geliştirici
+kabulü yapılmadı. Kalıcı kullanıcı hafızası, wake-word ve uyku sonraki işlerdir.
+
 ## Güncel: REST ses ve yanıtı kesmeyen Microphone Off
 
 Önceki mikrofon tercihi testleri kullanıcı tarafından kabul edildi (`f35a13e`).

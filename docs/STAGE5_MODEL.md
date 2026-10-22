@@ -1,5 +1,61 @@
 # Aşama 5 — Model, araç çağrıları ve ses
 
+### Güncel uygulama adımı — sınırlı geçici sohbet hafızası
+
+Önceki komut rehberi/ayar yerleşimi planını kullanıcı onayladı; `d4ffb16`
+commit'i kaydedildi, push yok. Bu yeni uygulama adımı manuel kabul bekler;
+henüz commit edilmedi. Kalıcı kullanıcı hafızası, wake-word veya uyku eklenmedi.
+
+ConversationMemory, TextChat'in mevcut tek sohbet kilidinde yaşayan RAM
+kaydıdır. Son 12 tur / en çok 16.000 JSON karakteri, her kullanıcı ve yanıt
+metni en çok 2.000 karakter tutulur. Sınırda eski turlar çıkarılır, uzun metin
+kesildi etiketi alır. Semantik özet/model eğitimi/vektör DB ve ek özet API
+isteği yoktur. Bu ilk sürüm sınırlı yakın geçmişi tutar; eski bilginin sonsuza
+kadar hatırlanması veya sağlayıcının kendi bağlam penceresi garanti edilmez.
+
+Yazılı mesaj veya doğrulanmış giriş transkripti ve alınmış yanıt metni saklanır.
+Başarılı/başarısız/kesilmiş/belirsiz sonuç ayrıdır. Araçlardan yalnız isim,
+status ve verified özeti kalır; tool arguments/result.data, PCM, provider
+resume handle, credential deposu veya disk geçmişi tutulmaz. Konuşmada
+kullanıcının yazdığı/söylediği kişisel bilgi RAM metninin parçası olabilir;
+anahtar güncellemesi bu geçmişi yeni anahtara aktarmadan temizler.
+
+Stop, sıradan Disconnect, model/kişisel talimat ve ses/metin setup değişimi
+aynı sohbetin RAM'ini korur. Fresh bağlantı kurulursa geçmiş model rolünde
+etiketli JSON veri olarak `send_client_content(..., turn_complete=False)` ile
+güncel istekten önce bir kez aktarılır. Reused veya resumed oturumda tekrar
+aktarılmaz. Güncel kullanıcı isteği eski komuttan ayrı realtime yolundadır;
+tool call/response mesajı, ID veya handler tekrar oynatılmaz. Güncel not verisi
+halen gerçek araçtan okunur; RAM'deki geçmiş yazma izni veya hedef kanıtı
+olmaz. memory_restored yalnız taşıma/bağlam aktarımı kanıtıdır; gerçek modelin
+anlama/hatırlama başarısı değildir. Sağlayıcı sözleşmesi:
+[Live capabilities](https://ai.google.dev/gemini-api/docs/live-api/capabilities).
+Bağlam tokenları sağlayıcı tüketimine dahildir; ek özet çağrısı yapılmaması
+bağlam aktarımının maliyetsiz olduğu anlamına gelmez.
+
+**New Chat** düğmesi kullanıcı onayından sonra `new_chat` event'ini gönderir.
+Host idle ve hazır olmalı; socket/core kapanışı doğrulanmadan RAM silinmiş
+sayılmaz. Başarıda yalnız konuşma/RAM temizlenir; not, skill, rutin, profil,
+ayar ve anahtar silinmez. Aktif veya unknown UI isteğinde düğme yürütülmez;
+yeni sohbet unresolved işlemi iptal etmez/geri almaz, unknown kilidini açmaz.
+Taşıma onayı kaybolursa UI güvenli unknown durumunda kalır. Düğme sesli
+"unut" komutu değildir; kalıcı kullanıcı hafızası yönetimi sonraki aşamadadır.
+Pencere kapanışı ve API anahtarı güncellemesinde RAM bırakılır. REST hattına
+geçmiş/hafıza eklenmedi. Ek worker/yürütücü veya yeni bağımlılık yoktur.
+
+Doğrulama: gerçek SDK ile sentetik socket, gerçek core/geçici notlar; sınırlar,
+ses transkripti, reused/resumed tekrarsızlığı, fresh fallback, Stop sonrası
+kesilmiş durumun korunması, tek not yazımı ve New Chat/anahtar temizliği
+kontrol edildi. Son kontrol: 787 pytest, 6 Node süiti, 10/10 WebView2 fazı;
+incelenen Python dosyalarında Pyright 0 hata. Gerçek hesap/ücretli API
+kullanılmadı. Native kanıt:
+[hedefli faz](stage5-conversation-memory-native.json) ve
+[tam fazlar](stage5-conversation-memory-full-native.json). Gerçek sağlayıcı
+hatırlama kabulü kullanıcı testinde açık bırakıldı.
+
+Sonraki ayrı uygulama adımı yerel wake-word ve tek seferlik uyku; ardından
+her işten sonra uykuya dönüş, bütünleşik kabul, UI/debloat ve son kapanış gelir.
+
 ## 22 Ekim 2026 — Ana ürün, hafıza ve uyku için güncel kapsam kararı
 
 Son REST ses/Mic Off dilimi kullanıcı tarafından manuel kabul edildi ve

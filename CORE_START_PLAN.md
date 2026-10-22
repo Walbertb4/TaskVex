@@ -1,5 +1,16 @@
 # TaskVex — Mark LVI incelemesi ve core başlangıç planı
 
+## Güncel uygulama dilimi — geçici sohbet hafızası
+
+Komut rehberi/ayar yerleşimi kullanıcı onayıyla d4ffb16 commit'ine alındı;
+push yok. Bu yeni uygulama dilimi manuel kabul bekler. TextChat'in tek
+kilidinde sınırlı RAM geçmişi tutulur; fresh Live socket'e yalnız tarihçe
+verisi aktarılır, eski araçlar çalıştırılmaz. Stop/Disconnect korur; New Chat,
+kapanış ve anahtar güncellemesi temizler. Mevcut core/not otoritesi değişmedi.
+Sınır: 12 tur/16.000 JSON karakteri ve metin başına 2.000 karakter; özet API
+isteği veya kalıcı profil yoktur. commands.md güncellendi. Sıradaki ayrı iş
+yerel wake-word/tek seferlik uyku; tam davranış STAGE5_MODEL.md'dedir.
+
 ## Güncel kapsam kararı — Live ana ürün, hafıza ve uyku
 
 22 Ekim 2026: önceki ses/Mic Off dilimi kullanıcı kabulüyle `ba47710`

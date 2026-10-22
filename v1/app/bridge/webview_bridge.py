@@ -372,11 +372,16 @@ class NativeBridge:
                         raise ContractError("Expected an API key string")
                     if self._catalog_lock.locked():
                         return {"ok": False, "error": "Wait for the Live catalog before changing the key"}
-                    if not self._chat.reset_live():
+                    if not self._chat.reset_live(clear_memory=True):
                         return {"ok": False, "error": "Wait for the active request before changing the key"}
                     self._credentials.write(data)
                     self._live_models = {}
                     return {"ok": True, "completed": True, "saved": True, "configured": True}
+                if name == 'new_chat':
+                    if not self._ready or data is not None or not self._chat.reset_live(clear_memory=True):
+                        return {'ok': False, 'error': 'Wait for the active request before starting a new chat'}
+                    self._push('online', False, 'MODEL OFFLINE')
+                    return {'ok': True, 'completed': True, 'memory_cleared': True}
                 if name == "disconnect":
                     if data is not None or not self._chat.reset_live():
                         return {"ok": False, "error": "Wait for the active request before disconnecting"}

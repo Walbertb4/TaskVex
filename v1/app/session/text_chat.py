@@ -16,6 +16,7 @@ from app.storage.credentials import CredentialError
 from app.session.live_session import PersistentLive
 from app.session.live_input import LiveInput
 from app.session.speech import GeminiSpeech
+from app.session.conversation_memory import ConversationMemory
 
 
 class TextChat:
@@ -32,6 +33,7 @@ class TextChat:
         self._speech_reply: tuple[str, str] | None = None
         self._audio_sink = audio_sink
         self._transcript_sink = transcript_sink
+        self._memory = ConversationMemory()
 
     @property
     def busy(self) -> bool:
@@ -51,17 +53,25 @@ class TextChat:
             if not self._live.close():
                 return False
             self._closed = True
+            self._memory.clear()
             return True
         finally:
             self._lock.release()
 
-    def reset_live(self) -> bool:
-        """Idle oturumu açık Disconnect/model/anahtar değişiminde bırak."""
+    def reset_live(self, *, clear_memory: bool = False) -> bool:
+        """Transport'u bırak; yalnız yeni sohbet/anahtar değişiminde RAM'i temizle.
+
+        Meşgulken ret hiçbir kaydı silmez. Stop/Disconnect/model değişimi aynı
+        sohbeti sürdürür; geçmiş yeni socket'e yalnız bilgi olarak aktarılır.
+        """
         if not self._lock.acquire(blocking=False):
             return False
         try:
             self._speech_reply = None
-            return self._live.close()
+            closed = self._live.close()
+            if closed and clear_memory:
+                self._memory.clear()
+            return closed
         finally:
             self._lock.release()
 
@@ -110,8 +120,10 @@ class TextChat:
             text_output = self._transcript_sink
             text_sink = (lambda role, value, sequence: text_output(request_id, role, value, sequence)) if text_output and request_id else None
             report = self._live.ask(text, model, tools, request_id=request_id, audio_sink=sink, profile=profile,
+                                    context=self._memory.snapshot(),
                                     **({'transcript_sink': text_sink} if text_sink else {}),
                                     **({"audio_input": audio_input} if audio_input is not None else {}))
+            self._memory.remember(report.get('input_text', '') if audio_input is not None else text, report)
             return {**report, "request_id": request_id}
         except Exception:
             return {"ok": False, "unknown": True, "code": "live_session_error",

@@ -58,19 +58,25 @@ conversation. Do not assume `Open Notepad` is supported by the model yet.
 | Request or control | What happens |
 | --- | --- |
 | `Explain what a CPU does.` | Answers a general question; this is not a system measurement or a saved operation. |
+| `For this conversation, my favorite color is purple.` then `What color did I mention?` | Uses recent conversation context, including after a Live session reset. This does not create a permanent user profile. |
+| **New Chat** button | After confirmation, clears the temporary conversation memory and displayed messages. Saved notes and preferences stay. Unavailable during an active/unknown request. |
 | **Microphone Off / On** button | Disables/enables microphone capture. Off does not interrupt Vex's reply. |
 | **Stop Task** button | Requests cancellation of the current response/task. Completed actions remain completed; controls wait for confirmed termination. |
 | **Mute / Unmute** button | Mutes/unmutes voice playback; sound effects are separate. |
 | **Disconnect** button | Releases the model connection/audio resources. |
 | **F11** | Toggles fullscreen in the native desktop app. |
 
-The buttons above are UI controls, not implemented spoken commands. Live keeps
-context while its session survives, but application-owned temporary memory
-across session resets has not been implemented yet.
+The buttons above are UI controls, not implemented spoken commands. Temporary
+memory is held only in RAM: up to 12 recent turns and 16,000 JSON characters,
+with each user/assistant text limited to 2,000 characters. Older turns are
+dropped, not summarized. Stop, Disconnect and model changes preserve it;
+New Chat, application exit or an API-key update clears it. On a fresh Live
+connection, history is supplied as data without replaying old tool calls.
+Reused/resumed sessions do not receive duplicate history. This is not perfect
+recall or a substitute for reading current saved notes. Restart loses it.
 
 ## Planned — not available yet
 
-- Temporary conversation memory across Live session resets.
 - Persistent user facts and editable/forgettable user memory in Personalization.
 - Wake-word selection in Personalization and a working local wake-word detector.
 - One-time sleep and automatic return-to-sleep after an interaction.

@@ -1,5 +1,32 @@
 # UI/backend sözleşmesi
 
+## Güncel: geçici hafıza ve new_chat
+
+Geçici sohbet RAM kaydı TextChat'e aittir; UI localStorage/settings/yedek içine
+aktarılmaz. Live tur raporunda memory_restored:boolean, yeni socket'e sınırlı
+geçmiş verisinin aktarıldığını bildirir. UI bunu "recent conversation restored"
+olarak gösterebilir; tam hatırlama veya tool sonucu doğrulaması değildir.
+Tarihçe yalnız fresh bağlantıda model rolünde JSON ve turn_complete:false
+olarak gider; used/resumed socket'te yinelenmez. Güncel komutlar ayrı kalır.
+Ham PCM/tool payload ve restore için yeni araç çalıştırma yoktur.
+
+`new_chat` yalnız payload'sız hazır host/idle TextChat'te kabul edilir. Başarı:
+`{ok:true, completed:true, memory_cleared:true}`. Etkin sohbet varsa veya
+kapanış doğrulanmazsa ret verilir; meşgulken RAM silinmez. UI önce kullanıcı
+onayı ister, sonra giriş/yeni sohbet kontrollerini sonuçlanana kadar kilitler.
+15 s onay aşımı veya kayıp taşıma unknown olur; geç cevap yeni sohbete yazamaz.
+Başarıda msgs ve stream kaydı temizlenir; notlar/ayarlar/anahtar korunur.
+Unknown komut kilidini yeni sohbet düğmesi kaldıramaz. Eski PCM/transkript
+alıcıları resetLiveAudio ile bırakılır. Mikrofon On tercihi yeni konuşmada
+korunur; temizlik sırasında capture başlatılmaz.
+
+RAM sınırı 12 tur/16.000 JSON karakteri, metin başına 2.000 karakterdir;
+eski tur atılır, otomatik özet API isteği yoktur. Stop/Disconnect/model ve
+profil değişimi yakın geçmişi korur. New Chat, uygulama kapanışı veya API
+anahtarı güncellemesi temizler. Geçmişteki araç sonuçları eski veri olarak
+etiketlenir; yeni notes.update/delete için güncel liste/hedef kontrolü aynıdır.
+REST'e hafıza bağlanmadı. PMem alanı halen kalıcı hafıza motoru değildir.
+
 ## Güncel: REST read_reply ve Microphone Off
 
 `text` başarılı metni/araç raporunu önce döndürür. Native UI bu metni hemen

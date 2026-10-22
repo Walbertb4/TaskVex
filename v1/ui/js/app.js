@@ -237,7 +237,7 @@ function resetLiveAudio(pause = true) {
  * komut tekrar edilmez. Donanım/Disconnect/unknown engeli ayrıca korunur.
  */
 async function listenAutomatically(replyRequest = null, preserveStatus = false) {
-  if (!microphoneEnabled || micBlocked || !nativeInitialized || !isBackendAvailable() || (textBusy && replyRequest !== activeTextRequest) ||
+  if (!microphoneEnabled || micBlocked || !nativeInitialized || !isBackendAvailable() || (textBusy && (!activeTextRequest || replyRequest !== activeTextRequest)) ||
       textOperation.uncertain || liveMic.active ||
       !document.getElementById('liveLatencyTest').checked || !document.getElementById('mSel').value) return;
   if (replyRequest && (!textBusy || replyRequest !== activeTextRequest)) return;
@@ -415,7 +415,7 @@ async function sendText(text = null, audio = null) {
     if (v.length > 20000) { addLog('Message is too long (maximum 20000 characters).', true); return; }
     textBusy = true;
     setNotesChatLock(true);
-    const controls = ['inp', 'send', 'stopTask', 'liveLatencyTest'].map(id => document.getElementById(id)).filter(Boolean);
+    const controls = ['inp', 'send', 'stopTask', 'liveLatencyTest', 'newChat'].map(id => document.getElementById(id)).filter(Boolean);
     controls.forEach(el => { el.disabled = true; });
     const liveStop = document.getElementById('stopTask');
     const originalStopLabel = liveStop?.textContent;
@@ -472,6 +472,7 @@ async function sendText(text = null, audio = null) {
         label.textContent += ' · first text ' + (report.first_text_ms / 1000).toFixed(1) + ' s · ' +
           (report.session_resumed ? 'session resumed' : report.session_reused ? 'session reused' : 'new session');
         if (report.context_reset_reason) label.textContent += ' · context reset: ' + sanitizeError(report.context_reset_reason);
+        if (report.memory_restored) label.textContent += ' · recent conversation restored';
         playbackOnly = true;
         setState('speaking');
         void listenAutomatically(activeTextRequest);
@@ -1124,6 +1125,34 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
+
+  // Yeni sohbet yalnız kesin host onayında ekran/RAM bağlamını temizler;
+  // kayıtlı notlar ve unknown işlem kilidi bu düğmeyle sıfırlanmaz.
+  document.getElementById('newChat')?.addEventListener('click', async () => {
+    if (textBusy || textOperation.uncertain) return;
+    if (!isBackendAvailable()) { addLog('New Chat requires the desktop backend.', true); return; }
+    if (!window.confirm('Start a new chat? Temporary conversation memory will be cleared. Saved notes will stay.')) return;
+    textBusy = true;
+    resetLiveAudio(false);
+    const controls = ['inp', 'send', 'newChat', 'liveLatencyTest'].map(id => document.getElementById(id));
+    controls.forEach(el => { el.disabled = true; });
+    const revision = textOperation.begin(15000);
+    const result = await emit('new_chat');
+    if (!textOperation.isCurrent(revision)) return;
+    if (!result.response || result.response.unknown || result.ok && result.response.completed !== true) {
+      textOperation.markUnknown(); return;
+    }
+    if (result.ok && result.response?.completed === true && result.response.memory_cleared === true) {
+      document.getElementById('msgs').replaceChildren(); streamReset();
+      document.getElementById('textStatus').textContent = 'New chat. Temporary conversation memory cleared; saved notes preserved.';
+      setConnectionStatus('offline', 'NEW CHAT');
+    } else {
+      addLog('New Chat was not confirmed: ' + sanitizeError(result.error || 'memory not cleared'), true);
+    }
+    textOperation.finish(); textBusy = false;
+    controls.forEach(el => { el.disabled = false; });
+    void listenAutomatically(null, true);
+  });
 
   // Disconnect button
   const disc = document.getElementById('disc');

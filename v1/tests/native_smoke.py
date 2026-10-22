@@ -92,11 +92,21 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
             live_state.update(closed=False, stall=False)
             frames = [{"setupComplete": {}}]
             turns = 0
+            remembered_name = None
             class Socket:
                 async def send(self, value):
-                    nonlocal turns
+                    nonlocal turns, remembered_name
                     message = json.loads(value)
                     live_state["sent"].append(message)
+                    if 'client_content' in message:
+                        assert message['client_content']['turnComplete'] is False
+                        for turn in message['client_content']['turns']:
+                            assert turn['role'] == 'model'
+                            for part in turn['parts']:
+                                history = json.loads(part['text'].split('Historical JSON:\n', 1)[1])
+                                if any(row['user'] == 'Native temporary name is Ada' for row in history):
+                                    remembered_name = 'Ada'
+                        return
                     if "setup" in message and live_state["opened"] == 2:
                         assert message["setup"]["sessionResumption"]["handle"] == "NATIVE_SYNTHETIC_RESUME_HANDLE"
                         live_state["resumed"] = True
@@ -131,6 +141,13 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                             frames.append(audio_reply('Native microphone answer'))
                             return
                         text = message["realtime_input"].get("text", "")
+                        if text == 'Native temporary name is Ada':
+                            remembered_name = 'Ada'
+                            frames.append(audio_reply('Native temporary name acknowledged'))
+                            return
+                        if text == 'Native memory ask':
+                            frames.append(audio_reply('Native remembered name: ' + (remembered_name or 'unknown')))
+                            return
                         if text == 'Native profile probe':
                             frames.append(audio_reply('Native profile probe Live'))
                             return
@@ -927,6 +944,32 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 assert api._chat._live._connection.logical_id != old_profile_session
                 assert 'scope_changed' in window.evaluate_js("document.getElementById('textStatus').textContent")
                 outcome['saved_profile_form_shared_rest_live_instruction_and_scope_reset'] = True
+                # Gerçek New Chat düğmesi/bridge; hatırlama yalnız sentetik
+                # sunucunun gerçekten aldığı history verisinden üretilir.
+                js("testMicOff();document.getElementById('inp').value='Native temporary name is Ada';document.getElementById('send').click();return true;")
+                wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
+                preserved_notes = (home / 'notes.json').read_bytes()
+                js("document.getElementById('inp').value='Native Stop';document.getElementById('send').click();return true;")
+                wait_until(lambda: api._chat.busy)
+                assert window.evaluate_js("document.getElementById('newChat').disabled")
+                js("document.getElementById('stopTask').click();return true;")
+                wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
+                js("document.getElementById('inp').value='Native memory ask';document.getElementById('send').click();return true;")
+                wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
+                assert 'Native remembered name: Ada' in window.evaluate_js("document.getElementById('msgs').textContent")
+                assert 'recent conversation restored' in window.evaluate_js("document.getElementById('textStatus').textContent")
+                memory_before = api._chat._memory.snapshot()
+                js("window.confirm=()=>false;document.getElementById('newChat').click();return true;")
+                assert api._chat._memory.snapshot() == memory_before
+                js("window.confirm=()=>true;document.getElementById('newChat').click();return true;")
+                wait_until(lambda: 'New chat. Temporary' in window.evaluate_js("document.getElementById('textStatus').textContent"))
+                assert not api._chat._memory.snapshot()
+                assert window.evaluate_js("document.getElementById('msgs').childElementCount") == 0
+                assert (home / 'notes.json').read_bytes() == preserved_notes
+                js("document.getElementById('inp').value='Native memory ask';document.getElementById('send').click();return true;")
+                wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
+                assert 'Native remembered name: unknown' in window.evaluate_js("document.getElementById('msgs').textContent")
+                outcome['temporary_memory_after_stop_new_chat_confirmation_and_notes_preserved'] = True
                 js("const a=await import('./js/api.js');for(let i=0;i<250;i++)a.addLog('Native bounded entry '+i);return true;")
                 assert window.evaluate_js("document.getElementById('log').childElementCount") == 200
                 outcome['engine_log_bounded_to_200_entries'] = True

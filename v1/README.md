@@ -1,5 +1,13 @@
 # TaskVex v1 development
 
+Current slice: bounded temporary Live conversation memory is owned by
+TextChat, survives Stop/Disconnect and restores data to fresh sessions without
+replaying tool calls. New Chat clears RAM/messages after confirmation while
+preserving notes/settings. Exit/key update also clears it. Limits: 12 turns,
+16,000 JSON characters and 2,000 characters per user/assistant text; oldest
+turns are dropped, with no extra summary API request. REST memory, persistent
+user facts, wake-word and sleep are not added. Manual acceptance is pending.
+
 Current slice: REST text replies can be read by a separate tool-free Gemini
 TTS request after the text is displayed. The existing TextChat lock, Stop
 identity and PCM player are reused; audio failure preserves text/tool results.
