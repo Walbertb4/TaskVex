@@ -7,7 +7,65 @@ handler'ına doğrudan erişmez. İlk ModelTools diliminde bağımlılık eklenm
 
 ## Sıra ve güncel durum
 
-### Güncel: adım 3 — yerel VAD ve yanıt sonu mikrofon devri
+### Güncel: adım 4 — seçilen dil ve temel kişiselleştirme
+
+Kullanıcı kabulü: 22 Ekim 2026 tarihinde dil/kişiselleştirme adımının
+testleri kullanıcı tarafından başarılı bildirildi; adım 4 manuel kabulü tamamlandı.
+
+Adım 3 kullanıcı testinden geçti ve `85648b9` commit'iyle kaydedildi. Yeni
+adım 4 manuel kabulden önce commit edilmez; push yapılmadı.
+
+`app/session/model_instruction.py` tek ortak talimat kaynağıdır. NativeBridge
+her mesaj başında doğrulanmış disk ayarından bağımsız bir profil snapshot'ı
+okur; UI zarfına yeni profil/talimat alanı açılmaz. TextChat bu snapshot'ı
+REST ve Live adaptörlerine taşır. REST metni, Live yazısı, eski ses klibi ve
+canlı mikrofon aynı pLang/pIns tercihlerinden yararlanır. Profil okunamazsa
+model başlatılmaz (`profile_unavailable`); kayıtsız UI değişikliği gönderilmez.
+
+pLang tr/en: Türkçe veya İngilizce yanıt/ses dili seçer. Eksik/eski desteklenmeyen
+dil, mevcut UI varsayılanı Türkçeye düşer. pIns en çok 16.000 karakter kişisel
+talimat taşır; modelin ton/uzunluk/davranış tercihlerini yönlendirir. Prompt
+sıralamasında seçilen dil ve araç/sonuç/Stop kuralları bu tercihten üstündür;
+modelin dil/stile her zaman uyması kodla garanti edilmez.
+Gerçek yetki denetimi prompta bırakılmadı; aynı ModelTools/registry/policy/
+TaskManager hattı ve ilk not aktarımı kapısı korunur. pMem/pSys/pGreet ve diğer
+profil alanları bu dilimde modele gönderilmez; yeni bellek motoru eklenmedi.
+Profilin pLang/pIns alanları sağlayıcıya iletilir; UI bu aktarımı açıklar.
+
+REST retry/fallback aynı değişmez talimatı korur. Live oturum kimliği artık
+etkili ortak talimatın SHA-256 özetini de içerir. Dil veya kişisel talimat
+sonraki turda değiştiyse eski socket/resume/çağrı kapsamı bırakılır ve yeni
+mantıksal bağlam açılır (`scope_changed`); eski mesaj/araç tekrarlanmaz.
+Aynı etkili talimat, yalnız dış boşluk veya bağlanmamış profil alanı değişimi
+bağlantıyı gereksiz sıfırlamaz. Profil kaydı aktif yanıta müdahale etmez;
+sonraki mesajda uygulanır. Stop/Disconnect/kaynak temizliği değiştirilmedi.
+
+Sağlayıcının [Change voice and language açıklaması](https://ai.google.dev/gemini-api/docs/live-api/capabilities#change-voice-and-language)
+kontrol edildi: native audio açık language_code ayarını desteklemiyor, dili
+otomatik seçiyor. Bu nedenle desteklenmeyen SDK alanı eklenmedi. Ortak talimat
+seçilen dilde konuş/yaz ve belirsiz sözde tekrar iste der; bu, gerçek STT
+kilidi veya hatasız dil tanıma garantisi değildir. Gerçek hesap kabulü açık.
+REST ses çıkışı bu adımda eklenmedi; mevcut REST metin sınırı sürüyor.
+
+Kanıt: 762 pytest (20 yeni profil testi), 5 Node süiti, değişen Python/test
+modüllerinde 0 Pyright hatası. İlk hedefli regresyonda eski köprü testinin
+kwargs beklentisi yeni profile alanını içermiyordu; sözleşmeye göre güncellendi.
+Yeni bozuk-dosya testinin ilk koşusunda test dizini oluşmamıştı; fixture
+hazırlandı. Üretim doğrulaması gevşetilmedi; son testler tamamen geçti.
+[Hedefli gerçek WebView2](stage5-profile-native.json) gerçek Save profile formu,
+diske yazma, REST/Live SDK'de aynı talimat, değişen profilde yeni bağlam ve
+resume handle temizliğini doğrular. Sağlayıcı/ses sentetiktir; modelin gerçekten
+istenen dil/stilde cevap verdiğinin kanıtı sayılmaz. Kullanıcı notu, gerçek
+hesap veya ücretli API kullanılmadı.
+
+Tam regresyon: [10/10 hidden WebView2 fazı geçti](stage5-profile-full-native.json);
+ayar/not/kimlik deposu/import/export/kurtarma kontrolleri de korundu.
+
+Sonraki ayrı adım durum/log/zaman sınırı yönetimidir. Manuel kabul ve Aşama 5
+kapanışındaki açık koşullar bekleniyor; ses, yeni entegrasyon veya debloat'a
+geçilmedi.
+
+### Önceki: adım 3 — yerel VAD ve yanıt sonu mikrofon devri
 
 Kullanıcı kabulü: 22 Ekim 2026 tarihinde VAD/mikrofon adımı testlerinin
 başarılı olduğu kullanıcı tarafından bildirildi; adım 3 manuel kabulü tamamlandı.

@@ -1,6 +1,32 @@
 # TaskVex — Kullanıcının katılacağı gerçek kullanım kontrolleri
 
-## Güncel: adım 3 — VAD ve mikrofon devri için kısa manuel test
+## Güncel: adım 4 — dil ve temel kişiselleştirme
+
+Kullanıcı kabulü: 22 Ekim 2026 tarihinde dil/kişiselleştirme adımının
+testleri kullanıcı tarafından başarılı bildirildi; adım 4 manuel kabulü tamamlandı.
+
+1. Personalization içinde Response language = Turkish seç; kişisel talimata
+   "Bana Kaptan diye hitap et; kısa cevap ver." yazıp Save profile'a bas.
+   Live'da yazıyla ve sesle "Merhaba, kendini tanıt" de. Türkçe ve tercih ettiğin
+   hitapla yanıt bekle. Live kapalıyken aynı yazılı testi REST'te de dene.
+2. Response language = English ve talimat = "Call me Captain. Use one sentence."
+   kaydet. Sonraki REST ve Live yanıtları İngilizce olmalı. Önceden açık bir
+   Live bağlamı varsa sonraki mesajda scope_changed/yeni oturum beklenir;
+   eski yanıta veya eski araç işlemine tekrar istek gönderilmemeli.
+3. Uygulamayı kapatıp aç; dil ve talimat korunmalı, yeni mesajda uygulanmalı.
+   Sonra tercih ettiğin Türkçe ayarına dön. Save başarısızsa modal kapanmamalı;
+   model kayıtlı disk tercihlerini kullanır.
+4. Canlı yanıt sürerken profil kaydedersen o yanıt kendi eski talimatıyla
+   bitebilir; yeni tercih bir sonraki mesajda uygulanır. Stop/Disconnect ve
+   önceki not koruma davranışı sürmeli.
+
+762 pytest, 5 Node süiti ve 10/10 WebView2 fazı geçti; SDK'ye doğru talimat
+taşınması sentetik sağlayıcıyla doğrulandı. Gerçek hesapla dil/stil kabulünü sen yapacaksın.
+Native ses tanıma dili otomatik kalır; seçilen dil prompt ile yönlendirilir.
+Diğer profil alanlarının modele aktarımı ve REST ses çıkışı bu adımda yoktur.
+Yeni adımın manuel kabulü henüz bekleniyor.
+
+## Önceki: adım 3 — VAD ve mikrofon devri için kısa manuel test
 
 Kullanıcı kabulü: 22 Ekim 2026 tarihinde VAD/mikrofon adımı testlerinin
 başarılı olduğu kullanıcı tarafından bildirildi; adım 3 manuel kabulü tamamlandı.

@@ -46,6 +46,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
     text_started, release_text = Event(), Event()
     rest_stop_started, release_rest_stop = Event(), Event()
     text_requests = []
+    text_payloads = []  # Yalnız geçici test profilinin SDK talimatını denetler.
     live_state: dict = {"opened": 0, "closed": False, "sent": [], "waiting": Event(), "stall": False,
                         "resumed": False}
     if phase == "chat":
@@ -115,6 +116,9 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                             frames.append(audio_reply('Native microphone answer'))
                             return
                         text = message["realtime_input"].get("text", "")
+                        if text == 'Native profile probe':
+                            frames.append(audio_reply('Native profile probe Live'))
+                            return
                         if text == 'Native barge active':
                             frames.append({'toolCall':{'functionCalls':[{'id':'native-barge-note','name':'notes.add',
                                 'args':{'text':'Committed before barge-in'}}]}})
@@ -203,7 +207,11 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 ]})
             text_requests.append(str(request.url))
             body = json.loads(request.content)
+            text_payloads.append(body)
             prompt = body["contents"][0]["parts"][0].get("text", "")
+            if prompt == 'Native profile probe':
+                return httpx.Response(200, json={'candidates': [{'finishReason': 'STOP', 'content': {
+                    'role': 'model', 'parts': [{'text': 'Native profile probe REST'}]}}]})
             if prompt.startswith("Native CRUD "):
                 round_index = (len(body["contents"]) - 1) // 2
                 if round_index == 2:
@@ -707,6 +715,43 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                           "if(supported)await c.setSinkId('');await c.close();return supported;")
                 js("await deviceContext.close();return true;")
                 outcome['audio_device_scan_exact_input_missing_sink_and_persistence'] = True
+                # Gerçek profil formu -> doğrulanmış disk -> REST/Live SDK setup.
+                # Yanıtlar sentetiktir; doğru dili konuştuğu iddia edilmez.
+                js("const p=await import('./js/panels.js');p.openM('mProf');"
+                   "document.getElementById('pLang').value='en';document.getElementById('pIns').value='Native preference probe';"
+                   "document.getElementById('pMem').value='Native unused memory';document.getElementById('btnSaveProf').click();return true;")
+                wait_until(lambda: api._store.read().get('prof', {}).get('pIns') == 'Native preference probe')
+                wait_until(lambda: not window.evaluate_js("document.getElementById('mProf').classList.contains('o')"))
+                js("document.getElementById('liveLatencyTest').checked=false;document.getElementById('inp').value='Native profile probe';"
+                   "document.getElementById('send').click();return true;")
+                wait_until(lambda: 'Native profile probe REST' in window.evaluate_js("document.getElementById('msgs').textContent"))
+                wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
+                rest_instruction = ''.join(p['text'] for p in text_payloads[-1]['systemInstruction']['parts'])
+                assert 'English (en)' in rest_instruction and 'Native preference probe' in rest_instruction
+                assert 'Native unused memory' not in rest_instruction
+                js("document.getElementById('liveLatencyTest').checked=true;document.getElementById('inp').value='Native profile probe';"
+                   "document.getElementById('send').click();return true;")
+                wait_until(lambda: 'Native profile probe Live' in window.evaluate_js("document.getElementById('msgs').textContent"))
+                wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
+                live_instruction = ''.join(p['text'] for p in [m['setup'] for m in live_state['sent'] if 'setup' in m][-1]['systemInstruction']['parts'])
+                assert rest_instruction == live_instruction
+                old_profile_session = api._chat._live._connection.logical_id
+                old_opened = live_state['opened']
+                js("const p=await import('./js/panels.js');p.openM('mProf');"
+                   "document.getElementById('pLang').value='tr';document.getElementById('pIns').value='Native new preference';"
+                   "document.getElementById('btnSaveProf').click();return true;")
+                wait_until(lambda: api._store.read().get('prof', {}).get('pLang') == 'tr')
+                wait_until(lambda: not window.evaluate_js("document.getElementById('mProf').classList.contains('o')"))
+                js("document.getElementById('inp').value='Native profile probe';document.getElementById('send').click();return true;")
+                wait_until(lambda: live_state['opened'] == old_opened + 1)
+                wait_until(lambda: not api._chat.busy and not window.evaluate_js("document.getElementById('send').disabled"))
+                profile_setup = [m['setup'] for m in live_state['sent'] if 'setup' in m][-1]
+                instruction = ''.join(p['text'] for p in profile_setup['systemInstruction']['parts'])
+                assert 'Turkish (tr)' in instruction and 'Native new preference' in instruction
+                assert 'handle' not in profile_setup['sessionResumption']
+                assert api._chat._live._connection.logical_id != old_profile_session
+                assert 'scope_changed' in window.evaluate_js("document.getElementById('textStatus').textContent")
+                outcome['saved_profile_form_shared_rest_live_instruction_and_scope_reset'] = True
                 js("document.getElementById('disc').click();return true;")
                 # Socket, loop/thread temizliğinden önce kapanır. Ara durumu
                 # bitiş sanma; host tüm kaynakları bırakana kadar bekle.

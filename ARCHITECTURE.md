@@ -6,6 +6,13 @@ Kaynak: `JARVIS_AKIS_DIYAGRAMLARI.html` içindeki proje notları ve 16 diyagram.
 
 ## 1. Bugünkü durum ve belgeyi kullanma
 
+En güncel dilim adım 4'tür: kaydedilmiş pLang/pIns aynı ortak model_instruction
+üreticisinden REST ve Live'a gider. Host profil snapshot'ını diskten alır;
+tercihler araç yetkisi vermez. Etkili talimat değişimi sonraki Live mesajında
+eski resume/çağrı kapsamını bırakır ve yeni bağlam açar. Dil tanıma otomatik
+kalır; seçilen yanıt dili promptla yönlendirilir. Diğer profil alanları modele
+aktarılmaz. Adım 3 kullanıcı kabulünü geçti ve 85648b9 ile commit edildi.
+
 En güncel dilim adım 3'tür: yerel konuşma adayı yanıt sırasında daha uzun ve
 kuvvetli olmalıdır; düşük frekans/ofset ve arka plan enerjisi dikkate alınır.
 Başarılı yanıt sonundaki mikrofon/ön tampon artık aynı kaynakla boşta beklemeye

@@ -145,7 +145,7 @@ def test_rest_envelope_preserves_request_identity_and_rejects_malformed_data(bri
     captured = []
     monkeypatch.setattr(bridge._chat, "run", lambda text, model, **kw: captured.append((text, kw)) or {"ok": True})
     assert bridge.event("text", {"text": "Hi", "request_id": "rest-ui"})["ok"]
-    assert captured == [("Hi", {"notes_ready": False, "request_id": "rest-ui"})]
+    assert captured == [("Hi", {"notes_ready": False, "request_id": "rest-ui", "profile": {}})]
     assert not bridge.event("text", {"text": "Hi", "request_id": None})["ok"]
     assert not bridge.event("text", {"text": "Hi", "request_id": "a", "principal": "other"})["ok"]
 

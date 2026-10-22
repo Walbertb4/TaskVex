@@ -38,7 +38,7 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
                           tools: ModelTools | None = None, stop_event: Event | None = None,
                           audio_sink: Callable[[bytes, str], bool] | None = None,
                           transcript_sink: Callable[[str, str, int], bool] | None = None,
-                          audio_input: bytes | LiveInput | None = None) -> dict:
+                          audio_input: bytes | LiveInput | None = None, profile: dict | None = None) -> dict:
     """Bir turu 25 saniyeyle sınırla; yeniden kullanım ve güvenli ölçümleri döndür.
 
     first_event_ms ilk içerik/ses parçasını, first_text_ms ilk transkript/metni
@@ -80,7 +80,8 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
             report.update(code="missing_api_key", error="Save a Gemini key before the Live test.")
             return report
         async with asyncio.timeout(25):
-            async with connection.open(model, key, tools, audio_input='stream' if streaming else audio_input is not None) as session:
+            async with connection.open(model, key, tools, audio_input='stream' if streaming else audio_input is not None,
+                                       profile=profile) as session:
                 report["session_reused"] = connection.reused
                 report["session_resumed"] = connection.resumed
                 report["logical_session_id"] = connection.logical_id

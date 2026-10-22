@@ -74,7 +74,7 @@ class TextChat:
                 **({"accepted": True} if accepted else {"error": "No matching active request"})}
 
     def run_live(self, text: object, model: str, *, notes_ready: bool = False, request_id: str | None = None,
-                 audio_input: bytes | LiveInput | None = None) -> dict:
+                 audio_input: bytes | LiveInput | None = None, profile: dict | None = None) -> dict:
         """Aynı Live oturumuna bir mesaj; REST ile ortak meşgul/kapanış kilidi."""
         if audio_input is not None:
             # UI'ya güvenme: 15 saniye, mono/16 kHz/16-bit; PCM rapora yazılmaz.
@@ -99,7 +99,7 @@ class TextChat:
             sink = (lambda data, mime: output(request_id, data, mime)) if output and request_id else None
             text_output = self._transcript_sink
             text_sink = (lambda role, value, sequence: text_output(request_id, role, value, sequence)) if text_output and request_id else None
-            report = self._live.ask(text, model, tools, request_id=request_id, audio_sink=sink,
+            report = self._live.ask(text, model, tools, request_id=request_id, audio_sink=sink, profile=profile,
                                     **({'transcript_sink': text_sink} if text_sink else {}),
                                     **({"audio_input": audio_input} if audio_input is not None else {}))
             return {**report, "request_id": request_id}
@@ -113,11 +113,13 @@ class TextChat:
         """Uzun sohbet kilidini beklemeden kendi Live kuyruğuna sınırlı teslim yap."""
         return self._live.input(request_id, sequence, data)
 
-    def run(self, text: object, model: str, *, notes_ready: bool = True, request_id: str | None = None) -> dict:
+    def run(self, text: object, model: str, *, notes_ready: bool = True, request_id: str | None = None,
+            profile: dict | None = None) -> dict:
         """Hazır host'tan tek mesaj al; bitiş sonucu veya açık ret döndür.
 
         Katalog/sistem ve aktarımı onaylanan notların CRUD araçları açılır.
-        Uygulama açma, import ve profil talimatları bu dilimde açılmaz.
+        Dil/kişisel talimat host'un kayıt snapshot'ından gelir; araç izni vermez.
+        Uygulama açma ve import bu dilimde açılmaz.
         Beklenmeyen hata araç sonrası oluşabilir; böyle bir sonuçta unknown
         işareti otomatik yeniden gönderme izni verilmesini engeller.
         """
@@ -138,9 +140,12 @@ class TextChat:
             tools = ModelTools(self._core, principal="local-user", session_id=uuid4().hex,
                                allowed_tools=allowed)
             try:
-                client = GeminiText(tools, model=model)
-            except (CredentialError, ContractError):
+                client = GeminiText(tools, model=model, profile=profile)
+            except CredentialError:
                 return {"ok": False, "error": "Gemini key is missing or unavailable. Save it in Settings."}
+            except ContractError:
+                return {"ok": False, "code": "model_config_invalid",
+                        "error": "Gemini key or model profile is missing or invalid. Save it in Settings."}
             with client:
                 # Model kilidi HTTP boyunca tutulur; Stop için yalnız bu kısa
                 # referans kilidi kullanılır. Her tur ayrı istemci/sinyal alır.

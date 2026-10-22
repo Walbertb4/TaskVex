@@ -1,5 +1,30 @@
 # UI/backend sözleşmesi
 
+## Güncel: adım 4 — kaydedilmiş model tercihleri
+
+Yeni public event veya payload alanı yok. save/saved/completed doğrulaması
+aynıdır; NativeBridge text/live_text/live_audio/live_audio_start başlangıcında
+_load_settings ile disk profilinin bağımsız snapshot'ını alır. Profil okunamazsa
+profile_unavailable/completed:true/ok:false döner; model/araç başlatılmaz.
+Bu noktada completed reddedilen isteğin bittiğidir, kayıt veya model başarısı
+değildir. TextChat ve adaptörlerin iç profile keyword'ü public UI alanı değildir.
+
+model_instruction.py yalnız pLang/pIns alanlarını ortak system instruction'a
+çevirir. tr/en sabit eşlemedir; eksik/desteklenmeyen eski değer tr varsayılır.
+pIns ayar şemasındaki 16.000 karakter sınırında kalır. Seçilen yanıt dili ve
+araç/sonuç/iptal kuralları kişisel stil talimatından üstündür. Profil metni
+sonuç/teşhis/loglara eklenmez; SDK'ye gönderilir. Diğer profil alanları gönderilmez.
+REST retry/fallback aynı talimatı kullanır. Live kapsamı talimatın hash'ini
+kapsar; etkili değişiklik sonraki mesajda eski resume/çağrı kapsamını temizler,
+context_reset_reason:scope_changed verir. Aktif yanıtın snapshot'ı değişmez;
+otomatik replay veya ikinci worker yoktur. Önemsiz/bağlanmamış alan değişimi
+mevcut bağlantıyı bozmaz. UI Save profile yalnız kayıt doğrulanınca kapanır.
+
+UI Response language etiketi tanımanın otomatik kaldığını belirtir. Sağlayıcı
+native audio'da language_code desteklemediği için böyle bir alan gönderilmez;
+bu bir STT dili kilidi değildir. Başka profil alanlarının model entegrasyonu,
+REST ses çıkışı veya yeni izin bu adımın parçası değildir.
+
 ## Güncel: adım 3 — yerel aday ve mikrofon devri
 
 Backend event/payload değişmedi. waitForSpeech(callback, replyPlaying=false)

@@ -1,5 +1,13 @@
 # TaskVex v1 development
 
+Latest slice (step 4): saved pLang/pIns preferences build a shared REST/Live
+system instruction. The native host reads a per-request disk snapshot; these
+preferences grant no tool permissions. Effective instruction changes start a
+fresh Live context on the next message and discard the old resume scope.
+Other profile fields are not sent to the model. Native speech recognition
+remains automatic; response language is guided by instruction. REST audio is
+still out of scope. Step 3 was manually accepted and committed as 85648b9.
+
 Latest slice (step 3): reply-time speech candidates require 300 ms and a
 higher energy floor; detection filters DC/low frequencies and adapts to quiet
 background energy. Original PCM is preserved. A waiting microphone and its

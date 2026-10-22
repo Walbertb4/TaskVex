@@ -1,5 +1,11 @@
 # TaskVex — Mark LVI incelemesi ve core başlangıç planı
 
+En güncel adım 4: pLang/pIns ortak REST/Live talimatına bağlandı. Kaydedilmiş
+profil tura özel snapshot'tır; Live'da etkili değişiklik yeni bağlam açar.
+Core/araç yetkileri aynı kalır. Kontrollü test kanıtı STAGE5_MODEL.md'dedir;
+gerçek hesap dil/stil kabulü bekleniyor. Adım 3 kabulünden sonra 85648b9 ile
+commit edildi. Sonraki ayrı adım durum/log/zaman sınırıdır; Aşama 5 kapanmadı.
+
 En güncel adım 3: yerel VAD adayı güçlendirildi; yanıt sonundaki mikrofon ve
 ön tampon kapatılmadan boşta dinlemeye devredilir. Hedefli/otomatik test kanıtı
 docs/STAGE5_MODEL.md'dedir; gerçek donanım kabulü bekleniyor. Adım 2 kullanıcı

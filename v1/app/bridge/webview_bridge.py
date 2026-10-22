@@ -290,6 +290,13 @@ class NativeBridge:
                 model = self._model
                 notes_ready = self._notes_ready
                 live_model = self._live_model
+                try:
+                    # Diskteki geçerli profilin bağımsız kopyası bu tura aittir.
+                    # Sonraki save aktif turun talimat snapshot'ını değiştirmez.
+                    profile = self._load_settings().get('prof', {})
+                except (StoreError, ContractError):
+                    return {'ok': False, 'completed': True, 'code': 'profile_unavailable',
+                            'error': 'Saved profile could not be read. Check settings before sending another message.'}
                 if name != 'text' and live_model not in self._live_models:
                     return {"ok": False, "error": "Load Live models in Settings, then select a conversational Live model."}
             request_id = None
@@ -298,7 +305,7 @@ class NativeBridge:
                         or not isinstance(data['request_id'], str) or not 1 <= len(data['request_id']) <= 128):
                     return {'ok': False, 'error': 'Invalid microphone stream request'}
                 return self._chat.run_live('', live_model, notes_ready=notes_ready,
-                                           request_id=data['request_id'], audio_input=LiveInput())
+                                           request_id=data['request_id'], audio_input=LiveInput(), profile=profile)
             if name == "live_audio":
                 if (type(data) is not dict or set(data) != {"request_id", "mime_type", "data"}
                         or not isinstance(data["request_id"], str) or not 1 <= len(data["request_id"]) <= 128
@@ -310,15 +317,15 @@ class NativeBridge:
                 except (Base64Error, ValueError):
                     return {"ok": False, "error": "Invalid microphone encoding"}
                 return self._chat.run_live("", live_model, notes_ready=notes_ready,
-                                           request_id=data["request_id"], audio_input=audio)
+                                           request_id=data["request_id"], audio_input=audio, profile=profile)
             if isinstance(data, dict):
                 if (set(data) != {"request_id", "text"} or not isinstance(data["request_id"], str)
                         or not 1 <= len(data["request_id"]) <= 128):
                     return {"ok": False, "error": "Invalid chat request envelope"}
                 request_id, data = data["request_id"], data["text"]
             if name == "live_text":
-                return self._chat.run_live(data, live_model, notes_ready=notes_ready, request_id=request_id)
-            return self._chat.run(data, model, notes_ready=notes_ready, request_id=request_id)
+                return self._chat.run_live(data, live_model, notes_ready=notes_ready, request_id=request_id, profile=profile)
+            return self._chat.run(data, model, notes_ready=notes_ready, request_id=request_id, profile=profile)
         with self._lock:
             try:
                 if name in {"notes_init", "note_add", "note_done", "note_del", "notes_replace"}:
