@@ -1,6 +1,28 @@
 # TaskVex — Kullanıcının katılacağı gerçek kullanım kontrolleri
 
-## Güncel: adım 2 — anlık transkript gösterimi
+## Güncel: adım 3 — VAD ve mikrofon devri için kısa manuel test
+
+Kullanıcı kabulü: 22 Ekim 2026 tarihinde VAD/mikrofon adımı testlerinin
+başarılı olduğu kullanıcı tarafından bildirildi; adım 3 manuel kabulü tamamlandı.
+
+1. Önce kulaklıkla Live modeli yükle. Uzun bir açıklama iste; klavye/fare
+   gibi kısa tıklar yanıtı kesmemeli. Normal sesle "Vazgeçtim, sadece merhaba de"
+   diye araya gir. Eski ses kesilmeli, metni korunmalı, yeni söz ayrı görünmeli.
+2. Yanıtın bittiği anda konuşmaya başla; mikrofon düğmesine basmadan ikinci
+   yanıt gelmeli ve ilk heceler kaybolmamalı. Bunu birkaç kez dene.
+3. Aynı testi normal kullandığın hoparlör sesinde yap. Vex kendi sesiyle
+   kendini kesiyorsa veya normal konuşman kaçıyorsa kulaklık/hoparlör farkını
+   bildir. Enerji kapısı kesin bir yankı/konuşma ayırıcı değildir.
+4. Yeni konuşma yakalanırken Stop/Pause/Disconnect dene. Bekleyen söz sonradan
+   gönderilmemeli; Resume ile yeni konuşma açılabilmeli. Tamamlanmış bir geçici
+   not değişmeden kalmalı; bilinmeyen araç sonucu yeni komut açmamalı.
+
+742 pytest, 5 Node süiti ve 10/10 sentetik WebView2 fazı geçti.
+Gerçek hesap/donanım bu geliştirme sırasında kullanılmadı. Aktif Stop bağlamı
+sıfırlayabilir; bu adım aynı socket üzerinde tam çift yönlü interruption değildir.
+Dil ve kişiselleştirme sonraki ayrı adımdır. Manuel kabul henüz bekleniyor.
+
+## Önceki: adım 2 — anlık transkript gösterimi
 
 Kullanıcı kabulü: 22 Ekim 2026 tarihinde kullanıcı anlık transkript
 testlerinin başarılı olduğunu bildirdi; adım 2 manuel kabulü tamamlandı.

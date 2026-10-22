@@ -1,5 +1,12 @@
 # TaskVex — Mark LVI incelemesi ve core başlangıç planı
 
+En güncel adım 3: yerel VAD adayı güçlendirildi; yanıt sonundaki mikrofon ve
+ön tampon kapatılmadan boşta dinlemeye devredilir. Hedefli/otomatik test kanıtı
+docs/STAGE5_MODEL.md'dedir; gerçek donanım kabulü bekleniyor. Adım 2 kullanıcı
+onayından sonra 3daf152 ile commit edildi. Bu yeni adım onaysız commit edilmez.
+Sonraki ayrı adım 4 dil ve temel kişiselleştirmedir. Aşağıdaki kayıtlar tarihçedir.
+
+
 Güncel düzeltme sırası: kullanıcı not şüphesini açıkladı, adım 1 ertelendi.
 Adım 2 Live anlık kullanıcı/model transkripti ve kesilen metnin korunması
 uygulandı. Kontrollü kanıt docs/STAGE5_MODEL.md'dedir; fiziksel kabul açık.

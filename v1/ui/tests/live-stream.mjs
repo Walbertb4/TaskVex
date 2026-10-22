@@ -24,15 +24,41 @@ processor.port.onmessage({data:'listen'});
 for(let i=0;i<600;i++) processor.process([[new Float32Array(1600)]]);
 assert.equal(packets.length,0); // Bir dakika sessizlik: API veya ana thread paketi yok.
 processor.process([[new Float32Array(1600).fill(.001)]]);assert.equal(packets.length,0);
-processor.process([[new Float32Array(1600).fill(.1)]]);assert.equal(packets.length,0);
-processor.process([[new Float32Array(1600).fill(.1)]]);
+const tone = level => Float32Array.from({length:1600},(_,i)=> i%2 ? -level : level);
+processor.process([[tone(.1)]]);assert.equal(packets.length,0);
+processor.process([[tone(.1)]]);
 assert.equal(packets.length,1);assert.equal(packets[0].speech.length,5);
 assert.equal(new DataView(packets[0].speech.at(-1)).getInt16(0,true),3276);
+// Sabit mikrofon ofseti ve tek darbe yanıtı kesmemeli. Barge-in eşiği
+// boşta algısından ayrıdır; 200 ms değil 300 ms kesintisiz aday gerekir.
+packets.length=0;processor.port.onmessage({data:'barge'});
+for(let i=0;i<20;i++)processor.process([[new Float32Array(1600).fill(.1)]]);
+assert.equal(packets.length,0);
+processor.process([[tone(.1)]]);processor.process([[new Float32Array(1600)]]);
+assert.equal(packets.length,0);
+processor.process([[tone(.1)]]);processor.process([[tone(.1)]]);
+assert.equal(packets.length,0);
+processor.process([[tone(.1)]]);
+assert.equal(packets.length,1);assert.equal(packets[0].speech.length,5);
+// Yanıt sonu modu değişirken yakalanmış ilk 100 ms ve ön tampon silinmez.
+packets.length=0;processor.port.onmessage({data:'barge'});
+processor.process([[tone(.02)]]);assert.equal(packets.length,0);
+processor.process([[tone(.1)]]);assert.equal(packets.length,0);
+processor.port.onmessage({data:{replyPlaying:false}});
+processor.process([[tone(.1)]]);
+assert.equal(packets.length,1);assert.equal(packets[0].speech.length,3);
+// Düşük arka plan enerjisine uyum, bu zeminin üç katından zayıf adayları eler.
+packets.length=0;processor.port.onmessage({data:'listen'});
+for(let i=0;i<40;i++)processor.process([[tone(.008)]]);
+for(let i=0;i<5;i++)processor.process([[tone(.018)]]);
+assert.equal(packets.length,0);
+processor.process([[tone(.1)]]);processor.process([[tone(.1)]]);
+assert.equal(packets.length,1);
 
-let permission, node, context, track;
+let permission, node, context, track, command;
 const listeners = {};
 Object.defineProperty(globalThis,'navigator',{value:{mediaDevices:{
-  async getUserMedia(options){assert.equal(options.audio.deviceId.exact,'12345');return permission || {getTracks:()=>[track]};},
+  async getUserMedia(options){assert.equal(options.audio.deviceId.exact,'12345');assert.equal(options.audio.autoGainControl,false);return permission || {getTracks:()=>[track]};},
   addEventListener(){},
 }},configurable:true});
 globalThis.window={addEventListener(name,fn){listeners[name]=fn;}};
@@ -42,7 +68,7 @@ globalThis.AudioContext=class {
   createMediaStreamSource(){return {connect(){},disconnect(){}};}
 };
 globalThis.AudioWorkletNode=class {
-  constructor(){node=this;this.port={postMessage(){}};}connect(){}disconnect(){this.closed=true;}
+  constructor(){node=this;this.port={postMessage(value){command=value;}};}connect(){}disconnect(){this.closed=true;}
 };
 const url=new URL('../js/live_mic.js',import.meta.url);
 const source=fs.readFileSync(url,'utf8').replace('import.meta.url',JSON.stringify(url.href));
@@ -60,10 +86,13 @@ listeners.pagehide();assert.ok(track.closed && context.closed && node.closed);as
 track={stop(){this.closed=true;}};
 await liveMic.prepareStream(()=>assert.fail(),'12345');
 let speech=0;sent=[];
-assert.ok(liveMic.waitForSpeech(()=>{speech++;}));
+assert.ok(liveMic.waitForSpeech(()=>{speech++;}, true));
+assert.equal(command,'barge');
 assert.ok(liveMic.waitingForSpeech);
+assert.ok(liveMic.continueListening());assert.deepEqual(command,{replyPlaying:false});
 node.port.onmessage({data:{speech:[new ArrayBuffer(3200),new ArrayBuffer(3200)]}});
 assert.equal(speech,1);assert.ok(!liveMic.waitingForSpeech);assert.equal(sent.length,0);
+assert.equal(liveMic.continueListening(),false); // Yakalanmış ses yeniden kurulamaz.
 for(let i=0;i<18;i++)node.port.onmessage({data:new ArrayBuffer(3200)});
 liveMic.activateStream(async data=>{sent.push(data);return true;},()=>assert.fail());
 node.port.onmessage({data:new ArrayBuffer(3200)});
@@ -81,4 +110,4 @@ permission=new Promise(resolve=>{grant=resolve;});
 const pending=liveMic.prepareStream(()=>assert.fail(),'12345');liveMic.cancel();
 const lateTrack={stop(){this.closed=true;}};
 grant({getTracks:()=>[lateTrack]});assert.equal(await pending,false);assert.ok(lateTrack.closed);
-console.log('PASS streaming PCM, setup gate, bounded queue, Stop/pagehide and late permission');
+console.log('PASS filtered/adaptive candidates, barge-in duration, preserved listener, streaming bounds and Stop');

@@ -1,5 +1,18 @@
 # UI/backend sözleşmesi
 
+## Güncel: adım 3 — yerel aday ve mikrofon devri
+
+Backend event/payload değişmedi. waitForSpeech(callback, replyPlaying=false)
+boşta 200 ms/0.015 veya yanıt sırasında 300 ms/0.025 taban filtreli RMS ister;
+aday olmayan arka planın üç katı daha yüksekse o eşik geçerlidir. Orijinal PCM
+ve 500 ms ön tampon değişmez. autoGainControl:false cihaz tercihidir.
+continueListening() yalnız henüz tetiklenmemiş beklemeyi aynı track/tamponla
+boşta moda alır; yakalanmış/aktif akışı sıfırlamaz. app.js hedef kimliğini ve
+modu son await'ten sonra aynı senkron blokta bırakır. Ses hatası/Stop/unknown/
+kapsam değişiminde bu devam uygulanmaz; kaynak kapanır. Yeni araç/yürütücü yok.
+Barge-in hâlâ sıralı Stop ve gerçek bitişi bekler; bağlam sıfırlanabilir.
+Bu enerji kapısı fiziksel yankı veya konuşma sınıflandırıcısı garantisi vermez.
+
 ## Güncel: istek kimlikli anlık Live transkript — adım 2
 
 Yeni izinli bildirim: window.vex.liveTranscript({request_id,role,sequence,text});

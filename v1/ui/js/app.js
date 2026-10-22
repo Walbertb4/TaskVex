@@ -254,20 +254,23 @@ async function listenAutomatically(replyRequest = null) {
     queryDevices();
     liveMic.waitForSpeech(() => {
       if (revision !== micRevision || !autoListening) return;
-      if (replyRequest) {
-        if (activeTextRequest !== replyRequest || !textBusy || pendingBargeIn) return;
+      // Yanıt bittiyse aynı dinleyici artık boşta çalışır; closure içindeki
+      // eski request_id yeni konuşmayı yanlışlıkla engellememeli.
+      const target = replyMicRequest;
+      if (target) {
+        if (activeTextRequest !== target || !textBusy || pendingBargeIn) return;
         // Yeni ses yalnız RAM'de bekler. Eski turun iptal kabulü, gerçek
         // bitişi değildir; araç sonucu belirsizse ikinci komut gönderilmez.
-        pendingBargeIn = {requestId:replyRequest, revision, connection:connectionRevision};
-        liveTranscript.interrupt(replyRequest);
-        liveAudio.stop(replyRequest);
+        pendingBargeIn = {requestId:target, revision, connection:connectionRevision};
+        liveTranscript.interrupt(target);
+        liveAudio.stop(target);
         document.getElementById('textStatus').textContent = 'Speech detected · stopping previous reply before sending the new turn…';
-        if (!playbackOnly) void emit('stop_task', {request_id:replyRequest});
+        if (!playbackOnly) void emit('stop_task', {request_id:target});
         return;
       }
       if (textBusy) return;
       void sendText('', {stream:true});
-    });
+    }, !!replyRequest);
     paintMic();
     if (!replyRequest) {
       document.getElementById('textStatus').textContent = 'Listening for speech · speak without pressing a button. Audio stays local until speech starts.';
@@ -390,6 +393,7 @@ async function sendText(text = null, audio = null) {
         audio ? {...audio, request_id:activeTextRequest} : { text: v, request_id: activeTextRequest });
     if (!textOperation.isCurrent(revision)) return;
     const report = result.response;
+    let playbackProblem = null;
     if (audio?.stream && replyMicRequest !== activeTextRequest) { liveMic.cancel(); paintMic(); }
     for (const tool of report?.tool_results || []) {
       addLog('Tool ' + sanitizeError(tool.name) + ': ' + sanitizeError(tool.status) +
@@ -425,6 +429,7 @@ async function sendText(text = null, audio = null) {
         playbackOnly = false;
         if (!textOperation.isCurrent(revision)) return;
         const problem = audio.error || report.audio_error;
+        playbackProblem = problem;
         label.textContent += problem === 'output_device_unavailable'
           ? ' · Selected speaker unavailable. Choose an available speaker or System default in Audio settings.'
           : problem ? ' · audio unavailable: ' + sanitizeError(problem) : ' · playback ' + audio.status;
@@ -453,26 +458,36 @@ async function sendText(text = null, audio = null) {
     // Native tur ve varsa çalma birlikte bitti; eski Stop yeni isteğe taşınmaz.
     if (liveTest) liveTranscript.finish(activeTextRequest, report,
       report?.stopped || report?.code === 'live_interrupted' ? 'interrupted' : report?.ok ? 'complete' : 'failed');
+    // Not yenilemesi de await içerir. Dinleyiciyi boşta moda geçirmek ve eski
+    // kimliği bırakmak bu beklemeden sonra, arada await olmadan yapılır.
+    if (!liveTest || report?.tool_results?.some(tool => tool.name?.startsWith('notes.'))) await connectNativeNotes();
+    if (!textOperation.isCurrent(revision)) return;
     const handoff = pendingBargeIn;
     const canHandoff = handoff && handoff.requestId === activeTextRequest && handoff.revision === micRevision &&
       handoff.connection === connectionRevision && autoListening && liveMic.active &&
       report?.completed === true && (report.ok === true || report.stopped === true);
-    if (!canHandoff && replyMicRequest === activeTextRequest) cancelMic();
+    const keepListening = !handoff && replyMicRequest === activeTextRequest && autoListening &&
+      report?.ok === true && report.completed === true && !report.audio_error && !playbackProblem &&
+      replyConnectionRevision === connectionRevision && liveMic.continueListening();
+    if (keepListening) replyMicRequest = null;
+    else if (!canHandoff && replyMicRequest === activeTextRequest) cancelMic();
     activeTextRequest = null;
     if (liveStop) { liveStop.disabled = true; liveStop.textContent = originalStopLabel; }
     textOperation.finish();
     // Başarısız model yanıtından önce de not kaydedilmiş olabilir. Setter ile
     // yazmak yerine tek backend otoritesinden oku; outbound mutasyon üretme.
     setNotesChatLock(false);
-    if (!liveTest || report?.tool_results?.some(tool => tool.name?.startsWith('notes.'))) await connectNativeNotes();
     setState('idle');
     controls.forEach(el => { el.disabled = false; });
     textBusy = false;
     if (canHandoff && handoff.revision === micRevision && handoff.connection === connectionRevision && autoListening && liveMic.active) {
       replyMicRequest = pendingBargeIn = null;
       void sendText('', {stream:true});
-    } else if (!report?.ok || report?.audio_error || replyConnectionRevision !== connectionRevision) pauseListening();
-    else void listenAutomatically();
+    } else if (!report?.ok || report?.audio_error || playbackProblem || replyConnectionRevision !== connectionRevision) pauseListening();
+    else if (keepListening) {
+      label.textContent += ' · Listening for speech';
+      setState('listening', true);
+    } else void listenAutomatically();
     return;
   }
   if (typeof window.vex?.onEvent !== 'function') {

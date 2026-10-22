@@ -30,7 +30,7 @@ export const liveMic = {
     const state = current = {stream:null, timer:null, deviceId, onError, queue:[], armed:false};
     try {
       state.stream = await navigator.mediaDevices.getUserMedia({audio:{channelCount:1, echoCancellation:true,
-        noiseSuppression:true, ...(deviceId ? {deviceId:{exact:deviceId}} : {})}, video:false});
+        noiseSuppression:true, autoGainControl:false, ...(deviceId ? {deviceId:{exact:deviceId}} : {})}, video:false});
       if (current !== state) { release(state); return false; }
       state.context = new AudioContext({sampleRate:16000});
       await state.context.resume();
@@ -68,11 +68,18 @@ export const liveMic = {
       current = null; throw new Error('microphone_unavailable');
     }
   },
-  waitForSpeech(onSpeech) {
+  waitForSpeech(onSpeech, replyPlaying = false) {
     const state = current;
     if (!state?.node || state.armed) return false;
     state.waiting = true; state.onSpeech = onSpeech;
-    state.node.port.postMessage('listen');
+    state.node.port.postMessage(replyPlaying ? 'barge' : 'listen');
+    return true;
+  },
+  continueListening() {
+    // Yanıt sonundaki cihaz yeniden açılış boşluğunu önle. Henüz tetiklenmemiş
+    // ön tampon ve yarım aday korunur; yakalanmış bir komut yeniden kurulmaz.
+    if (!this.waitingForSpeech) return false;
+    current.node.port.postMessage({replyPlaying:false});
     return true;
   },
   activateStream(onChunk, onLimit) {

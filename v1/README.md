@@ -1,5 +1,13 @@
 # TaskVex v1 development
 
+Latest slice (step 3): reply-time speech candidates require 300 ms and a
+higher energy floor; detection filters DC/low frequencies and adapts to quiet
+background energy. Original PCM is preserved. A waiting microphone and its
+pre-roll now survive successful reply completion without reopening the device.
+Stop/errors/unknown/scope changes still close resources. This remains sequential
+turn handoff; active Stop can reset context. Physical echo/noise acceptance is
+pending. Transcript step 2 was manually accepted and committed as 3daf152.
+
 Current transcript slice: Live input/output text is pushed before turn completion
 as request-scoped, sequenced snapshots. One bubble per role updates safely;
 interrupted/failed/unknown partial text remains visible, with no final duplicate.

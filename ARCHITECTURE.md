@@ -6,6 +6,13 @@ Kaynak: `JARVIS_AKIS_DIYAGRAMLARI.html` içindeki proje notları ve 16 diyagram.
 
 ## 1. Bugünkü durum ve belgeyi kullanma
 
+En güncel dilim adım 3'tür: yerel konuşma adayı yanıt sırasında daha uzun ve
+kuvvetli olmalıdır; düşük frekans/ofset ve arka plan enerjisi dikkate alınır.
+Başarılı yanıt sonundaki mikrofon/ön tampon artık aynı kaynakla boşta beklemeye
+geçer. Core, backend olayları ve not iş mantığı değişmedi. Sıralı Stop/bitiş/yeni
+tur devri korunur; tam çift yönlü aynı socket protokolü ve fiziksel yankı kabulü
+açık sınırdır. Transkript adım 2 kullanıcı kabulünü geçti (`3daf152`).
+
 Son UI/model dilimi: Live giriş/çıkış transkripti artık tur sonunu beklemez;
 tek Live sahibi kimlik/sıra taşıyan metin snapshot'larını UI'a iletir. Her rol
 tek balonda güncellenir, kesilen metin korunur, eski tur yeni mesaja yazamaz.

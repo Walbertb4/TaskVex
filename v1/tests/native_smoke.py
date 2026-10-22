@@ -570,6 +570,10 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 wait_until(lambda: window.evaluate_js("testMicDestinations.length>=2"))
                 wait_until(lambda: 'Listening for speech' in window.evaluate_js("document.getElementById('textStatus').textContent"))
                 assert window.evaluate_js("testMicDestinations[0].stream.getTracks().every(t=>t.readyState==='ended')")
+                # İlk konuşma kaynağı ve yanıt dinleyicisi dışında üçüncü bir
+                # mikrofon açılmamalı; yanıt sonunda aynı track canlı kalır.
+                assert window.evaluate_js("testMicDestinations.length===2 && testMicDestinations[1].stream.getTracks().every(t=>t.readyState==='live')")
+                outcome['reply_end_preserved_waiting_microphone_without_reopen'] = True
                 js("testMicOsc.connect(testMicDestinations.at(-1));return true;")
                 wait_until(lambda: window.evaluate_js("document.getElementById('msgs').textContent.split('Native microphone answer').length===3"))
                 wait_until(lambda: 'Listening for speech' in window.evaluate_js("document.getElementById('textStatus').textContent"))
@@ -597,6 +601,13 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                         assert 'Native barge active reply' in window.evaluate_js("document.getElementById('msgs').textContent")
                         assert js("return document.querySelector('[data-request-id=' + JSON.stringify(" + json.dumps(old_reply_id) + ") + '].j').dataset.state;") == 'live'
                         outcome['live_transcript_visible_before_turn_completion'] = True
+                    # Kısa bir 100 ms darbe eski yanıtı kesmemeli veya yeni bir
+                    # konuşma başlatmamalı; ardından gerçek süreli aday denenir.
+                    js("bargeOsc.connect(bargeDestinations.at(-1));await new Promise(r=>setTimeout(r,100));"
+                       "bargeOsc.disconnect();await new Promise(r=>setTimeout(r,200));return true;")
+                    assert window.evaluate_js("document.getElementById('send').disabled")
+                    assert window.evaluate_js("document.getElementById('msgs').textContent.split('Native microphone answer').length") == previous_answers
+                    assert js("return document.querySelector('[data-request-id=' + JSON.stringify(" + json.dumps(old_reply_id) + ") + '].j').dataset.state;") != 'interrupted'
                     js("bargeOsc.connect(bargeDestinations.at(-1));return true;")
                     wait_until(lambda: window.evaluate_js("document.getElementById('msgs').textContent.split('Native microphone answer').length") > previous_answers)
                     wait_until(lambda: 'Listening for speech' in window.evaluate_js("document.getElementById('textStatus').textContent"))
@@ -608,6 +619,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                     js("document.getElementById('micB').click();bargeOsc.stop();await bargeContext.close();return true;")
                     assert window.evaluate_js("bargeDestinations.every(d=>d.stream.getTracks().every(t=>t.readyState==='ended'))")
                 outcome['barge_in_active_preserved_commit_and_playback_handoff'] = True
+                outcome['short_noise_did_not_interrupt_active_or_playback_reply'] = True
                 outcome['live_transcript_interrupted_text_preserved_without_duplicate'] = True
                 js("window.bargeContext=new AudioContext();window.bargeOsc=bargeContext.createOscillator();window.bargeDestinations=[];"
                    "bargeOsc.start();await bargeContext.resume();window.newBargeTurns=0;window.bargeOriginalEvent=window.pywebview.api.event;"

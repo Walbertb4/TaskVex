@@ -7,7 +7,53 @@ handler'ına doğrudan erişmez. İlk ModelTools diliminde bağımlılık eklenm
 
 ## Sıra ve güncel durum
 
-### Güncel: adım 2 — anlık kullanıcı/model transkriptleri
+### Güncel: adım 3 — yerel VAD ve yanıt sonu mikrofon devri
+
+Kullanıcı kabulü: 22 Ekim 2026 tarihinde VAD/mikrofon adımı testlerinin
+başarılı olduğu kullanıcı tarafından bildirildi; adım 3 manuel kabulü tamamlandı.
+
+Adım 2 anlık transkriptleri kullanıcı tarafından kabul edildi ve `3daf152`
+commit'iyle kaydedildi. AGENTS.md uyarınca bu yeni adım manuel kabulden önce
+commit edilmez; push yapılmadı.
+
+İki somut sorun düzeltildi. Aynı 200 ms enerji eşiği hem boşta başlangıç hem
+çalan yanıtı kesme için kullanılıyordu. Artık boşta 200 ms/0.015, yanıt sırasında
+300 ms/0.025 taban RMS gerekir. DC/düşük frekans filtresi yalnız algı enerjisine
+uygulanır; sağlayıcıya giden PCM değiştirilmez. Eşik, aday olmayan arka planın
+hareketli ortalamasının üç katından düşük olamaz. 500 ms ön tampon korunur.
+Browser'a echoCancellation/noiseSuppression açık, autoGainControl kapalı istenir;
+cihazın bu tercihleri gerçekten uyguladığı fiziksel testle belirlenir.
+
+Başarılı yanıt bitince bekleyen mikrofon artık kapatılıp yeniden açılmaz.
+Aynı track, ön tampon ve yarım konuşma adayı boşta dinlemeye devrolur. Callback
+eski closure kimliği yerine güncel dinleme hedefini kullanır. Not yenilemesi
+beklenirken eski kimlik korunur; son kimlik/mod/kilit geçişi await içermeden
+birlikte yapılır. Yakalanmış yeni ses yeniden kurulmaz. Stop/Pause/Disconnect,
+model/anahtar değişimi, unknown ve ses hatasında bu koruma uygulanmaz;
+kaynak kapatma ve belirsizlik kilidi sürer.
+
+Bu değişiklik gerçek konuşma/yankı sınıflandırıcısı değildir. Uzun ve yeterince
+yüksek bir gürültü hâlâ aday olabilir; kısık ses donanıma göre kaçabilir. Barge-in
+mevcut Stop → gerçek sonuç → yeni tur sırasıdır; aktif Stop hâlâ bağlamı
+sıfırlayabilir. Aynı socket'te tam çift yönlü interruption eklenmedi. Eski turun
+kapanışında 3 saniyelik tampon taşarsa söz sessizce kırpılıp yürütülmez.
+Dil/base instruction adım 4'tür; not incelemesi kullanıcının isteğiyle ertelidir.
+
+Kontrollü kanıt: 742 pytest, 5 Node süiti, native betiğinde 0 Pyright hatası.
+Node, sabit ofseti, kısa darbeyi, 200/300 ms ayrımını, arka plan uyumunu,
+mod değişiminde ön tamponu ve yakalanmış sesi tekrar kurmama kuralını doğrular.
+[Hedefli gerçek WebView2](stage5-vad-native.json), 100 ms darbenin hem aktif
+hem yalnız çalan yanıtı kesmediğini; aynı mikrofonla yanıt sonu devamı,
+ikinci otomatik konuşma, gerçek kesme, tek kalıcı not, Disconnect/unknown ve
+REST/Live Stop regresyonlarını doğruladı. Ses/sağlayıcı sentetiktir; gerçek
+hesap, ücretli API veya kullanıcı notları kullanılmadı. Fiziksel kabul açık.
+Sağlayıcının [VAD sözleşmesi](https://ai.google.dev/gemini-api/docs/live-api/capabilities)
+tekrar kontrol edildi; sunucunun 700 ms konuşma sonu ayarı değiştirilmedi.
+Tam regresyon: [10/10 hidden WebView2 fazı geçti](stage5-vad-full-native.json);
+ayar/not/kimlik deposu/import/export/kurtarma kontrolleri de korundu.
+Sonraki ayrı adım seçilen dil ve temel kişiselleştirmedir; Aşama 5 kapanmadı.
+
+### Önceki: adım 2 — anlık kullanıcı/model transkriptleri
 
 Kullanıcı kabulü: 22 Ekim 2026 tarihinde kullanıcı anlık transkript
 testlerinin başarılı olduğunu bildirdi; adım 2 manuel kabulü tamamlandı.

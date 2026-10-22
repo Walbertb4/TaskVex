@@ -6,8 +6,16 @@ class MicrophonePCM extends AudioWorkletProcessor {
   constructor() {
     super(); this.samples = new Int16Array(1600); this.offset = 0; this.packets = 0; this.active = false;
     this.port.onmessage = event => {
+      // Yanıt bitince aynı mikrofon/ön tampon kalır; yalnız aday eşiği değişir.
+      if (typeof event?.data?.replyPlaying === 'boolean') {
+        this.replyPlaying = event.data.replyPlaying;
+        return;
+      }
       this.active = true; this.offset = this.packets = this.energy = this.voiced = 0;
-      this.waiting = event?.data === 'listen'; this.prefix = []; this.limited = false;
+      this.waiting = event?.data === 'listen' || event?.data === 'barge';
+      this.replyPlaying = event?.data === 'barge';
+      this.previous = this.filtered = this.noise = 0;
+      this.prefix = []; this.limited = false;
     };
   }
   process(inputs) {
@@ -21,19 +29,29 @@ class MicrophonePCM extends AudioWorkletProcessor {
     }
     for (let i = 0; i < channels[0].length; i++) {
       const sample = Math.max(-1, Math.min(1, channels.reduce((sum, c) => sum + c[i], 0) / channels.length));
-      this.energy += sample * sample;
+      // DC/ofset ve düşük frekanslı uğultu aday algısını tetiklemesin.
+      // Filtre yalnız algı içindir; sağlayıcıya orijinal PCM gönderilir.
+      this.filtered = sample - this.previous + .97 * this.filtered;
+      this.previous = sample;
+      this.energy += this.filtered * this.filtered;
       this.samples[this.offset++] = sample < 0 ? sample * 32768 : sample * 32767;
       if (this.offset === 1600) {
         // Wire biçimi platform endian'ından bağımsız olarak little-endian'dır.
         const bytes = new Uint8Array(3200), view = new DataView(bytes.buffer);
         for (let j = 0; j < 1600; j++) view.setInt16(j * 2, this.samples[j], true);
         if (this.waiting) {
-          // Yalnız yerel konuşma adayı algısı: 200 ms ses + en çok 500 ms
-          // ön tampon. Sessizlik API'ye gitmez; komutu yine sunucu çözümler.
+          // Yanıtı kesmek için daha güçlü 300 ms, boşta 200 ms aday gerekir.
+          // Kısa tık/darbe kesmez; 500 ms ön tampon ilk heceleri saklar.
           this.prefix.push(bytes.buffer);
           if (this.prefix.length > 5) this.prefix.shift();
-          this.voiced = Math.sqrt(this.energy / 1600) >= .015 ? this.voiced + 1 : 0;
-          if (this.voiced >= 2) {
+          const rms = Math.sqrt(this.energy / 1600);
+          const threshold = Math.max(this.replyPlaying ? .025 : .015, this.noise * 3);
+          this.voiced = rms >= threshold ? this.voiced + 1 : 0;
+          // Aday sesi gürültü tabanına katmak konuşmanın kendi eşiğini yükseltir.
+          if (!this.voiced) this.noise = .9 * this.noise + .1 * rms;
+          // shortcut: enerji adayı gerçek konuşma/yankı sınıflandırıcısı değildir;
+          // fiziksel kabul yetersizse ayrı VAD eklemeden önce cihazı kalibre et.
+          if (this.voiced >= (this.replyPlaying ? 3 : 2)) {
             this.waiting = false; this.packets = this.prefix.length;
             this.port.postMessage({speech:this.prefix}, this.prefix);
             this.prefix = [];
