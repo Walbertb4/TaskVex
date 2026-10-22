@@ -1,6 +1,36 @@
 # Aşama 5 — Model, araç çağrıları ve ses
 
-### Güncel uygulama adımı — sınırlı geçici sohbet hafızası
+### Güncel küçük düzeltme — Stop ve kesilme göstergeleri
+
+Geçici hafıza kullanıcı tarafından manuel kabul edildi; `dc79318` ile commit
+edildi, push yok. Bu tur yalnız istenen iki gösterim düzeltmesi uygulanır;
+yerel wake-word/uyku ayrı sonraki uygulama adımıdır. Yeni dilim manuel kabul
+bekler; henüz commit edilmedi.
+
+Header mikrofon ışığı artık fiziksel kaynağın kısa ömrünü değil, hazır ve
+engelsiz Microphone On tercihini gösterir. Stop sırasında eski kayıt/PCM
+atılıp kaynak yeniden hazırlanırken ışık sönmez. Bu değişiklik capture'ın
+kesintisiz sürdüğü iddiası değildir; tooltip gerçek kaynağı ayırır. Off,
+Disconnect, izin/cihaz hatası veya unknown engeli ışığı söndürür. Gerçek giriş,
+Stop/araç iptali ve otomatik yeniden dinleme protokolü değiştirilmedi.
+
+Normal, completed:true ve unknown olmayan Stop/Live interrupted sonunda
+bağlantı rozeti nötr LIVE READY olur. Açık socket/online iddia edilmez;
+sonraki mesaj yeni oturum açabilir. Gerçek ağ/model/izin hatası kırmızı kalır,
+unknown komut kilidi korunur. Eski bağlantıdan gelen Stop sonucu yeni bağlantı
+rozetini ezmez. İptal tanısı ve kesilmiş transkript korunur; başarıya çevrilmez.
+Eşleşen istek kimliği olmayan veya unknown kesme hataları logdan gizlenmez.
+LIVE READY rozetine tıklamak gereksiz reconnect başlatmaz.
+
+Hedefli Node kontrolü normal kesme ile unknown/eski kimlik ayrımını ve nötr
+rozet sınıfını doğrular. Native MutationObserver, Stop/kaynak devri boyunca
+mikrofon on sınıfının sönmediğini izler; hata/Off testleri aynı süitte kalır.
+Son doğrulama: 6 Node süiti, 10/10 tam WebView2 fazı ve son hedefli chat
+fazı geçti; native betikte Pyright 0 hata. Kanıtlar:
+stage5-stop-indicators-full-native.json ve stage5-stop-indicators-native.json.
+Gerçek API/donanım denenmedi.
+
+### Önceki uygulama adımı — sınırlı geçici sohbet hafızası
 
 Önceki komut rehberi/ayar yerleşimi planını kullanıcı onayladı; `d4ffb16`
 commit'i kaydedildi, push yok. Bu yeni uygulama adımı manuel kabul bekler;

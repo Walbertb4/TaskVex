@@ -141,6 +141,9 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                             frames.append(audio_reply('Native microphone answer'))
                             return
                         text = message["realtime_input"].get("text", "")
+                        if text == 'Native server interruption':
+                            frames.append({'serverContent':{'outputTranscription':{'text':'Native interrupted reply'}, 'interrupted':True}})
+                            return
                         if text == 'Native temporary name is Ada':
                             remembered_name = 'Ada'
                             frames.append(audio_reply('Native temporary name acknowledged'))
@@ -696,10 +699,22 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 assert len(live_state['sent']) == sent_after_error  # Eski komut/retry yok.
                 js("document.getElementById('inp').value='Native barge waiting';document.getElementById('send').click();return true;")
                 wait_until(lambda: api._chat.busy and js("const m=await import('./js/live_mic.js');return m.liveMic.waitingForSpeech;"))
+                js("window.stopMicStates=[];window.stopMicObserver=new MutationObserver(()=>stopMicStates.push(document.getElementById('micB').classList.contains('on')));"
+                   "stopMicObserver.observe(document.getElementById('micB'),{attributes:true,attributeFilter:['class']});return true;")
                 js("document.getElementById('stopTask').click();return true;")
                 wait_until(lambda: not api._chat.busy and not window.evaluate_js("document.getElementById('send').disabled"))
                 wait_until(lambda: js("const m=await import('./js/live_mic.js');return m.liveMic.waitingForSpeech;"))
                 assert window.evaluate_js("document.getElementById('micB').getAttribute('aria-pressed')==='true' && window.vex.state==='idle'")
+                assert js("stopMicObserver.disconnect();return !stopMicStates.includes(false);")
+                assert window.evaluate_js("document.getElementById('netP').classList.contains('idle') && !document.getElementById('netP').classList.contains('off')")
+                assert 'LIVE READY' in window.evaluate_js("document.getElementById('netP').textContent")
+                assert js("document.getElementById('netP').click();return document.getElementById('netP').classList.contains('idle');")
+                outcome['stop_microphone_light_stable_and_connection_neutral'] = True
+                js("document.getElementById('inp').value='Native server interruption';document.getElementById('send').click();return true;")
+                wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
+                assert window.evaluate_js("document.getElementById('netP').classList.contains('idle') && !document.getElementById('netP').classList.contains('off')")
+                assert 'Native interrupted reply' in window.evaluate_js("document.getElementById('msgs').textContent")
+                outcome['confirmed_server_interruption_neutral_not_transport_failure'] = True
                 previous_voice_answers = window.evaluate_js("document.getElementById('msgs').textContent.split('Native microphone answer').length")
                 js("persistentMicOsc.connect(persistentMicDestinations.at(-1));return true;")
                 wait_until(lambda: window.evaluate_js("document.getElementById('msgs').textContent.split('Native microphone answer').length") > previous_voice_answers)

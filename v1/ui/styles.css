@@ -1187,6 +1187,10 @@ input[type=color] {
   color: #ffb347;
 }
 
+.net.idle {
+  color: var(--mut);
+}
+
 .ev {
   font: 11px/1.6 var(--mono);
   text-transform: none;

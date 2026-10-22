@@ -1,5 +1,20 @@
 # UI/backend sözleşmesi
 
+## Güncel küçük düzeltme — gösterim
+
+Yeni host event/payload yok. paintMic on sınıfı artık native/Live modeli hazır,
+On seçilmiş ve kaynak/unknown engeli olmayan kullanıcı tercihini gösterir;
+fiziksel track'in Stop sırasında kısa devri ışığı söndürmez. Tooltip kaynak
+hazırlığı ile gerçek capture'ı ayırır. Off/Disconnect/izin/cihaz/unknown engeli
+söndürür. Fiziksel kayıt/Stop/yeniden dinleme protokolü değişmedi.
+
+setConnectionStatus('idle', text) dahili UI durumudur: nötr pill net idle,
+isConnected=false, reconnect timer temizlenir; açık socket iddia edilmez.
+Eşleşen güncel bağlantıda completed:true ve unknown olmayan Stop veya
+live_interrupted bu duruma geçebilir. Genel hatalar kırmızı off kalır.
+Normal interrupted logda transport hatası olmaz; unknown, eski kimlik ve
+başarısız iptal gizlenmez. idle rozet tıklaması reconnect başlatmaz.
+
 ## Güncel: geçici hafıza ve new_chat
 
 Geçici sohbet RAM kaydı TextChat'e aittir; UI localStorage/settings/yedek içine

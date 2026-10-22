@@ -1,5 +1,14 @@
 # TaskVex — Mimari ve geliştirme rehberi
 
+## Güncel küçük düzeltme — Stop göstergeleri
+
+Geçici hafıza kullanıcı kabulüyle dc79318 commit'ine alındı; push yok.
+Bu tur yalnız mikrofon On ışığının kaynak devrinde sabit kalması ve normal
+kesmenin bağlantı hatası yerine nötr LIVE READY gösterilmesi uygulandı.
+Fiziksel capture/Stop protokolü değişmedi; gerçek kaynak/unknown engeli ve
+hatalar korunur. Yeni dilim manuel kabul bekler. Yerel wake-word ve tek
+seferlik uyku sonraki ayrı uygulama adımıdır.
+
 ## Güncel uygulama dilimi — geçici sohbet hafızası
 
 Komut rehberi/ayar yerleşimi kullanıcı onayıyla d4ffb16 commit'ine alındı;

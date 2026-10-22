@@ -1,5 +1,20 @@
 # TaskVex — Kullanıcının katılacağı gerçek kullanım kontrolleri
 
+## Güncel kısa test — Stop göstergeleri
+
+Geçici hafıza testleri kullanıcı tarafından başarılı bildirildi (`dc79318`).
+Bu yeni küçük gösterim düzeltmesi manuel kabul bekler.
+
+1. Live + Microphone On ile uzun yanıt iste; Stop'a bas. Header mikrofon ışığı
+   kısa süreli sönüp yanmamalı; normal bitişte dinleme tekrar hazır olmalı.
+2. Model konuşurken araya gir: önceki yanıt kesilebilir, fakat normal kesme
+   bağlantı rozeti kırmızı hata olmamalı. Stop sonrası nötr LIVE READY normaldir;
+   bir sonraki doğrulanmış yanıtta yine normal son Live yanıt bilgisi görünür.
+3. Microphone Off yap: ışık sönmeli. Disconnect/gerçek izin veya cihaz hatası
+   da ışığı söndürmeli; bu düzeltme gerçek hataları yeşile çevirmemeli.
+
+Wake-word/uyku bu tur eklenmedi; sonraki ayrı uygulama adımıdır.
+
 ## Güncel manuel test — geçici sohbet hafızası
 
 Uygulamayı yeniden aç. Live modeli yüklendikten sonra:

@@ -195,7 +195,11 @@ let micBlocked = false;
 let replyMicRequest = null, pendingBargeIn = null;
 function paintMic() {
   const button = document.getElementById('micB');
-  button.classList.toggle('on', liveMic.active);
+  // Işık hazır On tercihini gösterir; Stop'taki kısa kaynak devri Off değildir.
+  // Gerçek izin/cihaz/unknown engeli ışığı kapatır; tooltip capture'ı ayırır.
+  button.classList.toggle('on', microphoneEnabled && !micBlocked && !textOperation.uncertain &&
+    nativeInitialized && document.getElementById('liveLatencyTest')?.checked === true &&
+    !!document.getElementById('mSel')?.value);
   button.lastChild.textContent = microphoneEnabled ? 'Microphone On' : 'Microphone Off';
   button.setAttribute('aria-pressed', String(microphoneEnabled));
   button.title = textOperation.uncertain ? 'Result unknown. Microphone capture is blocked; check saved actions.'
@@ -207,7 +211,7 @@ function paintMic() {
 function cancelMic(message = 'Recording cancelled. Nothing sent.') {
   micRevision++;
   replyMicRequest = pendingBargeIn = null;
-  const active = liveMic.active || document.getElementById('micB')?.classList.contains('on');
+  const active = liveMic.active;
   liveMic.cancel();
   if (active && !textBusy) {
     setState('idle');
@@ -459,10 +463,11 @@ async function sendText(text = null, audio = null) {
       textOperation.markUnknown();
       return;
     }
-    if (report?.stopped === true && report.completed === true) {
+    if ((report?.stopped === true || liveTest && report?.code === 'live_interrupted') && report.completed === true) {
       liveAudio.close();
       label.textContent = 'Stopped. Completed actions were not undone.';
-      setConnectionStatus('offline', liveTest ? 'LIVE STOPPED · new session on next message' : 'REST STOPPED');
+      if (replyConnectionRevision === connectionRevision)
+        setConnectionStatus('idle', liveTest ? 'LIVE READY · new session on next message' : 'REST READY');
       addLog('Response stopped. Completed actions were not undone.');
     } else if (result.ok && report?.completed === true && typeof report.text === 'string') {
       if (!liveTest) msg('j', report.text);

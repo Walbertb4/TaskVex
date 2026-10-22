@@ -60,8 +60,8 @@ conversation. Do not assume `Open Notepad` is supported by the model yet.
 | `Explain what a CPU does.` | Answers a general question; this is not a system measurement or a saved operation. |
 | `For this conversation, my favorite color is purple.` then `What color did I mention?` | Uses recent conversation context, including after a Live session reset. This does not create a permanent user profile. |
 | **New Chat** button | After confirmation, clears the temporary conversation memory and displayed messages. Saved notes and preferences stay. Unavailable during an active/unknown request. |
-| **Microphone Off / On** button | Disables/enables microphone capture. Off does not interrupt Vex's reply. |
-| **Stop Task** button | Requests cancellation of the current response/task. Completed actions remain completed; controls wait for confirmed termination. |
+| **Microphone Off / On** button | Disables/enables microphone capture. Off does not interrupt Vex's reply. Its light shows the ready, unblocked On preference and stays steady during a normal Stop resource handoff. |
+| **Stop Task** button | Requests cancellation of the current response/task. Completed actions remain completed; controls wait for confirmed termination. A normal confirmed stop shows neutral LIVE READY, not a connection failure. |
 | **Mute / Unmute** button | Mutes/unmutes voice playback; sound effects are separate. |
 | **Disconnect** button | Releases the model connection/audio resources. |
 | **F11** | Toggles fullscreen in the native desktop app. |

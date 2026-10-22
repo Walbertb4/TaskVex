@@ -104,7 +104,9 @@ export async function emit(name, data = null) {
     // Belirsiz/başarısız iptal ve bozuk/taşmış ses kuyruğu gizlenmez.
     const stopped = ['text', 'live_text', 'live_audio', 'live_audio_start', 'read_reply'].includes(name) &&
       typeof data?.request_id === 'string' && response?.request_id === data.request_id &&
-      response?.code === 'stopped' && response.stopped === true && response.completed === true && !response.unknown;
+      (response?.code === 'stopped' && response.stopped === true ||
+       ['live_text', 'live_audio', 'live_audio_start'].includes(name) && response?.code === 'live_interrupted') &&
+      response.completed === true && !response.unknown;
     const closed = name === 'live_audio_feed' && response?.closed === true && response.failed === false &&
       !response.unknown && !response.error;
     if (!stopped && !closed) logBridgeError(name, safeError);
@@ -137,15 +139,15 @@ export function setConnectionStatus(status, text = null) {
     netEl.className = 'pill net wait';
     netEl.textContent = '● ' + (text || 'RECONNECTING');
   } else {
-    // offline
+    // Hazır/idle açık socket iddiası değildir; normal Stop hata sayılmaz.
     isConnected = false;
     isReconnecting = false;
     if (reconnectTimer) {
       clearTimeout(reconnectTimer);
       reconnectTimer = null;
     }
-    netEl.className = 'pill net off';
-    netEl.textContent = '● ' + (text || 'OFFLINE');
+    netEl.className = status === 'idle' ? 'pill net idle' : 'pill net off';
+    netEl.textContent = '● ' + (text || (status === 'idle' ? 'READY' : 'OFFLINE'));
   }
 }
 
@@ -362,7 +364,7 @@ export function initApi(handlers = {}) {
   const netEl = document.getElementById('netP');
   if (netEl) {
     netEl.addEventListener('click', () => {
-      if (!isConnected) {
+      if (!isConnected && !netEl.classList.contains('idle')) {
         if (!isBackendAvailable()) {
           setConnectionStatus('offline');
           logBridgeError('reconnect', new Error('Backend offline'));

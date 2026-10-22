@@ -4,12 +4,13 @@ import fs from 'node:fs';
 
 const log = {children:[],prepend(node){node.owner=this;this.children.unshift(node);},
   get childElementCount(){return this.children.length;},get lastElementChild(){return this.children.at(-1);}};
-globalThis.document = {getElementById:id=>id==='log'?log:null,createElement:()=>({remove(){this.owner.children.splice(this.owner.children.indexOf(this),1);}})};
+const network={};
+globalThis.document = {getElementById:id=>id==='log'?log:id==='netP'?network:null,createElement:()=>({remove(){this.owner.children.splice(this.owner.children.indexOf(this),1);}})};
 const listeners={};
 let response;
 globalThis.window={addEventListener:(name,fn)=>{listeners[name]=fn;},pywebview:{api:{event:async()=>response}}};
 const source=fs.readFileSync(new URL('../js/api.js',import.meta.url),'utf8');
-const {emit,addLog,createPendingOperation}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+const {emit,addLog,createPendingOperation,setConnectionStatus}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
 const request={request_id:'current'};
 response={ok:false,code:'stopped',stopped:true,completed:true,request_id:'current'};
 assert.equal((await emit('live_audio_start',request)).ok,false);
@@ -20,6 +21,14 @@ response={ok:false,closed:true,failed:false};await emit('live_audio_feed',reques
 response={ok:false,closed:true,failed:false,unknown:true};await emit('live_audio_feed',request);assert.equal(log.childElementCount,3);
 response={ok:false,closed:true,failed:true};await emit('live_audio_feed',request);assert.equal(log.childElementCount,4);
 response={ok:false,error:'Real provider error'};await emit('live_text',request);assert.equal(log.childElementCount,5);
+response={ok:false,code:'live_interrupted',completed:true,request_id:'current'};
+await emit('live_audio_start',request);assert.equal(log.childElementCount,5);
+response={...response,unknown:true};await emit('live_audio_start',request);assert.equal(log.childElementCount,6);
+response={...response,unknown:false,request_id:'old'};await emit('live_audio_start',request);assert.equal(log.childElementCount,7);
+setConnectionStatus('online','LAST LIVE TEST');assert.equal(network.className,'pill net');
+setConnectionStatus('idle','LIVE READY');assert.equal(network.className,'pill net idle');
+assert.equal(network.textContent,'● LIVE READY');
+setConnectionStatus('offline','REAL ERROR');assert.equal(network.className,'pill net off');
 addLog('AQ.'+'a'.repeat(40));assert.ok(!log.children[0].textContent.includes('a'.repeat(40)));
 for(let i=0;i<250;i++)addLog('Entry '+i+' <img> '+ 'x'.repeat(3000));
 assert.equal(log.childElementCount,200);assert.ok(log.children[0].textContent.includes('249 <img>'));
