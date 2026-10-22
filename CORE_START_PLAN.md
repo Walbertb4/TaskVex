@@ -1,5 +1,23 @@
 # TaskVex — Mark LVI incelemesi ve core başlangıç planı
 
+## Güncel kapsam kararı — Live ana ürün, hafıza ve uyku
+
+22 Ekim 2026: önceki ses/Mic Off dilimi kullanıcı kabulüyle `ba47710`
+commit'ine alındı; push yok. Ana masaüstü deneyimi yalnız Live olacak;
+REST daha sonra farklı araç/kanal kullanımları için korunacak. Ana UI'daki
+REST test kontrolü hedefli temizliğe alındı; henüz koddan kaldırılmadı.
+
+Güncel yürütme sırası: Aşama 5'e uygulama sahipliğinde sınırlı geçici sohbet
+hafızası, yerel wake-word ile tek seferlik uyku, ardından her işten sonra
+uykuya dönme tercihi ayrı adımlar olarak eklenir. Sonra bütünleşik kabul,
+hedefli UI/debloat ve son regresyon/belge kapanışı gelir. Kalıcı kullanıcı
+bilgisi/çıkarım hafızası Aşama 6 başına, entegrasyonlardan önce planlanır.
+Bu özellikler henüz uygulanmadı. Ayrıntılı davranış ve sınırlar:
+[STAGE5_MODEL.md](docs/STAGE5_MODEL.md), "22 Ekim 2026" kapsam kararı.
+Sonraki uygulama adımı geçici sohbet hafızasıdır. İleriki uygulama adımlarında
+CORE_START_PLAN.md güncel işlem sırası izlenir; aşağıdaki eski hedef aşamalar
+bu yeni kapsamı uygulanmış özellik olarak göstermemelidir.
+
 ## Güncel ilerleme — Aşama 5 REST ses dilimi
 
 Kullanıcı önceki mikrofon tercihi düzeltmesini kabul etti; `f35a13e` commit'i

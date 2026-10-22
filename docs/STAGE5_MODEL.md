@@ -1,5 +1,93 @@
 # Aşama 5 — Model, araç çağrıları ve ses
 
+## 22 Ekim 2026 — Ana ürün, hafıza ve uyku için güncel kapsam kararı
+
+Son REST ses/Mic Off dilimi kullanıcı tarafından manuel kabul edildi ve
+`ba47710` olarak commit edildi; push yapılmadı. Ana masaüstü ürünü Live'dır.
+REST hattı gelecekte farklı araç/kanal adaptörleri için korunacak; ana ürünün
+kullanıcı akışı veya otomatik Live→REST fallback'i olmayacak. Mevcut REST
+test seçeneği bu plan güncellemesinde koddan kaldırılmadı; ana UI'dan ayırma
+hedefli UI temizliği adımına alınmıştır. REST/TTS'ye yeni ürün özelliği ekleme.
+
+### Kullanıcı tercihi — planlanan ayarların yerleşimi
+
+- **Kişiselleştirme:** kullanıcı hafızasını görme/düzeltme/silme ve hafıza
+  tercihleri burada yönetilecek. Wake-word seçimi de burada yer alacak;
+  başlangıç sözcüğü Vex. Farklı sözcük desteği seçilen yerel motorla gerçekten
+  doğrulanmadan her serbest metin çalışır diye sunulmayacak.
+- **Ayarlar:** otomatik uykuya dönüşün kaç saniye sonra gerçekleşeceği burada
+  yönetilecek. Süre kullanıcı konuşurken, Vex yanıt verirken, görev sürerken
+  veya açıklama beklenirken işlemeyecek; uygun boşta durumda başlayacak.
+  Bu süre kendi başına uyku modunu etkinleştirmez: tek seferlik uykudan uyanıp
+  normal konuşmaya dönme ile her işten sonra tekrar uyuma davranışı korunur.
+  Başlangıç değeri/aralığı uygulama adımında belirlenecek.
+
+Bu tur yalnız plan/belge değişikliğidir; yeni kontrol, kalıcı ayar şeması,
+hafıza veya wake-word işlevi eklenmedi. Çalışan yeteneklerin İngilizce özeti
+kök dizindeki [commands.md](../commands.md) içindedir; her yeni komutta aynı
+adımda güncellenmesi AGENTS.md gereğidir.
+
+### Mevcut olan ile henüz yapılmayanın ayrımı
+
+- Geçici sohbet bağlamı kısmen var: aynı Live oturumu yeniden kullanılır.
+  Güvenli idle resumption desteklidir; Stop/Disconnect, kapsam değişimi veya
+  güvenli resume yapılamaması yeni bağlam açabilir. Uygulamanın yönettiği,
+  reset sonrasında da aynı sohbeti hatırlatan sınırlı geçici hafıza henüz yoktur.
+- pLang/pIns ortak model talimatına aktarılır. pMem ve wake hassasiyet alanı
+  ayar olarak saklanabilir; bu, çalışan hafıza çıkarımı veya wake-word motoru
+  olduğu anlamına gelmez. Kalıcı kullanıcı bilgisi çıkarımı uygulanmadı.
+- Microphone On/Off, Stop ve yerel ses aktivitesi mevcut. Yerel wake-word ve
+  aşağıdaki iki uyku davranışı uygulanmadı. idle yalnız görsel durumdur;
+  kullanıcı sesine cevap vermeyi engelleyen uyku modu değildir.
+
+### Aşama 5 kapanmadan eklenecek ayrı adımlar — önerilen yürütme sırası
+
+1. **Uygulama sahipliğinde geçici sohbet hafızası:** son konuşmalar ve sınırlı
+   özet aynı mantıksal sohbet için RAM'de tutulur. Live resetinden sonra yalnız
+   bilgi bağlamı aktarılır; eski kullanıcı komutu/tool call tekrar gönderilmez.
+   Sohbeti temizleme/yeni sohbet hafızayı bırakır. Boyut sınırı ve özetleme
+   açık olmalı; sınırsız geçmiş, tam hatırlama ve yeniden açılışta kalıcılık
+   varsayılmaz. Özetleme ek API isteği gerektirirse maliyeti ayrıca belirtilir.
+2. **Yerel wake-word ve tek seferlik uyku:** uyurken yalnız yerel anahtar
+   sözcük algılayıcı çalışır; sıradan ortam sesi Live'a gönderilmez. Mikrofon
+   Off ise wake-word de çalışmaz. "Uyku moduna geç" yalnız mevcut uykuyu açar;
+   wake-word sonrasında normal sürekli konuşmaya dönülür. Uyku, uygulamayı/
+   TaskManager'ı veya bilgisayarı kapatmaz; tamamlanmış işleri geri almaz.
+   Kullanılan motor, cihaz ölçümü ve Türkçe telaffuz kabulü bu adımda seçilip
+   doğrulanır; yalnız modele "cevap verme" talimatı vermek yeterli değildir.
+3. **Her işten sonra uykuya dönme tercihi:** "bundan sonra uyku modunda kal"
+   tercihi mevcut sohbet boyunca sürer. Wake-word geçici olarak konuşmayı açar;
+   istek/iş gerçek terminal sonucuna ulaştığında tekrar uyur. Modelin ilk
+   turn_complete olayı tek başına çok adımlı görevin bitişi sayılmaz. Açıklama
+   bekleniyorsa konuşma kapanmaz; unknown sonuç güvenli komut kilidini aşmaz.
+   "Uyku modundan kalıcı olarak çık" bu sohbetin tekrar uyuma tercihini
+   kapatır. Buradaki kalıcı çıkış uygulama yeniden açılışına taşınan yeni bir
+   disk ayarı anlamına gelmez. Wake-word + aynı cümledeki istek kaybolmamalı.
+4. **Bütünleşik kabul:** geçici hafıza, iki uyku davranışı, Stop/Disconnect,
+   sessizlik, model/anahtar değişimi, yan etkili araç ve fiziksel ses birlikte
+   kontrol edilir; gerçek sağlayıcı/donanım ile sentetik sonuç ayrı raporlanır.
+5. **Hedefli UI/debloat:** REST test kontrolünü ana masaüstü akışından ayır;
+   kullanıcının bildirdiği görüntü kirliliğini ve ölçülen tekrarları temizle.
+   Sırf satır sayısı için mekanik bölme/iş mantığı silme yapma.
+6. **Son regresyon ve belge kapanışı:** uygulanan kapsam, açık sınırlar ve
+   gerçek kullanıcı kabulüyle Aşama 5'in kapatılıp kapatılamadığı belirtilir.
+
+Her prompt yalnız bir uygulama adımını kapsar. Bu liste plan güncellemesidir;
+bu turda hafıza/wake-word/uyku kodu eklenmedi. Kalan fiziksel/maliyet kabulü
+atlanarak Aşama 5 tamamlandı denmez.
+
+### Aşama 6'nın başına — kalıcı kullanıcı hafızası
+
+Entegrasyonlardan önce küçük, yerel kullanıcı bilgisi dilimi önerilir:
+okul/iş/tercih gibi kullanıcının açıkça söylediği bilgiler kaynağı ve zamanıyla
+saklanır; kişilik çıkarımı kesin gerçek gibi kaydedilmez. Modelin çıkardığı
+aday bilgi ile kullanıcının doğruladığı bilgi ayrılır. Kullanıcı bilgileri
+görebilmeli, düzeltebilmeli ve sildirebilmelidir. Her konuşmanın bütünü otomatik
+profil kaydı olmaz. Bu hafıza notlardan, görev/audit günlüğünden ve L1 locator
+hafızasından ayrıdır; aynı kayıt/policy/TaskManager ilkeleri yeniden kullanılır.
+İlk sürüm için vektör veritabanı, model eğitimi veya yeni bir yürütücü gerekmez.
+Ardından CORE_START_PLAN.md'deki işlem bazlı L0/entegrasyon sırası devam eder.
+
 ### Güncel: adım 6 — REST ses çıkışı ve Mic Off
 
 Önceki mikrofon düzeltmesi kullanıcı kabulünden sonra `f35a13e` ile commit
