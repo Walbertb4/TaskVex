@@ -20,7 +20,8 @@ from app.session.live_input import LiveInput
 class TextChat:
     """Core'u ödünç al; istemciyi her tur sonunda kapat, sırları sonuçlara koyma."""
 
-    def __init__(self, core, *, audio_sink: Callable[[str, bytes, str], bool] | None = None) -> None:
+    def __init__(self, core, *, audio_sink: Callable[[str, bytes, str], bool] | None = None,
+                 transcript_sink: Callable[[str, str, str, int], bool] | None = None) -> None:
         self._core = core
         self._lock = Lock()
         self._closed = False
@@ -28,6 +29,7 @@ class TextChat:
         self._rest_guard = Lock()
         self._rest: tuple[str, GeminiText] | None = None
         self._audio_sink = audio_sink
+        self._transcript_sink = transcript_sink
 
     @property
     def busy(self) -> bool:
@@ -95,7 +97,10 @@ class TextChat:
             # kimliği seçemez. Başlıksız eski CLI denemesi sessiz kalır.
             output = self._audio_sink
             sink = (lambda data, mime: output(request_id, data, mime)) if output and request_id else None
+            text_output = self._transcript_sink
+            text_sink = (lambda role, value, sequence: text_output(request_id, role, value, sequence)) if text_output and request_id else None
             report = self._live.ask(text, model, tools, request_id=request_id, audio_sink=sink,
+                                    **({'transcript_sink': text_sink} if text_sink else {}),
                                     **({"audio_input": audio_input} if audio_input is not None else {}))
             return {**report, "request_id": request_id}
         except Exception:

@@ -1,5 +1,20 @@
 # TaskVex v1 development
 
+Current transcript slice: Live input/output text is pushed before turn completion
+as request-scoped, sequenced snapshots. One bubble per role updates safely;
+interrupted/failed/unknown partial text remains visible, with no final duplicate.
+Final reports provide a fallback. Provider transcript timing is not word-level
+audio synchronization; unsent local microphone buffers have no transcript yet.
+REST and note behavior are unchanged. Real-device acceptance remains open.
+
+Current barge-in slice: local speech detection cuts queued reply audio, asks
+the existing request-scoped Stop when the model is active, waits for the real
+terminal result, then submits buffered speech as a new turn. Unknown results
+block handoff. Stop/Disconnect/scope changes discard pending audio; completed
+tools remain committed. This is sequential turn handoff, not same-socket full
+duplex; active Stop can reset conversation context. Physical echo acceptance
+remains open. No real account or paid API is used by automated tests.
+
 Current automatic listening: after native startup and loading an API Live
 catalog, speak without clicking Mic. A bounded local speech gate holds up to
 500 ms of pre-roll; idle silence does not open provider turns. Replies pause

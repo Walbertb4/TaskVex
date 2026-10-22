@@ -1,5 +1,45 @@
 # TaskVex — Kullanıcının katılacağı gerçek kullanım kontrolleri
 
+## Güncel: adım 2 — anlık transkript gösterimi
+
+Kullanıcı kabulü: 22 Ekim 2026 tarihinde kullanıcı anlık transkript
+testlerinin başarılı olduğunu bildirdi; adım 2 manuel kabulü tamamlandı.
+
+1. Uygulamayı yeniden açıp Live modelini yükle. Konuştuğunda sağlayıcının
+   tanıdığı sözler tek kullanıcı balonunda görünmeli; tekrar tekrar eklenmemeli.
+2. Uzun bir açıklama iste. Vex konuşurken metin aynı yanıt balonunda büyümeli;
+   tur bitince aynı yanıt ikinci kez eklenmemeli.
+3. Vex konuşurken araya gir veya Stop'a bas. O ana kadar görünen eski metin
+   kalmalı ve Interrupted yazmalı; yeni söz farklı kullanıcı/model balonuna
+   gitmeli. Yeni turda eski yanıtın metni belirmemeli.
+4. Yazılı Live mesajında kullanıcı metni tek kez görünmeli. Disconnect veya
+   model değişiminde geç metin eski mesajı yeniden açmamalı.
+
+Metin sağlayıcı transkripti geldiğinde görünür; sesle sözcük düzeyinde tam
+senkron veya henüz gönderilmemiş yerel sesin tanınması vaat edilmez. Barge-in,
+dil ve algılama sorunlarının diğer düzeltmeleri ayrı adımlardır. Gerçek hesap
+bu geliştirme kontrolünde kullanılmadı; sentetik kabul fiziksel test yerine geçmez.
+
+## Güncel: Vex konuşurken araya girme
+
+Otomatik dinleme önceki kullanıcı testinde onaylandı. Yeni adımı kulaklıkla dene:
+
+1. Live modelini yükle, "Bana uzun bir hikâye anlat" de. Vex konuşurken
+   "Vazgeçtim, sadece merhaba de" diye araya gir. Ses kesilmeli, ardından yeni
+   konuşmanın metni ve kısa yanıtı gelmeli. Düğmeye basman gerekmemeli.
+2. Geçici bir not ekletip ardından uzun yanıt iste; konuşarak kes. Önceden
+   tamamlanan not silinmemeli veya ikinci kez eklenmemeli; panelden kontrol et.
+3. Yeni söz algılanırken Stop/Pause/Disconnect kullan. Bekleyen söz daha sonra
+   kendi kendine gönderilmemeli. Resume ile yeni konuşma ayrı başlayabilmeli.
+4. Birkaç kez art arda dene; eski ses yeniden çalmamalı. Sonuç belirsizse UI
+   yeni komut göndermek yerine kilitli kalmalı. Eski turun kapanışı uzarsa ses
+   tamponu atılabilir; bu durumda Resume ile yeniden konuş.
+
+Aktif Stop mantıksal oturumu sıfırlayabilir; bağlam korunmuş varsayma. Bu kabul
+aynı socket üzerinde tam çift yönlü sağlayıcı protokolü testi değildir. Gerçek
+yankı ve gürültü hassasiyeti henüz kalibre edilmedi; sentetik WebView2 testi
+fiziksel hoparlör/mikrofon kabulü yerine geçmez.
+
 ## Güncel: düğmesiz konuşma ve otomatik yeniden dinleme
 
 1. Uygulamayı yeniden aç; Live açıkken Load Live Models ile kataloğu yükle.

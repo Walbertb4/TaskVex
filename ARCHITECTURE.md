@@ -6,6 +6,21 @@ Kaynak: `JARVIS_AKIS_DIYAGRAMLARI.html` içindeki proje notları ve 16 diyagram.
 
 ## 1. Bugünkü durum ve belgeyi kullanma
 
+Son UI/model dilimi: Live giriş/çıkış transkripti artık tur sonunu beklemez;
+tek Live sahibi kimlik/sıra taşıyan metin snapshot'larını UI'a iletir. Her rol
+tek balonda güncellenir, kesilen metin korunur, eski tur yeni mesaja yazamaz.
+Gösterim live_transcript.js'tedir; ses, core ve not iş mantığı değişmedi.
+Kullanıcının açıklamasıyla önceki not şüphesi doğrulanmış hata sayılmadı;
+not incelemesi ertelendi. Bu adım yalnız transkript gösterimidir.
+
+Son adım: kullanıcı otomatik dinlemeyi onayladı. Live yanıtı sırasında yerel
+ses adayı algılandığında oynatma kesilir; eski turun gerçek Stop/bitiş sonucu
+beklenir ve aynı tek model/core hattında yeni konuşmaya geçilir. Belirsiz
+sonuçta veya bağlantı/izin/cihaz hatasında bekleyen ses atılır. Bu, sıralı tur
+devridir; aynı socket'te eşzamanlı çok turlu protokol değildir ve aktif Stop
+mantıksal bağlamı sıfırlayabilir. Yeni backend olayı/worker eklenmedi. Gerçek
+mikrofon/yankı kabulü açık; ayrıntılar STAGE5_MODEL.md'nin başındadır.
+
 Güncel küçük ses dilimi: Live katalog/model hazır olunca yerel otomatik
 dinleme açılır; her konuşmada Mic tıklaması gerekmez. Sessizlik API'ye gitmez;
 yerel sınırlı ön tamponla bulunan ses adayı aynı tek Live/core hattını açar.

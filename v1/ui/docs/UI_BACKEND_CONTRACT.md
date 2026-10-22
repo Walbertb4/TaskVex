@@ -1,6 +1,60 @@
 # UI/backend sözleşmesi
 
-## Güncel: otomatik yerel dinleme ve yanıt sonrası dönüş — 22 Ekim 2026
+## Güncel: istek kimlikli anlık Live transkript — adım 2
+
+Yeni izinli bildirim: window.vex.liveTranscript({request_id,role,sequence,text});
+jarvis alias aynı nesnedir. role u/j; sequence tur içinde artan pozitif tamsayı,
+text birikimli snapshot'tır (delta değildir). Giriş en çok 20.000, çıkış 32.000
+karakterdir. request_id güvenilir host'tan gelir; model yeni hedef seçemez.
+UI boolean teslim onayı verir. Eski/finalize edilmiş istek veya tekrar/sırasız
+paket reddedilir. Backend gösterim hatasını transcript_error ile raporlar,
+araç veya model çağrısını tekrar etmez. Metin normal sohbet dışında dosya/loga
+eklenmez; ses oynatma hattı ve araç yetkileri değişmedi.
+
+live_transcript.js her rol için tek balon tutar; textContent ile snapshot'ı
+yeniler. Geç gelen giriş aynı turun yanıtının önüne konur. Final rapor yedektir,
+ikinci balon üretmez. Stop/barge-in çıkış balonunu dondurur; sonraki eski
+snapshot tüketilip gösterilmez. Kesilme Interrupted, hata Incomplete, belirsizlik
+Result unknown etiketidir; bunlar araç başarı durumu değildir. Scope değişimi
+alıcıyı kapatır. Bilinmeyen sonuç mevcut komut kilidini açmaz.
+
+Sağlayıcı parçaları geldikçe gösterim yapılır; yerel ses tanıma ve ses/metin
+sözcük senkronizasyonu eklenmedi. API'ye henüz gönderilmemiş yerel ses tamponu
+için sahte transkript yoktur. Eski streamMsg(c,t) uyumluluğu korunur; yeni Live
+hattı kimliksiz streamMsg kullanmaz. REST görünümü ve not CRUD değişmedi.
+
+Kanıt: ../../../docs/stage5-transcript-full-native.json — 10/10 hidden native
+faz geçti. 742 pytest, 5 Node süiti ve değişen Python/native dosyalarında 0
+Pyright hatası. Gerçek hesap ve fiziksel ses kabulü açık kalır.
+
+## Önceki: konuşarak araya girme / sıralı tur devri — 22 Ekim 2026
+
+Yanıtın ilk kabul edilen PCM parçasından itibaren mikrofon yerelde konuşma
+adayı bekler. Yeni ses algılanınca liveAudio.stop(old_request_id) kuyruğu
+boşaltır; aktif modele mevcut stop_task gönderilir. Yalnız kalan ses çalıyorsa
+host zaten bitmiştir ve ikinci Stop gerekmez. Yeni ses en çok 3 saniye RAM'de
+tutulur. Host completed ve ok/stopped sonucu kesinleşmeden yeni live_audio_start
+gönderilmez. unknown veya bekleyen araçta giriş atılır, kontroller kilitli kalır.
+
+Bu sıralı Stop → gerçek bitiş → yeni tur uygulamasıdır; aynı socket üzerinde
+eşzamanlı çok turlu giriş/çıkış değildir. Aktif Stop context'i sıfırlayabilir;
+UI normal context_reset_reason bilgisini gösterir. Yeni backend olayı yoktur.
+Mevcut transkript/kimlik/policy/TaskManager/not aktarımı kapıları korunur.
+
+Bekleyen ses eski request_id, micRevision ve connectionRevision ile bağlıdır.
+Stop/Pause/Disconnect, kapsam değişimi, cihaz hatası, taşma ve belirsizlik
+aktarımı geçersiz kılar. Kesilmiş eski PCM aynı aktif istekte teslim alınsa da
+çalınmadan atılır; yeni istek başladıktan sonra eski kimlik normal şekilde
+reddedilir. Eski istek tamamlanırken mikrofon temizliği yeni konuşmanın ön
+tamponunu kapatamaz. Gerçekleşmiş araçlar backend okumasıyla korunur, yinelenmez.
+
+Kontrollü kabul: 737 pytest, 4 Node süiti, 0 Pyright hatası ve 10/10 native faz.
+Kanıt: ../../../docs/stage5-barge-in-full-native.json. Yeni native senaryolar
+aktif/yalnız çalma devri, tamamlanmış notun korunması, Disconnect ile tamponun
+atılması ve belirsiz sonuçta yeni tur açılmamasını doğrular. Gerçek hesap ve
+fiziksel yankı/gürültü kabulü açık kalır.
+
+## Önceki: otomatik yerel dinleme ve yanıt sonrası dönüş — 22 Ekim 2026
 
 Native hazır ve API kataloğundan Live model seçilmişse mikrofon otomatik açılır.
 Kullanıcı her konuşmada Mic'e basmaz; düğme Pause listening / Resume listening

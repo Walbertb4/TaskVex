@@ -1,5 +1,17 @@
 # TaskVex — Mark LVI incelemesi ve core başlangıç planı
 
+Güncel düzeltme sırası: kullanıcı not şüphesini açıkladı, adım 1 ertelendi.
+Adım 2 Live anlık kullanıcı/model transkripti ve kesilen metnin korunması
+uygulandı. Kontrollü kanıt docs/STAGE5_MODEL.md'dedir; fiziksel kabul açık.
+Sonraki ayrı iş önce belirlenen adım 3 VAD/barge-in düzeltmesidir; kişiselleştirme,
+log/süre bakımı, entegre kabul ve debloat henüz bu promptta yapılmadı.
+
+Güncel ses adımı: otomatik dinleme kullanıcı kabulü geçti. Konuşarak yanıtı
+kesme mevcut Stop ve tek Live/core hattıyla sıralı tur devri olarak uygulandı;
+eski sonuç belirsizse yeni ses gönderilmez. Gerçek hesap/yankı kabulü açık.
+Sonraki iş kapanış kabul kontrolleri ve planlı hedefli bakım/debloat kapsamıdır;
+bu promptta debloat veya yeni özellik yapılmadı. Aşama 5 henüz kapanmadı.
+
 Son küçük ses dilimi: her konuşmada Mic tıklaması kaldırıldı. Live model hazır
 olunca yerel otomatik bekleme, konuşmada aynı Live akışı ve yanıt sonrası
 yeniden bekleme vardır. Stop/hata/Disconnect duraklatır; Pause/Resume korunur.

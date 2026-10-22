@@ -7,7 +7,105 @@ handler'ına doğrudan erişmez. İlk ModelTools diliminde bağımlılık eklenm
 
 ## Sıra ve güncel durum
 
-### Güncel: düğmesiz konuşma ve yanıttan sonra otomatik dinleme — 22 Ekim 2026
+### Güncel: adım 2 — anlık kullanıcı/model transkriptleri
+
+Kullanıcı kabulü: 22 Ekim 2026 tarihinde kullanıcı anlık transkript
+testlerinin başarılı olduğunu bildirdi; adım 2 manuel kabulü tamamlandı.
+
+Kullanıcı önceki ekranın araya girilen başka sözler içerdiğini açıkladı;
+"hikâye → not ekleme" sonucu doğrulanmış hata sayılmadı. İsteğiyle adım 1
+not incelemesi ertelendi, not CRUD/niyet/izin mantığı değiştirilmedi.
+
+Live giriş ve çıkış transkriptleri artık tur bitişini beklemeden aynı iki
+mesajda görünür. Mevcut tek Live sahibi backend'den birikimli snapshot yollar:
+host request_id, rol, artan sıra ve metin. live_transcript.js yalnız güncel
+isteği kabul eder, tekrar/sırasız/eski bildirimleri reddeder, textContent ile
+yazar. Giriş transkripti geç gelirse kendi model yanıtının önüne yerleşir.
+Yazılı kullanıcı mesajı tekrar oluşturulmaz; normal bitiş ikinci model balonu
+eklemez. Son rapor, bildirim teslim edilemediyse yedek metin kaynağıdır.
+
+Stop/araya girme o ana kadar görünen model metnini dondurur. Kesilen yanıt
+Interrupted, hata Incomplete, belirsizlik Result unknown ile işaretlenir;
+tamamlanmış araç sonucu ile metin durumu birbirine karıştırılmaz. Başarısız
+backend raporunda da alınmış kısmi metin korunur; başarıya çevrilmez. Geç
+metin eski mesajı büyütemez veya yeni tura yazılamaz. Disconnect/model/anahtar
+değişimi ve belirsizlik aktif transkript alıcısını kapatır. Gösterim hatası
+model/araç retry'ı veya ikinci mutasyon üretmez.
+
+Bu sağlayıcının verdiği metin parçalarını gösterir; yerel STT veya sözcük
+zamanlaması eklenmedi. Henüz API'ye gönderilmemiş barge-in tamponunun metni
+üretilemez; metin ancak sağlayıcının giriş transkripti gelince görünür.
+Ses ve transkript olayları eşzamanlı gelmek zorunda değildir. Resmi Live
+capabilities transkript sözleşmesi tekrar kontrol edildi. Dil/kişiselleştirme,
+VAD/barge-in yeniden tasarımı, log bakımı ve debloat bu adıma dahil edilmedi.
+
+Kontrollü kanıt: 742 pytest geçti; yeni 5 test tur bitmeden teslim, giriş/çıkış
+snapshot kimliği, Stop'ta metin korunması, interrupted olayının metni, bildirim
+hatasında final yedek ve köprü JSON serileştirmesini kapsar. Node transkript
+süiti tek balon, sıra/kimlik sınırı, güvenli metin, kesilme/belirsizlik, yedek
+ve geç giriş sırasını doğrular; diğer 4 Node süiti de geçti. Değişen Python
+dosyaları ve native test betiği Pyright'ta 0 hata verdi.
+[Hedefli gerçek WebView2](stage5-transcript-native.json) tur hâlâ aktifken
+görünen yanıtı ve araya girme sonrası aynı balonda korunan Interrupted metni
+doğruladı. Gerçek hesap/ücretli API/kullanıcı notu kullanılmadı; fiziksel kabul
+açık. Önceki gerçek barge-in kabulü kullanıcının bildirdiği sorunlarla açıktır.
+
+Son tam native kontrol [10/10 faz geçti](stage5-transcript-full-native.json).
+Chat fazında tur bitmeden transkript, kesilen tek balon, barge-in, Disconnect
+tampon iptali ve unknown kilidi; diğer fazlarda ayar/not/import/export/kurtarma
+regresyonu doğrulandı. Toplam 742 pytest, 5 Node süiti ve 0 Pyright hatası;
+son metin sınırı/geç giriş sırası düzeltmeleri ayrıca hedefli testlerden geçti.
+Sonraki ayrı adım, kullanıcının belirlediği adım 3 VAD/barge-in düzeltmesidir.
+
+### Önceki: konuşarak yanıtı kesme / güvenli tur devri — 22 Ekim 2026
+
+Kullanıcı otomatik dinleme testlerini başarılı bildirdi. Bu tek adımda Live
+yanıtının ilk kabul edilen ses parçasından itibaren aynı mikrofon adaptörü
+yerelde konuşma adayı bekler. Kullanıcı konuşunca eski ses kuyruğu hemen
+kesilir; yeni PCM mevcut 500 ms ön tampon ve en çok 3 saniyelik sınırlı RAM
+kuyruğunda bekler. Model hâlâ çalışıyorsa eski request_id ile mevcut Stop
+istenir. Yalnız ses çalması kaldıysa sağlayıcıya gereksiz Stop gönderilmez.
+
+İptal kabulü tur bitişi sayılmaz. Eski host raporu completed:true ve ok:true
+veya stopped:true vermeden yeni live_audio_start başlatılmaz. unknown/pending
+araç sonucu mevcut kilidi kapatır ve yeni ses atılır. Tamamlanan not/araç
+sonuçları korunur, backend'den yenilenir; geri alma, yeniden mutasyon veya
+save geri beslemesi yoktur. Yeni tur da aynı ModelTools/registry/policy/
+TaskManager ve transkript/ilk not aktarımı kapısından geçer.
+
+Bu uygulama mevcut Stop hattıyla **sıralı tur devridir**; ikinci Live sahibi
+veya aynı anda iki model turu açmaz. Sağlayıcının aynı socket üzerinde tam
+çift yönlü interruption protokolü uygulanmış gibi sunulmaz. Aktif Stop Live
+oturumunu sıfırlayabildiğinden yeni tur yeni mantıksal oturum/context açabilir;
+mevcut UI context_reset_reason bilgisini gösterir. Sağlayıcı VAD sözleşmesi
+resmi capabilities belgesinden yeniden kontrol edildi; yeni SDK protokolü eklenmedi.
+
+Mikrofon/callback, eski istek kimliği, bağlantı revizyonu ve dinleme revizyonuna
+bağlıdır. Eski PCM kesmeden sonra yeniden çalınmaz. Stop/Pause/Disconnect,
+anahtar/model değişimi, cihaz hatası veya kuyruk taşması bekleyen sesi geçersiz
+kılar. Eski turun güvenli kapanışı 3 saniyeden uzun sürerse ses kırpılıp
+yürütülmez; dinleme durur ve kullanıcı yeniden konuşmalıdır.
+
+Kontrollü geliştirme hesabı/kullanıcı notu/ücretli API kullanılmadı. İlk native
+denemede test sunucusunun tek PCM paketi üretim boyut sınırını aşıyordu;
+sentetik paket küçültüldü, üretim doğrulaması gevşetilmedi. Hedefli gerçek
+WebView2/sentetik ses kontrolünde aktif yanıt ve kalan ses kesmesi, korunmuş
+tek not yazısı, otomatik yeni tur ve Disconnect ile bekleyen sesin silinmesi
+geçti. Son kanıtlar aşağıdaki kapanış kaydındadır. Gerçek yankı/gürültü ve
+hesap kabulü açık; kulaklıkla manuel test önerilir. Debloat ve diğer özelliklere
+geçilmedi; kullanıcı kabulünden sonra Aşama 5 kapanış kontrolleri ve planlı
+hedefli bakım/debloat ele alınacak.
+
+Kapanış kanıtı: [10/10 gerçek hidden WebView2 fazı geçti](stage5-barge-in-full-native.json).
+Native chat raporu aktif yanıtta korunmuş not, yalnız çalma sırasında yeni tura
+geçiş, geciktirilmiş gerçek iptal sırasında sıfır yeni tur, Disconnect ile
+tamponun silinmesi ve unknown sonucunda sıfır yeni tur/kilitli kontrolleri içerir.
+737 pytest, 4 Node süiti, JS syntax ve native test betiğinde 0 Pyright hatası.
+UI'da üretim değişikliği app.js'teki mevcut koordinasyondadır; backend/core
+iş mantığı veya yeni bağımlılık eklenmedi. Kalan sıra gerçek kullanıcı barge-in
+kabulü, Aşama 5'in açık entegre kabul koşulları ve hedefli bakım/debloat'tır.
+
+### Önceki: düğmesiz konuşma ve yanıttan sonra otomatik dinleme — 22 Ekim 2026
 
 Kullanıcının isteğiyle native Mic artık her konuşmayı başlatma düğmesi değildir.
 Uygulama ve API'den yüklenen Live model hazırsa otomatik yerel dinleme açılır;

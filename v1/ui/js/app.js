@@ -8,6 +8,7 @@ import { uniqueRecordId } from './schema.js';
 import { sfx } from './sfx.js';
 import { liveAudio } from './live_audio.js';
 import { liveMic } from './live_mic.js';
+import { liveTranscript } from './live_transcript.js';
 import {
   initReactor,
   setState,
@@ -197,6 +198,7 @@ let preparingAudio = false, cancelBeforeSend = false;
 let connectionRevision = 0;
 let micRevision = 0;
 let autoListening = true, nativeInitialized = false;
+let replyMicRequest = null, pendingBargeIn = null;
 function paintMic() {
   const button = document.getElementById('micB');
   button.classList.toggle('on', liveMic.active);
@@ -206,6 +208,7 @@ function paintMic() {
 }
 function cancelMic(message = 'Recording cancelled. Nothing sent.') {
   micRevision++;
+  replyMicRequest = pendingBargeIn = null;
   const active = liveMic.active || document.getElementById('micB')?.classList.contains('on');
   liveMic.cancel();
   if (active && !textBusy) {
@@ -220,21 +223,26 @@ function pauseListening(message) {
   if (message && !textBusy) document.getElementById('textStatus').textContent = message;
 }
 function resetLiveAudio(pause = true) {
+  liveTranscript.finish(activeTextRequest, {}, 'interrupted');
   connectionRevision++; if (preparingAudio) cancelBeforeSend = true;
   liveAudio.close();
   if (pause) autoListening = false;
   cancelMic();
 }
 
-/** Hazır Live modelinde yerel bekleme; yalnız konuşma adayı mevcut turu açar.
- * Yanıt bittiğinde çağrılır, hata/Stop/Disconnect sonrasında kendiliğinden
+/** Hazır Live modelinde veya çalan yanıtta yerel konuşma adayı bekler.
+ * Yanıtta yeni ses eski turun gerçek bitişine kadar tamponda kalır.
+ * Hata/Stop/Disconnect sonrasında kendiliğinden
  * tekrar denemez. Eski izin/callback yeni dinlemeyi veya yeni mesajı etkileyemez.
  */
-async function listenAutomatically() {
-  if (!autoListening || !nativeInitialized || !isBackendAvailable() || textBusy || textOperation.uncertain || liveMic.active ||
+async function listenAutomatically(replyRequest = null) {
+  if (!autoListening || !nativeInitialized || !isBackendAvailable() || (textBusy && replyRequest !== activeTextRequest) ||
+      textOperation.uncertain || liveMic.active ||
       !document.getElementById('liveLatencyTest').checked || !document.getElementById('mSel').value) return;
+  if (replyRequest && (!textBusy || replyRequest !== activeTextRequest)) return;
+  replyMicRequest = replyRequest;
   const revision = ++micRevision;
-  document.getElementById('textStatus').textContent = 'Preparing automatic listening…';
+  if (!replyRequest) document.getElementById('textStatus').textContent = 'Preparing automatic listening…';
   try {
     const started = await liveMic.prepareStream(() => {
       if (revision !== micRevision) return;
@@ -245,18 +253,33 @@ async function listenAutomatically() {
     if (!started || revision !== micRevision) return;
     queryDevices();
     liveMic.waitForSpeech(() => {
-      if (revision !== micRevision || !autoListening || textBusy) return;
+      if (revision !== micRevision || !autoListening) return;
+      if (replyRequest) {
+        if (activeTextRequest !== replyRequest || !textBusy || pendingBargeIn) return;
+        // Yeni ses yalnız RAM'de bekler. Eski turun iptal kabulü, gerçek
+        // bitişi değildir; araç sonucu belirsizse ikinci komut gönderilmez.
+        pendingBargeIn = {requestId:replyRequest, revision, connection:connectionRevision};
+        liveTranscript.interrupt(replyRequest);
+        liveAudio.stop(replyRequest);
+        document.getElementById('textStatus').textContent = 'Speech detected · stopping previous reply before sending the new turn…';
+        if (!playbackOnly) void emit('stop_task', {request_id:replyRequest});
+        return;
+      }
+      if (textBusy) return;
       void sendText('', {stream:true});
     });
     paintMic();
-    document.getElementById('textStatus').textContent = 'Listening for speech · speak without pressing a button. Audio stays local until speech starts.';
-    setState('listening', true);
+    if (!replyRequest) {
+      document.getElementById('textStatus').textContent = 'Listening for speech · speak without pressing a button. Audio stays local until speech starts.';
+      setState('listening', true);
+    }
   } catch {
     if (revision !== micRevision) return;
     pauseListening('Microphone unavailable or permission denied. Check Audio settings, then Resume listening.');
   }
 }
 const textOperation = createPendingOperation(() => {
+  liveTranscript.finish(activeTextRequest, {}, 'unknown');
   liveAudio.close();
   pauseListening();
   document.getElementById('textStatus').textContent = 'Result unknown. Reopen the app and check notes before retrying.';
@@ -279,7 +302,8 @@ function textDiagnostics(report) {
 /** Tek konuşmayı gerçek zamanlı gönder; setup onayı gelmeden mikrofonu akıtma.
  * Uzun start Promise'i gerçek tur bitişidir. Kısa feed çağrıları bu kilidi
  * beklemez. Her parça aynı istek kimliğine bağlıdır; geç callback yeni tura
- * taşınamaz. İlk yanıtta mikrofon kapanır; barge-in bu dilimin kapsamı değildir.
+ * taşınamaz. İlk yanıtta eski giriş kapanır; yanıt dinleyicisinin yeni
+ * ön tamponu eski turun finally temizliğinden etkilenmez.
  */
 async function streamMicrophone(requestId) {
   const result = emit('live_audio_start', {request_id:requestId});
@@ -298,7 +322,7 @@ async function streamMicrophone(requestId) {
         liveMic.activateStream(async data => {
           if (activeTextRequest !== requestId) return false;
           const ack = await emit('live_audio_feed', {request_id:requestId, sequence:sequence++, data});
-          if (ack.response?.closed && !ack.ok) { liveMic.cancel(); return true; }
+          if (ack.response?.closed && !ack.ok) { if (replyMicRequest !== requestId) liveMic.cancel(); return true; }
           return ack.ok;
         }, () => {
           if (activeTextRequest === requestId) {
@@ -313,7 +337,7 @@ async function streamMicrophone(requestId) {
     }
     if (!finished && activeTextRequest === requestId) await emit('stop_task', {request_id:requestId});
     return await result;
-  } finally { if (activeTextRequest === requestId) liveMic.cancel(); }
+  } finally { if (activeTextRequest === requestId && replyMicRequest !== requestId) liveMic.cancel(); }
 }
 
 async function sendText(text = null, audio = null) {
@@ -345,6 +369,7 @@ async function sendText(text = null, audio = null) {
     const liveStop = document.getElementById('stopTask');
     const originalStopLabel = liveStop?.textContent;
     activeTextRequest = uniqueRecordId([], 'chat');
+    if (liveTest) liveTranscript.begin(activeTextRequest, !audio);
     if (liveStop) liveStop.disabled = false;
     const label = document.getElementById('textStatus');
     label.textContent = liveTest ? 'Live session…' : 'Thinking…';
@@ -365,8 +390,7 @@ async function sendText(text = null, audio = null) {
         audio ? {...audio, request_id:activeTextRequest} : { text: v, request_id: activeTextRequest });
     if (!textOperation.isCurrent(revision)) return;
     const report = result.response;
-    if (audio?.stream) { liveMic.cancel(); paintMic(); }
-    if (audio && report?.input_text) user(report.input_text);
+    if (audio?.stream && replyMicRequest !== activeTextRequest) { liveMic.cancel(); paintMic(); }
     for (const tool of report?.tool_results || []) {
       addLog('Tool ' + sanitizeError(tool.name) + ': ' + sanitizeError(tool.status) +
         (tool.result?.verified ? ' · verified' : ' · not verified'));
@@ -377,6 +401,7 @@ async function sendText(text = null, audio = null) {
         ' · ' + (attempt.elapsed_ms / 1000).toFixed(1) + ' s');
     }
     if (report?.unknown || ['task_pending', 'tool_unknown'].includes(report?.code)) {
+      if (liveTest) liveTranscript.finish(activeTextRequest, report, 'unknown');
       textOperation.markUnknown();
       return;
     }
@@ -385,7 +410,7 @@ async function sendText(text = null, audio = null) {
       label.textContent = 'Stopped. Completed actions were not undone.';
       setConnectionStatus('offline', liveTest ? 'LIVE STOPPED · new session on next message' : 'REST STOPPED');
     } else if (result.ok && report?.completed === true && typeof report.text === 'string') {
-      msg('j', report.text);
+      if (!liveTest) msg('j', report.text);
       label.textContent = 'Answered by ' + report.model + ' · ' + report.model_attempts.length + ' model request(s)' +
         (Number.isFinite(report.elapsed_ms) ? ' · ' + (report.elapsed_ms / 1000).toFixed(1) + ' s' : '');
       if (['live_latency_test', 'live_session_test', 'live_session'].includes(report.mode)) {
@@ -394,6 +419,7 @@ async function sendText(text = null, audio = null) {
         if (report.context_reset_reason) label.textContent += ' · context reset: ' + sanitizeError(report.context_reset_reason);
         playbackOnly = true;
         setState('speaking');
+        void listenAutomatically(activeTextRequest);
         if (report.audio_error) liveAudio.fail(activeTextRequest, report.audio_error);
         const audio = await liveAudio.finish(activeTextRequest);
         playbackOnly = false;
@@ -425,6 +451,13 @@ async function sendText(text = null, audio = null) {
       setConnectionStatus('offline', liveTest ? 'LIVE TEST FAILED' : 'TEXT REQUEST FAILED');
     }
     // Native tur ve varsa çalma birlikte bitti; eski Stop yeni isteğe taşınmaz.
+    if (liveTest) liveTranscript.finish(activeTextRequest, report,
+      report?.stopped || report?.code === 'live_interrupted' ? 'interrupted' : report?.ok ? 'complete' : 'failed');
+    const handoff = pendingBargeIn;
+    const canHandoff = handoff && handoff.requestId === activeTextRequest && handoff.revision === micRevision &&
+      handoff.connection === connectionRevision && autoListening && liveMic.active &&
+      report?.completed === true && (report.ok === true || report.stopped === true);
+    if (!canHandoff && replyMicRequest === activeTextRequest) cancelMic();
     activeTextRequest = null;
     if (liveStop) { liveStop.disabled = true; liveStop.textContent = originalStopLabel; }
     textOperation.finish();
@@ -435,7 +468,10 @@ async function sendText(text = null, audio = null) {
     setState('idle');
     controls.forEach(el => { el.disabled = false; });
     textBusy = false;
-    if (!report?.ok || report?.audio_error || replyConnectionRevision !== connectionRevision) pauseListening();
+    if (canHandoff && handoff.revision === micRevision && handoff.connection === connectionRevision && autoListening && liveMic.active) {
+      replyMicRequest = pendingBargeIn = null;
+      void sendText('', {stream:true});
+    } else if (!report?.ok || report?.audio_error || replyConnectionRevision !== connectionRevision) pauseListening();
     else void listenAutomatically();
     return;
   }
@@ -746,11 +782,17 @@ document.addEventListener('DOMContentLoaded', () => {
     streamReset,
     say,
     audioChunk: packet => {
-      if (packet?.request_id === activeTextRequest && textBusy) { liveMic.cancel(); paintMic(); }
+      // Kesilmiş yanıtın geç PCM'i tüketilir ama yeniden çalınmaz. Yeni
+      // istek başlayınca eski kimlik zaten normal alıcı tarafından reddedilir.
+      if (pendingBargeIn?.requestId === packet?.request_id && packet?.request_id === activeTextRequest) return true;
       const accepted = liveAudio.chunk(packet);
+      if (accepted && packet?.request_id === activeTextRequest && textBusy && replyMicRequest !== activeTextRequest) {
+        liveMic.cancel(); paintMic(); void listenAutomatically(activeTextRequest);
+      }
       if (accepted && getState() !== 'speaking') setState('speaking');
       return accepted;
     },
+    liveTranscript: packet => liveTranscript.chunk(packet),
     user,
     log: addLog,
     setState: k => {
@@ -863,7 +905,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (isBackendAvailable()) {
         if (textOperation.uncertain) return;
         if (autoListening) {
-          const wasStreaming = textBusy && liveMic.active;
+          const wasStreaming = textBusy && liveMic.active && replyMicRequest === null;
           pauseListening('Listening paused.');
           if (wasStreaming) document.getElementById('stopTask').click();
         } else {
@@ -1003,6 +1045,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       if (activeTextRequest) {
         const target = activeTextRequest;
+        liveTranscript.interrupt(target);
         cancelBeforeSend = true;
         liveAudio.stop(target);
         if (preparingAudio) { cancelBeforeSend = true; return; }

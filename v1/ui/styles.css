@@ -504,6 +504,8 @@ body.on .fx {
   font-size: 13px;
 }
 
+.m .transcript-status { font-size: 10px; opacity: .65; }
+
 .input {
   display: flex;
   align-items: center;

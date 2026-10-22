@@ -183,16 +183,16 @@ class PersistentLive:
             self._thread = Thread(target=self._loop.run_forever, name="taskvex-live-io", daemon=True)
             self._thread.start()
 
-    async def _request(self, text, model, tools, stop_event, audio_sink, audio_input):
+    async def _request(self, text, model, tools, stop_event, audio_sink, audio_input, transcript_sink):
         from app.session.live_probe import probe_live_text
         self._active = asyncio.current_task()
         try:
             return await probe_live_text(text, model, connection=self._connection, tools=tools, stop_event=stop_event,
-                                         audio_sink=audio_sink, audio_input=audio_input)
+                                         audio_sink=audio_sink, audio_input=audio_input, transcript_sink=transcript_sink)
         finally:
             self._active = None
 
-    def ask(self, text: str, model: str, tools: ModelTools | None = None, *, request_id: str | None = None, audio_sink=None, audio_input: bytes | LiveInput | None = None) -> dict:
+    def ask(self, text: str, model: str, tools: ModelTools | None = None, *, request_id: str | None = None, audio_sink=None, transcript_sink=None, audio_input: bytes | LiveInput | None = None) -> dict:
         """İstek kendi 25 saniye timeout'unu yönetir; host otomatik replay yapmaz."""
         self._start()
         assert self._loop is not None
@@ -203,7 +203,7 @@ class PersistentLive:
             self._pending = (request_id or uuid4().hex, stop_event)
             self._input = audio_input if isinstance(audio_input, LiveInput) else None
         try:
-            return asyncio.run_coroutine_threadsafe(self._request(text, model, tools, stop_event, audio_sink, audio_input), self._loop).result()
+            return asyncio.run_coroutine_threadsafe(self._request(text, model, tools, stop_event, audio_sink, audio_input, transcript_sink), self._loop).result()
         finally:
             with self._guard:
                 self._pending = None

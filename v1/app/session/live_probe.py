@@ -37,6 +37,7 @@ async def _next_message(messages, sender):
 async def probe_live_text(text: str, model: str, *, connection: LiveConnection | None = None,
                           tools: ModelTools | None = None, stop_event: Event | None = None,
                           audio_sink: Callable[[bytes, str], bool] | None = None,
+                          transcript_sink: Callable[[str, str, int], bool] | None = None,
                           audio_input: bytes | LiveInput | None = None) -> dict:
     """Bir turu 25 saniyeyle sınırla; yeniden kullanım ve güvenli ölçümleri döndür.
 
@@ -57,6 +58,18 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
     bound_tools = None
     sender = None
     streaming = isinstance(audio_input, LiveInput)
+    sequence = 0
+
+    async def publish(role: str, value: str):
+        """Birikimli metni kimlikli alıcıya ilet; ekran hatası araç sonucunu bozmaz."""
+        nonlocal sequence
+        sequence += 1
+        if transcript_sink:
+            try:
+                if await asyncio.to_thread(transcript_sink, role, value, sequence) is not True:
+                    report['transcript_error'] = 'transcript_delivery_failed'
+            except Exception:
+                report['transcript_error'] = 'transcript_delivery_failed'
     try:
         if audio_input is not None and not streaming and (type(audio_input) is not bytes or not 3200 <= len(audio_input) <= 480000 or len(audio_input) % 2):
             raise ContractError("Invalid microphone PCM")
@@ -133,6 +146,7 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
                             raise ContractError("Microphone transcript limit exceeded")
                         if bound_tools:
                             bound_tools.begin_turn(report["input_text"])
+                        await publish('u', report['input_text'])
                     if message.tool_call:
                         calls = message.tool_call.function_calls or []
                         if not bound_tools or not calls or len(report["tool_results"]) + len(calls) > 8:
@@ -179,13 +193,29 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
                     content = message.server_content
                     if not content:
                         continue
-                    if content.interrupted:
-                        report.update(code="live_interrupted", error="Live response was interrupted; check existing tool results before retrying.")
-                        return report
                     pieces = []
                     if content.output_transcription and content.output_transcription.text:
                         pieces.append(content.output_transcription.text)
                         transcript.append(content.output_transcription.text)
+                    for part in (content.model_turn.parts or []) if content.model_turn else []:
+                        if part.text and not part.thought:
+                            pieces.append(part.text)
+                            plain.append(part.text)
+                    if pieces:
+                        text_length += sum(len(piece) for piece in pieces)
+                        if report["first_text_ms"] is None:
+                            report["first_text_ms"] = round((perf_counter() - started) * 1000)
+                        if report["first_event_ms"] is None:
+                            report["first_event_ms"] = report["first_text_ms"]
+                    if text_length > 32000:
+                        report.update(code="live_response_limit", error="Live test response exceeded the text limit.")
+                        return report
+                    if pieces:
+                        report['text'] = ''.join(transcript or plain)
+                        await publish('j', report['text'])
+                    if content.interrupted:
+                        report.update(code='live_interrupted', error='Live response was interrupted; check existing tool results before retrying.')
+                        return report
                     for part in (content.model_turn.parts or []) if content.model_turn else []:
                         if part.inline_data and part.inline_data.data:
                             data, mime = part.inline_data.data, part.inline_data.mime_type
@@ -210,18 +240,6 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
                                 report["audio_bytes_discarded"] += len(data)
                             if report["first_event_ms"] is None:
                                 report["first_event_ms"] = round((perf_counter() - started) * 1000)
-                        if part.text and not part.thought:
-                            pieces.append(part.text)
-                            plain.append(part.text)
-                    if pieces:
-                        text_length += sum(len(piece) for piece in pieces)
-                        if report["first_text_ms"] is None:
-                            report["first_text_ms"] = round((perf_counter() - started) * 1000)
-                        if report["first_event_ms"] is None:
-                            report["first_event_ms"] = report["first_text_ms"]
-                    if text_length > 32000:
-                        report.update(code="live_response_limit", error="Live test response exceeded the text limit.")
-                        return report
                     # Extended thinking'de turn_complete tek başına bitiş
                     # değildir; sağlayıcı IDLE bildirdiyse tamamlanmıştır.
                     status = content.interaction_status
@@ -278,6 +296,8 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
         if connection.draining:
             report.update(code="live_go_away", error="Live disconnected before the turn completed; this message was not retried.")
     finally:
+        # Başarısız/kesilen turun alınmış metni de kalır; başarıya çevrilmez.
+        report['text'] = ''.join(transcript or plain)[:32000]
         if isinstance(audio_input, LiveInput):
             audio_input.close()
         if sender:

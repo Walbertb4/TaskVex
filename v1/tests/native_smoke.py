@@ -115,6 +115,19 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                             frames.append(audio_reply('Native microphone answer'))
                             return
                         text = message["realtime_input"].get("text", "")
+                        if text == 'Native barge active':
+                            frames.append({'toolCall':{'functionCalls':[{'id':'native-barge-note','name':'notes.add',
+                                'args':{'text':'Committed before barge-in'}}]}})
+                            return
+                        if text == 'Native barge playback':
+                            frames.append(audio_reply('Native barge playback reply', 60000))
+                            return
+                        if text == 'Native barge waiting':
+                            reply = audio_reply('Native barge waiting reply', 60000)
+                            reply['serverContent']['turnComplete'] = False
+                            frames.append(reply)
+                            live_state['stall'] = True
+                            return
                         if text in {"Native playback only", "Native audio muted", "Native key switch"}:
                             frames.append(audio_reply(text + " reply", 2400 if text == "Native audio muted" else 48000))
                             return
@@ -140,6 +153,12 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                         response = message["tool_response"]["functionResponses"][0]
                         assert response["response"]["result"]["verified"]
                         if response["id"].startswith("native-crud-"):
+                            return
+                        if response['id'] == 'native-barge-note':
+                            reply = audio_reply('Native barge active reply', 60000)
+                            reply['serverContent']['turnComplete'] = False
+                            frames.append(reply)
+                            live_state['stall'] = True
                             return
                         frames.append(audio_reply(f"Live tool saved turn {turns}"))
                         if turns == 4 and live_state["opened"] == 1:
@@ -548,16 +567,68 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 wait_until(lambda: 'Native microphone answer' in window.evaluate_js("document.getElementById('msgs').textContent"))
                 wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
                 assert 'Native microphone hello' in window.evaluate_js("document.getElementById('msgs').textContent")
-                wait_until(lambda: window.evaluate_js("testMicDestinations.length===2"))
+                wait_until(lambda: window.evaluate_js("testMicDestinations.length>=2"))
                 wait_until(lambda: 'Listening for speech' in window.evaluate_js("document.getElementById('textStatus').textContent"))
                 assert window.evaluate_js("testMicDestinations[0].stream.getTracks().every(t=>t.readyState==='ended')")
-                js("testMicOsc.connect(testMicDestinations[1]);return true;")
+                js("testMicOsc.connect(testMicDestinations.at(-1));return true;")
                 wait_until(lambda: window.evaluate_js("document.getElementById('msgs').textContent.split('Native microphone answer').length===3"))
-                wait_until(lambda: window.evaluate_js("testMicDestinations.length===3"))
+                wait_until(lambda: 'Listening for speech' in window.evaluate_js("document.getElementById('textStatus').textContent"))
                 js("document.getElementById('micB').click();testMicOsc.stop();await testMicContext.close();return true;")
                 assert window.evaluate_js("testMicDestinations.every(d=>d.stream.getTracks().every(t=>t.readyState==='ended'))")
                 outcome['two_voice_turns_automatic_rearm_without_second_click'] = True
                 outcome['microphone_stream_worklet_pcm_transcript_and_cleanup'] = True
+                # Aynı gerçek WebView mikrofonu eski yanıtı keser; yeni tur
+                # yalnız host'un eski araç sonucunu kesinleştirmesinden sonra açılır.
+                for prompt in ['Native barge active', 'Native barge playback']:
+                    previous_answers = window.evaluate_js("document.getElementById('msgs').textContent.split('Native microphone answer').length")
+                    js("window.bargeContext=new AudioContext();window.bargeOsc=bargeContext.createOscillator();window.bargeDestinations=[];"
+                       "bargeOsc.start();await bargeContext.resume();"
+                       "Object.defineProperty(navigator.mediaDevices,'getUserMedia',{configurable:true,value:async()=>{"
+                       "const d=bargeContext.createMediaStreamDestination();bargeDestinations.push(d);return d.stream;}});"
+                       "document.getElementById('micB').click();return true;")
+                    wait_until(lambda: 'Listening for speech' in window.evaluate_js("document.getElementById('textStatus').textContent"))
+                    js("document.getElementById('inp').value=" + json.dumps(prompt) + ";document.getElementById('send').click();return true;")
+                    wait_until(lambda: window.evaluate_js("document.getElementById('send').disabled && document.getElementById('micB').classList.contains('on')"))
+                    wait_until(lambda: js("const m=await import('./js/live_mic.js');return m.liveMic.waitingForSpeech;"))
+                    old_reply_id = window.evaluate_js("document.querySelector('#msgs .m.j[data-request-id]:last-child')?.dataset.requestId")
+                    assert old_reply_id
+                    if prompt.endswith('active'):
+                        assert api._chat.busy
+                        assert 'Native barge active reply' in window.evaluate_js("document.getElementById('msgs').textContent")
+                        assert js("return document.querySelector('[data-request-id=' + JSON.stringify(" + json.dumps(old_reply_id) + ") + '].j').dataset.state;") == 'live'
+                        outcome['live_transcript_visible_before_turn_completion'] = True
+                    js("bargeOsc.connect(bargeDestinations.at(-1));return true;")
+                    wait_until(lambda: window.evaluate_js("document.getElementById('msgs').textContent.split('Native microphone answer').length") > previous_answers)
+                    wait_until(lambda: 'Listening for speech' in window.evaluate_js("document.getElementById('textStatus').textContent"))
+                    assert not api._chat.busy
+                    assert js("const nodes=Array.from(document.querySelectorAll('#msgs .m.j')).filter(n=>n.dataset.requestId===" + json.dumps(old_reply_id) + ");return nodes.length===1 && nodes[0].dataset.state==='interrupted' && nodes[0].textContent.includes('reply');")
+                    if prompt.endswith('active'):
+                        from app.storage.json_store import JsonStore
+                        assert sum(n['text']=='Committed before barge-in' for n in (JsonStore(home/'notes.json').read() or {})['notes']) == 1
+                    js("document.getElementById('micB').click();bargeOsc.stop();await bargeContext.close();return true;")
+                    assert window.evaluate_js("bargeDestinations.every(d=>d.stream.getTracks().every(t=>t.readyState==='ended'))")
+                outcome['barge_in_active_preserved_commit_and_playback_handoff'] = True
+                outcome['live_transcript_interrupted_text_preserved_without_duplicate'] = True
+                js("window.bargeContext=new AudioContext();window.bargeOsc=bargeContext.createOscillator();window.bargeDestinations=[];"
+                   "bargeOsc.start();await bargeContext.resume();window.newBargeTurns=0;window.bargeOriginalEvent=window.pywebview.api.event;"
+                   "window.pywebview.api.event=(name,data)=>{if(name==='live_audio_start')window.newBargeTurns++;"
+                   "if(name==='stop_task')return new Promise(resolve=>{window.releaseBargeStop=()=>bargeOriginalEvent(name,data).then(resolve);});"
+                   "return bargeOriginalEvent(name,data);};"
+                   "Object.defineProperty(navigator.mediaDevices,'getUserMedia',{configurable:true,value:async()=>{"
+                   "const d=bargeContext.createMediaStreamDestination();bargeDestinations.push(d);return d.stream;}});"
+                   "document.getElementById('micB').click();return true;")
+                wait_until(lambda: 'Listening for speech' in window.evaluate_js("document.getElementById('textStatus').textContent"))
+                js("document.getElementById('inp').value='Native barge waiting';document.getElementById('send').click();return true;")
+                wait_until(lambda: js("const m=await import('./js/live_mic.js');return document.getElementById('send').disabled && m.liveMic.waitingForSpeech;"))
+                js("bargeOsc.connect(bargeDestinations.at(-1));return true;")
+                wait_until(lambda: window.evaluate_js("typeof window.releaseBargeStop==='function'"))
+                assert api._chat.busy and window.evaluate_js('window.newBargeTurns') == 0
+                js("document.getElementById('disc').click();releaseBargeStop();return true;")
+                wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
+                assert window.evaluate_js('window.newBargeTurns') == 0
+                assert window.evaluate_js("bargeDestinations.every(d=>d.stream.getTracks().every(t=>t.readyState==='ended'))")
+                js("window.pywebview.api.event=bargeOriginalEvent;bargeOsc.stop();await bargeContext.close();return true;")
+                outcome['barge_in_waited_for_real_completion_disconnect_dropped_buffer'] = True
                 mic_packets = len(live_state['sent'])
                 js("Object.defineProperty(navigator.mediaDevices,'getUserMedia',{configurable:true,value:async()=>{throw new Error('Synthetic denied');}});"
                    "document.getElementById('micB').click();return true;")
@@ -629,13 +700,26 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 # bitiş sanma; host tüm kaynakları bırakana kadar bekle.
                 wait_until(lambda: live_state["closed"] and api._chat._live._thread is None)
                 assert api._chat._live._thread is None
-                js("document.getElementById('liveLatencyTest').checked=false;return true;")
-                original_run = api._chat.run
-                api._chat.run = lambda text, model, **kwargs: {"ok": False, "unknown": True, "error": "Synthetic unknown result"}
-                js("document.getElementById('inp').value='Unknown request';document.getElementById('send').click();return true;")
+                original_run_live = api._chat.run_live
+                api._chat.run_live = lambda text, model, **kwargs: {
+                    **original_run_live(text, model, **kwargs), 'ok':False, 'unknown':True}
+                js("window.unknownContext=new AudioContext();window.unknownOsc=unknownContext.createOscillator();window.unknownDestinations=[];"
+                   "unknownOsc.start();await unknownContext.resume();window.unknownNewTurns=0;window.unknownOriginalEvent=window.pywebview.api.event;"
+                   "window.pywebview.api.event=(name,data)=>{if(name==='live_audio_start')window.unknownNewTurns++;return unknownOriginalEvent(name,data);};"
+                   "Object.defineProperty(navigator.mediaDevices,'getUserMedia',{configurable:true,value:async()=>{"
+                   "const d=unknownContext.createMediaStreamDestination();unknownDestinations.push(d);return d.stream;}});"
+                   "document.getElementById('micB').click();return true;")
+                wait_until(lambda: 'Listening for speech' in window.evaluate_js("document.getElementById('textStatus').textContent"))
+                js("document.getElementById('inp').value='Native barge waiting';document.getElementById('send').click();return true;")
+                wait_until(lambda: js("const m=await import('./js/live_mic.js');return document.getElementById('send').disabled && m.liveMic.waitingForSpeech;"))
+                js("unknownOsc.connect(unknownDestinations.at(-1));return true;")
                 wait_until(lambda: "Result unknown" in window.evaluate_js("document.getElementById('textStatus').textContent"))
                 assert window.evaluate_js("document.getElementById('send').disabled && document.getElementById('noteAdd').disabled")
-                api._chat.run = original_run
+                assert window.evaluate_js('window.unknownNewTurns') == 0
+                assert window.evaluate_js("unknownDestinations.every(d=>d.stream.getTracks().every(t=>t.readyState==='ended'))")
+                js("window.pywebview.api.event=unknownOriginalEvent;unknownOsc.stop();await unknownContext.close();return true;")
+                api._chat.run_live = original_run_live
+                outcome['barge_in_unknown_result_dropped_buffer_and_locked_controls'] = True
                 outcome.update(ok=True, phase=phase, native=initial, native_chat=True, fallback=True,
                                single_note=True, safe_dom=True, concurrent_rejected=True,
                                bridge_responsive=True, failure_preserved_input=True,

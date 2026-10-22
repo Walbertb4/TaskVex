@@ -161,6 +161,9 @@ export function initApi(handlers = {}) {
     audioChunk(packet) {
       return handlers.audioChunk ? handlers.audioChunk(packet) : false;
     },
+    liveTranscript(packet) {
+      return handlers.liveTranscript ? handlers.liveTranscript(packet) : false;
+    },
     user(t) {
       if (handlers.user) handlers.user(t);
     },

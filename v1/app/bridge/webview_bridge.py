@@ -43,7 +43,7 @@ class NativeBridge:
         self._notes_ready = False
         self._restart_requested = False
         self._lock = RLock()
-        self._chat = TextChat(core, audio_sink=self._audio_chunk)
+        self._chat = TextChat(core, audio_sink=self._audio_chunk, transcript_sink=self._transcript)
         self._model = DEFAULT_MODEL
         self._live_models: dict[str, dict] = {}
         self._live_model = ""
@@ -51,7 +51,7 @@ class NativeBridge:
 
     def _push(self, method: str, *args):
         """İzinli metodu JSON argümanlarıyla çağır; ham metni JS koduna ekleme."""
-        if method not in {"initApp", "online", "telemetry", "setCatalog", "log", "startupStatus", "audioChunk"}:
+        if method not in {"initApp", "online", "telemetry", "setCatalog", "log", "startupStatus", "audioChunk", "liveTranscript"}:
             raise ValueError("Unsupported UI method")
         if self._window is None:
             raise RuntimeError("Native window is not attached")
@@ -62,6 +62,11 @@ class NativeBridge:
         """Host isteğinin PCM parçasını JSON ile ilet; dosya/log/geçmişe kaydetme."""
         return self._push("audioChunk", {"request_id": request_id, "mime_type": mime,
                                         "data": b64encode(data).decode("ascii")}) is True
+
+    def _transcript(self, request_id: str, role: str, value: str, sequence: int) -> bool:
+        """Host kimliğine bağlı metin snapshot'ı; konuşma içeriğini loglama."""
+        return self._push('liveTranscript', {'request_id':request_id, 'role':role,
+            'text':value, 'sequence':sequence}) is True
 
     def _load_settings(self):
         """Eksik dosyayı boş snapshot yap; bozuk dosyayı otomatik sıfırlama."""
