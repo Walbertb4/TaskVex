@@ -1,0 +1,181 @@
+{
+  "ok": true,
+  "launch_count": 0,
+  "fresh_launch_checked": false,
+  "replay_same_task": true,
+  "second_request_reused_window": true,
+  "before": {
+    "task_id": "cc330d448e214934bbb10e009a1c4296",
+    "status": "succeeded",
+    "verified": true,
+    "data": {
+      "app_id": "notepad",
+      "running": true,
+      "visible_window": true,
+      "processes": [
+        {
+          "pid": 25956,
+          "identity": "microsoft_notepad_package",
+          "created": "134370705589867158"
+        }
+      ],
+      "windows": [
+        {
+          "hwnd": 3147308,
+          "pid": 25956,
+          "minimized": false
+        },
+        {
+          "hwnd": 985398,
+          "pid": 25956,
+          "minimized": false
+        },
+        {
+          "hwnd": 1836902,
+          "pid": 25956,
+          "minimized": false
+        },
+        {
+          "hwnd": 264500,
+          "pid": 25956,
+          "minimized": false
+        },
+        {
+          "hwnd": 2687072,
+          "pid": 25956,
+          "minimized": false
+        },
+        {
+          "hwnd": 8258376,
+          "pid": 25956,
+          "minimized": false
+        }
+      ],
+      "complete": true,
+      "observed_at": "2026-10-21T15:48:18.950952+00:00"
+    },
+    "error": null,
+    "evidence": {
+      "source": "win32_process_identity+EnumWindows"
+    }
+  },
+  "opened": {
+    "task_id": "f91ec50754d440088bb737ee20626662",
+    "status": "succeeded",
+    "verified": true,
+    "data": {
+      "app_id": "notepad",
+      "running": true,
+      "visible_window": true,
+      "processes": [
+        {
+          "pid": 25956,
+          "identity": "microsoft_notepad_package",
+          "created": "134370705589867158"
+        }
+      ],
+      "windows": [
+        {
+          "hwnd": 3147308,
+          "pid": 25956,
+          "minimized": false
+        },
+        {
+          "hwnd": 985398,
+          "pid": 25956,
+          "minimized": false
+        },
+        {
+          "hwnd": 1836902,
+          "pid": 25956,
+          "minimized": false
+        },
+        {
+          "hwnd": 264500,
+          "pid": 25956,
+          "minimized": false
+        },
+        {
+          "hwnd": 2687072,
+          "pid": 25956,
+          "minimized": false
+        },
+        {
+          "hwnd": 8258376,
+          "pid": 25956,
+          "minimized": false
+        }
+      ],
+      "complete": true,
+      "observed_at": "2026-10-21T15:48:18.960173+00:00",
+      "launch_requested": false,
+      "already_open": true
+    },
+    "error": null,
+    "evidence": {
+      "source": "win32_process_identity+EnumWindows",
+      "window_observed": true,
+      "launch_requested": false
+    }
+  },
+  "again": {
+    "task_id": "2d9c13df1d12455c8fba97df3c653616",
+    "status": "succeeded",
+    "verified": true,
+    "data": {
+      "app_id": "notepad",
+      "running": true,
+      "visible_window": true,
+      "processes": [
+        {
+          "pid": 25956,
+          "identity": "microsoft_notepad_package",
+          "created": "134370705589867158"
+        }
+      ],
+      "windows": [
+        {
+          "hwnd": 3147308,
+          "pid": 25956,
+          "minimized": false
+        },
+        {
+          "hwnd": 985398,
+          "pid": 25956,
+          "minimized": false
+        },
+        {
+          "hwnd": 1836902,
+          "pid": 25956,
+          "minimized": false
+        },
+        {
+          "hwnd": 264500,
+          "pid": 25956,
+          "minimized": false
+        },
+        {
+          "hwnd": 2687072,
+          "pid": 25956,
+          "minimized": false
+        },
+        {
+          "hwnd": 8258376,
+          "pid": 25956,
+          "minimized": false
+        }
+      ],
+      "complete": true,
+      "observed_at": "2026-10-21T15:48:18.968575+00:00",
+      "launch_requested": false,
+      "already_open": true
+    },
+    "error": null,
+    "evidence": {
+      "source": "win32_process_identity+EnumWindows",
+      "window_observed": true,
+      "launch_requested": false
+    }
+  },
+  "application_left_open": true
+}

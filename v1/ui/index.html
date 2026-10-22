@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>V.EX.</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<section class="native-issue" id="nativeIssue" role="alert" hidden>
+  <strong>Native startup needs attention</strong>
+  <p id="nativeIssueText"></p>
+  <div class="fx" style="gap:8px;flex-wrap:wrap">
+    <button class="cb" id="retryStartup">Retry</button>
+    <button class="cb" id="recoverSettings" hidden>Back up and repair settings</button>
+  </div>
+</section>
+<div class="ov hid" id="off"><div><div class="mono" style="color:var(--mut);margin-bottom:18px">Offline</div><button class="cb" id="restart">⏻ Restart</button></div></div>
+
+<div class="app" id="app" data-s="idle">
+<header class="fx">
+  <span class="brand">V.EX.</span><span class="state" id="hState">IDLE</span><span class="sp"></span>
+  <span class="pill">TOKEN <b id="tokTxt">— / —</b></span>
+  <span class="pill net off" id="netP">● OFFLINE</span><span class="pill" id="wkP" style="display:none">◌ AWAITING WAKE WORD</span>
+  <button class="hb on" id="audioModeB" title="Audio Listening Mode (Microphone / Entire PC / Application)"><i class="dot"></i><span id="audioModeTxt">Source: Mic</span></button>
+  <button class="hb" id="micB" aria-pressed="false"><i class="dot"></i>Pause listening</button>
+  <button class="hb" id="camB"><i class="dot"></i>Camera Off</button>
+  <button class="hb" id="btnOpenSkill">Skills</button>
+  <button class="hb" id="btnOpenRut">Routines</button>
+  <button class="hb" id="btnOpenTl">Timeline</button>
+  <button class="hb" id="btnOpenSet">Settings</button>
+  <b id="hClock" style="font-size:12px;color:var(--gold)">--:--</b>
+</header>
+<main>
+  <aside id="asideL">
+    <div class="blk fx" id="w_time">
+      <div class="ring"><svg viewBox="0 0 170 170"><circle cx="85" cy="85" r="68" fill="none" stroke="var(--ln)" stroke-width="3"/><circle id="secArc" cx="85" cy="85" r="68" fill="none" stroke="var(--gold)" stroke-width="3" stroke-linecap="round" stroke-dasharray="427" transform="rotate(-90 85 85)"/><circle cx="85" cy="85" r="80" fill="none" stroke="color-mix(in srgb,var(--gold) 20%,var(--ln))" stroke-dasharray="1 9"/></svg><div class="t" id="clk">--:--</div></div>
+      <span class="lbl">Time</span><div class="sub" id="dateTxt"></div>
+    </div>
+    <div class="blk fx" id="w_system">
+      <span class="lbl">System</span>
+      <div class="mt"><div class="mh"><span>CPU</span><b id="cpu">—%</b><em id="cpuT">—°C</em></div><div class="bar"><i id="cpuBar" style="width:0"></i></div></div>
+      <div class="mt"><div class="mh"><span>GPU</span><b id="gpu">—%</b><em id="gpuT">—°C</em></div><div class="bar"><i id="gpuBar" style="width:0"></i></div></div>
+      <div class="mt"><div class="mh"><span>RAM</span><b id="ram">—%</b><em id="ramT">— GB</em></div><div class="bar"><i id="ramBar" style="width:0"></i></div></div>
+      <div class="rows" style="margin-top:12px"><span>Battery</span><span id="bat">—</span><span>Disk</span><span id="disk">—</span></div>
+      <div class="sub" style="margin-top:10px">Active window:</div><div class="sub" id="win" style="color:var(--fg);text-transform:none;letter-spacing:0">—</div>
+    </div>
+    <div class="blk fx tmw" id="w_timer">
+      <div class="tmtabs">
+        <button class="chip on" id="tabTmB" title="Countdown timer">Timer</button>
+        <button class="chip" id="tabSwB" title="Stopwatch">Stopwatch</button>
+      </div>
+      <div class="tmd">
+        <div class="tmring">
+          <svg viewBox="0 0 64 64"><circle class="orb" cx="32" cy="32" r="30"/><circle class="trk" cx="32" cy="32" r="26"/><circle class="arc" id="tmArc" cx="32" cy="32" r="26"/></svg>
+          <i class="tmrip"></i><i class="tmcore"></i>
+        </div>
+        <div class="tmr">
+          <div class="tmt" id="tm">00:00</div>
+          <div class="sub" id="tmS">READY</div>
+          <div class="tmc" id="tmPane">
+            <button class="cb on" id="tmStartB" title="Start">▶</button>
+            <button class="cb" id="tmResumeB" title="Resume">⏯</button>
+            <button class="cb" id="tmPauseB" title="Pause">⏸</button>
+            <button class="cb" id="tmResetB" title="Reset">↺</button>
+          </div>
+          <div class="tmc" id="swPane" style="display:none">
+            <button class="cb on" id="swStartB" title="Start">▶</button>
+            <button class="cb" id="swResumeB" title="Resume">⏯</button>
+            <button class="cb" id="swPauseB" title="Pause">⏸</button>
+            <button class="cb" id="swResetB" title="Reset">↺</button>
+          </div>
+        </div>
+      </div>
+      <div class="tmset" id="tmSetRow">
+        <div class="tmpre"><button class="chip" data-m="1" title="1 minute">1m</button><button class="chip" data-m="5" title="5 minutes">5m</button><button class="chip" data-m="10" title="10 minutes">10m</button><button class="chip" data-m="25" title="25 minutes">25m</button></div>
+        <div class="tmin"><input class="mi" id="tmMin" type="number" min="0" max="999" placeholder="MIN" value="10"><span>:</span><input class="mi" id="tmSec" type="number" min="0" max="59" placeholder="SEC" value="00"><button class="chip" id="tmSetB" title="Set the countdown">Set</button></div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="center" id="ctr">
+    <div class="reactor-wrap">
+      <div class="reactor">
+        <i class="ripple"></i><i class="ripple b"></i>
+        <svg viewBox="0 0 400 400">
+          <g id="bars" stroke="var(--c)" stroke-width="2.2" stroke-linecap="round" opacity=".85"></g>
+          <g class="r1"><circle cx="200" cy="200" r="190" fill="none" stroke="var(--c)" stroke-opacity=".35" stroke-dasharray="1 11"/><path d="M200 12A188 188 0 0 1 380 140" fill="none" stroke="var(--c)" stroke-width="2.5" stroke-linecap="round"/></g>
+          <g class="r2"><circle cx="200" cy="200" r="160" fill="none" stroke="var(--c)" stroke-opacity=".3"/><path d="M40 200A160 160 0 0 1 150 50" fill="none" stroke="var(--c)" stroke-width="2" stroke-linecap="round"/><path d="M290 350A160 160 0 0 0 360 230" fill="none" stroke="var(--c)" stroke-width="2" stroke-linecap="round" stroke-opacity=".7"/></g>
+          <g class="r3"><circle cx="200" cy="200" r="125" fill="none" stroke="var(--c)" stroke-opacity=".25" stroke-dasharray="40 14 4 14"/><path d="M80 130A125 125 0 0 1 200 75" fill="none" stroke="var(--c)" stroke-width="1.5" stroke-linecap="round"/></g>
+          <circle cx="200" cy="200" r="96" fill="none" stroke="var(--c)" stroke-opacity=".15"/>
+        </svg>
+        <div class="corew"><div class="core"></div></div>
+      </div>
+      <div class="slabel mono fx" id="sLbl" style="--i:2">IDLE</div>
+    </div>
+    <div class="chat fx">
+      <div class="msgs" id="msgs"></div>
+      <div class="input">
+        <button class="ib att" id="attB" title="Attach file"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5l-8.6 8.6a5.5 5.5 0 0 1-7.8-7.8l9-9a3.7 3.7 0 0 1 5.2 5.2l-9 9a1.8 1.8 0 0 1-2.6-2.6l8.4-8.4"/></svg></button><input type="file" id="file" hidden>
+        <span style="color:var(--c)">›</span>
+        <input id="inp" placeholder="SPEAK OR TYPE" autocomplete="off" aria-label="Message Vex" aria-describedby="textStatus" maxlength="20000">
+        <button class="ib" id="send">/ Type</button>
+      </div>
+      <div id="textStatus" class="sub" role="status" aria-live="polite"></div>
+      <label class="sub"><input id="liveLatencyTest" type="checkbox" checked> Live session · local tools / audio replies</label>
+    </div>
+    <div class="ctl fx">
+      <button class="cb" id="stopTask">■ Stop Task</button>
+      <button class="cb" id="mute" title="Mute Live replies; sound effects are separate">Mute</button>
+      <button class="cb" id="disc">Disconnect</button>
+    </div>
+  </div>
+
+  <aside id="asideR">
+    <div class="blk fx" id="w_weather"><span class="lbl">Weather</span><div style="display:flex;align-items:baseline;gap:10px"><span class="big" id="wT">—°</span><span class="sub" id="wD">Awaiting data</span></div><div class="sub" style="margin-top:6px" id="wM"></div></div>
+    <div class="blk fx" id="w_calendar"><span class="lbl">Calendar</span><div class="big"><span id="calN">—</span> <span class="sub">today</span></div><div class="sub" id="calL" style="margin-top:6px;text-transform:none;letter-spacing:.06em">No events on your calendar today.</div></div>
+    <div class="blk fx" id="w_remind"><span class="lbl">Reminders</span><div class="big"><span id="remN">—</span> <span class="sub">open</span></div><div class="sub" id="remL" style="margin-top:6px;text-transform:none;letter-spacing:.06em">No pending reminders.</div></div>
+    <div class="blk fx" id="w_notes"><span class="lbl">Notes &amp; To-Do</span><div id="notes"></div><div id="notesStatus" class="sub" role="status" aria-live="polite" hidden></div><button id="notesConnect" class="cb" hidden>Use backend notes</button><div style="display:flex;gap:6px;margin-top:6px"><input class="mi" id="noteIn" placeholder="ADD NOTE" autocomplete="off"><button class="cb" id="noteAdd" style="padding:6px 10px">+</button></div></div>
+    <div class="blk fx" id="w_media"><span class="lbl">Media <span class="eq" id="eq"><i></i><i></i><i></i></span></span><div class="mtitle" id="mTitle2">No track playing</div><div class="sub" id="mArt">—</div><div class="mctl"><button class="cb" data-m="prev">⏮</button><button class="cb" data-m="toggle" id="mPlay">⏯</button><button class="cb" data-m="next">⏭</button></div></div>
+    <div class="blk fx" id="w_net"><span class="lbl">Network</span><div class="rows"><span>Ping</span><span id="nPing">—</span><span>Download</span><span id="nDown">—</span><span>Wi-Fi</span><span id="nWifi">—</span><span>API</span><span id="nApi">—</span></div></div>
+    <div class="blk fx" id="w_log" style="border:0"><span class="lbl">Engine &amp; Skill Log</span><div class="log" id="log"></div></div>
+  </aside>
+</main>
+</div>
+
+<div class="corner fx" style="left:28px"><button class="cb" id="btnOpenProf" title="Personalization">★</button></div>
+<div class="corner fx" style="right:28px"><button class="cb" id="btnOpenScreen" title="Live screen">ⓘ</button><button class="cb w" id="shut">⏻ Shut Down</button></div>
+
+<div class="drawer" id="drawer">
+  <div class="h2"><span>LIVE SCREEN</span><button class="ib" id="btnCloseDrawer">✕</button></div>
+  <div class="scr mono" id="scr">Live screen preview</div>
+  <div class="row"><span>Live screen sharing</span><input type="checkbox" id="scrT" checked></div>
+  <button class="cb" id="inspectBtn" style="width:100%">⌕ Inspect &amp; Create Skill</button>
+</div>
+
+<div class="modal" id="mSet">
+  <div class="h2"><span>SETTINGS</span><button class="ib btnCloseM">✕</button></div>
+  <div class="tabs" id="setTabs"></div><div class="tp" data-t="theme"><span class="lbl">General Theme</span>
+  <div class="sw" id="sw"></div>
+  <span class="lbl sec">State Colors</span>
+  <div id="stCols"></div>
+  <div class="demo" style="margin-top:6px" id="demo"></div>
+  </div><div class="tp" data-t="audio"><span class="lbl">Audio &amp; Camera</span>
+  <div class="f"><label>Microphone (input)</label><select id="dIn"></select></div>
+  <div class="f"><label>Live reply speaker (output)</label><select id="dOut"></select></div>
+  <div class="f"><label>Camera</label><select id="dCam"></select></div>
+  <div class="row"><span class="sub" id="devMsg" role="status" aria-live="polite">Audio devices refresh automatically.</span></div>
+  <div class="row"><span>Sound effects</span><input type="checkbox" id="sfxT" checked></div>
+  <div class="f"><label>Effects volume</label><input type="range" id="volR" min="0" max="100" value="80"></div>
+  <div class="f"><label>Noise filter threshold (<span id="nv">420</span>) · live microphone level</label><div class="nmeter"><i id="nlv"></i><b id="nth"></b></div><input id="thr" type="range" min="0" max="1000" value="420"></div>
+  <div class="f"><label>Wake sensitivity (<span id="wv">50</span>)</label><input type="range" id="wakeR" min="0" max="100" value="50"></div>
+  </div><div class="tp" data-t="connection"><span class="lbl">Connection &amp; Voice Model</span>
+  <div class="f"><label for="apiKeyIn">API Key</label><input type="password" id="apiKeyIn" placeholder="Enter API key" autocomplete="new-password" value=""></div>
+  <div class="row"><button class="cb" id="saveApiKey">Save API key</button><span class="sub" id="apiKeyStatus" role="status" aria-live="polite">Checking key storage…</span></div>
+  <div class="f"><label for="mSel">Live model (from Gemini API)</label><select id="mSel" disabled><option value="" disabled selected>Load Live models to choose…</option></select>
+  <button class="cb" id="refreshModels">Load Live models</button>
+  <div id="liveCatalogStatus" class="sub" role="status" aria-live="polite">Load a conversational Live model for text and audio replies.</div></div>
+  <div class="f"><label>Voice (Google Voice Model Catalog)</label><select id="vSel"><option value="" disabled selected>Loading voices…</option></select></div>
+  <span class="lbl sec">Google Account (Calendar &amp; Tasks)</span>
+  <div class="f"><div style="display:flex;gap:8px;align-items:center"><button class="cb" id="gConnB">🔗 Connect Google Account</button><span class="sub" id="gConnStatus">Not Connected</span></div></div>
+  <span class="lbl sec">Weather Location</span>
+  <div class="f"><div style="display:flex;gap:8px"><input class="mi" id="locIn" placeholder="Format: Province or Province / District"><button class="cb" id="locSaveB">Set</button><button class="cb" id="locAutoB">Auto</button></div><div class="sub" id="locMsg" style="margin-top:4px">Format: Province or Province / District (e.g. Istanbul or Istanbul / Beylikduzu). Press the Set button to save.</div></div>
+  </div><div class="tp" data-t="interface"><span class="lbl">Interface Layout</span>
+  <div class="row"><span>Compact view</span><select class="mini" id="cmpSel"><option value="auto">Auto</option><option value="on">On</option><option value="off">Off</option></select></div>
+  <div class="row"><span>Arrange widgets (position, size, order)</span><button class="cb" id="btnOpenLayFromSet">Open</button></div>
+  </div><div class="tp" data-t="system"><span class="lbl">Window</span>
+  <div class="row"><span>Always on top</span><input type="checkbox" id="onTop"></div>
+  <div class="row"><span>Personalization &amp; memory</span><button class="cb" id="btnOpenProfFromSet">Open</button></div>
+  <span class="lbl sec">Context Token Capacity</span>
+  <div class="sub" id="tokSub">Remaining: — · Used: —</div><div class="bar"><i id="tokBar" style="width:0%"></i></div>
+  <span class="lbl sec">Backup</span><div class="row"><span>Export / restore settings to file</span><span style="display:flex;gap:8px"><button class="cb" id="expB">Export</button><button class="cb" id="impB">Import</button></span></div><input type="file" id="impF" accept=".json" hidden>
+  <button class="cb" style="width:100%;margin-top:18px" id="restartApp">Restart app</button>
+  <button class="cb red" style="width:100%;margin-top:8px" id="resetAll">Reset interface preferences</button></div>
+  <button class="cb on" id="btnSaveSet" style="width:100%;margin-top:22px">▣ Save Settings</button>
+  <div class="sub save-status" id="saveStatus" role="status" aria-live="polite"></div>
+</div>
+
+<div class="modal" id="mProf">
+  <div class="h2"><span>⚙ PERSONALIZATION &amp; MEMORY</span><button class="ib btnCloseM">✕</button></div>
+  <div class="sub" style="margin-bottom:16px;text-transform:none;letter-spacing:.04em">Your profile preferences are saved locally.</div>
+  <div class="f"><label>Speech and recognition language</label><select id="pLang"><option value="tr">Turkish (TR) [tr]</option><option value="en">English (US) [en]</option></select></div>
+  <div class="f"><label>Preferred browser</label><select id="pBr"><option value="">System default</option><option>Brave</option><option>Chrome</option><option>Edge</option><option>Firefox</option></select></div>
+  <div class="row"><span>Open sites in a new tab of the running browser</span><input type="checkbox" id="pTab" checked></div>
+  <div class="row"><span>Open the local app first</span><input type="checkbox" id="pApp" checked></div>
+  <div class="f sec"><label>Personal instructions (how should V.EX. behave?)</label><textarea class="ta" id="pIns"></textarea></div>
+  <div class="f sec"><label>Base System Instruction (BASE_SYSTEM_INSTRUCTION)</label><textarea class="ta" id="pSys" style="min-height:140px;font-family:var(--mono);font-size:11px"></textarea></div>
+  <div class="f"><label>Startup Greeting Prompt</label><input class="mi" id="pGreet" style="width:100%"></div>
+  <div class="f"><label>Memory rules (one rule per line, can also be added by voice)</label><textarea class="ta" id="pMem"></textarea></div>
+  <div class="f"><label>Custom command / shortcut mappings (e.g. movie = Netflix)</label><textarea class="ta" id="pSc"></textarea></div>
+  <button class="cb on" id="btnSaveProf" style="width:100%">▣ Save profile</button>
+  <div class="sub save-status" role="status" aria-live="polite"></div>
+</div>
+
+<div class="modal pal" id="mPal"><input id="palIn" placeholder="SEARCH COMMANDS, SKILLS, SETTINGS OR SHORTCUTS…" autocomplete="off"><div id="palList" style="max-height:50vh;overflow:auto;padding:6px 0"></div></div>
+
+<div class="modal" id="mSkill">
+  <div class="h2"><span>SKILL LIBRARY</span><button class="ib btnCloseM">✕</button></div>
+  <div id="skList"></div>
+  <div id="skForm" style="display:none;margin-top:14px">
+    <div class="f"><label>Skill Name</label><input class="mi" id="sName" style="width:100%"></div>
+    <div class="f"><label>Trigger (Word / Shortcut / Target Window)</label><input class="mi" id="sTrig" style="width:100%"></div>
+    <div class="f"><label>Parameters (comma-separated, e.g. server, channel, message)</label><input class="mi" id="sParams" style="width:100%"></div>
+    <div class="f"><label>Description</label><input class="mi" id="sDesc" style="width:100%"></div>
+    <div class="f"><label>Steps (JSON List)</label><textarea class="ta" id="sSteps" style="min-height:160px;font-family:var(--mono);font-size:11px;white-space:pre"></textarea></div>
+    <div style="display:flex;gap:8px"><button class="cb on" id="skSave" style="flex:1">▣ Save</button><button class="cb" id="skCancel">Cancel</button></div>
+  </div>
+  <button class="cb" id="skNew" style="width:100%;margin-top:12px">+ New Skill</button>
+</div>
+
+<div class="modal" id="mLay">
+  <div class="h2"><span>INTERFACE LAYOUT</span><button class="ib btnCloseM">✕</button></div>
+  <div class="sub" style="margin-bottom:12px;text-transform:none">Choose column (left/right), size and order for each widget, or turn it off.</div>
+  <div id="layList"></div>
+  <button class="cb" id="layReset" style="width:100%;margin-top:12px">Restore defaults</button>
+</div>
+
+<div class="modal" id="mRut">
+  <div class="h2"><span>ROUTINES</span><button class="ib btnCloseM">✕</button></div>
+  <div id="rtList"></div>
+  <div id="rtForm" style="display:none;margin-top:14px">
+    <div class="f"><label>Name (also used to trigger by voice)</label><input class="mi" id="rName" style="width:100%"></div>
+    <div class="f"><label>Trigger</label><div style="display:flex;gap:8px"><select class="mini" id="rType"><option value="manual">Manual / voice</option><option value="time">Time</option><option value="app">App launch</option><option value="wifi">Wi-Fi connection</option></select><input class="mi" id="rVal"></div></div>
+    <div class="f" id="rDaysW"><label>Days</label><select class="mini" id="rDays"><option value="all">Every day</option><option value="week">Weekdays</option><option value="wend">Weekends</option></select></div>
+    <div class="f"><label>Steps (one step per line)</label><textarea class="ta" id="rSteps" placeholder="Read the weather&#10;Read the calendar&#10;Play music"></textarea></div>
+    <div style="display:flex;gap:8px"><button class="cb on" id="rSave" style="flex:1">▣ Save</button><button class="cb" id="rCancel">Cancel</button></div>
+  </div>
+  <button class="cb" id="rNew" style="width:100%;margin-top:12px">+ New Routine</button>
+</div>
+
+<div class="modal" id="mTl">
+  <div class="h2"><span>ACTION TIMELINE</span><button class="ib btnCloseM">✕</button></div>
+  <div style="display:flex;gap:8px;margin-bottom:12px"><input class="mi" id="tlQ" placeholder="SEARCH…" autocomplete="off"><select class="mini" id="tlF"><option value="">All</option><option value="ok">Successful</option><option value="bad">Errors</option></select><button class="cb" id="tlClr">Clear</button></div>
+  <div id="tlList"></div>
+</div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

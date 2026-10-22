@@ -1,0 +1,25 @@
+{
+  "ok": true,
+  "phase": "chat",
+  "native": {
+    "alias": true,
+    "api": [
+      "event"
+    ],
+    "online": "● MODEL OFFLINE",
+    "system": "Windows · 11 · AMD64"
+  },
+  "native_chat": true,
+  "fallback": true,
+  "single_note": true,
+  "safe_dom": true,
+  "concurrent_rejected": true,
+  "bridge_responsive": true,
+  "failure_preserved_input": true,
+  "model_change_not_online": true,
+  "unknown_locked": true,
+  "chat_before_notes_confirmation": true,
+  "dynamic_live_catalog": true,
+  "text_model_separate": true,
+  "safe_http_diagnostics": true
+}

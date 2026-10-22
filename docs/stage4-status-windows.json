@@ -1,0 +1,92 @@
+{
+  "open": {
+    "task_id": "10700e3269944a2b9df681bcaaf7b3b5",
+    "status": "succeeded",
+    "verified": true,
+    "data": {
+      "app_id": "notepad",
+      "running": true,
+      "visible_window": true,
+      "processes": [
+        {
+          "pid": 19040,
+          "identity": "microsoft_notepad_package",
+          "created": "134370696523761960"
+        },
+        {
+          "pid": 12560,
+          "identity": "microsoft_notepad_package",
+          "created": "134370696524578533"
+        }
+      ],
+      "windows": [
+        {
+          "hwnd": 198728,
+          "pid": 12560,
+          "minimized": false
+        }
+      ],
+      "complete": true,
+      "observed_at": "2026-10-21T15:21:11.236862+00:00"
+    },
+    "error": null,
+    "evidence": {
+      "source": "win32_process_identity+EnumWindows"
+    }
+  },
+  "after_test_tab_close": {
+    "task_id": "256d7e41f82e457aa3cca08eafe0ad55",
+    "status": "succeeded",
+    "verified": true,
+    "data": {
+      "app_id": "notepad",
+      "running": true,
+      "visible_window": true,
+      "processes": [
+        {
+          "pid": 12560,
+          "identity": "microsoft_notepad_package",
+          "created": "134370696524578533"
+        }
+      ],
+      "windows": [
+        {
+          "hwnd": 198728,
+          "pid": 12560,
+          "minimized": false
+        }
+      ],
+      "complete": true,
+      "observed_at": "2026-10-21T15:22:41.707584+00:00"
+    },
+    "error": null,
+    "evidence": {
+      "source": "win32_process_identity+EnumWindows"
+    }
+  },
+  "scope": {
+    "real_win32_observation": true,
+    "status_only": true,
+    "test_tab_closed": true,
+    "restored_user_tabs_left_untouched": true,
+    "application_closed_after_test": false
+  },
+  "initial_closed": {
+    "task_id": "80c6803d1e074936946ed34a118d1a20",
+    "status": "succeeded",
+    "verified": true,
+    "data": {
+      "app_id": "notepad",
+      "running": false,
+      "visible_window": false,
+      "processes": [],
+      "windows": [],
+      "complete": true,
+      "observed_at": "2026-10-21T15:18:20.454397+00:00"
+    },
+    "error": null,
+    "evidence": {
+      "source": "win32_process_identity+EnumWindows"
+    }
+  }
+}

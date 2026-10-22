@@ -1,0 +1,32 @@
+{
+  "date": "2026-10-21",
+  "environment": "Headless Edge; native bridge simulated, not actual PyWebView",
+  "results": [
+    {
+      "transport": "fallback",
+      "checks": [
+        "add: one note_add, zero save, local persistence",
+        "reload preserved note",
+        "complete: one note_done, zero save",
+        "delete: one note_del, zero save",
+        "backend setters: no outbound",
+        "explicit settings save retained",
+        "no pageerror/unhandledrejection"
+      ],
+      "passed": true
+    },
+    {
+      "transport": "native",
+      "checks": [
+        "add: one note_add, zero save, local persistence",
+        "reload preserved note",
+        "complete: one note_done, zero save",
+        "delete: one note_del, zero save",
+        "backend setters: no outbound",
+        "explicit settings save retained",
+        "no pageerror/unhandledrejection"
+      ],
+      "passed": true
+    }
+  ]
+}

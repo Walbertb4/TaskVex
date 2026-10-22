@@ -1,0 +1,298 @@
+"""Gerçek geçici dosyalarla kayıt bütünlüğünü ve kontrollü hata yollarını dene.
+
+Disk dolması/izin/kesilme benzeri hatalar belirli sistem çağrılarında üretilir.
+Kullanıcının gerçek veri dizini kullanılmaz; conftest TASKVEX_HOME'u ayırır.
+"""
+
+from contextlib import contextmanager
+import json
+from pathlib import Path
+import subprocess
+import sys
+
+import pytest
+
+from app.config import get_data_home
+from app.core.contracts import ContractError
+from app.storage import json_store
+from app.storage.json_store import JsonStore, StoreError
+
+
+@pytest.fixture
+def store():
+    """Üretimdeki yol seçimini kullan ama testin izole geçici kökünde kal."""
+    return JsonStore(get_data_home() / "notes.json")
+
+
+def test_missing_and_empty_records_are_distinct(store):
+    assert store.read() is None
+    assert not store.path.parent.exists()
+    store.write({})
+    assert store.read() == {}
+    assert json.loads(store.path.read_text("utf-8")) == {"version": 1, "data": {}}
+
+
+def test_unicode_and_json_values_round_trip_without_shared_state(store):
+    data = {"notes": [{"t": "Türkçe 📝", "d": 0}], "flag": False, "value": None}
+    store.write(data)
+    data["notes"].clear()
+    first = store.read()
+    assert first == {"notes": [{"t": "Türkçe 📝", "d": 0}], "flag": False, "value": None}
+    first["notes"].clear()
+    assert len(store.read()["notes"]) == 1
+    assert list(store.path.parent.glob("*.tmp")) == []
+
+
+@pytest.mark.parametrize("data", [
+    None, [], {1: "not a string key"}, {"tuple": (1, 2)},
+    {"number": float("nan")}, {"number": float("inf")},
+    {"text": "\ud800"}, {"object": object()},
+])
+def test_invalid_write_preserves_existing_bytes(store, data):
+    store.write({"keep": True})
+    original = store.path.read_bytes()
+    with pytest.raises(StoreError) as caught:
+        store.write(data)
+    assert caught.value.code == "invalid_data"
+    assert store.path.read_bytes() == original
+
+
+def test_cyclic_data_does_not_create_a_directory(store):
+    data = {}
+    data["self"] = data
+    with pytest.raises(StoreError, match="JSON object"):
+        store.write(data)
+    assert not store.path.parent.exists()
+
+
+@pytest.mark.parametrize("raw", [
+    b"", b"{broken", b"\xff", b"[]", b'{"data":{}}',
+    b'{"version":true,"data":{}}', b'{"version":0,"data":{}}',
+    b'{"version":1,"data":[]}', b'{"version":1,"data":{},"unexpected":1}',
+    b'{"version":1,"data":{"x":NaN}}', b'{"version":1,"data":{"x":1e999}}',
+    b'{"version":1,"data":{"x":1,"x":2}}',
+])
+def test_corrupt_file_is_not_silently_replaced(store, raw):
+    store.path.parent.mkdir(parents=True)
+    store.path.write_bytes(raw)
+    with pytest.raises(StoreError) as caught:
+        store.read()
+    assert caught.value.code == "corrupt_data"
+    with pytest.raises(StoreError) as caught:
+        store.write({"must_not_replace": True})
+    assert caught.value.code == "corrupt_data"
+    assert store.path.read_bytes() == raw
+
+
+def test_explicit_recovery_preserves_original_bytes_then_allows_new_record(store):
+    store.path.parent.mkdir(parents=True)
+    raw = b'{"interrupted":"secret'
+    store.path.write_bytes(raw)
+    backup = store.recover_corrupt()
+    assert backup.parent == store.path.parent
+    assert backup.suffix == ".corrupt"
+    assert backup.read_bytes() == raw
+    assert store.read() is None
+    store.write({"notes": []})
+    assert store.read() == {"notes": []}
+    assert backup.read_bytes() == raw
+
+
+def test_healthy_and_missing_records_are_not_quarantined(store):
+    assert store.recover_corrupt() is None
+    store.write({"keep": True})
+    assert store.recover_corrupt() is None
+    assert store.read() == {"keep": True}
+    assert list(store.path.parent.glob("*.corrupt")) == []
+
+
+def test_future_version_cannot_be_overwritten_or_recovered_as_corrupt(store):
+    store.path.parent.mkdir(parents=True)
+    raw = b'{"version":2,"data":{"new_format":true}}'
+    store.path.write_bytes(raw)
+    for operation in (store.read, lambda: store.write({}), store.recover_corrupt):
+        with pytest.raises(StoreError) as caught:
+            operation()
+        assert caught.value.code == "unsupported_version"
+        assert store.path.read_bytes() == raw
+
+
+def fail_io(*args, **kwargs):
+    """Hata metnindeki hassas ayrıntılar StoreError mesajına taşınmamalı."""
+    raise PermissionError("private path / secret payload")
+
+
+@pytest.mark.parametrize("point", ["fsync", "replace", "tempfile"])
+def test_precommit_io_failure_preserves_previous_record(store, monkeypatch, point):
+    store.write({"old": 1})
+    raw = store.path.read_bytes()
+    if point == "tempfile":
+        monkeypatch.setattr(json_store.tempfile, "NamedTemporaryFile", fail_io)
+    else:
+        monkeypatch.setattr(json_store.os, point, fail_io)
+    with pytest.raises(StoreError) as caught:
+        store.write({"new": 2})
+    assert caught.value.code == "write_failed"
+    assert "secret" not in str(caught.value)
+    assert store.path.read_bytes() == raw
+    assert list(store.path.parent.glob("*.tmp")) == []
+
+
+def test_partial_temporary_write_never_truncates_target(store, monkeypatch):
+    """Geçici dosyaya birkaç bayt yazıldıktan sonra kesilmeyi taklit et."""
+    store.write({"keep": True})
+    raw = store.path.read_bytes()
+    real_tempfile = json_store.tempfile.NamedTemporaryFile
+
+    @contextmanager
+    def interrupted_file(**kwargs):
+        with real_tempfile(**kwargs) as stream:
+            class InterruptedWriter:
+                name = stream.name
+
+                def write(self, content):
+                    stream.write(content[:5])
+                    raise OSError("Simulated disk full")
+
+            yield InterruptedWriter()
+
+    monkeypatch.setattr(json_store.tempfile, "NamedTemporaryFile", interrupted_file)
+    with pytest.raises(StoreError) as caught:
+        store.write({"new": "content"})
+    assert caught.value.code == "write_failed"
+    assert store.path.read_bytes() == raw
+    assert list(store.path.parent.glob("*.tmp")) == []
+
+
+def test_replacement_happens_only_after_complete_new_file_is_ready(store, monkeypatch):
+    store.write({"old": True})
+    real_replace = json_store.os.replace
+    observed = []
+
+    def checked_replace(source, target):
+        assert source.parent == target.parent
+        assert store.read() == {"old": True}
+        assert json.loads(source.read_text("utf-8")) == {"version": 1, "data": {"new": True}}
+        observed.append(True)
+        real_replace(source, target)
+
+    monkeypatch.setattr(json_store.os, "replace", checked_replace)
+    store.write({"new": True})
+    assert store.read() == {"new": True}
+    assert observed == [True]
+
+
+def test_abrupt_process_exit_keeps_previous_record_and_ignores_orphan_temp(store):
+    """Alt süreci replace öncesinde finally bile çalışmadan sonlandır.
+
+    Elektrik kesintisi değil, uygulama sürecinin çökmesi denenir. Tam yazılmış
+    fakat henüz hedefe geçirilmemiş geçici dosya açılışta veri sayılmamalıdır.
+    """
+    store.write({"old": True})
+    script = """
+import os
+from pathlib import Path
+import sys
+from app.storage.json_store import JsonStore
+import app.storage.json_store as storage
+storage.os.replace = lambda source, target: os._exit(73)
+JsonStore(Path(sys.argv[1])).write({"new": True})
+"""
+    child = subprocess.run([sys.executable, "-c", script, str(store.path)],
+                           cwd=Path(__file__).resolve().parents[1],
+                           capture_output=True, timeout=10)
+    assert child.returncode == 73, child.stderr.decode("utf-8", errors="replace")
+    assert len(list(store.path.parent.glob("*.tmp"))) == 1
+    assert store.read() == {"old": True}
+    store.write({"later": True})
+    assert store.read() == {"later": True}
+
+
+def test_directory_creation_failure_is_not_success(store, monkeypatch):
+    monkeypatch.setattr(Path, "mkdir", fail_io)
+    with pytest.raises(StoreError) as caught:
+        store.write({"new": True})
+    assert caught.value.code == "write_failed"
+    assert not store.path.exists()
+
+
+def test_read_error_does_not_become_missing_or_allow_write(store, monkeypatch):
+    store.write({"keep": True})
+    monkeypatch.setattr(Path, "read_text", fail_io)
+    for operation in (store.read, lambda: store.write({}), store.recover_corrupt):
+        with pytest.raises(StoreError) as caught:
+            operation()
+        assert caught.value.code == "read_failed"
+        assert "secret" not in str(caught.value)
+
+
+def test_recovery_failure_preserves_corrupt_original(store, monkeypatch):
+    store.path.parent.mkdir(parents=True)
+    store.path.write_bytes(b"broken")
+    monkeypatch.setattr(json_store.os, "replace", fail_io)
+    with pytest.raises(StoreError) as caught:
+        store.recover_corrupt()
+    assert caught.value.code == "recovery_failed"
+    assert store.path.read_bytes() == b"broken"
+
+
+@pytest.mark.parametrize("path", ["notes.json", Path("relative.json"), Path(Path.cwd().anchor)])
+def test_invalid_store_path_is_rejected(path):
+    with pytest.raises(ContractError):
+        JsonStore(path)
+
+
+def test_config_uses_current_environment_without_creating_directory(tmp_path, monkeypatch):
+    first, second = tmp_path / "one", tmp_path / "two"
+    monkeypatch.setenv("TASKVEX_HOME", str(first))
+    assert get_data_home() == first
+    monkeypatch.setenv("TASKVEX_HOME", str(second))
+    assert get_data_home() == second
+    assert not first.exists() and not second.exists()
+
+
+@pytest.mark.parametrize("configured", ["", "  ", "relative/path"])
+def test_invalid_configured_home_is_not_silently_replaced(configured, monkeypatch):
+    monkeypatch.setenv("TASKVEX_HOME", configured)
+    with pytest.raises(ContractError):
+        get_data_home()
+
+
+def test_windows_default_data_home(tmp_path, monkeypatch):
+    if json_store.os.name != "nt":
+        pytest.skip("Windows varsayılan yol testi")
+    monkeypatch.delenv("TASKVEX_HOME")
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+    assert get_data_home() == tmp_path / "TaskVex"
+
+
+def test_missing_default_home_is_configuration_error(monkeypatch):
+    monkeypatch.delenv("TASKVEX_HOME")
+    monkeypatch.delenv("LOCALAPPDATA", raising=False)
+    with pytest.raises(ContractError):
+        get_data_home()
+
+
+def test_recovery_accepts_application_schema_without_discarding_original(store):
+    """Geçerli JSON ama bozuk uygulama kaydı da asıl baytları koruyabilmeli."""
+    store.write({"invalid": True})
+    original = store.path.read_bytes()
+
+    def validate(data):
+        raise ContractError("Invalid application schema")
+
+    backup = store.recover_corrupt(validate=validate)
+    assert backup.read_bytes() == original
+    assert store.read() is None
+
+
+def test_unexpected_schema_validator_error_does_not_quarantine(store):
+    store.write({"valid": True})
+    original = store.path.read_bytes()
+
+    def validate(data):
+        raise RuntimeError("Bug in validator")
+
+    with pytest.raises(RuntimeError):
+        store.recover_corrupt(validate=validate)
+    assert store.path.read_bytes() == original

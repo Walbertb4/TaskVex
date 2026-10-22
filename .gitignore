@@ -1,0 +1,49 @@
+# Local environments and virtualenvs
+.venv/
+env/
+venv/
+ENV/
+
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.pytype/
+.ruff_cache/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+api_keys.json
+google_token.json
+google_client_secret.json
+credentials.json
+
+# Local backups and build artifacts
+*.rar
+*.zip
+*.7z
+/runtime/
+/v1/runtime/
+dist/
+build/
+*.spec
+
+# Editor and OS files
+.vscode/
+.idea/
+*.swp
+*.swo
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.log
+*.tmp
+*.bak

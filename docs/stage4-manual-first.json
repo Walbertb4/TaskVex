@@ -1,0 +1,94 @@
+{
+  "ok": true,
+  "launch_count": 1,
+  "fresh_launch_checked": true,
+  "replay_same_task": true,
+  "second_request_reused_window": true,
+  "before": {
+    "task_id": "911e03c7963644edbbc672091d256a3c",
+    "status": "succeeded",
+    "verified": true,
+    "data": {
+      "app_id": "notepad",
+      "running": false,
+      "visible_window": false,
+      "processes": [],
+      "windows": [],
+      "complete": true,
+      "observed_at": "2026-10-21T16:09:39.174432+00:00"
+    },
+    "error": null,
+    "evidence": {
+      "source": "win32_process_identity+EnumWindows"
+    }
+  },
+  "opened": {
+    "task_id": "fab576ed345d4f1d8f21c9abea5f3162",
+    "status": "succeeded",
+    "verified": true,
+    "data": {
+      "app_id": "notepad",
+      "running": true,
+      "visible_window": true,
+      "processes": [
+        {
+          "pid": 2688,
+          "identity": "microsoft_notepad_package",
+          "created": "134370725792835815"
+        }
+      ],
+      "windows": [
+        {
+          "hwnd": 13567724,
+          "pid": 2688,
+          "minimized": false
+        }
+      ],
+      "complete": true,
+      "observed_at": "2026-10-21T16:09:39.485719+00:00",
+      "launch_requested": true,
+      "already_open": false
+    },
+    "error": null,
+    "evidence": {
+      "source": "win32_process_identity+EnumWindows",
+      "window_observed": true,
+      "launch_requested": true
+    }
+  },
+  "again": {
+    "task_id": "c0792099e64449a9a7c6b3798d58c60b",
+    "status": "succeeded",
+    "verified": true,
+    "data": {
+      "app_id": "notepad",
+      "running": true,
+      "visible_window": true,
+      "processes": [
+        {
+          "pid": 2688,
+          "identity": "microsoft_notepad_package",
+          "created": "134370725792835815"
+        }
+      ],
+      "windows": [
+        {
+          "hwnd": 13567724,
+          "pid": 2688,
+          "minimized": false
+        }
+      ],
+      "complete": true,
+      "observed_at": "2026-10-21T16:09:39.495159+00:00",
+      "launch_requested": false,
+      "already_open": true
+    },
+    "error": null,
+    "evidence": {
+      "source": "win32_process_identity+EnumWindows",
+      "window_observed": true,
+      "launch_requested": false
+    }
+  },
+  "application_left_open": true
+}
