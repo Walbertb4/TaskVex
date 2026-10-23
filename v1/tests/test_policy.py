@@ -28,6 +28,7 @@ def request(tool="notes.list", **changes):
 
 
 @pytest.mark.parametrize("name,capability", [
+    ("assistant.request_sleep_mode", "assistant.control"),
     ("notes.add", "notes.write"), ("notes.list", "notes.read"),
     ("notes.update", "notes.write"), ("notes.delete", "notes.write"),
     ("notes.initialize", "notes.write"), ("notes.replace", "notes.write"),

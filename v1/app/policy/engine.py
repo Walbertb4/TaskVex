@@ -17,6 +17,7 @@ from app.core.contracts import ContractError, ToolRequest, ToolSpec
 # Araç -> gereken yetki eşlemesini core belirler. Plugin kendi bildiriminden
 # yetki türetemez; boş veya farklı required_capabilities bildirimi de reddedilir.
 _TOOL_CAPABILITIES = MappingProxyType({
+    "assistant.request_sleep_mode": frozenset({"assistant.control"}),
     "apps.catalog": frozenset({"apps.read"}),
     "apps.status": frozenset({"apps.read"}),
     "apps.open": frozenset({"apps.read", "apps.launch"}),

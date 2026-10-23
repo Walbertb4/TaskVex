@@ -36,6 +36,37 @@ def _fold_text(value: str) -> str:
     return " ".join(value.casefold().replace("\u0307", "").split())
 
 
+def sleep_request(report: dict, previous_tasks: frozenset[str] = frozenset()) -> dict:
+    """Yalnız bu başarılı turun doğrulanmış, yeni araç isteğini UI'a çıkar.
+
+    Araç sonucu uyku değil, bekleyen istek üretir. Eski çağrının replay sonucu
+    modele tekrar verilebilir fakat yeni geçiş oluşturamaz. Çelişkili kiplerde
+    tahmin yapılmaz; Stop/hata/unknown veya başarısız araç varsa uygulanmaz.
+    REST ve Live aynı çıkarımı kullanır; doğal dil metni burada yorumlanmaz.
+    """
+    if not report.get('ok') or report.get('stopped') or report.get('unknown'):
+        return {}
+    outcomes = report.get('tool_results', [])
+    if any(item.get('status') != 'succeeded' for item in outcomes):
+        return {}
+    modes = set()
+    for item in outcomes:
+        if item.get('name') != 'assistant.request_sleep_mode' or item.get('task_id') in previous_tasks:
+            continue
+        result = item.get('result') or {}
+        data = result.get('data') or {}
+        if (result.get('verified') is True and data.get('applied') is False
+                and data.get('apply_after') == 'reply_playback' and data.get('mode') in ('once', 'persistent', 'off')):
+            modes.add(data['mode'])
+    if len(modes) > 1:
+        return {'ok': False, 'code': 'conflicting_sleep_requests',
+                'error': 'Conflicting sleep requests; no mode change was applied.'}
+    if not modes:
+        return {}
+    mode = modes.pop()
+    return {'sleep_mode': mode, 'sleep_requested': mode != 'off'}
+
+
 class NoteTargetError(ContractError):
     """Yazı yapılmadan hedef açıklaması iste; ham model/veri hatasını UI'a taşıma."""
 

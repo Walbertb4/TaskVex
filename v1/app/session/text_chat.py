@@ -11,7 +11,7 @@ from uuid import uuid4
 
 from app.core.contracts import ContractError
 from app.session.gemini import DEFAULT_MODEL, FALLBACK_MODEL, GeminiText
-from app.session.model_tools import ModelTools
+from app.session.model_tools import ModelTools, sleep_request
 from app.storage.credentials import CredentialError
 from app.session.live_session import PersistentLive
 from app.session.live_input import LiveInput
@@ -109,7 +109,7 @@ class TextChat:
                 self._speech_reply = None
             if self._closed:
                 return {"ok": False, "error": "Text session is closed; reopen the app"}
-            allowed = ("apps.catalog", "system.status")
+            allowed = ("apps.catalog", "system.status", "assistant.request_sleep_mode")
             if notes_ready:
                 allowed += ("notes.add", "notes.list", "notes.update", "notes.delete")
             tools = ModelTools(self._core, principal="local-user", session_id=uuid4().hex, allowed_tools=allowed)
@@ -182,7 +182,7 @@ class TextChat:
                 return {"ok": False, "error": "Text session is closed; reopen the app"}
             # Not aktarımı bekliyor diye normal sohbet kapatılmaz. Aynı durum
             # backend'de araç kapsamını da daraltır; yalnız UI kilidine güvenmeyiz.
-            allowed = ("apps.catalog", "system.status")
+            allowed = ("apps.catalog", "system.status", "assistant.request_sleep_mode")
             if notes_ready:
                 allowed += ("notes.add", "notes.list", "notes.update", "notes.delete")
             tools = ModelTools(self._core, principal="local-user", session_id=uuid4().hex,
@@ -200,6 +200,7 @@ class TextChat:
                 with self._rest_guard:
                     self._rest = (request_id or uuid4().hex, client)
                 result = client.run(text)
+                result.update(sleep_request(result))
                 if result.get('ok') and request_id and self._audio_sink:
                     with self._rest_guard:
                         self._speech_reply = (request_id, result['text'])

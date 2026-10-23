@@ -5,10 +5,19 @@ okumadan neyin çalıştığını, neyin açık olduğunu ve sırada ne bulundu�
 Son güncelleme: 23 Ekim 2026. Mevcut aşama: **Aşama 5, uyku/ses kararlılığı**.
 Aşama 5 kapanmadı; Aşama 6 uygulamasına geçilmedi.
 
-**Güncel öncelik 5.R3:** kullanıcı 5.R2 testlerini başarılı bildirdi; sesli tur
-sınırı kabul edildi. Ayrı yerel onay seslerini istemediğini belirtti: kaldırılacak,
-komutla uyku Vex'in kendi yanıtı ve çalması tamamlandıktan sonra uygulanacak.
-Bu yeni davranışın kabulü henüz yapılmadı. Ayrıntı:
+**Güncel öncelik 5.R4:** uyku niyeti regex'ten çıkarılıp mevcut model araç
+hattına taşındı. Yanıt/çalma sonrası mevcut host geçişi, Stop ve replay
+koruması doğrulandı. [Mimari uyum kontrolü](docs/STAGE5_ARCHITECTURE_ALIGNMENT.md)
+tamamlandı; diğer açıklar raporlandı. Gerçek hesap/kullanıcı kabulü ve commit açık.
+
+Önceki 5.R3: ayrı yerel ses kaldırıldı; Vex'in kendi yanıtı ve
+çalması ardından uyku uygulanıyor (d9caf91). Kullanıcı “kalıcı uyku moduna geç”
+ifadesinin kaçtığını bildirdi: aynı parser'da TR/EN varyantlar genişletildi.
+955 pytest ve native chat geçti; fakat “Uyku moduna kalıcı olarak gir” ifadesi
+kullanıcıda yine geçiş üretmedi. Varyasyon sorunu **açık**; test sayısıyla kapatılamaz.
+Kullanıcı kararıyla AGENTS.md'ye ortak mimari/araç hattı zorunluluğu ve özel
+doğal dil komut yolları yasağı eklendi. Uyku kararının yapılandırılmış araç
+hattına taşınması henüz uygulanmadı; bu tur yalnız proje kuralı güncellendi. Ayrıntı:
 [uyku kararlılık incelemesi](docs/STAGE5_SLEEP_STABILITY_REVIEW.md).
 
 ## Nasıl güncellenir?
@@ -114,9 +123,16 @@ Bu liste önceki parçalı uyku planlarının güncel karşılığıdır. Somut 
 | 5.R1 | Sesli gerçek onay, EOS/Idle kilidi ve wake kurulum maliyeti | Host sonrası TR/EN ses; EOS bekleyen sağlayıcıda tur bitişi; yanıt sonrası aday algısı; geçici giriş hatası sonrası replay olmadan sınırlı toparlanma | **F4 önüne alındı; kod uygulandı, fiziksel kabul açık** |
 | 5.R2 | Yazı çalışırken sesli turun 25 s takılması | Yerel bitiş sağlayıcıya açık activityEnd olarak gider; otomatik VAD/EOS ile karışmaz; üç sesli tur ve uyku/uyanış gerçek hesapta doğrulanır | **921 pytest, 7 JS, 10/10 native; kullanıcı testleri başarılı bildirdi (23 Ekim)** |
 | 5.R3 | Yerel sesli onay yerine Vex'in doğal yanıtını bekle | Sabit WAV/metin yolu yok; komut yanıtı ve çalması tamamlanmadan uyku uygulanmaz; hata/Stop/unknown başarıya dönüşmez | **Uygulandı; 923 pytest, 7 JS, Pyright 0, 10/10 native + [Stop/çalma kontrolü](docs/stage5-natural-sleep-stop-chat.json) geçti. Yeni fiziksel kabul açık; kullanıcı commit izni verdi** |
-| 5.F4 | Wake telaffuzu ve yanlış uyanma | Vex/Rex/X benzeri adaylar gerçek yerel motor ve negatif seslerle değerlendirilir; gelişigüzel X sesi kesin wake sayılmaz | R3 fiziksel kabulü sonrası |
+| 5.R4 | Uyku kararını ortak araç hattına taşı; mimari sapmaları denetle | Yapılandırılmış araç + registry/policy/TaskManager, yanıt/çalma sonrası uygulama; regex niyet yolu yok; eski çağrı yeni geçiş üretmez; diğer sapmalar kanıtıyla kaydedilir | **Uygulandı; 873 tam pytest + son ek Stop testi dahil 17 hedefli test, 7 JS, Pyright 0, 10/10 native geçti. Gerçek kabul/commit açık** |
+| 5.F4 | Wake telaffuzu ve yanlış uyanma | Vex/Rex/X benzeri adaylar gerçek yerel motor ve negatif seslerle değerlendirilir; gelişigüzel X sesi kesin wake sayılmaz | R4 fiziksel kabulü sonrası |
 | 5.F5 | Birleşik uzun kullanım ve fiziksel kabul | Normal ve stay-asleep döngüleri, Mic Off, Stop, hata, yeni sohbet, disconnect/restart; farklı bekleme süreleri; gerçek hesap/donanım ayrımı | Açık |
 | 5.F6 | Kapanış bakımı ve belgeler | UI temizliği/debloat ölçülü; eski planlar güncel gibi görünmez; 256 görev sınırı ve restart replay sınırı için karar; README kapsamı doğru | Başladı; kapanmadı |
+
+5.R3 varyant takibi: “kalıcı uyku moduna geç” için “olarak” zorunluluğu
+kaldırıldı; aç/kapat TR/EN eşdeğerleri eklendi. 955 pytest ve
+[native chat](docs/stage5-sleep-phrases-native-chat.json) geçti. Native'de
+bildirilen Türkçe açma ve İngilizce kapatma gerçek UI/host hattından geçti;
+sağlayıcı/mikrofon sentetik, fiziksel kabul ve bu ek düzeltmenin commit'i açık.
 
 5.F1–5.F4 tamamlanmadan yeni entegrasyon eklenmez. Hatalı sözleşmenin etrafına
 bir if/kelime daha eklemek kalıcı çözüm sayılmaz. Her düzeltmenin eski hatayı

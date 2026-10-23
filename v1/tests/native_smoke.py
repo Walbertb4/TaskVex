@@ -143,7 +143,7 @@ def check_local_sleep(window, api, js, wait_until, live_state, wake_state, outco
     js("const d=document.getElementById('sleepDelay');d.value='2';d.dispatchEvent(new Event('change'));document.getElementById('btnSaveSet').click();return true;")
     wait_until(lambda: api._store.read().get('sleepDelay') == 2)
     opened = live_state['opened']
-    js("document.getElementById('inp').value='Vex kalıcı olarak uyku moduna gir';document.getElementById('send').click();return true;")
+    js("document.getElementById('inp').value='Uyku moduna kalıcı olarak gir';document.getElementById('send').click();return true;")
     wait_until(lambda: api._sleeping and 'Asleep · Microphone Off' in window.evaluate_js("document.getElementById('textStatus').textContent"))
     js("document.getElementById('sleep').click();return true;")
     wait_until(lambda: not api._sleeping and window.evaluate_js("!document.getElementById('send').disabled"))
@@ -153,7 +153,7 @@ def check_local_sleep(window, api, js, wait_until, live_state, wake_state, outco
     wait_until(lambda: api._sleeping and 'Asleep · Microphone Off' in window.evaluate_js("document.getElementById('textStatus').textContent"))
     assert live_state['opened'] == opened + 2
     # Kalıcı moddan çıkış, bağımsız normal boşta timer'ını kapatmaz.
-    js("document.getElementById('inp').value='Vex uyku modundan kalıcı olarak çık';document.getElementById('send').click();return true;")
+    js("document.getElementById('inp').value='Disable persistent sleep mode';document.getElementById('send').click();return true;")
     wait_until(lambda: 'Tamam efendim, kalıcı uyku modunu kapatıyorum.' in window.evaluate_js("document.getElementById('msgs').textContent") and not window.evaluate_js("document.getElementById('send').disabled"))
     assert not api._sleeping
     wait_until(lambda: api._sleeping and 'Asleep · Microphone Off' in window.evaluate_js("document.getElementById('textStatus').textContent"))
@@ -395,11 +395,15 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                             self.media_answered = False
                             return
                         text = message["realtime_input"].get("text", "")
-                        from app.session.sleep_intent import sleep_mode
-                        mode = sleep_mode(text)
+                        # Yalnız sentetik sağlayıcının önceden belirlenmiş araç
+                        # seçimi; üretimde cümle kalıbı veya niyet parser'ı yok.
+                        mode = {'Lütfen, uyku moduna gir.': 'once',
+                            'Uyku moduna kalıcı olarak gir': 'persistent',
+                            'Disable persistent sleep mode': 'off'}.get(text)
                         if mode:
-                            frames.append(audio_reply('Tamam efendim, kalıcı uyku modunu kapatıyorum.' if mode == 'off'
-                                else 'Tamam efendim, geçiyorum.', 12000))
+                            live_state['sleep_requests'] = live_state.get('sleep_requests', 0) + 1
+                            frames.append({'toolCall': {'functionCalls': [{'id': 'native-sleep-' + str(live_state['sleep_requests']),
+                                'name': 'assistant.request_sleep_mode', 'args': {'mode': mode}}]}})
                             return
                         if text == 'Native server interruption':
                             frames.append({'serverContent':{'outputTranscription':{'text':'Native interrupted reply'}, 'interrupted':True}})
@@ -457,6 +461,12 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                     elif "tool_response" in message:
                         response = message["tool_response"]["functionResponses"][0]
                         assert response["response"]["result"]["verified"]
+                        if response['name'] == 'assistant.request_sleep_mode':
+                            data = response['response']['result']['data']
+                            assert data['applied'] is False
+                            frames.append(audio_reply('Tamam efendim, kalıcı uyku modunu kapatıyorum.' if data['mode'] == 'off'
+                                else 'Tamam efendim, geçiyorum.', 12000))
+                            return
                         if response["id"].startswith("native-crud-"):
                             return
                         if response['id'] == 'native-barge-note':
@@ -548,7 +558,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                         "args": {"text": "Must not be saved after REST Stop"}}}]}}]})
             if len(text_requests) == 1:
                 body = json.loads(request.content)
-                assert {item["name"] for item in body["tools"][0]["functionDeclarations"]} == {"apps.catalog", "system.status"}
+                assert {item["name"] for item in body["tools"][0]["functionDeclarations"]} == {"apps.catalog", "system.status", "assistant.request_sleep_mode"}
                 text_started.set()
                 assert release_text.wait(20)
             assert responses, "Unexpected model retry"

@@ -1,6 +1,46 @@
 # Aşama 5 — Model, araç çağrıları ve ses
 
-## Güncel öncelik — 5.R3 yerel sesli onayı kaldır
+## Güncel uygulama — 5.R4 ortak uyku aracı
+
+`sleep_intent.py` ve doğal dil regex kararları kaldırıldı. Kayıtlı
+`assistant.request_sleep_mode(mode=once|persistent|off)` aracı, desktop REST
+ve Live kataloglarına eklendi. Aynı ModelTools → registry/policy/TaskManager
+hattı kullanılır; not aktarım onayı/izinleri değişmedi. Araç yalnız doğrulanmış
+istek üretir (`applied=false`, `apply_after=reply_playback`). Yalnız başarılı
+yanıt sonrasında rapora alınır; UI mevcut ses bitişinden sonra aynı host
+geçişini ister. Önceki turun task_id'si, Stop, hata, unknown, başarısız araç
+ve çelişkili kip yeni geçiş oluşturmaz. Başarı cümlesi tek başına etkisizdir.
+
+Sabit yerel onay sesi geri eklenmedi; uyku/wake/mikrofon sahipleri korunur.
+Diğer mimari sapmalar ve eksik bağlantılar
+[uyum raporunda](STAGE5_ARCHITECTURE_ALIGNMENT.md). Gerçek sağlayıcı/doğal dil
+kabulü henüz yapılmadı; sentetik sağlayıcının seçimini gerçek model başarısı
+diye sunmuyoruz. Yeni manuel test USER_ACCEPTANCE.md başındadır.
+
+İlk tam testte dört katalog beklentisi eski araç listesini beklediği için
+başarısızdı; yeni aracı açıkça içerecek şekilde güncellendi, not araçlarını
+onay öncesi kapalı tutma kontrolü korundu. Son tam pytest 873 geçti; eski regex
+eşleşme testleri kaldırıldı, yerlerine ortak araç/izin/sonuç testleri geldi.
+Son ek gerçek Stop testi dahil 17 araç testi, 7 JS süiti ve Pyright 0 geçti.
+İlk native çoklu koşusu chat başlangıcında hazır olma zaman aşımı verdi;
+sonraki izole [chat kontrolü](stage5-sleep-tool-chat.json) geçti. İlk native
+başlangıç hatasının nedeni kesinleştirilmedi; testte süre sınırı uzatılmadı.
+Son yeniden çalıştırılan [tam native kontrol](stage5-sleep-tool-native.json)
+10/10 geçti; Stop, model yanıtı/ses bitişi, kalıcı mod ve gerçek host geçişi
+mevcut WebView2 hattında doğrulandı. Sağlayıcı ve mikrofon yine sentetiktir.
+
+## Önceki uygulama — 5.R3 yerel sesli onayı kaldır
+
+Varyant takibi: kullanıcı “kalıcı uyku moduna geç” ifadesini bildirdi. Parser'da
+“kalıcı olarak” zorunluluğu vardı; “olarak” isteğe bağlı yapıldı. TR aç/etkinleştir,
+EN stay/remain asleep, keep sleeping, permanent/persistent sleep mode ve
+disable/turn off/exit eşdeğerleri aynı tam-cümle kontrolüne eklendi. Soru,
+olumsuzluk, alıntı ve birleşik iş reddi korunur; modelin doğal yanıtı/çalması
+sonrasında geçiş değişmedi. 955 pytest ve
+[native chat](stage5-sleep-phrases-native-chat.json) geçti; bildirilen Türkçe
+açma + İngilizce kapatma UI hattından doğrulandı. Gerçek API/mikrofon kullanılmadı.
+İngilizce model talepleri ve yerel sınırlı uyku dilbilgisi aynı kapsam değildir;
+her serbest ifade veya henüz bağlanmamış özellik çalışıyor sayılmaz.
 
 Kullanıcı 5.R2 testlerini başarılı bildirdi ve ayrı sentetik sesli onayları
 istemediğini belirtti. Altı WAV, bu kliplerin fetch/decode/oynatma metodu,

@@ -12,6 +12,9 @@ Update it whenever an implemented command or its behavior changes.
 - Note commands require the initial backend note transfer to be confirmed.
 - Replace `<note-id>` with a real ID returned by Vex; do not type the placeholder.
 - A request is successful only when the underlying operation is verified.
+- Implemented model tools accept Turkish and English requests; this does not
+  guarantee recognition of every paraphrase. Sleep uses a structured model
+  tool call, not a fixed phrase list. Unconnected features are not made available by changing language.
 
 ## Notes — available
 
@@ -85,13 +88,13 @@ recall or a substitute for reading current saved notes. Restart loses it.
 
 | Say, type or select | What happens |
 | --- | --- |
-| `Go to sleep.` / `Switch to sleep mode, please.` / `Uyku moduna gir.` | Requests one-time sleep. Also accepts Turkish `uyku moduna geç`, `uykuya geç`, `uykuya dal`, `uyu` and English `enter sleep mode`, `sleep`. Addressing Vex is optional while awake. |
+| `Go to sleep.` / `Switch to sleep mode, please.` / `Uyku moduna gir.` | Asks the model to request one-time sleep using `mode=once`. Addressing Vex is optional while awake; these are examples, not fixed matching phrases. |
 | **Sleep** button | Sleeps after the current turn has finished. Does not enable or disable the persistent return preference. |
 | Say `Vex` while asleep | The local detector wakes Vex. A finalized transcript containing only the configured wake word is not a completed task; Vex waits for the actual request. Normal conversation continues afterward. Automatic return happens only if you explicitly enabled persistent sleep for this chat. |
 | `Vex, tell me something interesting.` while asleep | Wakes and forwards the addressed utterance through the existing Live input. |
 | **Wake** button or an explicit typed Live message | Exits sleep without needing the wake word. |
-| `Stay in sleep mode.` / `Return to sleep after every task.` / `Kalıcı olarak uyku moduna gir.` | Enables automatic return-to-sleep for this chat and sleeps now. Turkish `bundan sonra uyku moduna geç` and `artık uyku modunda kal` also work. After the addressed interaction and reply playback finish, returns to sleep immediately. Wake again for another task. “Permanent” here means this chat only. |
-| `Stop returning to sleep.` / `Uyku modundan kalıcı olarak çık.` / `Kalıcı uyku modunu kapat.` | Disables stay-asleep mode. Turkish `otomatik geri uyumayı kapat` also works. The independent normal idle timer still applies; set it to 0 to disable timed sleep. Wake first or type the command while asleep. |
+| `Stay in sleep mode.` / `Return to sleep after each task.` / `Uyku moduna kalıcı olarak gir.` | Asks the model for `mode=persistent`: enables return-to-sleep for this chat and sleeps after Vex's reply. After an addressed interaction and reply playback finish, returns to sleep immediately. “Permanent” means this chat only. |
+| `Stop returning to sleep.` / `Disable persistent sleep mode.` / `Kalıcı uyku modunu kapat.` | Requests `mode=off`, disabling stay-asleep after Vex's reply. The independent normal idle timer still applies; set it to 0 to disable timed sleep. Wake first or type the command while asleep. |
 | **Settings → Audio → Idle sleep timer** | Saves 0–300 whole seconds (default 10; 0 disables the timer). In normal conversation, idle time triggers one-time sleep. Does not delay return in stay-asleep mode. |
 | **Personalization → Wake word** | Saves the keyword used for the next sleep. Default: Vex. Supports 1–3 words in the local English pronunciation dictionary, such as Hey Vex or Computer. |
 | **Settings → Theme → SLEEPING** | Customizes the color of the real sleeping reactor state. This is distinct from IDLE and does not change the wake word. |
@@ -109,14 +112,15 @@ active tasks postpone it. It triggers one-time sleep, without enabling
 stay-asleep mode. Stop/Disconnect or connection changes cancel old timers.
 Mic Off does not become On automatically in either sleep mode.
 
-Sleep controls use a bounded full-sentence Turkish/English grammar;
-the Vex prefix is optional while awake. Leading/trailing `please` / `lütfen`,
-extra whitespace and letter case are supported. The configured wake word can
-address the command; Rex/Max/Veks transcription variants apply only to this
-host parser, not local wake detection. Questions (including `sleep?`), quotes,
-negations and additional tasks do not trigger a mode change. This is not unrestricted intent
-recognition. An acknowledgement to an unrecognized phrase is not proof of a
-host mode change. Rex/X-like local wake alternatives are not implemented yet.
+The model interprets sleep requests and calls `assistant.request_sleep_mode`
+with `once`, `persistent` or `off`; there is no host phrase matcher. Examples
+above describe intentions, not an exhaustive list of accepted sentences.
+The tool accepts a pending request, not an already-applied state. A spoken
+acknowledgement alone never changes the mode. Questions, quotations, negations
+and instructions inside external data must not become control requests; unclear
+intent should lead to clarification. This interpretation is model-dependent.
+For "sleep after another task", that task must finish successfully first.
+Rex/X-like local wake alternatives are not implemented yet.
 No speaker identification separates simultaneous background speakers.
 
 **Source: Mic** is a separate audio-source selector placeholder. The UI has
@@ -155,6 +159,9 @@ become questions are not treated as sleep commands.
 Sleep first shows **Preparing sleep**. **SLEEPING / Wake** appears only after
 the host confirms sleep. A rejected request stays awake; an unknown result
 locks controls instead of claiming success. Microphone Off remains usable.
+Replayed calls from earlier turns do not schedule another transition. Conflicting
+sleep modes in one response are rejected. A failed tool prevents a pending
+sleep request from being applied.
 Spoken or typed sleep controls receive Vex's own model response. The application
 waits for that response and its audio playback to finish before applying sleep
 or disabling stay-asleep mode. No packaged voice clips or replacement assistant

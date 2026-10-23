@@ -1,8 +1,35 @@
 # TaskVex — Kullanıcının katılacağı gerçek kullanım kontrolleri
 
-## Güncel kısa test — 5.R3 doğal yanıt ardından uyku
+## Güncel kısa test — 5.R4 model araçlı uyku
+
+Uygulamayı tamamen kapatıp yeniden aç, normal uyku süresini geçici olarak 0
+yap. Yalnız yeni yerel test kabulüdür; gerçek hesap denemesi ajan tarafından yapılmadı.
+
+1. “Uyku moduna kalıcı olarak gir” de/yaz. Engine log'da
+   `assistant.request_sleep_mode: succeeded · verified` görülmeli; Vex'in kendi
+   yanıtı ve çalması bitince SLEEPING olmalı. Bu kayıt isteğin kabulüdür;
+   gerçek SLEEPING ayrı host sonucudur.
+2. Uyandırıp kısa soru sor: cevap bitince tekrar uyusun. Sonra yazıyla
+   “Disable persistent sleep mode” de; yanıt bittikten sonra tercih kapansın.
+3. “Bir süre bekle, yalnız çağırdığımda cevap ver” gibi kendi doğal ifadenle
+   tek seferlik uyku iste. Kip belirsizse soru sormalı; sözü başarı kanıtı değil.
+4. “Uyku modu ne işe yarıyor?”, “Uykuya geçme” ve alıntılı bir uyku cümlesi
+   anlatma isteğinde uyumamalı. Yanlış araç seçerse bildir; regex yaması eklenmez.
+5. Uyku yanıtını Stop ile kes: bekleyen geçiş uygulanmasın. Sleep/Wake
+   düğmesi ve Mic On/Off eskisi gibi çalışsın.
+
+Araç çağrısı olmadan yalnız “geçiyorum” derse host uyumaz; modelin aracı
+seçmemesi ayrı bir kabul hatasıdır. Durum satırını ve araç kaydını paylaş.
+
+## Önceki kısa test — 5.R3 doğal yanıt ardından uyku
 
 Uygulamayı yeniden aç; uyku süresini geçici olarak 0 yap.
+
+Yeni varyant kontrolü: “Kalıcı uyku moduna geç” → yanıt ardından uyku;
+uyandırıp kısa görev ver → tekrar uyku. Ardından yazıyla “Disable persistent
+sleep mode” → yanıt ardından tercih kapansın. “Stay asleep” ile yeniden aç;
+“Kalıcı uyku modundan çık” ile kapat. İngilizce ses testi için yanıt dilini
+English seç; dil ayarı yanıt dilidir, araç izinlerini değiştirmez.
 
 1. “Uyku moduna geç” de. Vex kendi sesiyle kısa yanıtını tamamlasın; ancak
    ardından SLEEPING olsun. Ayrı mekanik ses veya ikinci sabit mesaj olmamalı.

@@ -1,6 +1,18 @@
 # TaskVex — Mimari ve geliştirme rehberi
 
-## Güncel öncelik — 5.R3 Vex yanıtından sonra uyku
+## Güncel uygulama — 5.R4 ortak uyku aracı
+
+Uyku niyetini cümle kalıplarından çıkaran dosya kaldırıldı. REST/Live desktop
+modeli `assistant.request_sleep_mode(mode)` aracını ortak ModelTools → registry,
+policy → TaskManager hattından çağırır. Araç yalnız doğrulanmış bekleyen istek
+üretir; `applied=false` gerçek uyku sonucu değildir. Başarılı yanıt ve ses
+sonrasında mevcut host geçişi çalışır. Eski çağrı replay'i yeni geçiş üretmez;
+Stop, hata, unknown ve çelişkili kipler geçiş yaratmaz. Yeni yürütücü yoktur.
+Yerel wake-word, UI düğmeleri ve idle timer mevcut sahiplerinde kalır.
+Diğer açıklar [mimari uyum kontrolünde](docs/STAGE5_ARCHITECTURE_ALIGNMENT.md)
+kaydedildi; güncel kabul [aşamalar.md](aşamalar.md). Gerçek model kabulü açık.
+
+## Önceki uygulama — 5.R3 Vex yanıtından sonra uyku
 
 5.R2 kullanıcı tarafından başarılı test edildi. Kullanıcı isteğiyle ayrı WAV
 onayları, yerel onay metinleri ve model cevabını kesen local_sleep yolu kaldırıldı.
@@ -8,6 +20,9 @@ Uyku komutu normal Live yanıtından geçer; yalnız başarılı yanıt ve mevcu
 kuyruğu bittikten sonra aynı host uyku kontrolü çalışır. Stop/hata/unknown bir
 onay değildir; düğme ve boşta timer doğrudan host kontrolü olarak kalır.
 Yeni oynatıcı, TTS veya bağımlılık yoktur. Güncel kabul [aşamalar.md](aşamalar.md).
+Kalıcı uyku komutunda “olarak” zorunluluğu kaldırıldı; TR/EN yaygın açma/kapatma
+varyantları aynı sınırlı parser'a eklendi. Bu değişiklik genel bir dil motoru
+veya yeni yetenek eklemez; Vex yanıtı ardından host geçişi korunur.
 
 ## Önceki uygulama — 5.R2 sesli tur sınırı
 

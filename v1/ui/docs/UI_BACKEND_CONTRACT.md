@@ -1,6 +1,24 @@
 # UI/backend sözleşmesi
 
-## Güncel 5.R3 — Vex'in yanıtından sonra uyku
+## Güncel 5.R4 — ortak uyku isteği aracı
+
+- Model kataloğuna `assistant.request_sleep_mode` eklendi; mode yalnız
+  once/persistent/off, ek parametre yasak. Not aktarım onayından bağımsız
+  desktop `assistant.control` yetkisidir; notlar onaya kadar kapalı kalır.
+- Core aracı yalnız `mode/apply_after=reply_playback/applied=false` döndürür.
+  Başarılı görev bu isteğin kabulüdür; uykuya geçildiği iddia edilmez. Modelin
+  transkriptini yorumlayan `sleep_intent.py` ve regex karar yolu kaldırıldı.
+- REST ve Live aynı doğrulanmış sonuç çıkarımını kullanır. Yalnız başarılı
+  turdaki yeni çağrı, sleep_mode/sleep_requested rapor alanlarına dönüşür.
+  Önceki tur görev kimliği, hata/Stop/unknown, başarısız araç veya çelişkili
+  kipler yeni uyku geçişi oluşturmaz. Başarı cümlesi tek başına yeterli değildir.
+- Mevcut UI yanıt/çalma bitişi ve connectionRevision/Stop/handoff korumalarını
+  kullanır; ardından aynı sleep_start gerçek host kabulünü ister. Yeni ses
+  kuyruğu, regex yönlendirme, ikinci model oturumu veya ayrı executor yoktur.
+- Yerel Sleep/Wake ve idle timer model çağırmaz. Uyku sırasında normal ses
+  yine yalnız yerel wake motoruna gider. Gerçek dil/hesap kabulü açık kalır.
+
+## Önceki 5.R3 — Vex'in yanıtından sonra uyku
 
 - local_sleep/model=local kısa devresi ve sabit metin/WAV yolu kaldırıldı.
   Yazılı veya sesli açık uyku komutu normal Live transkript/PCM hattında yanıtlanır.
@@ -13,6 +31,11 @@
   reddedilir; uyku aracı eklenmedi. Yanıt sözcükleri kodda sabitlenmez.
 - Sleep düğmesi, normal idle timer ve görev sonrası otomatik geri dönüş ek
   model yanıtı istemez. Mevcut tek mikrofon/Live/çalma sahibi korunur.
+- TR kalıcı hitabında “olarak” zorunlu değildir: “kalıcı uyku moduna geç”
+  persistent olur. Aç/etkinleştir, EN stay/remain asleep, keep sleeping,
+  permanent/persistent sleep mode ve disable/turn off/exit varyantları aynı
+  tam-cümle parser'ından geçer. Soru/olumsuz/alıntı/ek görev koruması sürer;
+  sınırsız doğal dil veya diğer diller için garanti değildir.
 
 ## Güncel ses protokolü 5.R2 — manual activity
 

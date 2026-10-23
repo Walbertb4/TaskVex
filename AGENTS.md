@@ -39,6 +39,42 @@ Never cut: validation at trust boundaries, error handling that prevents data los
 - Core başlangıcında docs/STAGE0_DECISIONS.md içindeki veri sahipliği ve ilk kapsam kararlarını oku.
 - Mark-LVI-main yalnız referanstır; kodunu otomatik import etme veya TaskVex MIT lisansı altında yeniden etiketleme. Üçüncü taraf kayıtları THIRD_PARTY_NOTES.md içindedir.
 
+## Zorunlu mimari uyum — özel komut yolları yasak
+
+Bu bölüm kullanıcının açık ve bağlayıcı proje kuralıdır. Kısa çözüm, acil bug
+düzeltmesi veya az satır yazma gerekçesiyle mimarinin dışında yol kurulamaz.
+
+- Her yeni yetenek, entegrasyon ve düzeltmede önce mevcut mimarideki sahibini,
+  sözleşmesini ve çağrı akışını belirle. Mevcut ortak hattı kullan; aynı işi
+  yapan ikinci yürütücü, veri otoritesi, model bağlantısı veya kontrol yolu kurma.
+- Doğal dilde istenen uygulama eylemleri modelin yapılandırılmış araç çağrılarıyla
+  seçilmelidir. Uyku, not, rutin, skill, Telegram ve Discord gibi yeteneklerde
+  cümle/kelime sırası listesi, regex veya anahtar kelime eşleştirmesini ayrı bir
+  niyet çözümleyici olarak eklemek ya da varyasyon çoğaltarak sürdürmek yasaktır.
+  Regex yalnız biçim/parametre doğrulaması gibi kendi sorumluluğunda kullanılabilir.
+- Model üzerinden eylemler mevcut `ModelTools → ToolRegistry/Policy → TaskManager`
+  hattından geçmelidir. Parametre şeması, izinler, gerçek hedef kimlikleri,
+  belirsizlikte açıklama isteme, tekrar çağrı koruması ve doğrulanmış sonuç aynı
+  sözleşmede korunur. Modelin söylediği başarı cümlesi işlem kanıtı sayılamaz.
+- Her aracın kendine ait iş mantığı ve servis adaptörü ilgili modülde kalır;
+  ortak yürütme kurallarını atlayamaz. Tüm eylemleri yapan sınırsız bir araç,
+  serbest kod çalıştırma veya gereksiz yeni genel framework bu kuralın çözümü değildir.
+- Yanıt/ses bitişi gibi bir koşuldan sonra uygulanacak eylem, mevcut yaşam döngüsü
+  sahibinde ve ilgili istek kimliğine bağlı tutulur. Kabul, bekleme ve gerçek
+  tamamlanma ayrılır; Stop, bağlantı değişimi, gecikmiş sonuç ve unknown mevcut
+  güvenlik kurallarını aşamaz. Özelliğe özel ikinci zamanlayıcı/oynatıcıyla çözülmez.
+- Yerel wake-word algılama, mikrofon aç/kapat, Stop ve UI düğmeleri doğal dil
+  yorumlama değildir; mevcut yerel sahiplerinde kalır. Bunları gereksiz yere
+  modele veya ağa bağlama; aynı eylemi başlatan girişler ortak uygulama mantığını
+  kullansın. Dil ve cümle varyasyonları için yürütme hattını çoğaltma.
+- Mevcut mimari yetmiyorsa önce gereken en küçük mimari/sözleşme değişikliğini
+  açıkla ve belgelerle birlikte uygula; eksikliği sessiz bir kestirmeyle gizleme.
+  Yeni özellik bahanesiyle görev kapsamı dışındaki mimariyi yeniden yazma.
+- İş tamamlandı demeden ortak hattan geçtiğini, sözleşmeleri koruduğunu ve
+  etkilenen testleri doğrula; sonuç raporunda bunu belirt. Kullanıcı açıkça başka
+  bir yol istemedikçe bu kurala istisna üretme. Eski özel yolların varlığı yeni
+  özel yol eklemek için gerekçe değildir; taşınmamış olanları açık iş olarak kaydet.
+
 ## Açıklama ve yorum standardı — kullanıcı tercihi
 
 - Bundan sonra oluşturulan tüm dosyalarda, dosyanın amacını ve projedeki yerini Türkçe ve öğretici biçimde açıkla. Kaynak dosyalarında başlangıç docstring'i/yorum kullan; yorum desteklemeyen JSON gibi biçimlerde açıklamayı ilgili Markdown belgesine yaz, dosya biçimini bozma.

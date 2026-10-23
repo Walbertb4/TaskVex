@@ -16,8 +16,7 @@ from google.genai import errors, types
 from app.session.live_session import LiveConnection
 from app.session.live_input import LiveInput
 from app.core.contracts import ContractError, TaskStatus
-from app.session.model_tools import ModelTools, NoteTargetError
-from app.session.sleep_intent import sleep_mode
+from app.session.model_tools import ModelTools, NoteTargetError, sleep_request
 from app.storage.credentials import CredentialError, load_gemini_key
 
 # Parçaları gelmeye devam eden uzun yanıt eski 25 s toplam sürede kesilmesin.
@@ -99,6 +98,7 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
                 if not owned:
                     report["mode"] = "live_session"
                 bound_tools = connection.tools
+                previous_tasks = frozenset(connection.calls.values())
                 if bound_tools:
                     bound_tools.begin_turn(text)
                 report["tools_enabled"] = bound_tools is not None
@@ -198,12 +198,6 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
                             await session.send_realtime_input(activity_end=types.ActivityEnd())
                             audio_input.end_sent_at = perf_counter()
                     if message.tool_call:
-                        # Uyku talebi host kontrolüdür; modelin başka bir araçla
-                        # bunu uygulamaya çalışması yetki vermez. Yanıt hatalıysa
-                        # uyuma, hiçbir yan etki başlatmadan açık ret döndür.
-                        if sleep_mode(report.get('input_text', text), (profile or {}).get('pWake', 'Vex')):
-                            report.update(code='live_protocol', error='Sleep control does not require a tool; no action was started.')
-                            return report
                         calls = message.tool_call.function_calls or []
                         if not bound_tools or not calls or len(report["tool_results"]) + len(calls) > 8:
                             report.update(code="live_protocol", error="Unexpected tool call or tool limit reached.")
@@ -309,9 +303,7 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
                             # Gerçek model yanıtı tamamlandı. UI aynı ses kuyruğunu
                             # boşalttıktan sonra host uyku geçişini isteyebilir;
                             # transkripti erken kesip yerel onay uydurmayız.
-                            mode = sleep_mode(report.get('input_text', text), (profile or {}).get('pWake', 'Vex'))
-                            if mode and not report['tool_results']:
-                                report.update(sleep_requested=mode != 'off', sleep_mode=mode)
+                            report.update(sleep_request(report, previous_tasks))
                             return report
                         break
                 report.update(code="live_incomplete", error="Live returned no complete text transcript.")
