@@ -48,3 +48,8 @@ hata/boş katalog ve tekrar etmeme kontrolüdür. live-stream.mjs eşik/meter
 konfigürasyonu ve eski kaynak ölçümlerini sınar. clocks.mjs bildirim kuyruğunun
 busy/sleep/unknown/Disconnect/eski bağlam korumasını da denetler. Native smoke,
 API/cihaz yerine sentetik taşıma ve ses kullanır; fiziksel kabul değildir.
+
+5.R8.6: clocks.mjs sağ tık hedefinin seçili ID’den farklı olmasını, ret halinde
+listeyi korumayı, klavye odağını ve pending bildirim temizliğini sınar. Native chat
+HTML listesinde contextmenu, son kayıt silme ve reaktör renginden bağımsız UI
+aksanlarını gerçek WebView2’de doğrular. Fiziksel mouse/görsel kabulü değildir.

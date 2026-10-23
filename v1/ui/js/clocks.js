@@ -9,6 +9,7 @@ import {uniqueRecordId} from './schema.js';
 let records=[], sample=-1, mode='timer', ready=false, busy=false, uncertain=false, poll=null, reading=false, chatLocked=false;
 const selected={timer:null,stopwatch:null};
 const seen=new Map(), lastSeconds=new Map();
+let menuTarget=null;
 let onPoll=null, showTab=null, finished=null, initialized=false, configuredId=null;
 const el=id=>document.getElementById(id);
 const time=s=>String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
@@ -40,22 +41,43 @@ export function applyClockSnapshot(data, focusId=null){
   renderNativeClocks();return true;
 }
 
-export function setClockMode(isTimer){mode=isTimer?'timer':'stopwatch';}
+export function setClockMode(isTimer){const next=isTimer?'timer':'stopwatch';if(mode!==next)closeClockMenus();mode=next;}
 export function renderNativeClocks(){
   if(!nativeClocksActive())return;
   const list=records.filter(c=>c.kind===mode);
   if(!list.some(c=>c.id===selected[mode]))selected[mode]=list[0]?.id||null;
   const current=list.find(c=>c.id===selected[mode]);
-  const select=el('clockSelect');
-  if(select){
+  const select=el('clockSelect'), listElement=el('clockList');
+  if(select && listElement){
     const signature=JSON.stringify(list.map(c=>[c.id,c.label,c.state]));
-    if(select.dataset.signature!==signature){
-      select.replaceChildren();
-      for(const c of list){const option=document.createElement('option');option.value=c.id;option.textContent=c.label+' · '+c.state;select.append(option);}
-      if(!list.length){const option=document.createElement('option');option.value='';option.textContent='No '+mode+' yet';select.append(option);}
-      select.dataset.signature=signature;
+    if(listElement.dataset.signature!==signature){
+      listElement.replaceChildren();
+      for(const c of list){
+        const row=document.createElement('button');row.type='button';row.dataset.clockId=c.id;
+        row.textContent=c.label+' · '+c.state;
+        row.addEventListener('click',()=>{
+          if(!ready||busy||uncertain)return;
+          selected[mode]=c.id;sfx.blip();closeClockMenus();renderNativeClocks();select.focus();
+        });
+        row.addEventListener('contextmenu',event=>{
+          event.preventDefault();
+          if(!ready||busy||uncertain||chatLocked)return;
+          menuTarget=c.id;
+          const menu=el('clockMenu');menu.hidden=false;
+          const rect=row.getBoundingClientRect();
+          menu.style.left=Math.max(4,Math.min(event.clientX||rect.left,window.innerWidth-menu.offsetWidth-4))+'px';
+          menu.style.top=Math.max(4,Math.min(event.clientY||rect.bottom,window.innerHeight-menu.offsetHeight-4))+'px';
+          el('clockDelete').setAttribute('aria-label','Delete '+c.label);el('clockDelete').focus();
+        });
+        listElement.append(row);
+      }
+      listElement.dataset.signature=signature;
     }
-    select.value=selected[mode]||'';select.disabled=!ready||busy||uncertain;
+    select.value=current?.id||'';select.textContent=current?current.label+' · '+current.state:'No '+mode+' yet';
+    select.setAttribute('aria-disabled',String(!ready||busy||uncertain||!list.length));
+    for(const row of listElement.children){row.disabled=!ready||busy||uncertain;row.setAttribute('aria-pressed',String(row.dataset.clockId===current?.id));}
+    if(el('clockDelete'))el('clockDelete').disabled=!ready||busy||uncertain||chatLocked;
+    if(menuTarget&&!records.some(c=>c.id===menuTarget))closeClockMenus();
   }
   if(current?.kind==='timer'&&configuredId!==current.id){
     if(el('tmMin'))el('tmMin').value=Math.floor(current.duration_seconds/60);
@@ -89,7 +111,7 @@ export async function refreshClocks(){
       return false;
     }
     if(!uncertain&&el('clockStatus')?.textContent==='Clock view unavailable')el('clockStatus').textContent='';
-    onPoll?.();
+    onPoll?.(r.response.data);
     return true;
   }finally{reading=false;}
 }
@@ -110,7 +132,7 @@ async function command(tool,args){
     uncertain=true;if(el('clockStatus'))el('clockStatus').textContent='Invalid clock result. Reopen before retrying.';renderNativeClocks();return false;
   }
   if(el('clockStatus'))el('clockStatus').textContent='';
-  if(args.action==='reset')sfx.del();else if(args.action==='pause')sfx.blip();else if(args.start===false)sfx.add();else sfx.start();
+  if(tool==='clocks.delete'||args.action==='reset')sfx.del();else if(args.action==='pause')sfx.blip();else if(args.start===false)sfx.add();else sfx.start();
   return true;
 }
 
@@ -124,9 +146,42 @@ export function controlNativeClock(kind,action,duration=null){
 }
 export function hasNativeClock(kind){return records.some(c=>c.id===selected[kind]);}
 
+/** details doğal Enter/Space desteği verir; satırlar Tab/oklar ile seçilebilir. */
+function closeClockMenus(){
+  if(el('clockPicker'))el('clockPicker').open=false;
+  if(el('clockMenu'))el('clockMenu').hidden=true;
+  menuTarget=null;
+}
 export function initNativeClocks(options){
   showTab=options.showTab;finished=options.onTimerFinished;onPoll=options.onClockPoll;
-  el('clockSelect')?.addEventListener('change',e=>{selected[mode]=e.target.value;sfx.blip();renderNativeClocks();});
+  el('clockSelect')?.addEventListener('click',event=>{
+    if(!ready||busy||uncertain||!records.some(c=>c.kind===mode))event.preventDefault();
+  });
+  el('clockDelete')?.addEventListener('click',()=>{
+    const id=menuTarget;closeClockMenus();el('clockSelect')?.focus();
+    if(id)void command('clocks.delete',{id});
+  });
+  el('clockPicker')?.addEventListener('toggle',()=>{
+    if(!el('clockPicker').open){el('clockMenu').hidden=true;menuTarget=null;}
+  });
+  el('clockPicker')?.addEventListener('keydown',event=>{
+    if(!['ArrowDown','ArrowUp','Home','End'].includes(event.key))return;
+    const rows=[...el('clockList').children].filter(row=>!row.disabled);
+    if(!rows.length)return;
+    event.preventDefault();el('clockPicker').open=true;
+    const index=rows.indexOf(document.activeElement);
+    const next=event.key==='Home'?0:event.key==='End'?rows.length-1:
+      index<0?(event.key==='ArrowUp'?rows.length-1:0):(index+(event.key==='ArrowUp'?-1:1)+rows.length)%rows.length;
+    rows[next].focus();
+  });
+  window.addEventListener('keydown',event=>{
+    if(event.key==='Escape'&&(el('clockPicker')?.open||!el('clockMenu')?.hidden)){
+      event.preventDefault();closeClockMenus();el('clockSelect')?.focus();
+    }
+  });
+  window.addEventListener('pointerdown',event=>{
+    if(!el('clockPicker')?.contains(event.target)&&!el('clockMenu')?.contains(event.target))closeClockMenus();
+  });
   el('clockNew')?.addEventListener('click',()=>{
     const seconds=Math.max(0,Number(el('tmMin')?.value)||0)*60+Math.max(0,Math.min(59,Number(el('tmSec')?.value)||0));
     void createNativeClock(mode,seconds,false);

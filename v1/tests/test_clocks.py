@@ -249,3 +249,50 @@ def test_host_notification_uses_profile_and_exposes_no_mutation_tools(monkeypatc
         result=chat.run_live('Host timer event','synthetic-live',profile={'pLang':'en','pIns':'Call me Captain.'}, notification=True)
         assert result['ok'] and not chat.busy
         assert chat.close()
+
+
+@pytest.mark.parametrize('kind',['timer','stopwatch'])
+def test_ui_delete_removes_only_actual_target_with_replay_protection(clock_time, monkeypatch, kind):
+    clocks=module.Clocks()
+    with create_core(clocks=clocks) as core:
+        api=NativeBridge(core, JsonStore(get_data_home()/'settings.json'), clocks=clocks)
+        monkeypatch.setattr(api,'_window',FakeWindow());assert ready(api)['ok']
+        args={'kind':kind,'start':True,**({'duration_seconds':10} if kind=='timer' else {})}
+        first=mutate(core,'clocks.create',args)['clock'];second=mutate(core,'clocks.create',args)['clock']
+        payload={'version':1,'request_id':'ui-delete','tool':'clocks.delete','arguments':{'id':first['id']}}
+        result=api.event('clock_command',payload)
+        assert result['ok'] and result['verified'] and result['data']['deleted_id']==first['id']
+        assert [c['id'] for c in clocks.snapshot()['clocks']]==[second['id']]
+        assert api.event('clock_command',payload)==result
+        assert len(clocks.snapshot()['clocks'])==1
+        assert not api.event('clock_command',{**payload,'request_id':'missing','arguments':{'id':first['id']}})['ok']
+
+
+def test_cancelled_clock_delete_does_not_mutate(clock_time):
+    clocks=module.Clocks()
+    with create_core(clocks=clocks) as core:
+        target=mutate(core,'clocks.create',{'kind':'stopwatch','start':True})['clock']
+        stop=Event();stop.set()
+        args={'id':target['id']}
+        result=clocks.delete(args,ToolContext(task_id='cancel-delete',request=request('clocks.delete',arguments=args),cancel_event=stop))
+        assert result.status==TaskStatus.CANCELLED and clocks.snapshot()['clocks'][0]['id']==target['id']
+
+
+@pytest.mark.parametrize('mode',['rest','live'])
+def test_model_catalog_does_not_expose_ui_clock_delete(transport,socket,mode):
+    with create_core() as core:
+        chat=TextChat(core)
+        def ask(*args,**kwargs):
+            tools=args[2] if mode=='live' else None
+            if tools is not None:
+                assert 'clocks.delete' not in {d['name'] for d in tools.declarations()}
+                with pytest.raises(ContractError):tools.submit({'id':'delete','name':'clocks.delete','arguments':{'id':'any'}})
+            return {'ok':True,'completed':True,'text':'Hello','tool_results':[]}
+        if mode=='live':
+            from unittest.mock import patch
+            with patch.object(chat._live,'ask',ask):assert chat.run_live('Hello','synthetic')['ok']
+        else:
+            transport.responses=[reply([{'text':'Hello'}])]
+            assert chat.run('Hello','gemini-3.8-flash')['ok']
+            assert 'clocks.delete' not in {d['name'] for d in transport.requests[0]['tools'][0]['functionDeclarations']}
+        assert chat.close()

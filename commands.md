@@ -90,7 +90,7 @@ conversation. Do not assume `Open Notepad` is supported by the model yet.
 | `Reset the Workout stopwatch.` | Stops it and returns elapsed time to zero. |
 
 A timer operation selects Timer; a stopwatch operation selects Stopwatch,
-even if the other tab was open. The record dropdown follows the selected theme;
+even if the other tab was open. The record picker follows the selected theme;
 changing it plays the existing UI sound (when SFX is enabled). Automatic refresh
 and model focus do not play a selection sound. Use the dropdown for existing records or
 **New** for another ready clock. Timer presets create another running timer;
@@ -103,7 +103,11 @@ the displayed tab alone does not choose the model's target. One year's duration
 is the per-timer maximum. Clocks live only while this app process runs; exit
 loses them. Sleep and model disconnect do not reset them. Stop Task stops the
 conversation/task, not an already verified running clock. Unknown mutations
-are not retried. Multiple-clock removal and persistence are not implemented.
+are not retried. Clock removal is available only through the native UI list: open the picker,
+right-click the actual timer/stopwatch row and choose **Delete**. It removes only
+that record after backend confirmation and plays the existing delete sound when
+SFX is enabled. This is not a spoken/model command; Vex has no clock-delete tool.
+Clock persistence is not implemented.
 Without the native backend, the existing single timer/stopwatch UI stays local;
 those are not model integrations. Alarm timing depends on the UI being active;
 a late UI refresh reads the correct backend deadline but is not a system alarm.
@@ -305,3 +309,8 @@ saving a key. There is no Load Live Models button, invented catalog or automatic
 retry loop after failure; reopen or explicitly save the key to try again.
 Google account integration is still planned; removing the button emoji does not
 implement account access.
+
+The record picker supports Enter/Space, Tab, arrow keys, Home/End and Escape.
+A click outside closes it. Delete is disabled during a model turn or an uncertain
+clock operation. Removing a clock also discards its pending spoken completion
+notice when the current snapshot is read. No automatic retry follows failure.

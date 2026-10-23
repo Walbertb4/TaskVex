@@ -1,5 +1,21 @@
 # TaskVex — Mimari ve geliştirme rehberi
 
+## Güncel uygulama — 5.R8.6 sabit tema ve UI sayaç silme
+
+Önceki işlevsel tweak’ler kullanıcı kabulüyle 00c76ce commit’inde (push yok).
+UI sürgüleri ve inputArrow sabit --gold temasını kullanır; reaktörün --c durum
+rengi değişebilir. Reaktör/clock çalışma durumu renkleri bu isteğin dışındadır.
+
+OS select popup’ında satıra DOM sağ tık menüsü eklenemediği için sayaç seçici
+küçük details/summary + güvenli HTML satırlarına dönüştü. Tek kayıt sahibi yine
+Clocks; silme UI → clock_command → clocks.delete → policy/TaskManager hattında.
+clocks.write ve aynı clocks kaynak kilidi kullanılır. Silme gerçek UUID hedefini
+ve doğrulanmış yeni snapshot’ı döndürür; UI ancak başarıdan sonra listeden çıkarır.
+ModelTools/REST/Live allowlist’ine delete eklenmedi. Aynı çağrı replay’i ikinci
+silme yapmaz; unknown mutasyon kilidi korunur. Silinen kaydın bekleyen sesli
+bildirimi güncel snapshot’ta düşer. Yeni framework veya ikinci sayaç sahibi yok.
+Aşama 5/debloat kapanışı bu tur yapılmadı.
+
 ## Güncel uygulama — 5.R8.2–5 son işlevsel tweak’ler
 
 Önceki seçici kullanıcı onayıyla 6918038 commit’inde. Kalan işlevler aynı

@@ -685,7 +685,7 @@ input[type=range] {
   appearance: none;
   width: 100%;
   height: 7px;
-  background: color-mix(in srgb, var(--c) 15%, #12100d);
+  background: color-mix(in srgb, var(--gold) 15%, #12100d);
   border: 1px solid var(--ln);
   outline: none;
   border-radius: 4px;
@@ -694,8 +694,8 @@ input[type=range] {
 }
 
 input[type=range]:hover {
-  border-color: var(--c);
-  background: color-mix(in srgb, var(--c) 25%, #12100d);
+  border-color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 25%, #12100d);
 }
 
 input[type=range]::-webkit-slider-thumb {
@@ -704,26 +704,26 @@ input[type=range]::-webkit-slider-thumb {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: var(--c);
+  background: var(--gold);
   border: 2px solid #050403;
   cursor: pointer;
-  box-shadow: 0 0 10px var(--c);
+  box-shadow: 0 0 10px var(--gold);
   transition: transform .15s, box-shadow .15s;
 }
 
 input[type=range]::-webkit-slider-thumb:hover {
   transform: scale(1.2);
-  box-shadow: 0 0 16px var(--c);
+  box-shadow: 0 0 16px var(--gold);
 }
 
 input[type=range]::-moz-range-thumb {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: var(--c);
+  background: var(--gold);
   border: 2px solid #050403;
   cursor: pointer;
-  box-shadow: 0 0 10px var(--c);
+  box-shadow: 0 0 10px var(--gold);
 }
 
 ::-webkit-scrollbar {
@@ -1458,7 +1458,7 @@ input[type=color] {
   -moz-appearance: textfield;
 }
 
-/* Yerel select klavye/erişilebilirliğini korur; renkler mevcut temadan gelir. */
+/* details/summary yerel aç/kapat ve klavye davranışını korur; renkler temadandır. */
 .clock-picker {
   gap: 5px;
   margin: 5px 0 8px;
@@ -1497,10 +1497,25 @@ input[type=color] {
   cursor: pointer;
 }
 
-#clockSelect option {
-  background: var(--bg);
-  color: var(--fg);
+#clockSelect { list-style: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#clockSelect::-webkit-details-marker { display: none; }
+#clockList {
+  position: absolute; top: 100%; left: 0; width: 100%; z-index: 25;
+  max-height: 190px; overflow: auto; padding: 4px;
+  background: var(--bg); border: 1px solid var(--gold);
 }
+#clockList button, #clockMenu button {
+  display: block; width: 100%; padding: 7px; text-align: left;
+  border: 0; background: var(--bg); color: var(--fg); cursor: pointer;
+  font: 10px var(--mono); overflow-wrap: anywhere;
+}
+#clockList button:hover, #clockList button:focus-visible,
+#clockList button[aria-pressed=true], #clockMenu button:hover, #clockMenu button:focus-visible {
+  background: color-mix(in srgb, var(--gold) 18%, var(--bg));
+  color: var(--gold); outline: 1px solid var(--gold); outline-offset: -1px;
+}
+#clockMenu { position: fixed; z-index: 3100; min-width: 110px; background: var(--bg); border: 1px solid var(--gold); padding: 3px; }
+#clockSelect[aria-disabled=true] { opacity: .5; cursor: default; }
 
 #clockSelect:hover, #clockSelect:focus-visible {
   border-color: var(--gold);

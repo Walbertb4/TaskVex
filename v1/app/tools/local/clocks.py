@@ -38,6 +38,7 @@ CONTROL_SCHEMA = {
         'duration_seconds': CREATE_SCHEMA['properties']['duration_seconds']},
     'required': ['id', 'action'],
 }
+DELETE_SCHEMA = {'type':'object','additionalProperties':False, 'properties':{'id':{'type':'string','minLength':1,'pattern':r'\S'}}, 'required':['id']}
 LIST_SCHEMA = {'type': 'object', 'additionalProperties': False}
 
 
@@ -149,6 +150,26 @@ class Clocks:
                     accumulated=item['duration_seconds'] if done else elapsed, started=None)
             self._revision += 1
             return self._result(item['id'], context)
+
+    def delete(self, arguments: dict, context: ToolContext) -> ToolResult:
+        """Yalnız UI’ın gerçek ID hedefini sil; sonucu aynı RAM sahibinden doğrula.
+
+        TaskManager tekrar koruması ve clocks kilidi kullanılır. İptal mutasyondan
+        önce kontrol edilir; bitmiş silme geç Stop ile geri alınmış sayılmaz.
+        """
+        clock_id = arguments.get('id')
+        if set(arguments) != {'id'} or not isinstance(clock_id, str) or not clock_id.strip():
+            return self._error(context, 'invalid_arguments', 'Expected actual clock ID')
+        with self._lock:
+            if context.cancel_event.is_set():
+                return ToolResult(task_id=context.task_id, status=TaskStatus.CANCELLED)
+            if clock_id not in self._items:
+                return self._error(context, 'not_found', 'Clock not found')
+            del self._items[clock_id]
+            self._revision += 1
+            snapshot = self.snapshot()
+            return ToolResult(task_id=context.task_id, status=TaskStatus.SUCCEEDED, verified=True,
+                data={**snapshot, 'deleted_id':clock_id}, evidence={'in_memory':True, 'read_back':True})
 
     def _result(self, clock_id: str, context: ToolContext) -> ToolResult:
         """Değişikliği tek sahibinden geri oku; JSON kopyası dışarıda değiştirilemez."""

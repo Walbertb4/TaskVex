@@ -29,7 +29,7 @@ def request(tool="notes.list", **changes):
 
 @pytest.mark.parametrize("name,capability", [
     ("assistant.request_sleep_mode", "assistant.control"), ("assistant.request_shutdown", "assistant.control"),
-    ("clocks.create", "clocks.write"), ("clocks.control", "clocks.write"), ("clocks.list", "clocks.read"),
+    ("clocks.delete", "clocks.write"), ("clocks.create", "clocks.write"), ("clocks.control", "clocks.write"), ("clocks.list", "clocks.read"),
     ("notes.add", "notes.write"), ("notes.list", "notes.read"),
     ("notes.select", "notes.read"), ("notes.delete_many", "notes.write"), ("notes.complete_many", "notes.write"),
     ("notes.update", "notes.write"), ("notes.delete", "notes.write"),

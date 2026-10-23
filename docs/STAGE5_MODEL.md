@@ -1,5 +1,27 @@
 # Aşama 5 — Model, araç çağrıları ve ses
 
+## Güncel 5.R8.6 — sabit UI teması ve yalnız UI’dan sayaç silme
+
+Önceki 5.R8.2–5 beş manuel test kullanıcı tarafından başarılı bildirildi;
+00c76ce commit’inde, push yok. Bu tur slider/giriş oku --gold’a taşındı.
+Sadece UI listesinde sağ tık → Delete eklendi; model allowlist’i değişmedi.
+Core’daki clocks.delete aynı Clocks/policy/TaskManager sahibinde çalışır;
+ID/dedup/iptal/unknown korunur. OS popup yerine küçük HTML details listesi
+kullanıldı; güvenli textContent, klavye, odak ve temalı bağlam menüsü var.
+
+Kanıt: **994 tam pytest**, **10 JS süiti**, app + test_clocks/native_smoke
+Pyright **0 hata/uyarı**. [Native chat](stage5-clock-delete-native-chat.json)
+renklerin reaktörden bağımsızlığı, gerçek timer/stopwatch hedefinin silinmesi,
+son kayıt/boş görünüm ve eski sohbet/ses/not/Stop regresyonlarını kapsar.
+JS ayrıca ret halinde listeyi koruma, silinen pending bildirimi düşürme ve
+klavye odağını sınar; Python iki modelin delete almamasını doğrular.
+Bu tur tam 10 süreç native yeniden çalıştırılmadı; ilgili chat fazı çalıştırıldı.
+Önceki dilimin native 10/10 raporu tarihsel kanıt olarak korunur.
+
+Gerçek API ve kullanıcı verisi kullanılmadı. MouseEvent sentetik native DOM
+sınırından gönderildi; fiziksel sağ tık/görünüm kabulü kullanıcıdadır. Yeni adım
+manuel kabul/commit bekler. Debloat ve Aşama 5 kapanışı henüz yapılmadı.
+
 ## Güncel 5.R8.2–5 — son işlevsel tweak’ler (kapanış değil)
 
 23 Ekim 2026. Seçici dilimi devam onayıyla 6918038 commit’inde (push yok).

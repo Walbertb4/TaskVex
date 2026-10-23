@@ -1,5 +1,27 @@
 # UI/backend sözleşmesi
 
+## Güncel 5.R8.6 — sayaç sağ tık menüsü ve tema aksanları
+
+- Range sürgüleri ve inputArrow artık --gold (tema) kullanır; --c reaktör durumu
+  onları etkilemez. Reaktör ve timer’ın kendi run/done göstergeleri korunur.
+- clockSelect artık yerel OS select değil, clockPicker details içindeki summary’dir.
+  clockList güvenli textContent’li gerçek ID satırlarıdır; selection yerel görünüm
+  işlemidir. Enter/Space açar, Tab/ok/Home/End satırlara gider; Escape/dış tık kapatır.
+  Liste kapandığında bağlam menüsü kapanır. Satır seçimi mevcut blip kullanır.
+- Satıra contextmenu o ID’yi hedefler, seçili başka ID’yi silmez. clockMenu →
+  Delete yalnız clocks.delete({id}) komutunu mevcut sürümlü clock_command ile
+  gönderir. Yeni modül/ikinci durum otoritesi yok; görev, policy clocks.write ve
+  exclusive clocks kilidinden geçer. Menü tema --gold/--bg/--fg kullanır.
+- Core sonucu verified=true, snapshot+deleted_id içerir; başarı yoksa liste
+  yerelde silinmez. Unknown, busy/chat kilidi ve tekrar request_id koruması aynı.
+  Geç Stop tamamlanmış silmeyi geri almaz. Son kayıt silinince boş görünüm gelir;
+  New/start yine yeni kayıt açabilir. Çalışan/paused/finished timer ve stopwatch
+  silinebilir; silinen timer’ın bekleyen bildirim kuyruğu snapshot’tan temizlenir.
+- clocks.delete core’da yalnız UI için kayıtlıdır; REST/Live ModelTools kataloğu
+  değişmedi. Model doğrudan delete çağırırsa exposed-tool sınırında reddedilir.
+- Browser-only tekli eski sayaçta çoklu kayıt menüsü yoktur; native sahiplik ve
+  köprü kaybında ikinci motora dönmeme kuralı korunur.
+
 ## Güncel 5.R8.2–5 — otomatik katalog, bildirim ve ses ayarları
 
 - nativeReady → loadLiveModels; taskvex-key-saved → aynı yükleyici. Tek pending

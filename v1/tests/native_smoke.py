@@ -197,7 +197,7 @@ def check_native_clocks(window, api, js, wait_until, outcome):
             wait_until(lambda: next(c for c in api._clocks.snapshot()['clocks'] if c['id']==watch['id'])['state']==state)
             wait_until(lambda: not window.evaluate_js("document.getElementById('"+button+"').disabled"))
         timer=next(c for c in api._clocks.snapshot()['clocks'] if c['label']==mode+' timer1')
-        js("document.getElementById('tabTmB').click();document.getElementById('clockSelect').value="+json.dumps(timer['id'])+";document.getElementById('clockSelect').dispatchEvent(new Event('change'));document.getElementById('tmMin').value='4';document.getElementById('tmSec').value='5';document.getElementById('tmSetB').click();return true;")
+        js("document.getElementById('tabTmB').click();document.querySelector('#clockList button[data-clock-id=\""+timer['id']+"\"]').click();document.getElementById('tmMin').value='4';document.getElementById('tmSec').value='5';document.getElementById('tmSetB').click();return true;")
         wait_until(lambda: next(c for c in api._clocks.snapshot()['clocks'] if c['id']==timer['id'])['duration_seconds']==245)
         wait_until(lambda: not window.evaluate_js("document.getElementById('tmSetB').disabled"))
         assert next(c for c in api._clocks.snapshot()['clocks'] if c['id']==timer['id'])['state']=='ready'
@@ -207,6 +207,34 @@ def check_native_clocks(window, api, js, wait_until, outcome):
     # Gerçek WebView CSS'si tema değişimini izlemeli; profil/veri yazılmaz.
     assert js("const root=document.documentElement,s=document.getElementById('clockSelect'),old=root.style.getPropertyValue('--gold');try{root.style.setProperty('--gold','#12ab34');const a=getComputedStyle(s).color;root.style.setProperty('--gold','#ab3412');return a==='rgb(18, 171, 52)'&&getComputedStyle(s).color==='rgb(171, 52, 18)'&&getComputedStyle(s).appearance==='none'&&getComputedStyle(s).backgroundColor!=='rgb(255, 255, 255)'&&s.getBoundingClientRect().width<=s.closest('.tmin').getBoundingClientRect().width;}finally{if(old)root.style.setProperty('--gold',old);else root.style.removeProperty('--gold');}")
     outcome['clock_selector_webview_theme_and_width']=True
+    # UI aksanları --c (reaktör) değişiminden etkilenmemeli, --gold'u izlemeli.
+    assert js("const root=document.documentElement,old=root.style.getPropertyValue('--c'),r=document.getElementById('wakeR'),a=document.getElementById('inputArrow');try{root.style.setProperty('--c','#ff6600');const first=[getComputedStyle(r).backgroundColor,getComputedStyle(r,'::-webkit-slider-thumb').backgroundColor,getComputedStyle(a).color];root.style.setProperty('--c','#00ff00');return JSON.stringify(first)===JSON.stringify([getComputedStyle(r).backgroundColor,getComputedStyle(r,'::-webkit-slider-thumb').backgroundColor,getComputedStyle(a).color])&&getComputedStyle(a).color===getComputedStyle(document.getElementById('clockSelect')).color;}finally{if(old)root.style.setProperty('--c',old);else root.style.removeProperty('--c');}")
+    outcome['sliders_and_input_arrow_ignore_reactor_state_color']=True
+    assert js("const picker=document.getElementById('clockPicker'),head=document.getElementById('clockSelect');head.focus();head.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowUp',bubbles:true,cancelable:true}));return picker.open&&document.activeElement===document.getElementById('clockList').lastElementChild;")
+    js("window.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));return true;")
+    assert js("return !document.getElementById('clockPicker').open&&document.activeElement===document.getElementById('clockSelect');")
+    outcome['clock_picker_keyboard_and_escape']=True
+
+    # Açık HTML listesinde sağ tık, seçili kayıt yerine sağ tıklanan ID'yi siler.
+    for kind,tab in [('timer','tabTmB'),('stopwatch','tabSwB')]:
+        records=[c for c in api._clocks.snapshot()['clocks'] if c['kind']==kind]
+        target=records[-1]['id'];keep=records[0]['id']
+        js("document.getElementById('"+tab+"').click();document.querySelector('#clockList button[data-clock-id=\""+keep+"\"]').click();document.getElementById('clockPicker').open=true;document.querySelector('#clockList button[data-clock-id=\""+target+"\"]').dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true,clientX:100,clientY:150}));return true;")
+        assert window.evaluate_js("!document.getElementById('clockMenu').hidden")
+        assert window.evaluate_js("document.getElementById('clockSelect').value")==keep
+        js("document.getElementById('clockDelete').click();return true;")
+        wait_until(lambda:not any(c['id']==target for c in api._clocks.snapshot()['clocks']))
+        wait_until(lambda:not window.evaluate_js("document.getElementById('clockNew').disabled"))
+        assert any(c['id']==keep for c in api._clocks.snapshot()['clocks'])
+        outcome[kind+'_right_click_deleted_only_target']=True
+    # Son stopwatch silindiğinde boş görünüm ve yeniden oluşturabilme korunur.
+    last=next(c for c in api._clocks.snapshot()['clocks'] if c['kind']=='stopwatch')['id']
+    js("document.getElementById('clockPicker').open=true;document.querySelector('#clockList button[data-clock-id=\""+last+"\"]').dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true,clientX:100,clientY:150}));document.getElementById('clockDelete').click();return true;")
+    wait_until(lambda:not any(c['kind']=='stopwatch' for c in api._clocks.snapshot()['clocks']))
+    wait_until(lambda:window.evaluate_js("document.getElementById('clockSelect').textContent")== 'No stopwatch yet')
+    assert window.evaluate_js("document.getElementById('tm').textContent")=='00:00'
+    outcome['last_clock_delete_empty_state']=True
+
     assert window.evaluate_js('window.clockEcho')==[]
     js("window.pywebview.api.event=clockEvent;document.getElementById('liveLatencyTest').checked=true;return true;")
     outcome['clock_mutations_no_settings_save_echo']=True

@@ -32,6 +32,7 @@ _TOOL_CAPABILITIES = MappingProxyType({
     "notes.delete_many": frozenset({"notes.write"}),
     "notes.complete_many": frozenset({"notes.write"}),
     "clocks.create": frozenset({"clocks.write"}),
+    "clocks.delete": frozenset({"clocks.write"}),
     "clocks.control": frozenset({"clocks.write"}),
     "clocks.list": frozenset({"clocks.read"}),
     "system.status": frozenset({"system.read"}),

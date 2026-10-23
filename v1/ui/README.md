@@ -12,7 +12,8 @@ backend kayıtları okunur. Tarayıcı-only yerel mod korunur. [Not devri ve gü
 kabul sonuçları](../../docs/STAGE3_NOTES.md) aktarım, yedek ve hata sınırlarını açıklar.
 
 Native timer/stopwatch artık çokludur: backend Clocks tek durum sahibidir;
-UI dropdown/New ve Vex aynı kayıtlı araçları kullanır. Model işlemi doğru sekmeyi
+UI liste/New ve Vex aynı kayıtlı create/control araçlarını kullanır. Sağ tık →
+Delete yalnız UI’a açıktır; aynı backend/core kaydını siler, modele açılmaz. Model işlemi doğru sekmeyi
 otomatik seçer. Kayıtlar yalnız uygulama açıkken RAM'dedir. Native başladıktan
 sonra köprü kaybı ikinci yerel sayaç motoru açmaz. Tarayıcı-only tekli mod korunur.
 

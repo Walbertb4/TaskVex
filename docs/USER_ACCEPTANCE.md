@@ -1,5 +1,18 @@
 # TaskVex — Kullanıcının katılacağı gerçek kullanım kontrolleri
 
+## Güncel kısa test — 5.R8.6
+
+1. Tema mor, Sleeping rengi turuncuyken Audio’yu aç: sürgüler ve Speak or Type
+   oku mor kalmalı. Listening/Speaking’e geçince de tema rengi değişmemeli.
+2. İki timer ve iki stopwatch oluştur. Listeyi aç, seçili olmayan kayda sağ
+   tık → Delete: yalnız sağ tıkladığın kayıt silinmeli; diğerleri sürmeli.
+3. Son kaydı sil: “No timer/stopwatch yet” ve 00:00 gelsin. New ile yeniden aç.
+4. Klavyeyle listeyi aç, oklarla dolaş, Enter seç ve Escape/dış tıkla kapat.
+   Açık menü yeni temaya uysun; Delete başarıda mevcut silme sesini çalsın.
+
+Önceki beş test kullanıcı onayıyla kabul edildi/00c76ce. Yeni dilim kullanıcı
+kabulünü bekler; modelden sayaç silme eklenmedi, debloat/kapanış yapılmadı.
+
 ## Güncel kısa test — 5.R8.2–5
 
 1. Uygulamayı normal aç: Load Live Models düğmesi olmadan katalog gelsin.

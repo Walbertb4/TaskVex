@@ -13,7 +13,7 @@ from app.storage.json_store import JsonStore
 from app.tasks.manager import TaskManager
 from app.tools.local.notes import ADD_SCHEMA, DELETE_SCHEMA, DELETE_MANY_SCHEMA, COMPLETE_MANY_SCHEMA, SELECT_SCHEMA, INITIALIZE_SCHEMA, REPLACE_SCHEMA, UPDATE_SCHEMA, NotesTools
 from app.tools.local.telemetry import system_status
-from app.tools.local.clocks import Clocks, CREATE_SCHEMA as CLOCK_CREATE_SCHEMA, CONTROL_SCHEMA as CLOCK_CONTROL_SCHEMA, LIST_SCHEMA as CLOCK_LIST_SCHEMA
+from app.tools.local.clocks import Clocks, DELETE_SCHEMA as CLOCK_DELETE_SCHEMA, CREATE_SCHEMA as CLOCK_CREATE_SCHEMA, CONTROL_SCHEMA as CLOCK_CONTROL_SCHEMA, LIST_SCHEMA as CLOCK_LIST_SCHEMA
 from app.tools.local.apps import STATUS_SCHEMA, app_catalog, app_open, app_status
 from app.tools.local.assistant import SLEEP_SCHEMA, request_sleep_mode, SHUTDOWN_SCHEMA, request_shutdown
 
@@ -34,6 +34,8 @@ def create_core(*, principal: str = "local-user", clocks: Clocks | None = None) 
          'Create a separate timer or stopwatch with its own actual ID and optional label. Explicit start boolean decides whether it runs immediately. A timer needs positive duration_seconds; a stopwatch must not have duration. Existing clocks are never replaced. State lasts only while this app runs.', 'clocks.write'),
         ('clocks.control', CLOCK_CONTROL_SCHEMA, clocks.control,
          'Control one actual clock ID from clocks.list or clocks.create in this user turn. start also resumes; pause stops without resetting; reset stops and restores timer duration or zero stopwatch time. Optional duration_seconds is only for configuring a timer during reset, never for a stopwatch/start/pause. Never guess an ID or ambiguous target; ask if multiple clocks match.', 'clocks.write'),
+        ('clocks.delete', CLOCK_DELETE_SCHEMA, clocks.delete,
+         'Delete one actual clock ID from the native UI only. This tool is not exposed to model sessions.', 'clocks.write'),
         ('clocks.list', CLOCK_LIST_SCHEMA, clocks.list,
          'Read all current timers and stopwatches with real IDs, labels, state, elapsed and remaining seconds. List before controlling an existing clock; do not infer the target from the visible tab. Clarify ambiguous labels.', 'clocks.read'),
     ):

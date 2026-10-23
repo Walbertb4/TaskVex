@@ -329,7 +329,7 @@ class NativeBridge:
             return {'ok': False, 'error': 'Wait for the model reply before changing a clock from its buttons'}
         if (type(data) is not dict or set(data) != {'version', 'request_id', 'tool', 'arguments'}
                 or type(data['version']) is not int or data['version'] != 1
-                or data['tool'] not in ('clocks.create', 'clocks.control')):
+                or data['tool'] not in ('clocks.create', 'clocks.control', 'clocks.delete')):
             return {'ok': False, 'error': 'Expected a version 1 clock command'}
         submitted = False
         try:

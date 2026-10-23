@@ -52,7 +52,7 @@
         <button class="chip" id="tabSwB" title="Stopwatch">Stopwatch</button>
       </div>
       <div id="clockControls" hidden>
-        <div class="tmin clock-picker"><span class="clock-select"><select id="clockSelect" aria-label="Select timer or stopwatch"></select></span><button class="chip" id="clockNew" title="Create another clock">New</button></div>
+        <div class="tmin clock-picker"><details class="clock-select" id="clockPicker"><summary id="clockSelect" aria-label="Select timer or stopwatch">No timer yet</summary><div id="clockList" aria-label="Timers and stopwatches"></div></details><button class="chip" id="clockNew" title="Create another clock">New</button></div>
         <div class="sub" id="clockStatus" role="status"></div>
       </div>
       <div class="tmd">
@@ -103,7 +103,7 @@
       <div class="msgs" id="msgs"></div>
       <div class="input">
         <button class="ib att" id="attB" title="Attach file"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5l-8.6 8.6a5.5 5.5 0 0 1-7.8-7.8l9-9a3.7 3.7 0 0 1 5.2 5.2l-9 9a1.8 1.8 0 0 1-2.6-2.6l8.4-8.4"/></svg></button><input type="file" id="file" hidden>
-        <span style="color:var(--c)">›</span>
+        <span id="inputArrow" style="color:var(--gold)">›</span>
         <input id="inp" placeholder="SPEAK OR TYPE" autocomplete="off" aria-label="Message Vex" aria-describedby="textStatus" maxlength="20000">
         <button class="ib" id="send">/ Type</button>
       </div>
@@ -242,6 +242,7 @@
   <div id="tlList"></div>
 </div>
 
+<div id="clockMenu" role="menu" aria-label="Clock actions" hidden><button id="clockDelete" role="menuitem" type="button">Delete</button></div>
 <script type="module" src="js/app.js"></script>
 </body>
 </html>

@@ -659,7 +659,11 @@ async function shutdownApplication() {
 
 // Yeni scheduler yok: aynı sayaç snapshot poll'u yalnız boşta bu kuyruğu kontrol eder.
 const pendingClockAnnouncements = new Map();
-function flushClockAnnouncement() {
+function flushClockAnnouncement(snapshot = null) {
+  // UI’dan silinen veya yeniden başlatılan kaydın bekleyen bildirimi düşer.
+  if(snapshot)for(const [id,pending] of pendingClockAnnouncements){
+    if(!snapshot.clocks.some(c=>c.id===id&&c.generation===pending.generation))pendingClockAnnouncements.delete(id);
+  }
   if (!pendingClockAnnouncements.size || !nativeInitialized || !isBackendAvailable() || sleeping || sleepPending || textBusy ||
       textOperation.uncertain || !canSendClockText() || liveMic.speaking || liveMic.active && !liveMic.waitingForSpeech ||
       micBlockReason === 'disconnected' || !document.getElementById('mSel')?.value) return;
