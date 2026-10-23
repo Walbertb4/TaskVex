@@ -4,6 +4,27 @@
 23 Ekim 2026: kullanıcı çoklu timer/stopwatch testlerini başarılı bildirdi.
 Bu onay önceki sayaç kapsamına aittir; sonraki görsel/ses tweak’lerini kapsamaz.
 
+## Güncel 5.R8.1 — sayaç seçici tema ve seçim sesi
+
+5.R7.2 kullanıcı tarafından kabul edildi; af834ff commit’inde (push yok).
+Bu dilimde yerel select korunarak tema/odak/ok stilleri eklendi; kullanıcı
+change olayında mevcut sfx.blip çalar. Poll/model odağı ses üretmez; kayıt ID,
+New, backend sahipliği ve Stop/unknown sözleşmesi değişmedi.
+
+Doğrulama: 9 JS süiti geçti; sayaç testinde seçim gerçek ID’yi korudu, tek ses
+üretti ve backend mutasyonu üretmedi. [Native chat](stage5-clock-selector-native-chat.json)
+exit=0, ok=true: gerçek WebView2’de iki farklı tema rengi ve genişlik; mevcut
+REST/Live çoklu sayaç/sekme, notlar, Stop, mikrofon ve uyku senaryoları geçti.
+Native stderr içinde mevcut testin 30 saniyelik faulthandler durum dökümü var;
+sonrasında test tamamlandı (exit=0). Döküm raporda korundu; bu temiz stderr iddiası değildir.
+Bu tur tam pytest/10 süreç native tekrarlanmadı; Python üretim kodu değişmedi.
+Gerçek hesap/API veya fiziksel kullanıcı verisi kullanılmadı. Fiziksel ses,
+açık dropdown görünümü ve klavye kabulü kullanıcıda; yeni commit henüz yok.
+
+Timer bitişindeki sabit say('Timer finished, boss.') ses üretmiyor ve kişisel
+hitabı izlemiyor; bu açık 5.R8.2’de mevcut model/ses yaşam döngüsüyle ele alınacak.
+5.R8.3–5 planı aşamalar.md’de; Aşama 5 kapanmıyor.
+
 ## Güncel 5.R7.2 — çoklu timer/stopwatch ve otomatik sekme
 
 Önceki wake/shutdown dilimi kullanıcı onayıyla `20c755c` commit'ine alındı.

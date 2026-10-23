@@ -4,7 +4,20 @@
 23 Ekim 2026: kullanıcı çoklu timer/stopwatch testlerini başarılı bildirdi.
 Bu onay önceki sayaç kapsamına aittir; sonraki görsel/ses tweak’lerini kapsamaz.
 
-## Güncel kısa test — 5.R7.2 çoklu timer/stopwatch
+## Güncel kısa test — 5.R8.1 seçici teması ve SFX
+
+1. Uygulamayı yeniden aç, iki timer ve iki stopwatch oluştur. Her sekmede
+   seçiciden farklı kayda geç; doğru süre/durum görünmeli ve tek seçim sesi gelmeli.
+2. Temayı değiştir: seçici, kenarı ve oku yeni renge uymalı; uzun etiket
+   widget dışına taşmamalı. Tab ile seçiciye gel, ok tuşlarıyla seçim yap;
+   odak görünür kalmalı. Açık liste görünümünü de kontrol et.
+3. SFX'i kapat: seçim sesi gelmemeli. Normal açık kullanımda otomatik süre
+   güncellemeleri/modelin kayda odaklanması seçim sesi üretmemeli.
+
+Timer bitişinin kişiselleştirilmiş sesli bildirimi sonraki 5.R8.2'dir;
+mevcut sabit metin bu tur düzeltilmedi. Bu dilim kullanıcı kabulü bekler.
+
+## Önceki kısa test — 5.R7.2 çoklu timer/stopwatch
 
 Uygulamayı yeniden aç. Otomatik sesli komutların yanında düğmeleri de dene.
 

@@ -1458,6 +1458,61 @@ input[type=color] {
   -moz-appearance: textfield;
 }
 
+/* Yerel select klavye/erişilebilirliğini korur; renkler mevcut temadan gelir. */
+.clock-picker {
+  gap: 5px;
+  margin: 5px 0 8px;
+}
+
+.clock-select {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.clock-select::after {
+  content: '';
+  position: absolute;
+  right: 10px;
+  top: 9px;
+  width: 5px;
+  height: 5px;
+  border: solid var(--gold);
+  border-width: 0 1px 1px 0;
+  transform: rotate(45deg);
+  pointer-events: none;
+}
+
+#clockSelect {
+  appearance: none;
+  color-scheme: dark;
+  width: 100%;
+  min-width: 0;
+  padding: 5px 25px 5px 8px;
+  background: var(--bg);
+  color: var(--gold);
+  border: 1px solid var(--ln);
+  border-radius: 0;
+  font: 10px var(--mono);
+  cursor: pointer;
+}
+
+#clockSelect option {
+  background: var(--bg);
+  color: var(--fg);
+}
+
+#clockSelect:hover, #clockSelect:focus-visible {
+  border-color: var(--gold);
+  outline: 1px solid var(--gold);
+  outline-offset: 2px;
+}
+
+#clockSelect:disabled {
+  opacity: .5;
+  cursor: default;
+}
+
 .tmin .mi::-webkit-inner-spin-button, .tmin .mi::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;

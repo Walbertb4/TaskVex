@@ -43,6 +43,13 @@ responses.push({ok:true,completed:true,verified:true,data:{clocks:[t,sw,newer],s
 await timer.startTimer(60);
 assert.equal(events.at(-1).args.tool,'clocks.create');assert.equal(element('clockSelect').value,'timer-2');assert.ok(element('tabTmB').classes.has('on'));
 assert.equal(element('clockSelect').children.length,2);
+// Seçim yereldir: tek UI sesi çalar, backend mutasyonu veya poll sesi üretmez.
+let selectionSounds=0;const originalBlip=sfx.blip;sfx.blip=()=>selectionSounds++;
+const beforeSelect=events.length;
+element('clockSelect').handlers.change({target:{value:t.id}});
+assert.equal(element('clockSelect').value,t.id);assert.equal(selectionSounds,1);assert.equal(events.length,beforeSelect);
+clock.renderNativeClocks();assert.equal(selectionSounds,1);
+sfx.blip=originalBlip;
 // Yeni kısa timer ilk kez finished görünse bile alarm ver; eski snapshot tekrar çalmaz.
 const done={...newer,state:'finished',remaining_seconds:0,elapsed_seconds:60};
 clock.applyClockSnapshot({clocks:[t,sw,done],sampled_at:8});clock.applyClockSnapshot({clocks:[t,sw,done],sampled_at:9});

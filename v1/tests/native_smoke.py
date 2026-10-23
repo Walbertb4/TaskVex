@@ -204,6 +204,9 @@ def check_native_clocks(window, api, js, wait_until, outcome):
         outcome[mode+'_timer_set_preserved_selected_id']=True
         outcome[mode+'_multi_clocks_same_ids_ui_controls_and_automatic_tabs']=True
     assert len(api._clocks.snapshot()['clocks'])==6
+    # Gerçek WebView CSS'si tema değişimini izlemeli; profil/veri yazılmaz.
+    assert js("const root=document.documentElement,s=document.getElementById('clockSelect'),old=root.style.getPropertyValue('--gold');try{root.style.setProperty('--gold','#12ab34');const a=getComputedStyle(s).color;root.style.setProperty('--gold','#ab3412');return a==='rgb(18, 171, 52)'&&getComputedStyle(s).color==='rgb(171, 52, 18)'&&getComputedStyle(s).appearance==='none'&&getComputedStyle(s).backgroundColor!=='rgb(255, 255, 255)'&&s.getBoundingClientRect().width<=s.closest('.tmin').getBoundingClientRect().width;}finally{if(old)root.style.setProperty('--gold',old);else root.style.removeProperty('--gold');}")
+    outcome['clock_selector_webview_theme_and_width']=True
     assert window.evaluate_js('window.clockEcho')==[]
     js("window.pywebview.api.event=clockEvent;document.getElementById('liveLatencyTest').checked=true;return true;")
     outcome['clock_mutations_no_settings_save_echo']=True

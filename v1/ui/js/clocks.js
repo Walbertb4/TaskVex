@@ -125,7 +125,7 @@ export function hasNativeClock(kind){return records.some(c=>c.id===selected[kind
 
 export function initNativeClocks(options){
   showTab=options.showTab;finished=options.onTimerFinished;
-  el('clockSelect')?.addEventListener('change',e=>{selected[mode]=e.target.value;renderNativeClocks();});
+  el('clockSelect')?.addEventListener('change',e=>{selected[mode]=e.target.value;sfx.blip();renderNativeClocks();});
   el('clockNew')?.addEventListener('click',()=>{
     const seconds=Math.max(0,Number(el('tmMin')?.value)||0)*60+Math.max(0,Math.min(59,Number(el('tmSec')?.value)||0));
     void createNativeClock(mode,seconds,false);

@@ -1,5 +1,15 @@
 # UI/backend sözleşmesi
 
+## Güncel 5.R8.1 — sayaç seçici sunumu
+
+Önceki 5.R7.2 kullanıcı kabulü başarılı; af834ff commit’inde. clockSelect hâlâ
+klavye ve ekran okuyucu destekli yerel select'tir; gerçek ID/change sözleşmesi
+aynıdır. Tema değişkenleri renk/odak/ok görünümünü belirler. Yalnız kullanıcı
+change olayında mevcut sfx.blip çalışır; model odağı/poll ses çıkarmaz. New
+mevcut doğrulanmış create sonucunda kendi sesini korur. Backend payload,
+veri sahipliği ve yaşam döngüsü değişmedi. Timer bitme metni/sesi sonraki
+5.R8.2'dir; henüz kişiselleştirilmiş sesli bildirim uygulanmadı.
+
 ## Güncel 5.R7.2 — çoklu sayaç sahibi ve görünüm protokolü
 
 - main tek Clocks örneğini create_core(clocks=...) ve NativeBridge(...,clocks=...)

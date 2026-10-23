@@ -90,7 +90,9 @@ conversation. Do not assume `Open Notepad` is supported by the model yet.
 | `Reset the Workout stopwatch.` | Stops it and returns elapsed time to zero. |
 
 A timer operation selects Timer; a stopwatch operation selects Stopwatch,
-even if the other tab was open. Use the dropdown for existing records or
+even if the other tab was open. The record dropdown follows the selected theme;
+changing it plays the existing UI sound (when SFX is enabled). Automatic refresh
+and model focus do not play a selection sound. Use the dropdown for existing records or
 **New** for another ready clock. Timer presets create another running timer;
 **Set** updates the selected timer duration and resets it to ready, keeping its ID; if none exists it creates a ready timer. Start/resume/pause/reset buttons
 control the selected actual ID, through the same backend tools as Vex.
