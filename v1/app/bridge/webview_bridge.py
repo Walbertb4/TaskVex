@@ -25,7 +25,7 @@ from app.session.gemini import DEFAULT_MODEL
 from app.session.text_chat import TextChat
 from app.session.live_input import LiveInput
 from app.session.catalog import load_live_catalog
-from app.session.wake_word import WakeWord
+from app.session.wake_word import WakeWord, WakeAlignmentError
 
 
 class NativeBridge:
@@ -249,7 +249,7 @@ class NativeBridge:
                 word = self._load_settings().get('prof', {}).get('pWake', 'Vex')
                 self._wake = WakeWord(word)
             except Exception:
-                return {'ok':False, 'sleeping':True, 'error':'Local wake unavailable. Run wake setup or choose a supported English wake word; use Wake to exit sleep.'}
+                return {'ok':False, 'sleeping':True, 'code':'wake_engine_unavailable', 'error':'Local wake unavailable. Run wake setup or choose a supported English wake word; use Wake to exit sleep.'}
             return {'ok':True, 'completed':True, 'request_id':self._wake.id, 'wake_word':word}
         if name == 'wake_feed':
             if (type(data) is not dict or set(data) != {'request_id','sequence','data'} or
@@ -261,10 +261,11 @@ class NativeBridge:
                 if not isinstance(data['data'], str) or len(data['data']) != 4268:
                     raise ValueError()
                 detected = self._wake.feed(data['sequence'], b64decode(data['data'], validate=True))
-            except Exception:
+            except Exception as error:
                 self._wake = None
                 self._wake_detected = False
-                return {'ok':False, 'error':'Local wake input rejected; sleep remains active'}
+                code = 'wake_alignment_failed' if isinstance(error, WakeAlignmentError) else 'wake_packet_rejected' if isinstance(error, (ValueError, Base64Error)) else 'wake_engine_failed'
+                return {'ok':False, 'code':code, 'error':'Local wake input rejected; sleep remains active'}
             start = getattr(self._wake, 'start_sequence', data['sequence']) if detected else None
             if detected:
                 # Hit tek başına uyanma değildir. UI kendi ses tamponunu

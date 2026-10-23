@@ -18,7 +18,7 @@ from test_live_probe import socket, frame
 
 
 @pytest.mark.parametrize('text', ['Vex uyku moduna geç.', 'uyu', 'go to sleep', 'Vex, enter sleep mode',
-    'Rex, uykuya dal.', 'Max, uyku moduna geç.', 'Vex uykuya dal'])
+    'Rex, uykuya dal.', 'Max, uyku moduna geç.', 'Vex uykuya dal', 'Veks, uykuya dal.'])
 def test_explicit_sleep_phrase(text):
     assert wants_sleep(text)
 
@@ -33,6 +33,8 @@ def test_custom_address_and_sleeping_color_contract():
     from app.bridge.settings import validate_settings
     assert wants_sleep('Computer, uykuya dal.', 'Computer')
     assert not wants_sleep('Max uyku moduna geç ne demek?')
+    assert not wants_sleep('Veks uykuya dal ne demek?')
+    assert not wants_sleep('Veks uykuya dal ve not ekle')
     assert validate_settings({'colors':{'sleeping':'#64748b'}})['colors']['sleeping']=='#64748b'
 
 
@@ -46,7 +48,7 @@ def test_typed_sleep_does_not_call_provider_and_keeps_memory():
         assert chat.close()
 
 
-@pytest.mark.parametrize('text', ['Vex uyku moduna geç', 'Rex, uykuya dal.', 'Max, uyku moduna geç.'])
+@pytest.mark.parametrize('text', ['Vex uyku moduna geç', 'Rex, uykuya dal.', 'Max, uyku moduna geç.', 'Veks, uykuya dal.'])
 def test_voice_sleep_closes_live_without_starting_model_tool(socket, text):
     socket.frames=[{'setupComplete':{}}, {'serverContent':{'inputTranscription':{'text':text,'finished':True}}}]
     with create_core() as core:
@@ -116,6 +118,17 @@ def test_missing_model_or_bad_packet_stays_asleep_manual_wake_recovers(bridge, m
     assert not result['ok'] and bridge._sleeping and bridge._wake is None
 
 
+@pytest.mark.parametrize('error,code', [(wake_word.WakeAlignmentError('private detail'),'wake_alignment_failed'),
+    (ValueError('private detail'),'wake_packet_rejected'),(RuntimeError('private detail'),'wake_engine_failed')])
+def test_wake_failure_codes_distinguish_alignment_packet_and_engine(bridge,error,code):
+    assert ready(bridge)['ok']
+    bridge._sleeping=True
+    bridge._wake=SimpleNamespace(id='broken',feed=lambda *args: (_ for _ in ()).throw(error))
+    result=bridge.event('wake_feed',{'request_id':'broken','sequence':0,'data':b64encode(bytes(3200)).decode()})
+    assert result['code']==code and not result['ok'] and bridge._sleeping
+    assert 'private detail' not in str(result) and bridge._wake is None
+
+
 def test_model_setup_rejects_changed_archive_before_writing(monkeypatch, taskvex_home):
     from io import BytesIO
     monkeypatch.setattr('urllib.request.urlopen',lambda *a,**k:BytesIO(b'not the pinned archive'))
@@ -180,3 +193,35 @@ def test_boundary_verifies_fresh_window_instead_of_trusting_old_segment_time(sta
         assert detector._boundary(old,657)==652
     else:
         with pytest.raises(ValueError):detector._boundary(old,657)
+
+
+@pytest.mark.parametrize('finished_empty', [False, True])
+def test_sleep_candidate_holds_denial_audio_until_host_decision(socket, finished_empty):
+    """Bitmemiş tam adayın ret sesi oynatılmaz; bitiş host uyku sonucudur."""
+    from app.session.live_probe import probe_live_text
+    import asyncio
+    socket.frames = [{'setupComplete': {}},
+        {'serverContent': {'inputTranscription': {'text': 'Vex uykuya dal'}}},
+        frame('Main computer access needed.', audio=True),
+        {'serverContent': {'inputTranscription': {'finished': True}}} if finished_empty else frame(complete=True)]
+    audio, text = [], []
+    report = asyncio.run(probe_live_text('', 'future-live', audio_input=bytes(3200),
+        audio_sink=lambda *args: audio.append(args) or True,
+        transcript_sink=lambda role, value, seq: text.append((role, value)) or True))
+    assert report['ok'] and report['sleep_requested']
+    assert report['text'] == 'Sleep mode requested.' and not audio
+    assert all('Main computer' not in value for _, value in text)
+
+
+def test_sleep_candidate_becomes_question_releases_held_output_in_order(socket):
+    """Aday soru olursa gerçek cevap kaybolmaz, uykuya geçilmez."""
+    from app.session.live_probe import probe_live_text
+    import asyncio
+    socket.frames = [{'setupComplete': {}},
+        {'serverContent': {'inputTranscription': {'text': 'uyku moduna geç'}}},
+        frame('Sleep '),
+        {'serverContent': {'inputTranscription': {'text': ' ne demek?', 'finished': True}}},
+        frame('explained.', complete=True)]
+    report = asyncio.run(probe_live_text('', 'future-live', audio_input=bytes(3200)))
+    assert report['ok'] and not report.get('sleep_requested')
+    assert report['text'] == 'Sleep explained.'

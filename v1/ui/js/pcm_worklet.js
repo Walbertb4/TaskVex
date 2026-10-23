@@ -9,7 +9,7 @@ class MicrophonePCM extends AudioWorkletProcessor {
       if (event?.data === 'wake-to-live') {
         // Aynı cümlenin yarım PCM paketini atma; yalnız hedef/limit değişir.
         this.localWake = this.waiting = false; this.packets = 0;
-        this.speaking = true; this.silent = 0;
+        this.speaking = true; this.silent = 0; this.wakeHandoff = true;
         return;
       }
       // Yanıt bitince aynı mikrofon/ön tampon kalır; yalnız aday eşiği değişir.
@@ -23,7 +23,7 @@ class MicrophonePCM extends AudioWorkletProcessor {
       this.replyPlaying = event?.data === 'barge';
       this.previous = this.filtered = this.noise = 0;
       this.speaking = false; this.silent = 0;
-      this.prefix = []; this.limited = false;
+      this.prefix = []; this.limited = false; this.wakeHandoff = false;
     };
   }
   process(inputs) {
@@ -73,6 +73,13 @@ class MicrophonePCM extends AudioWorkletProcessor {
             if (!this.speaking) { this.speaking = true; this.port.postMessage({activity:true}); }
           } else if (this.speaking && ++this.silent >= 7) {
             this.speaking = false; this.port.postMessage({activity:false});
+            // Yalnız wake devrinde sözcükten sonraki sessizlik giriş sonudur.
+            // Sunucu VAD'si çok kısa wake sözcüğünü kaçırsa da açık EOS alır.
+            if (this.wakeHandoff) {
+              this.active = false; this.port.postMessage(bytes.buffer, [bytes.buffer]);
+              this.port.postMessage({speechEnd:true}); this.offset = this.energy = 0;
+              return true;
+            }
           }
           this.port.postMessage(bytes.buffer, [bytes.buffer]);
           this.packets++;

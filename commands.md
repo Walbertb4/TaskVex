@@ -60,7 +60,7 @@ conversation. Do not assume `Open Notepad` is supported by the model yet.
 | `Explain what a CPU does.` | Answers a general question; this is not a system measurement or a saved operation. |
 | `For this conversation, my favorite color is purple.` then `What color did I mention?` | Uses recent conversation context, including after a Live session reset. This does not create a permanent user profile. |
 | **New Chat** button | After confirmation, clears the temporary conversation memory and displayed messages. Saved notes and preferences stay. Unavailable during an active/unknown request. |
-| **Microphone Off / On** button | Disables/enables microphone capture. Off does not interrupt Vex's reply. Its light shows the ready, unblocked On preference and stays steady during a normal Stop resource handoff. |
+| **Microphone Off / On** button | Disables/enables microphone capture. Off does not interrupt Vex's reply. Its label, light and pressed state show only your On/Off input preference. Errors and connection states are shown separately; On does not guarantee a working device. |
 | **Stop Task** button | Requests cancellation of the current response/task. Completed actions remain completed; controls wait for confirmed termination. A normal confirmed stop shows neutral LIVE READY, not a connection failure. |
 | **Mute / Unmute** button | Mutes/unmutes voice playback; sound effects are separate. |
 | **Disconnect** button | Releases the model connection/audio resources. |
@@ -79,7 +79,7 @@ recall or a substitute for reading current saved notes. Restart loses it.
 
 | Say, type or select | What happens |
 | --- | --- |
-| `Vex, go to sleep.` / `Enter sleep mode.` | Enters one-time sleep. Turkish equivalents include `Vex uyku moduna geç`, `uykuya geç` and `uykuya dal`. The configured wake word can address the command; Rex/Max transcription variants are accepted only before an exact sleep phrase. Quotes, questions and compound requests are not treated as sleep commands. |
+| `Vex, go to sleep.` / `Enter sleep mode.` | Enters one-time sleep. Turkish equivalents include `Vex uyku moduna geç`, `uykuya geç` and `uykuya dal`. The configured wake word can address the command; Rex/Max/Veks transcription variants are accepted only before an exact sleep phrase. Quotes, questions and compound requests are not treated as sleep commands. |
 | **Sleep** button | Enters the same sleep mode after the current turn has finished. |
 | Say `Vex` while asleep | The local detector wakes Vex. Normal conversation continues afterward; it does not automatically sleep again. |
 | `Vex, tell me something interesting.` while asleep | Wakes and forwards the addressed utterance through the existing Live input. |
@@ -98,6 +98,21 @@ UI audio buffer must be validated, then the matching wake is acknowledged by
 the backend. Local verification rechecks at most three seconds of audio with
 the same installed model; it makes no API or tool call and sends no padding.
 Pending or rejected wake audio is not forwarded to Live.
+
+Local queue, expired-buffer, alignment and delivery failures can prepare a
+fresh local input at most twice per sleep (250 ms between attempts). Old audio
+is discarded; repeat the wake word after the ready message. No model request
+or tool action is replayed. Recovery and failures appear in the status/log;
+the microphone button always remains **On** or **Off**, according to your
+choice. Permission, device, setup, invalid-packet and wake-handoff failures
+require manual action. Explicit Sleep can retry an earlier local microphone
+block; Off, Disconnect and unknown-result guards remain effective.
+
+After a detected wake word, a short silence explicitly ends that input so a
+wake-only greeting need not wait for the 15-second capture bound. That bound
+ends input, not the model response or your On preference. A complete spoken
+sleep candidate is handled by the host; tentative matching phrases that
+become questions are not treated as sleep commands.
 
 The pinned local model must be installed. It is installed on this development
 machine; on a new installation, run the following from `v1` once:

@@ -4,6 +4,8 @@
  * Önceki start/finish sınırlı MediaRecorder sözleşmesi uyumluluk için korunur.
  * İki yol da RAM ile sınırlıdır; aynı anda yalnız bir mikrofon kaynağı açılır.
  * İzin geç verilirse iptal edilmiş kaydın track'leri de hemen kapatılır.
+ * prepareStream onError'a yalnız sabit hata kodu iletir; izin/cihaz, bozuk
+ * paket ve yerel kuyruk ayrı tutulur. Yeniden deneme kararını app.js verir.
  * start'ın üçüncü parametresi browser cihaz ID'sidir; özel seçimde exact
  * kullanılır, erişilemeyen mikrofon yerine başka cihaz açılmaz.
  */
@@ -41,9 +43,9 @@ export const liveMic = {
       state.node = new AudioWorkletNode(state.context, 'taskvex-microphone-pcm');
       state.source = state.context.createMediaStreamSource(state.stream);
       state.source.connect(state.node); state.node.connect(state.context.destination);
-      state.fail = () => { if (current === state) { this.cancel(); onError(); } };
-      state.stream.getTracks().forEach(track => { track.onended = state.fail; });
-      state.node.onprocessorerror = state.fail;
+      state.fail = (code = 'microphone_unavailable') => { if (current === state) { this.cancel(); onError(code); } };
+      state.stream.getTracks().forEach(track => { track.onended = () => state.fail('device_ended'); });
+      state.node.onprocessorerror = () => state.fail('worklet_failed');
       state.node.port.onmessage = event => {
         if (current !== state) return;
         if (typeof event.data?.activity === 'boolean' && (state.triggered || state.armed)) {
@@ -51,9 +53,14 @@ export const liveMic = {
           onActivity?.(event.data.activity);
           return;
         }
-        if (event.data?.limit) { state.fail(); return; }
+        if (event.data?.limit || event.data?.speechEnd) {
+          if (state.armed) state.endInput();
+          else state.inputEnded = true;
+          return;
+        }
         if (state.localWake && event.data instanceof ArrayBuffer) {
-          if (event.data.byteLength !== 3200 || state.wakeQueue.length >= 10) { state.fail(); return; }
+          if (event.data.byteLength !== 3200) { state.fail('invalid_pcm'); return; }
+          if (state.wakeQueue.length >= 10) { state.fail('wake_backpressure'); return; }
           const bytes = new Uint8Array(event.data);
           state.prefix.push({bytes, sequence:state.wakeSequence++});
           if (state.prefix.length > 30) state.prefix.shift();
@@ -63,7 +70,7 @@ export const liveMic = {
         }
         if (Array.isArray(event.data?.speech) && state.waiting && !state.triggered) {
           const prefix = event.data.speech;
-          if (!prefix.length || prefix.length > 5 || prefix.some(b => !(b instanceof ArrayBuffer) || b.byteLength !== 3200)) { state.fail(); return; }
+          if (!prefix.length || prefix.length > 5 || prefix.some(b => !(b instanceof ArrayBuffer) || b.byteLength !== 3200)) { state.fail('invalid_pcm'); return; }
           state.triggered = true;
           state.speaking = true;
           state.queue.push(...prefix.map(buffer => new Uint8Array(buffer)));
@@ -71,18 +78,21 @@ export const liveMic = {
           state.onSpeech();
           return;
         }
-        if (!state.armed && !state.triggered) return;
+        if (state.inputEnded || !state.armed && !state.triggered) return;
         // Setup sırasında konuşmanın başını kaybetme. Üç saniyede bağlantı
         // hazırlanamazsa kes; sessizce kırpılmış komutu yürütme.
-        if (!(event.data instanceof ArrayBuffer) || event.data.byteLength !== 3200 || state.queue.length >= (state.armed && !state.drainingPrefix ? 10 : 30)) { state.fail(); return; }
+        if (!(event.data instanceof ArrayBuffer) || event.data.byteLength !== 3200) { state.fail('invalid_pcm'); return; }
+        if (state.queue.length >= (state.armed && !state.drainingPrefix ? 10 : 30)) { state.fail('stream_backpressure'); return; }
         state.queue.push(new Uint8Array(event.data));
         if (state.armed && !state.sending) state.drain();
       };
       return true;
-    } catch {
+    } catch (error) {
       release(state);
       if (current !== state) return false;
-      current = null; throw new Error('microphone_unavailable');
+      const code = error?.name === 'NotAllowedError' ? 'permission_denied'
+        : ['NotFoundError', 'OverconstrainedError'].includes(error?.name) ? 'device_unavailable' : 'microphone_unavailable';
+      current = null; throw new Error(code);
     }
   },
   waitForSpeech(onSpeech, replyPlaying = false) {
@@ -114,11 +124,16 @@ export const liveMic = {
             state.queue = state.prefix.filter(p => p.sequence >= detected.start_sequence).map(p => p.bytes);
             state.prefix = []; state.wakeQueue = [];
             state.speaking = true; state.node.port.postMessage('wake-to-live');
-            Promise.resolve(onWake()).catch(state.fail); return;
+            Promise.resolve(onWake()).catch(() => state.fail('wake_handoff_failed')); return;
           }
-          if (detected !== false) throw new Error('local_wake_failed');
+          if (detected !== false) throw new Error(detected?.error || 'wake_bridge_rejected');
         }
-      } catch { state.fail(); }
+      } catch (error) {
+        // Serbest exception metni taşınmaz; yalnız tanımlı taşıma nedenleri.
+        const code = ['wake_prefix_expired','wake_alignment_failed','wake_packet_rejected','wake_engine_failed'].includes(error?.message)
+          ? error.message : 'wake_bridge_rejected';
+        state.fail(code);
+      }
       finally { state.sendingWake = false; }
     };
     state.node.port.postMessage('wake');
@@ -134,7 +149,12 @@ export const liveMic = {
   activateStream(onChunk, onLimit) {
     const state = current;
     if (!state?.node) return false;
-    state.armed = true;
+    state.armed = true; state.sentPackets = 0;
+    // Yerel sessizlik/15 s yalnız PCM girişini bitirir; Stop değildir.
+    state.endInput = () => {
+      state.inputEnded = true;
+      if (current === state && !state.sending) { this.cancel(); onLimit(); }
+    };
     // Setup'tan kalan ön tampon erimeden sınırı 3 s'den 1 s'ye daraltma;
     // aksi halde sağlıklı bağlantının ilk yeni paketi yanlış taşma sayılır.
     state.drainingPrefix = state.queue.length > 10;
@@ -145,13 +165,19 @@ export const liveMic = {
         while (current === state && state.queue.length) {
           const bytes = state.queue.shift();
           if (state.queue.length <= 10) state.drainingPrefix = false;
-          if (await onChunk(btoa(String.fromCharCode(...bytes))) !== true) { state.fail(); return; }
+          if (await onChunk(btoa(String.fromCharCode(...bytes))) !== true) { state.fail('stream_rejected'); return; }
+          // Wake ön tamponu da backend'in toplam 150 paket sınırına dahildir.
+          if (++state.sentPackets >= 150) { state.queue = []; state.inputEnded = true; break; }
         }
-      } catch { state.fail(); }
-      finally { state.sending = false; }
+      } catch { state.fail('stream_rejected'); }
+      finally {
+        state.sending = false;
+        if (state.inputEnded && !state.queue.length) state.endInput();
+      }
     };
-    if (state.queue.length) state.drain();
-    state.timer = setTimeout(() => { if (current === state) { this.cancel(); onLimit(); } }, 15000);
+    if (state.queue.length && !state.sending) state.drain();
+    else if (state.inputEnded && !state.sending) state.endInput();
+    if (current === state) state.timer = setTimeout(state.endInput, 15000);
     return true;
   },
   async start(onLimit, onError, deviceId = '') {
@@ -235,7 +261,7 @@ if (typeof navigator !== 'undefined') navigator.mediaDevices?.addEventListener?.
   try {
     const devices = await navigator.mediaDevices.enumerateDevices();
     if (current === state && !devices.some(d => d.kind === 'audioinput' && d.deviceId === state.deviceId)) {
-      liveMic.cancel(); state.onError();
+      liveMic.cancel(); state.onError('device_removed');
     }
   } catch { /* Liste okunamadı diye başka bir stream'in track'ini kapatma. */ }
 });

@@ -1,5 +1,88 @@
 # Aşama 5 — Model, araç çağrıları ve ses
 
+## Güncel düzeltme — wake yanıtı, uyku çıktısı ve iki durumlu mikrofon
+
+Kullanıcı wake sözcüğüyle uyanmanın çalıştığını, bazen Thinking sonrası yanıt
+alamadığını ve uykuya geçerken modelin ana bilgisayar erişimi istediğini
+bildirdi. Önceki dilimin tam kabulü sayılmadı; mevcut değişiklikler commit
+edilmedi. Bu dilim aynı hataları tamamlar, yeni özellik aşaması açmaz.
+
+R5: thought-only model_turn giriş sonu değildir. Gerçek kullanıcıya açık
+metin/ses, araç çağrısı veya tur bitişi eski girişi kapatır. R4: wake devrinde
+700 ms yerel sessizlik açık EOS üretir; kısa tek wake sözcüğü sunucu VAD'sinde
+kaçırılsa da giriş sonsuz beklemez. 15 s/150 paket sınırı Stop/micBlocked
+üretmez; yalnız girişi bitirir ve model yanıtını bekler. Wake ön tamponu da
+150 pakete dahildir. EOS tüm önceki PCM onaylandıktan sonra gider; eski
+kaynak callback'i yeni mikrofonu kapatamaz. Bu enerji eşiği gerçek konuşma
+sınıflandırıcısı değildir; fiziksel kabul hâlâ gerekir.
+
+Tam uyku transkripti adayı kesinleşene kadar gelen çıktı RAM'de bekler;
+bitince host uyku sonucu verir, ret sesi oynatılmaz. Aday soru/başka isteğe
+dönüşürse bekleyen olaylar sırayla işlenir; araçlar iki kez çalıştırılmaz.
+Tampon en fazla 64 olay/2 MB, mevcut 25 s sessizlik/120 s tur sınırlarına tabidir.
+Kişisel talimat yetki vermez; ortak model talimatı uyku isteğine ana bilgisayar
+izni istemek yerine kısa onay vermesini söyler. ASR doğru ifade üretmeden
+önce oynatılmış sesi geri alma garantisi yoktur; model talimatı tek başına
+uyku yetkisi değildir. Uykuya yalnız host karar verir.
+
+Kullanıcı isteğiyle micB yalnız Microphone On/Off, ışık ve aria-pressed ile
+kullanıcı giriş tercihini gösterir. Retry/Blocked/Thinking/bağlantı/kurulum
+ışığı etkilemez ve düğmeye yeni mod eklemez. On gerçek donanım garantisi
+değildir; hatalar ayrı durum satırı ve log'dadır. On/Off yanıt oynatımını
+kesmez; cihaz/izin/unknown güvenlik kapıları arka planda korunur.
+
+Kanıt: 825 pytest, yedi JS süiti ve Pyright 0 hata/uyarı. Yeni kontroller:
+thought sırasında giriş açık; kısa wake sessizliği EOS; yavaş PCM ön tamponu
+atlamadan EOS; toplam 150 paket; uyku adayında ret sesini tutma ve soru olursa
+sırayla bırakma. Gerçek WebView2 chat regresyonu sentetik sağlayıcı/geçici
+profille geçti: stage5-wake-response-native.json. İlk native tur hata halinde
+On ışığının sönmesini bekleyen eski assertion nedeniyle başarısızdı; yeni
+On/Off sözleşmesine göre düzeltildi, son tur geçti. Bu JSON dosyası native
+kontrol kanıtıdır, kullanıcı verisi veya gerçek hesap sonucu değildir.
+Fiziksel kullanıcı mikrofonu ve gerçek/ücretli sağlayıcı bu tur kullanılmadı.
+
+R4–R5 için kod ve sentetik kanıt tamamlandı, fiziksel tekrar kabulü bekler.
+Bunlar onaylanmadan otomatik geri uyuma/saniye ayarı veya Aşama 5 kapanışına
+geçilmez. Önceki alt başlıklar tarihsel kayıttır; güncel micB davranışı budur.
+
+## Güncel kabul — R2–R3 toparlanma ve küçük R1 düzeltmesi
+
+Önceki R0 adımı kullanıcı tarafından başarılı bildirildi ve yeni işe başlamadan
+`616125d` commit'ine alındı; push yapılmadı. Aşağıdaki yeni dilim manuel kabul
+bekler; alttaki eski adım kayıtları tarihsel doğrulama kapsamını gösterir.
+
+Yerel wake kuyruğu dolduğunda, ön tampon eskidiğinde, zaman sınırı
+kanıtlanamadığında veya yerel paket teslimi onaylanmadığında eski kaynak ve
+PCM bırakılır. Uyku/On/idle durumunda en fazla iki yeni kaynak hazırlanır;
+her deneme 250 ms sonra güncel mikrofon ve bağlantı revision'ını denetler.
+Bütçe açık Sleep veya Mic On ile sıfırlanır; başarılı kaynak hazırlığı bütçeyi
+sıfırlamaz. Eski ses, model isteği ve araç işlemi yeniden yürütülmez.
+Off, Wake, Stop, Disconnect, sayfanın kapanması ve unknown kilidi bekleyen
+tekrarı iptal eder. İzin, cihaz, kurulum, bozuk paket ve Live'a devir hataları
+otomatik tekrar edilmez; nedeni görünür ve açık kullanıcı işlemi gerekir.
+Açık Sleep önceki yerel mikrofon engelini yeniden deneyebilir; Off tercihi,
+Disconnect ve unknown engeli korunur. On ışığı kullanıcı tercihini korur;
+Retrying/Blocked etiketi ve açıklaması gerçek kaynak durumunu ayırır.
+
+R1: ASR'nin `Veks, uykuya dal` yazımı yalnız tam uyku ifadesinin hitabı olarak
+kabul edilir. Soru, alıntı ve birleşik istekler uyutmaz; genel komutlarda veya
+not hedeflerinde bulanık eşleşme eklenmedi.
+
+Kanıt: 821 pytest, yedi JS süiti geçti; değişen Python/native dosyalarında
+Pyright 0 hata/uyarı. `stage5-wake-recovery-native.json`, geçici profil ve
+sentetik sağlayıcıyla gerçek WebView2/AudioWorklet kontrolünün raporudur:
+ilk yerel paket onayı 1400 ms geciktirilip kuyruk taşması oluşturuldu; yeni
+yerel kaynak açıldı, On korundu, Live açılmadı. Cihaz capture bitişi açıklaması
+ve açık Sleep ile yeniden hazırlık da geçti. İlk native tur eski genel hata
+metni beklentisiyle, ikinci tur host uyanınca henüz etkinleşmemiş Sleep'e
+tıklayan fixture nedeniyle başarısızdı. Fixture gerçek UI hazırlığını bekleyecek
+şekilde düzeltildi; son tur geçti. Başarısız denemeler başarı diye sayılmadı.
+Gerçek kullanıcı verisi, fiziksel mikrofon ve ücretli API kullanılmadı.
+
+Sıradaki açık işler R4–R5: wake-only sessizliğinin 15 s giriş sınırına etkisi
+ve işitilmeyen thought parçasıyla girişin erken kapanması. Otomatik geri uyuma,
+saniye ayarı ve Aşama 5 kapanış/debloat/kabulü bunlardan sonra gelir.
+
 ### İnceleme düzeltmesi 1 — R0 zaman hizalaması ve wake kabulü
 
 23 Ekim 2026: Kullanıcı incelemede belirlenen sırayla düzeltmeyi istedi.

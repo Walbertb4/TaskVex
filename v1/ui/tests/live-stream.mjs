@@ -157,3 +157,39 @@ for(let i=0;i<35;i++){
 }
 assert.equal(expiredError,1);assert.equal(expiredWake,0);assert.equal(liveMic.active,false);
 console.log('PASS filtered/adaptive candidates, local wake handoff, streaming bounds and Stop');
+
+// Wake sözcüğünden sonra yalnız sessizlik: 15 s hata/Stop yerine açık giriş sonu.
+packets.length=0;processor.port.onmessage({data:'wake'});
+processor.process([[tone(.1)]]);
+processor.port.onmessage({data:'wake-to-live'});
+for(let i=0;i<20;i++)processor.process([[new Float32Array(1600)]]);
+assert.equal(packets.filter(p=>p.speechEnd).length,1);
+assert.equal(packets.filter(p=>p.limit).length,0);
+
+// EOS yavaş ön tampon aktarımını atlamaz; son PCM onayından sonra biter.
+track={stop(){this.closed=true;}};permission=null;
+await liveMic.prepareStream(()=>assert.fail(),'12345');
+liveMic.waitForSpeech(()=>{});
+node.port.onmessage({data:{speech:[new ArrayBuffer(3200),new ArrayBuffer(3200)]}});
+node.port.onmessage({data:{speechEnd:true}});
+let end=0, chunkAck;
+liveMic.activateStream(()=>new Promise(resolve=>{chunkAck=resolve;}),()=>end++);
+assert.equal(end,0);chunkAck(true);await Promise.resolve();await Promise.resolve();
+assert.equal(end,0);chunkAck(true);
+for(let i=0;i<8;i++)await Promise.resolve();
+assert.equal(end,1);assert.equal(liveMic.active,false);
+console.log('PASS wake-only silence sends EOS after all queued PCM, without Stop');
+
+// Ön tampon + canlı parçalar birlikte backend'in 150 paket sınırını aşamaz.
+track={stop(){this.closed=true;}};
+await liveMic.prepareStream(()=>assert.fail(),'12345');
+liveMic.waitForSpeech(()=>{});
+node.port.onmessage({data:{speech:Array.from({length:5},()=>new ArrayBuffer(3200))}});
+let total=0, capped=0;
+liveMic.activateStream(async()=>{total++;return true;},()=>capped++);
+for(let i=0;i<160;i++){
+  node.port.onmessage?.({data:new ArrayBuffer(3200)});
+  for(let j=0;j<5;j++)await Promise.resolve();
+}
+assert.equal(total,150);assert.equal(capped,1);assert.equal(liveMic.active,false);
+console.log('PASS wake prefix included in the total 15 s PCM bound');

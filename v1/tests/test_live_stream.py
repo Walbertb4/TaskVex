@@ -148,3 +148,34 @@ def test_native_stream_envelope_rejects_before_dispatch(bridge, monkeypatch):
     for changes in [{'sequence':True}, {'data':'x'}, {'data':'%'*4268}, {'extra':True}, {'request_id':None}]:
         assert not bridge.event('live_audio_feed', {**packet, **changes})['ok']
     assert len(received) == 2
+
+
+def test_thought_only_does_not_close_active_microphone(socket, monkeypatch):
+    """İşitilmeyen model düşüncesi devam eden kullanıcı girişini kesmemeli."""
+    from app.session import live_probe
+    original = live_probe._next_message
+    checks = []
+    stream = LiveInput()
+
+    async def next_message(messages, sender):
+        if checks:
+            assert not stream.closed
+        message = await original(messages, sender)
+        if message.server_content and message.server_content.model_turn:
+            checks.append(True)
+        return message
+
+    monkeypatch.setattr(live_probe, '_next_message', next_message)
+    socket.frames = [{'setupComplete': {}},
+        {'serverContent': {'modelTurn': {'parts': [{'text': 'Internal', 'thought': True}]}}},
+        frame('Merhaba', complete=True)]
+
+    async def scenario():
+        task = asyncio.create_task(probe_live_text('', 'future-live', audio_input=stream))
+        while not stream.ready:
+            await asyncio.sleep(.001)
+        assert stream.feed(0, bytes(3200))
+        result = await task
+        assert result['ok'] and result['text'] == 'Merhaba' and stream.closed
+    asyncio.run(scenario())
+    assert checks

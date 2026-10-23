@@ -63,7 +63,7 @@ def check_local_sleep(window, api, js, wait_until, live_state, wake_state, outco
     js("document.getElementById('sleep').click();return true;")
     wait_until(lambda: 'say "Computer"' in window.evaluate_js("document.getElementById('textStatus').textContent"))
     js("document.getElementById('sleep').click();return true;")
-    wait_until(lambda: not api._sleeping)
+    wait_until(lambda: not api._sleeping and window.evaluate_js("document.getElementById('sleep').textContent==='Sleep' && !document.getElementById('sleep').disabled"))
     js("testMicOff();wakeOsc.stop();await wakeContext.close();return true;")
     # Mikrofon kapalıyken de uyku backend'e ulaşmalı; yalnız UI etiketi değişmemeli.
     js("document.getElementById('sleep').click();return true;")
@@ -71,7 +71,7 @@ def check_local_sleep(window, api, js, wait_until, live_state, wake_state, outco
     wait_until(lambda: api._wake is None)
     assert js("const m=await import('./js/live_mic.js');return !m.liveMic.active;")
     js("document.getElementById('sleep').click();return true;")
-    wait_until(lambda: not api._sleeping)
+    wait_until(lambda: not api._sleeping and window.evaluate_js("document.getElementById('sleep').textContent==='Sleep' && !document.getElementById('sleep').disabled"))
     outcome['sleep_with_microphone_off_closed_live_without_capture'] = True
     outcome['one_time_sleep_local_only_pcm_wake_handoff_mic_off_and_profile_word'] = True
     # Yerel motor hatası açık Wake'ten sonra normal konuşmayı kilitlememeli.
@@ -91,8 +91,45 @@ def check_local_sleep(window, api, js, wait_until, live_state, wake_state, outco
     bridge_module.WakeWord = original_detector
     outcome['manual_wake_recovered_normal_listening_after_local_engine_failure'] = True
     js("testMicOff();return true;")
+    check_wake_recovery(window, api, js, wait_until, live_state, outcome)
     if os.environ.get('TASKVEX_TEST_REAL_WAKE') == '1':
         check_real_local_wake(window, api, js, wait_until, outcome)
+
+
+def check_wake_recovery(window, api, js, wait_until, live_state, outcome):
+    """Gerçek worklet kuyruğunu geciktir; yeniden hazırlama yeni komut değildir."""
+    js("window.recoveryContext=new AudioContext();window.recoveryStream=null;"
+       "Object.defineProperty(navigator.mediaDevices,'getUserMedia',{configurable:true,value:async()=>{recoveryStream=recoveryContext.createMediaStreamDestination().stream;return recoveryStream;}});"
+       "window.recoveryOriginalEvent=window.pywebview.api.event;window.recoveryFeeds=0;window.recoveryDelayedDone=false;"
+       "window.pywebview.api.event=async(name,data)=>{const delay=name==='wake_feed'&&++recoveryFeeds===1;"
+       "if(delay)await new Promise(r=>setTimeout(r,1400));const value=await recoveryOriginalEvent(name,data);"
+       "if(delay)recoveryDelayedDone=true;return value;};testMicOn();return true;")
+    wait_until(lambda: js("const m=await import('./js/live_mic.js');return m.liveMic.waitingForSpeech;"))
+    js("document.getElementById('sleep').click();return true;")
+    wait_until(lambda: 'Asleep · say' in window.evaluate_js("document.getElementById('textStatus').textContent"))
+    assert api._wake is not None
+    original_id, opened = api._wake.id, live_state['opened']
+    wait_until(lambda: 'Preparing fresh local wake' in window.evaluate_js("document.getElementById('textStatus').textContent"))
+    assert window.evaluate_js("document.getElementById('micB').classList.contains('on')")
+    wait_until(lambda: api._wake is not None and api._wake.id != original_id and 'Asleep · say' in window.evaluate_js("document.getElementById('textStatus').textContent"))
+    wait_until(lambda: window.evaluate_js('window.recoveryDelayedDone'))
+    assert api._sleeping and not api._chat.busy and live_state['opened'] == opened
+    js("recoveryStream.getTracks()[0].dispatchEvent(new Event('ended'));return true;")
+    wait_until(lambda: 'capture ended' in window.evaluate_js("document.getElementById('textStatus').textContent"))
+    assert 'capture ended' in window.evaluate_js("document.getElementById('textStatus').textContent")
+    # Açık Wake ve ardından gerçek cihaz hatası → açık Sleep tekrar hazırlanır.
+    js("document.getElementById('sleep').click();return true;")
+    wait_until(lambda: js("const m=await import('./js/live_mic.js');return m.liveMic.waitingForSpeech;"))
+    js("recoveryStream.getTracks()[0].dispatchEvent(new Event('ended'));return true;")
+    wait_until(lambda: 'capture ended' in window.evaluate_js("document.getElementById('textStatus').textContent"))
+    js("document.getElementById('sleep').click();return true;")
+    wait_until(lambda: 'Asleep · say' in window.evaluate_js("document.getElementById('textStatus').textContent"))
+    assert window.evaluate_js("document.getElementById('micB').classList.contains('on')")
+    js("window.pywebview.api.event=recoveryOriginalEvent;document.getElementById('sleep').click();return true;")
+    wait_until(lambda: not api._sleeping)
+    js("testMicOff();await recoveryContext.close();return true;")
+    outcome['local_wake_backpressure_recovered_without_live_and_preserved_on'] = True
+    outcome['explicit_sleep_retried_blocked_device_with_reason'] = True
 
 
 def check_real_local_wake(window, api, js, wait_until, outcome):
@@ -987,7 +1024,8 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 js("Object.defineProperty(navigator.mediaDevices,'getUserMedia',{configurable:true,value:async()=>{throw new Error('Synthetic denied');}});"
                    "testMicOn();return true;")
                 wait_until(lambda: 'permission denied' in window.evaluate_js("document.getElementById('textStatus').textContent"))
-                assert not window.evaluate_js("document.getElementById('send').disabled || document.getElementById('micB').classList.contains('on')")
+                assert not window.evaluate_js("document.getElementById('send').disabled")
+                assert window.evaluate_js("document.getElementById('micB').classList.contains('on')")
                 js("window.cancelMicContext=new AudioContext();window.cancelMicDestinations=[];"
                    "Object.defineProperty(navigator.mediaDevices,'getUserMedia',{configurable:true,value:async()=>{"
                    "const d=cancelMicContext.createMediaStreamDestination();cancelMicDestinations.push(d);return d.stream;}});"
@@ -1017,7 +1055,8 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 assert window.evaluate_js("lastMicOptions.audio.deviceId.exact==='12345'")
                 js("window.deviceList=deviceList.filter(d=>d.kind!=='audioinput');navigator.mediaDevices.dispatchEvent(new Event('devicechange'));return true;")
                 wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
-                assert 'Microphone disconnected' in window.evaluate_js("document.getElementById('textStatus').textContent")
+                assert 'Selected microphone was removed' in window.evaluate_js("document.getElementById('textStatus').textContent")
+                assert window.evaluate_js("document.getElementById('micB').textContent").strip() == 'Microphone On'
                 assert window.evaluate_js("deviceStream.getTracks().every(t=>t.readyState==='ended')")
                 assert not window.evaluate_js("document.getElementById('send').disabled")
                 wait_until(lambda: 'Saved device unavailable' in window.evaluate_js("document.getElementById('dIn').selectedOptions[0].textContent"))

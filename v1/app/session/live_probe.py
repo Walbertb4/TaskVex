@@ -7,6 +7,7 @@ kapatır. İzinli araçları ModelTools üzerinden yürütür; otomatik retry ya
 """
 
 import asyncio
+from collections import deque
 from collections.abc import Callable
 from threading import Event
 from time import perf_counter
@@ -66,6 +67,9 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
     sender = None
     streaming = isinstance(audio_input, LiveInput)
     sequence = 0
+    held_output = []
+    held_bytes = 0
+    replay = deque()
 
     async def publish(role: str, value: str):
         """Birikimli metni kimlikli alıcıya ilet; ekran hatası araç sonucunu bozmaz."""
@@ -125,7 +129,7 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
                         idle = asyncio.timeout(LIVE_IDLE_SECONDS)
                         try:
                             async with idle:
-                                message = await _next_message(incoming, sender)
+                                message = replay.popleft() if replay else await _next_message(incoming, sender)
                         except TimeoutError:
                             if not idle.expired():
                                 raise
@@ -150,14 +154,6 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
                         report.update(code="tool_cancelled", error="Server cancelled tool calls. Existing completed actions were not undone.")
                         return report
                     content = message.server_content
-                    if isinstance(audio_input, LiveInput) and (message.tool_call or content and
-                            (content.model_turn or content.output_transcription or content.turn_complete)):
-                        # İlk yanıtta giriş kapanır; bu dilimde barge-in yok.
-                        audio_input.close()
-                        if sender:
-                            sender.cancel()
-                            await asyncio.gather(sender, return_exceptions=True)
-                            sender = None
                     if audio_input is not None and content and content.input_transcription and content.input_transcription.text:
                         report["input_text"] = report.get("input_text", "") + content.input_transcription.text
                         if len(report["input_text"]) > 20000:
@@ -165,7 +161,7 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
                         if bound_tools:
                             bound_tools.begin_turn(report["input_text"])
                         await publish('u', report['input_text'])
-                        if (content.input_transcription.finished is True and not report['tool_results']
+                        if ((content.input_transcription.finished is True or content.turn_complete) and not report['tool_results']
                                 and wants_sleep(report['input_text'], (profile or {}).get('pWake', 'Vex'))):
                             # Uyku host kontrolüdür; bu açık isteği araç/model
                             # yanıtına çevirme. Socket kapanır, RAM sohbet kalır.
@@ -173,6 +169,46 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
                             report.update(ok=True, sleep_requested=True, mode='local_sleep')
                             transcript.append('Sleep mode requested.')
                             return report
+                    # Tam uyku adayı henüz kesinleşmediyse yanıtı kısa süre RAM'de
+                    # tut. Böylece host uyuturken modelin ret sesi oynatılmaz.
+                    # Soruya dönüşürse içerik aynı sırada işlenir; araç replay yoktur.
+                    candidate = audio_input is not None and not report['tool_results'] and wants_sleep(
+                        report.get('input_text', ''), (profile or {}).get('pWake', 'Vex'))
+                    if candidate:
+                        if content and (content.turn_complete or content.input_transcription and content.input_transcription.finished):
+                            await connection.reset('sleep_requested')
+                            report.update(ok=True, text='Sleep mode requested.', sleep_requested=True, mode='local_sleep')
+                            transcript[:] = ['Sleep mode requested.']
+                            plain.clear()
+                            return report
+                        copied = message.model_copy(deep=True)
+                        if copied.server_content:
+                            copied.server_content.input_transcription = None
+                        held_bytes += len(copied.model_dump_json())
+                        if len(held_output) >= 64 or held_bytes > 2_000_000:
+                            raise ContractError('Pending sleep response exceeded limit')
+                        held_output.append(copied)
+                        continue
+                    if held_output:
+                        copied = message.model_copy(deep=True)
+                        if copied.server_content:
+                            copied.server_content.input_transcription = None
+                        replay.extend(held_output)
+                        replay.append(copied)
+                        held_output.clear()
+                        held_bytes = 0
+                        continue
+                    if isinstance(audio_input, LiveInput) and (message.tool_call or content and
+                            (content.output_transcription and content.output_transcription.text or content.turn_complete or
+                             any(not part.thought and (part.text or part.inline_data and part.inline_data.data)
+                                 for part in ((content.model_turn.parts or []) if content.model_turn else [])))):
+                        # Düşünce parçası yanıt değildir; yalnız gerçek çıktı/araç/bitiş
+                        # eski girişi kapatır. Yeni barge-in ayrı kaynakta kalır.
+                        audio_input.close()
+                        if sender:
+                            sender.cancel()
+                            await asyncio.gather(sender, return_exceptions=True)
+                            sender = None
                     if message.tool_call:
                         calls = message.tool_call.function_calls or []
                         if not bound_tools or not calls or len(report["tool_results"]) + len(calls) > 8:
@@ -276,8 +312,9 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
                         if not report['tool_results'] and wants_sleep(report.get('input_text', ''), (profile or {}).get('pWake', 'Vex')):
                             await connection.reset('sleep_requested')
                             report.update(ok=True, sleep_requested=True, mode='local_sleep')
-                            if not transcript and not plain:
-                                transcript.append('Sleep mode requested.')
+                            transcript[:] = ['Sleep mode requested.']
+                            plain.clear()
+                            report['text'] = 'Sleep mode requested.'
                             return report
                         answer = "".join(transcript or plain)
                         if answer.strip():

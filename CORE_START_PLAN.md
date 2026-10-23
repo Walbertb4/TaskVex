@@ -1,5 +1,24 @@
 # TaskVex — Mark LVI incelemesi ve core başlangıç planı
 
+## Güncel kabul — wake giriş sonu ve sade mikrofon
+
+R4–R5 ve bildirilen uyku ret çıktısı için düzeltmeler yapıldı; fiziksel kabul
+bekler. micB yalnız kullanıcı On/Off tercihidir; hata/bağlantı ayrı durumda
+kalır. thought-only giriş kapatmaz, wake sessizliği ve 15 s sınırı yalnız EOS
+üretir. Uyku adayı çıktısı host kararı için sınırlı RAM'de bekler. Tek Live /
+mikrofon/core sahipliği ve Stop güvenliği korunur. Kullanıcı önceki dilimde
+sorun bildirdiğinden yeni commit yok; ayrıntı docs/STAGE5_MODEL.md'dedir.
+
+## Güncel öncelik — 23 Ekim R1–R3 kabulü
+
+R0 kullanıcı onayıyla `616125d` commit'ine alındı; push yok. R2–R3 yerel wake
+hata sınıfları, en fazla iki kaynak yenilemesi ve doğru mikrofon durumları
+ile küçük R1 Veks uyku hitabı uygulandı; manuel kabul bekler. Tek mikrofon,
+tek Live sahibi ve core araç hattı korunur; eski PCM/araç/model replay yoktur.
+Sırada R4–R5 giriş sınırları ve erken thought kapanması vardır. Bunlar ve
+son kabul bitmeden otomatik geri uyuma veya sonraki özellik aşaması açılmaz.
+Ayrıntı/kanıt: docs/STAGE5_MODEL.md. Alttaki eski dilimler tarihsel kayıttır.
+
 23 Ekim incelemesi sonrası öncelik: R0 wake zaman hizalaması/host kabulü
 bu adımda uygulanır ve manuel kabul bekler. Ardından R2–R3 hata/kuyruk
 toparlanması, R4–R5 giriş sınırları, R1 güvenli uyku tanıma kapatılır.

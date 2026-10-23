@@ -26,6 +26,10 @@ FILES = {
 }
 
 
+class WakeAlignmentError(ValueError):
+    """Algı var fakat güvenli ses sınırı yok; paket/cihaz hatasından ayrılır."""
+
+
 def model_home() -> Path:
     """Kaynak kodundan ve credential dosyasından ayrı model cache'i."""
     return get_data_home() / 'models' / 'wake'
@@ -115,11 +119,11 @@ class WakeWord:
         """
         times = list(result.timestamps)
         if not times or any(not math.isfinite(t) or t < 0 for t in times) or times != sorted(times):
-            raise ValueError('Wake boundary was not confirmed')
+            raise WakeAlignmentError('Wake boundary was not confirmed')
         span = times[-1] - times[0]
         count = math.ceil((span + .8) * 10)
         if count > 30:
-            raise ValueError('Wake utterance exceeds the local prefix')
+            raise WakeAlignmentError('Wake utterance exceeds the local prefix')
         window = list(self._recent)[-count:]
         verify = self._spotter.create_stream()
         samples = array('h')
@@ -137,12 +141,12 @@ class WakeWord:
                 if (any(not math.isfinite(t) or t < 0 for t in stamps) or stamps != sorted(stamps)
                         or stamps[-1] >= len(window) / 10
                         or len(window) / 10 + .3 - (stamps[-1] - stamps[0]) >= 1.5):
-                    raise ValueError('Wake alignment could include an untracked reset')
+                    raise WakeAlignmentError('Wake alignment could include an untracked reset')
                 start = window[0][0] + math.floor(stamps[0] * 10)
                 if not window[0][0] <= start <= sequence:
-                    raise ValueError('Wake alignment is outside the local prefix')
+                    raise WakeAlignmentError('Wake alignment is outside the local prefix')
                 return start
-        raise ValueError('Wake boundary could not be verified')
+        raise WakeAlignmentError('Wake boundary could not be verified')
 
     def feed(self, sequence: int, pcm: bytes) -> bool:
         """Tek 100 ms PCM; bozuk sıra/ses reddedilir, sessiz sınırsız kuyruk yoktur."""

@@ -191,25 +191,37 @@ let connectionRevision = 0;
 let micRevision = 0;
 // Kullanıcının On/Off tercihi; model başarısı/Stop bu değeri değiştirmez.
 let microphoneEnabled = true, nativeInitialized = false;
-let micBlocked = false;
+let micBlocked = false, micBlockReason = null;
 let replyMicRequest = null, pendingBargeIn = null;
 let sleeping = false, wakeSession = null, preparingWake = false;
+let wakeRetryTimer = null, wakeRetryCount = 0;
+const MIC_FAILURES = {
+  microphone_unavailable:'Microphone unavailable or permission denied.',
+  permission_denied:'Microphone permission denied.',
+  device_unavailable:'Selected microphone unavailable.',
+  device_ended:'Microphone capture ended.', device_removed:'Selected microphone was removed.',
+  worklet_failed:'Microphone audio processor failed.', invalid_pcm:'Microphone data was invalid.',
+  input_limit:'Microphone input limit reached.', stream_backpressure:'Live input queue filled.',
+  stream_rejected:'Live input was rejected.', wake_backpressure:'Local wake queue filled.',
+  wake_prefix_expired:'Local wake audio buffer expired.', wake_alignment_failed:'Local wake boundary was not verified.',
+  wake_packet_rejected:'Local wake packet was rejected.', wake_engine_failed:'Local wake engine failed.',
+  wake_bridge_rejected:'Local wake delivery was not confirmed.',
+  wake_engine_unavailable:'Local wake unavailable. Run wake setup or choose a supported English wake word.',
+  wake_handoff_failed:'Wake handoff was not confirmed.', disconnected:'Microphone disconnected.',
+  unknown:'Result unknown.', output_unavailable:'Selected speaker unavailable.'
+};
 function paintMic() {
   const button = document.getElementById('micB');
-  // Işık hazır On tercihini gösterir; Stop'taki kısa kaynak devri Off değildir.
-  // Gerçek izin/cihaz/unknown engeli ışığı kapatır; tooltip capture'ı ayırır.
-  button.classList.toggle('on', microphoneEnabled && !micBlocked && !textOperation.uncertain &&
-    nativeInitialized && document.getElementById('liveLatencyTest')?.checked === true &&
-    !!document.getElementById('mSel')?.value);
+  // Düğme yalnız kullanıcı giriş tercihini gösterir. Kaynak/bağlantı hataları
+  // bu tercihi değiştirmez; ayrıntılar ayrı durum satırı ve log'da kalır.
+  button.classList.toggle('on', microphoneEnabled);
   button.lastChild.textContent = microphoneEnabled ? 'Microphone On' : 'Microphone Off';
   button.setAttribute('aria-pressed', String(microphoneEnabled));
-  button.title = textOperation.uncertain ? 'Result unknown. Microphone capture is blocked; check saved actions.'
-    : micBlocked ? 'Microphone unavailable or disconnected. Toggle Off and On to retry after checking settings.'
-    : liveMic.waitingForSpeech ? 'Microphone is on. Waiting locally for speech.'
-    : liveMic.active ? 'Microphone is on. Conversation audio may stream to the provider.' : 'Microphone is waiting for Live mode and a ready model.';
+  button.title = microphoneEnabled ? 'Turn microphone input off.' : 'Turn microphone input on.';
   button.disabled = false; // Belirsizlikte bile kullanıcı tercihini Off yapabilsin.
 }
 function cancelMic(message = 'Recording cancelled. Nothing sent.') {
+  clearTimeout(wakeRetryTimer); wakeRetryTimer = null;
   if (wakeSession) { void emit('wake_close', wakeSession); wakeSession = null; }
   micRevision++;
   replyMicRequest = pendingBargeIn = null;
@@ -221,10 +233,10 @@ function cancelMic(message = 'Recording cancelled. Nothing sent.') {
   }
   paintMic();
 }
-function blockMicrophone(message) {
+function blockMicrophone(message, reason = 'microphone_unavailable') {
   // Donanım/izin/belirsizlik engeli kullanıcı tercihi değildir. Sonsuz izin
   // isteme döngüsü yoktur; açık On işlemi veya yeni bağlantı hazırlığı gerekir.
-  micBlocked = true; cancelMic(message);
+  micBlocked = true; micBlockReason = reason; cancelMic(message);
   // İzin reddinde kaynak henüz açılmamıştır; yine de hazırlık yazısı kalmamalı.
   if (message) document.getElementById('textStatus').textContent = message;
   if (textBusy && getState() === 'listening') setState('thinking', true);
@@ -233,7 +245,7 @@ function resetLiveAudio(pause = true) {
   liveTranscript.finish(activeTextRequest, {}, 'interrupted');
   connectionRevision++; if (preparingAudio) cancelBeforeSend = true;
   liveAudio.close();
-  if (pause) micBlocked = true;
+  if (pause) { micBlocked = true; micBlockReason = 'disconnected'; }
   cancelMic();
 }
 
@@ -253,10 +265,10 @@ async function listenAutomatically(replyRequest = null, preserveStatus = false) 
   const previousStatus = document.getElementById('textStatus').textContent;
   if (!replyRequest && !preserveStatus) document.getElementById('textStatus').textContent = 'Preparing automatic listening…';
   try {
-    const started = await liveMic.prepareStream(() => {
+    const started = await liveMic.prepareStream(code => {
       if (revision !== micRevision) return;
       const target = activeTextRequest;
-      blockMicrophone('Microphone disconnected, input limit reached or streaming failed. Check Audio settings, then toggle Microphone Off and On.');
+      blockMicrophone((MIC_FAILURES[code] || MIC_FAILURES.microphone_unavailable) + ' Check Audio settings, then toggle Microphone Off and On.', code);
       if (target && !playbackOnly) emit('stop_task', {request_id:target});
     }, getAudioDeviceId('dIn'), speaking => {
       // Yalnız mevcut mikrofonun yerel enerji geçişi görünümü etkiler.
@@ -297,39 +309,66 @@ async function listenAutomatically(replyRequest = null, preserveStatus = false) 
         : 'Listening for speech · speak without pressing a button. Audio stays local until speech starts.';
       setState('idle', true);
     }
-  } catch {
+  } catch (error) {
     if (revision !== micRevision) return;
-    blockMicrophone('Microphone unavailable or permission denied. Check Audio settings, then toggle Microphone Off and On.');
+    const code = Object.hasOwn(MIC_FAILURES,error?.message) ? error.message : 'microphone_unavailable';
+    blockMicrophone(MIC_FAILURES[code] + ' Check Audio settings, then toggle Microphone Off and On.', code);
   }
 }
 const textOperation = createPendingOperation(() => {
   liveTranscript.finish(activeTextRequest, {}, 'unknown');
   liveAudio.close();
-  blockMicrophone();
+  blockMicrophone(undefined, 'unknown');
   setState('idle', true);
   document.getElementById('textStatus').textContent = 'Result unknown. Reopen the app and check notes before retrying.';
   setConnectionStatus('offline', 'TEXT RESULT UNKNOWN');
 }, 240000);
+window.addEventListener('pagehide', () => cancelMic());
+
+function handleWakeFailure(code, revision) {
+  if (revision !== micRevision) return;
+  code = Object.hasOwn(MIC_FAILURES,code) ? code : 'wake_bridge_rejected';
+  const retryable = ['wake_backpressure','wake_prefix_expired','wake_alignment_failed','wake_bridge_rejected'].includes(code);
+  addLog('Local wake: ' + code + '. Previous input discarded.', true);
+  // Yalnız henüz Live'a geçmemiş yerel dinleme tekrar hazırlanabilir.
+  // Araç/model isteği veya eski PCM tekrar edilmez; bütçe her uykuda iki kezdir.
+  if (retryable && sleeping && microphoneEnabled && !textBusy && !textOperation.uncertain && wakeRetryCount < 2) {
+    cancelMic();
+    const retryRevision = micRevision, connection = connectionRevision;
+    wakeRetryCount++;
+    wakeRetryTimer = setTimeout(() => {
+      wakeRetryTimer = null;
+      if (retryRevision !== micRevision || connection !== connectionRevision || !sleeping || !microphoneEnabled || micBlocked || textOperation.uncertain) return;
+      paintMic(); void listenForWake();
+    }, 250);
+    document.getElementById('textStatus').textContent = MIC_FAILURES[code] + ' Preparing fresh local wake (' + wakeRetryCount + '/2); repeat the wake word when ready.';
+    setState('sleeping', true); paintMic();
+    return;
+  }
+  blockMicrophone(MIC_FAILURES[code] + ' Sleep remains active; use Wake or toggle Microphone Off and On.' +
+    (retryable ? ' Automatic recovery limit reached.' : ''), code);
+}
 
 async function listenForWake() {
-  if (!sleeping || preparingWake || textBusy || liveMic.active ||
+  if (!sleeping || preparingWake || wakeRetryTimer || textBusy || liveMic.active ||
       textOperation.uncertain || !nativeInitialized || !isBackendAvailable()) return;
   preparingWake = true;
   const revision = micRevision;
   let session = null;
   try {
     const started = await emit('sleep_start');
-    if (!started.ok || !started.response?.request_id) throw new Error('Local wake unavailable. Run wake setup or choose a supported English wake word. Use Wake to exit sleep.');
+    if (!started.ok || !started.response?.request_id) throw new Error('wake_engine_unavailable');
     session = started.response.request_id;
     if (revision !== micRevision || !sleeping || !microphoneEnabled || micBlocked) {
       void emit('wake_close', session);
       if (sleeping && !microphoneEnabled) document.getElementById('textStatus').textContent = 'Asleep · Microphone Off. Turn On for local wake or use Wake.';
+      else if (sleeping && micBlocked) document.getElementById('textStatus').textContent = 'Asleep · ' + (MIC_FAILURES[micBlockReason] || MIC_FAILURES.microphone_unavailable) + ' Use Wake or toggle Microphone Off and On.';
       return;
     }
     wakeSession = session;
     let sequence = 0;
-    const prepared = await liveMic.prepareStream(() => {
-      if (revision === micRevision) blockMicrophone('Local wake microphone failed. Sleep remains active; use Wake or check Audio settings.');
+    const prepared = await liveMic.prepareStream(code => {
+      handleWakeFailure(code, revision);
     }, getAudioDeviceId('dIn'), speaking => {
       if (!sleeping && revision === micRevision && microphoneEnabled && !textOperation.uncertain)
         setState(speaking ? 'listening' : textBusy ? 'thinking' : 'idle', true);
@@ -338,14 +377,15 @@ async function listenForWake() {
     liveMic.waitForWake(async data => {
       if (wakeSession !== session) return null;
       const ack = await emit('wake_feed', {request_id:session, sequence:sequence++, data});
-      return ack.ok ? ack.response?.detected ? ack.response : false : null;
+      return ack.ok ? ack.response?.detected ? ack.response : false
+        : {error:ack.response?.code || 'wake_bridge_rejected'};
     }, async () => {
       if (revision !== micRevision || wakeSession !== session || !sleeping) return;
       const connection = connectionRevision;
       const accepted = await emit('wake', {request_id:session});
       if (connection !== connectionRevision) return;
       if (!accepted.ok || accepted.response?.completed !== true) {
-        if (revision === micRevision) blockMicrophone('Wake handoff was not confirmed. Sleep remains active; use Wake.');
+        if (revision === micRevision) blockMicrophone('Wake handoff was not confirmed. Sleep remains active; use Wake.', 'wake_handoff_failed');
         return;
       }
       sleeping = false;
@@ -362,8 +402,8 @@ async function listenForWake() {
     setConnectionStatus('idle', 'ASLEEP · LOCAL WAKE');
     document.getElementById('textStatus').textContent = 'Asleep · say "' + started.response.wake_word + '" to wake. Audio is processed locally.';
   } catch (error) {
-    if (session) void emit('wake_close', session);
-    if (revision === micRevision) blockMicrophone(sanitizeError(error));
+    if (revision === micRevision) handleWakeFailure(error?.message, revision);
+    else if (session) void emit('wake_close', session);
   } finally {
     preparingWake = false;
     if (revision !== micRevision && sleeping && microphoneEnabled && !micBlocked) void listenForWake();
@@ -371,6 +411,10 @@ async function listenForWake() {
 }
 
 function enterSleep() {
+  wakeRetryCount = 0;
+  if (micBlocked && !['disconnected','unknown'].includes(micBlockReason)) {
+    micBlocked = false; micBlockReason = null;
+  }
   sleeping = true; resetLiveAudio(false);
   setState('sleeping', true);
   document.getElementById('sleep').textContent = 'Wake';
@@ -429,7 +473,7 @@ async function streamMicrophone(requestId) {
           await emit('stop_task', {request_id:requestId}); return await result;
         }
         liveMic.activateStream(async data => {
-          if (activeTextRequest !== requestId || input.ending) return false;
+          if (activeTextRequest !== requestId || input.ending) return true;
           const ack = await (delivery = delivery.then(() => {
             if (activeTextRequest !== requestId || input.ending) return {ok:true};
             return emit('live_audio_feed', {request_id:requestId, sequence:sequence++, data});
@@ -444,7 +488,9 @@ async function streamMicrophone(requestId) {
           return ack.ok;
         }, () => {
           if (activeTextRequest === requestId) {
-            blockMicrophone('Input limit reached. Toggle Microphone Off and On to start a new recording.'); emit('stop_task', {request_id:requestId});
+            // Süre sınırı yalnız bu girişin sonudur; kullanıcı On tercihi veya
+            // model yanıtı iptal edilmez. EOS, bekleyen PCM'den sonra gider.
+            input.finish();
           }
         });
         document.getElementById('textStatus').textContent = liveMic.speaking
@@ -481,7 +527,7 @@ async function sendText(text = null, audio = null) {
     try { outputDevice = getAudioDeviceId('dOut'); }
     catch {
       if (liveTest) {
-        if (audio?.stream) blockMicrophone();
+        if (audio?.stream) blockMicrophone(undefined, 'output_unavailable');
         document.getElementById('textStatus').textContent = 'Select an available speaker in Audio settings.'; return;
       }
       outputProblem = 'output_device_unavailable'; // Metin sohbeti hoparlör hatasıyla iptal edilmez.
@@ -1088,7 +1134,7 @@ document.addEventListener('DOMContentLoaded', () => {
           cancelMic('Microphone Off.');
           microphoneInput?.finish();
         } else {
-          microphoneEnabled = true; micBlocked = false; paintMic();
+          microphoneEnabled = true; micBlocked = false; micBlockReason = null; wakeRetryCount = 0; paintMic();
           if (textOperation.uncertain) {
             document.getElementById('textStatus').textContent = 'Result unknown. Microphone capture remains blocked; reopen and check notes.';
           } else void listenAutomatically(textBusy && !pendingBargeIn ? activeTextRequest : null);
@@ -1182,7 +1228,7 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('taskvex-key-saved', () => resetLiveAudio());
   document.getElementById('mSel')?.addEventListener('change', () => resetLiveAudio(false));
   window.addEventListener('taskvex-live-model-ready', event => {
-    if (event.detail.ready) { micBlocked = false; void listenAutomatically(); }
+    if (event.detail.ready) { micBlocked = false; micBlockReason = null; void listenAutomatically(); }
     else cancelMic('Load a Live model to start automatic listening.');
   });
   document.getElementById('liveLatencyTest')?.addEventListener('change', event => {
@@ -1254,7 +1300,7 @@ document.addEventListener('DOMContentLoaded', () => {
     sleeping = false; document.getElementById('sleep').textContent = 'Sleep';
     // Açık Wake kullanıcı eylemidir: yerel KWS hatasının micBlocked kilidi,
     // normal Live dinlemeyi sonsuza kadar engellememeli. İzin/cihaz yeniden doğrulanır.
-    micBlocked = false; setState('idle', true); paintMic();
+    micBlocked = false; micBlockReason = null; setState('idle', true); paintMic();
     document.getElementById('textStatus').textContent = 'Awake. Waiting for speech.';
     void listenAutomatically();
   });

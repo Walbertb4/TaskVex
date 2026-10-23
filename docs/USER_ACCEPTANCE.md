@@ -1,5 +1,41 @@
 # TaskVex — Kullanıcının katılacağı gerçek kullanım kontrolleri
 
+## Güncel tekrar test — wake yanıtı / çelişkili uyku / On–Off
+
+Uygulamayı yeniden aç, Live ve Microphone On kullan.
+
+1. Sleep → beş saniye bekle → yalnız “Vex” de. Kısa beklemeden sonra cevap
+   veya selam isteği gelmeli; Thinking'de kalmamalı. Üç kez tekrarla. Bir turda
+   “Vex, merhaba” de; sonra normal bir soru sor.
+2. Sesle “Vex uykuya dal” de. SLEEPING'e geçmeli; ana bilgisayar yetkisi isteyen
+   çelişkili yanıt vermemeli. “Uykuya dal ne demek?” sorusu uyutmamalı.
+3. Model konuşurken Microphone Off yap: yanıt sürmeli, yeni sesin gitmemeli.
+   On yapınca konuşabilmelisin. Uyku/uyanma/Stop sırasında düğmede yalnız
+   Microphone On veya Off görünmeli, ışığı yalnız bu tercihi izlemeli.
+
+Bir sorun tekrarlanırsa duyduğun yanıtı, transkripti ve durum satırını paylaş.
+Native/sentetik test geçti; gerçek mikrofon ve hesap kabulünün yerine geçmez.
+Alttaki Retry/Blocked düğme beklentileri eski sürümün tarihsel kayıtlarıdır.
+
+## Güncel kısa test — yerel toparlanma / R1–R3
+
+R0 kullanıcı tarafından başarılı bildirildi (`616125d`). Yeni dilimi sınamak
+ için uygulamayı yeniden aç; Live ve Microphone On kullan.
+
+1. Sleep'e bas, beş saniye bekle, “Vex, merhaba” de. Yanıt sonrası yeniden
+   Sleep yapıp üç tur dene. Sesli “Vex, uykuya dal” da SLEEPING'e geçmeli;
+   transkript Veks olursa aynı tam ifade kabul edilmeli.
+2. Uykuda Mic Off yap: ışık sönmeli ve Vex demek uyandırmamalı. On yapınca
+   yerel wake tekrar hazırlanmalı. Wake ile normal konuşmaya dönebilmelisin.
+3. Bir hata olursa durum satırı ve log'daki kodu paylaş. Geçici yerel
+   kuyruk/tampon hatasında On · Retrying, en fazla iki deneme sonrası gerçek
+   engelde On · Blocked görünür. “Hazırlanıyor” yazısında sonsuza dek kalmamalı.
+   Cihaz/izin hatasında cihazı düzeltip Off/On veya açık Sleep ile tekrar dene.
+
+Geciken paket/kuyruk taşması otomatik native testte oluşturulup doğrulandı;
+manuel testte bunu zorla oluşturman gerekmez. R4–R5 giriş/sessizlik hataları
+henüz bu dilimde düzeltilmedi. Aşağıdaki eski test başlıkları tarihsel kayıttır.
+
 ## R0 zaman hesabı — bu adımın manuel kabulü
 
 Uygulamayı yeniden aç. Live/Microphone On ile Sleep düğmesine bas; beş saniye

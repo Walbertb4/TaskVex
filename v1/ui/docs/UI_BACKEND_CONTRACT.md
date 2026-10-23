@@ -1,5 +1,39 @@
 # UI/backend sözleşmesi
 
+## Güncel mikrofon ve giriş sonu — önceki gösterim sözleşmesinin yerine
+
+micB yalnız kullanıcı tercihi Microphone On/Off'tur; ışığı/aria-pressed yalnız
+microphoneEnabled değerini izler. Bağlantı/uyku/hata/retry/unknown düğmenin
+etiketini veya tercihini değiştirmez. Bu durumlar ayrı textStatus/log'da kalır;
+arka plandaki izin, cihaz ve belirsiz sonuç kilitleri kaldırılmadı. Off yalnız
+girişi kapatır, PCM sırasından sonra data:null/EOS yollar; yanıtı Stop etmez.
+
+Wake devri sonrası 700 ms sessizlik giriş sonunu tetikler. 15 s/150 paket
+sınırı, wake ön tamponu dahil, yalnız giriş sonudur; Stop veya mikrofon Off
+değildir. Son PCM onayları bitmeden EOS gönderilmez. thought-only model_turn
+girişi kapatmaz; gerçek çıktı/araç/bitiş kapatır. Tam uyku transkripti adayında
+çıktı en fazla 64 olay/2 MB tutulur; kesinleşince yerel uyku sonucu, soru olursa
+sıralı çıktı işleme uygulanır. Eski ses veya araç yeniden yürütülmez.
+
+## Güncel yerel wake hata ve toparlanma sözleşmesi
+
+`sleep_start` motor kurulamadığında `code: wake_engine_unavailable` döner.
+`wake_feed` hataları ham exception içermeyen `wake_alignment_failed`
+(güvenilir ses sınırı yok), `wake_packet_rejected` (sıra/base64/PCM doğrulama)
+ve `wake_engine_failed` kodlarıyla ayrılır; kaynak bırakılır, uyku korunur.
+UI kaynak hataları da izin/cihaz/worklet, kuyruk, ön tampon ve devir olarak
+sabit kodlarla bildirilir. Bilinmeyen kod güvenli genel teslim hatasına düşer.
+
+UI yalnız yerel kuyruk/eskimiş tampon/hizalama/teslim hatasında, uyku açık,
+Mic On, idle ve sonuç belirliyken en fazla iki kez 250 ms gecikmeli yeni
+kaynak hazırlar. Her seferinde eski token ve PCM iptal edilir; Live/model/araç
+replay yoktur. Off/Wake/Stop/Disconnect/pagehide veya revision değişimi eski
+timer/callback'i geçersiz kılar. İzin/cihaz/kurulum/paket/devir hatası otomatik
+tekrar edilmez. Açık Sleep yerel engeli yeniden deneyebilir; Disconnect ve
+unknown engeli ile Off tercihi korunur. `Microphone On · Retrying` / `On ·
+Blocked` ve tooltip nedeni gösterir; aria-pressed kullanıcının On tercihidir.
+Tam uyku ifadesinde Veks hitabı Rex/Max ile aynı dar toleransa sahiptir.
+
 Uyku kabul düzeltmesi: colors.sleeping, diğer reactor durumları gibi saklanan
 bir renktir; SLEEPING durumu IDLE'dan ayrıdır. Açık Wake, yerel uyandırıcı
 hatasından kalan micBlocked engelini temizleyip cihaz/izin kontrolünü yeniden
