@@ -43,6 +43,7 @@ class NativeBridge:
         self._ready = False
         self._notes_ready = False
         self._wake: WakeWord | None = None
+        self._wake_cached: tuple[str, WakeWord] | None = None
         self._sleeping = False
         self._wake_detected = False
         self._restart_requested = False
@@ -241,16 +242,25 @@ class NativeBridge:
         """Yerel uyku/KWS taşıması; event kilidi tutulurken çağrılır, araç yürütmez."""
         if name == 'sleep_start':
             if not self._ready or data is not None or not self._chat.reset_live():
-                return {'ok':False, 'error':'Wait for the active turn before sleeping'}
+                return {'ok':False, 'completed':True, 'sleeping':self._sleeping, 'code':'sleep_rejected',
+                        'error':'Wait for the active turn before sleeping'}
             self._sleeping = True
             self._wake = None
             self._wake_detected = False
             try:
                 word = self._load_settings().get('prof', {}).get('pWake', 'Vex')
-                self._wake = WakeWord(word)
+                cached = self._wake_cached
+                if (cached and cached[0] == word and type(cached[1]) is WakeWord
+                        and callable(getattr(cached[1], 'restart', None))):
+                    self._wake = cached[1]
+                    self._wake.restart()
+                else:
+                    self._wake = WakeWord(word)
+                self._wake_cached = (word, self._wake)
             except Exception:
-                return {'ok':False, 'sleeping':True, 'code':'wake_engine_unavailable', 'error':'Local wake unavailable. Run wake setup or choose a supported English wake word; use Wake to exit sleep.'}
-            return {'ok':True, 'completed':True, 'request_id':self._wake.id, 'wake_word':word}
+                self._wake_cached = None
+                return {'ok':False, 'completed':True, 'sleeping':True, 'code':'wake_engine_unavailable', 'error':'Local wake unavailable. Run wake setup or choose a supported English wake word; use Wake to exit sleep.'}
+            return {'ok':True, 'completed':True, 'sleeping':True, 'request_id':self._wake.id, 'wake_word':word}
         if name == 'wake_feed':
             if (type(data) is not dict or set(data) != {'request_id','sequence','data'} or
                     not self._wake or data['request_id'] != self._wake.id):
@@ -262,6 +272,7 @@ class NativeBridge:
                     raise ValueError()
                 detected = self._wake.feed(data['sequence'], b64decode(data['data'], validate=True))
             except Exception as error:
+                self._wake_cached = None
                 self._wake = None
                 self._wake_detected = False
                 code = 'wake_alignment_failed' if isinstance(error, WakeAlignmentError) else 'wake_packet_rejected' if isinstance(error, (ValueError, Base64Error)) else 'wake_engine_failed'
@@ -274,6 +285,11 @@ class NativeBridge:
             return {'ok':True, 'completed':True, 'detected':detected, 'start_sequence':start}
         if name == 'wake_close':
             if self._wake and data == self._wake.id:
+                if callable(getattr(self._wake, 'restart', None)):
+                    try:
+                        self._wake.restart()  # Cache yalnız ağırlık tutar; eski PCM/hit bırakılmaz.
+                    except Exception:
+                        self._wake_cached = None  # Kaynak temizliği açık Wake'i engellememeli.
                 self._wake = None
                 self._wake_detected = False
             return {'ok':True, 'completed':True}
@@ -282,6 +298,11 @@ class NativeBridge:
                              self._wake is not None and data['request_id'] == self._wake.id and self._wake_detected)
             if not self._ready or (data is not None and not confirmed_hit) or self._chat.busy:
                 return {'ok':False, 'error':'Cannot wake during an active turn'}
+            if self._wake and callable(getattr(self._wake, 'restart', None)):
+                try:
+                    self._wake.restart()
+                except Exception:
+                    self._wake_cached = None
             self._wake = None
             self._wake_detected = False
             self._sleeping = False

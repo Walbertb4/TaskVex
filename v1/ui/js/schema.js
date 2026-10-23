@@ -228,6 +228,10 @@ function validateAdditionalFields(candidate) {
       }
     }
   }
+  if (candidate.sleepDelay !== undefined && (!Number.isInteger(candidate.sleepDelay) || candidate.sleepDelay < 0 || candidate.sleepDelay > 300)) {
+    delete candidate.sleepDelay;
+    logToUI('Skipped invalid sleepDelay');
+  }
   for (const key of ['vol', 'wake', 'noise']) {
     if (!optional(candidate[key], numeric)) {
       logToUI(`Skipped invalid ${key}`);
@@ -490,7 +494,7 @@ export function validateAndNormalizeSnapshot(data) {
 
   // Optional pass-throughs
   [
-    'sfx', 'vol', 'wake', 'noise', 'onTop', 'cmp', 'tab',
+    'sfx', 'vol', 'wake', 'sleepDelay', 'noise', 'onTop', 'cmp', 'tab',
     'calendar', 'reminders', 'weather', 'telemetry', 'tokens',
     'network', 'media', 'googleStatus', 'timeline', 'devices', 'catalog'
   ].forEach(k => {

@@ -101,6 +101,14 @@ class WakeWord:
                 keywords_file=str(keyword_file), num_threads=1, keywords_threshold=0.25, num_trailing_blanks=1)
         finally:
             keyword_file.unlink(missing_ok=True)
+        self.restart()
+
+    def restart(self):
+        """Ağırlıklar RAM'de kalır; her uyku yeni ID, decoder ve boş tampon alır.
+
+        Eski ses/hit/sıra tekrar kullanılmaz. Aynı bridge'in seri kilidinde
+        çağrılır; modelin pahalı doğrulama/yüklemesini yeniden yapmak gerekmez.
+        """
         self._stream = self._spotter.create_stream()
         self.id = uuid4().hex
         self._sequence = self._packets = 0

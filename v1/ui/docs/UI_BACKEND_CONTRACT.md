@@ -1,5 +1,128 @@
 # UI/backend sözleşmesi
 
+## Güncel 5.R2 — manual activity ses protokolü
+
+- Önceki otomatik VAD + audioStreamEnd seçiminin yerine ses setup'ında
+  automatic_activity_detection.disabled=true kullanılır. Tek LiveInput sahibi
+  activityStart tesliminden sonra ready olur; sıralı PCM'den sonra activityEnd
+  gönderir. audioStreamEnd gönderilmez. Yazılı Live turunun setup'ı değişmez.
+- UI'dan data:null bitişi ve yerel 700 ms sessizlik korunur. Kesin transkript
+  veya gerçek çıktı/araç giriş akışını erken kapatırsa aynı sahip eksik
+  activityEnd'i gönderir; Stop sırasında yeni bitiş gönderimi başlatılmaz.
+- Rapor input_boundary='manual_activity' içerir. Zaman aşımı durumunda UI
+  input end: sent/missing ve speech chars gösterir; metnin kendisini tanı için
+  açıklamaya gerek yoktur. 25 s sınırı değiştirilmedi; timeout başarı değildir.
+- REST, tekrar yürütme, model fallback, GoAway/resumption ve not yetkileri
+  değiştirilmedi. Gerçek mikrofon/sağlayıcı kabulü açık; sentetik taşıma geçmesi
+  kullanıcıdaki hatanın kesin nedenini veya tamamen çözüldüğünü kanıtlamaz.
+
+## Önceki 5.R1 — açık ses sonu ve gerçek sesli onay
+
+- Worklet `arm-end` yalnız backend input hazır onayından sonra gönderilir.
+  Sonraki/mevcut 700 ms sessizlik input EOS'tur. Tüm bekleyen PCM tesliminden
+  sonra data:null gider; Stop veya model yanıtının tamamlanması değildir.
+- Final input_transcription.finished ile kapanan LiveInput'ta EOS daha önce
+  gönderilmediyse, sender temizlendikten sonra aynı socket sahibi gönderir.
+- Wake→Live kaynak hatası normal mikrofon/Stop yoluna geçer. Kesin terminal
+  rapor ve aynı connectionRevision sonrasında geçici kuyruk/taşıma kaybında
+  en fazla iki boş kaynak hazırlığına izin vardır; eski veri tekrar gönderilmez.
+  İzin/cihaz/unknown ve kullanıcı Off tercihi aşılmaz; neden görünür/loglanır.
+- local_sleep raporundaki İngilizce iç kontrol metni kullanıcıya yanıt diye
+  basılmaz. once/persistent için host sleeping=true, off için başarılı tercih
+  kapanışı sonrası UI seçili pLang TR/EN metin ve sabit WAV onayı verir.
+- WAV mevcut LiveAudio sahibinden, seçilen çıkış/gain/Mute/Stop ile oynar;
+  geç fetch/decode sonucu yeni isteğe çalamaz. Otomatik görev sonrası geri
+  uyku onayı tekrarlamaz. Onay dosyası hatası gerçek host modunu geri almaz.
+- Wake model cache'i ağırlık tutar; aktif eski ID/PCM/hit tutulmaz. Kelime
+  veya motor türü değişimi/arıza yeni motor gerektirir. Yeni public event yoktur.
+
+## Güncel 5.F3 — uyku niyeti
+
+- sleep_mode once/persistent/off biçimi değişmedi. Ortak host parser artık
+  TR gir/geç/dal ve EN enter/switch/go/stay/return varyantlarını tam cümlede
+  tanır. Hitap zorunlu değil; lütfen/please, boşluk ve harf normalleştirilir.
+- “kalıcı olarak uyku moduna gir” persistent'tir; diske kalıcı tercih değil,
+  sohbetin mevcut görev sonrası geri-uyuma davranışıdır. sleepDelay bağımsızdır.
+- Soru işareti artık silinmez; alıntı/olumsuzluk/ek iş parser'da geçmez.
+  Ses adayı kesinleşmeden host geçişi yok; aday değişirse bekletilen çıktı
+  geri bırakılır. Parser sonucu yine sleep_start onayı yerine geçmez.
+- Yerel wake sözcüğü/fonetik algısı, Stop/unknown ve kaynak kuralları aynı.
+  Serbest tüm doğal dil değil, sınırlı ve testli TR/EN tam cümle dilbilgisidir.
+
+## Güncel 5.F2 — kaynak canlılığı ve gecikme ölçümü
+
+- Sonradan suspended/interrupted context aynı kaynakta bir kez resume edilir;
+  1 s içinde çalışmazsa audio_context_unavailable sabit kodu mevcut hata
+  hattına gider, kaynak kapanır. Mic On/Off kullanıcı tercihi değişmez.
+  release eski handler/timer'ı kapatır; geç sonuç yeni kaynağa uygulanmaz.
+- Live raporuna input_sent_packets (tamamlanmış SDK PCM send sayısı),
+  input_first_sent_ms / input_end_sent_ms (SDK ilk ses/EOS), received_events /
+  last_received_ms (probe'a ulaşan olaylar), input_final_ms eklenir. Süreler
+  tur başlangıcından ms, yoksa null; ses veya kullanıcı metni bu ölçümlerde yok.
+- live_idle_timeout için wait_phase stream'de before_input_final veya
+  after_input_final, diğer girişte provider_reply. UI PCM/events/aşamayı
+  hata satırına ekler. Zaman aşımı başarı, güvenli replay veya kesin sağlayıcı
+  arızası kanıtı değildir. 25 s/120 s, Stop/unknown kuralları değişmedi.
+
+## Güncel 5.F1 — kesin giriş sonu ve uyku kabulü
+
+- sleep_start ret/success/motor-hatası sonuçları completed:true ve gerçek
+  sleeping:boolean taşır. ok:false, sleeping:true motor hazırlanamayan fakat
+  host'u uyumuş durumdur; ok:false, sleeping:false kesin reddir.
+- UI hazırlığı sleepPending/Preparing sleep ile tutar; host kabulü olmadan
+  SLEEPING ve Wake göstermez. 15 s deadline veya eksik/belirsiz yanıtta
+  unknown kilidi korunur. Stop/Disconnect/model değişimi bekleyen kontrolü
+  geri alınmış saymaz; geç cevap yeni kaynak açamaz. Mic Off tercihi korunur.
+- finished=true input_transcription eski LiveInput kabulünü kapatır; sender
+  iptali yalnız PCM göndericisidir. Model/core sonucu receive yolunda devam
+  eder. Boş son transkript paketi de giriş bitişidir; thought-only değildir.
+- Wake-to-live sonrasında yerel 700 ms sessizlik yalnız aktivite görünümüdür;
+  PCM'i atıp kaynağı kapatmaz. Mevcut 15 s/150 paket üst sınırı devam eder.
+- Kesin transkript yalnız ayarlı wake sözcüğüyse wake_only:true/ok:true/
+  completed:true döner; araç yürütülmez ve gerçek görev bitmiş sayılmaz.
+  UI kalıcı modda hemen uyumak yerine asıl isteği bekler. Farklı fonetik
+  sözcükler ve esnek uyku niyeti ayrı adımlardır. Sağlayıcının hiç kesin
+  transkript vermemesi hâlâ olay timeout sınırına tabidir.
+
+## Güncel: iki bağımsız uyku davranışı — önceki süre bağının yerine
+
+sleep_mode=persistent, süreli geri sayım değildir: çağrılan tek etkileşimde
+model/araç ve oynatma kesin bittikten sonra UI aynı enterSleep/sleep_start
+hattıyla hemen uyur. Bu modda yanıta barge-in dinleyicisi açılmaz ve eski
+reply listener korunmaz. completed:true olmadan, unknown/aktif görevde,
+eski bağlantı raporuyla veya yalnız iptal kabulüyle geri uyuma yoktur.
+
+sleepDelay yalnız normal konuşmada idle süresidir; default 10, aralık 0–300
+tam saniye, 0 kapalı. Süre dolunca tek seferlik uyku açar, persistent tercihi
+açmaz. persistent açıkken idle timer kullanılmaz. Açık off yalnız persistent
+tercihi kapatır; normal timer ayarını değiştirmez. On/Off mikrofon tercihi
+bu iki davranıştan bağımsız kalır. Ayar/snapshot/backup/reset sözleşmesi
+sleepDelay=0'ı da taşır. Host kontrol sözleşmesi once/persistent/off değişmedi.
+Komutlar hâlâ tam Türkçe/İngilizce listedendir; isim şartı yoktur, esnek niyet
+ve alternatif yerel wake telaffuzları bu adımda eklenmedi.
+
+## Güncel kalıcı uyku tercihi ve süre
+
+Yerel tam uyku kontrolü artık sleep_mode: once | persistent | off döndürür.
+Başarılı kontrol raporunda sleep_requested, once/persistent için true, off
+için false'tur. Mevcut local_sleep sonucu, Stop kilidi ve tool_results
+korunur. Typed kontrol sağlayıcı çağırmaz; ses kontrolü yalnız tam transkript
+kesinleşince host tarafından karşılanır. Kontrol araç yetkisi değildir.
+
+UI persistent/off sonucunu yalnız güncel başarılı rapordan alır. Kalıcı
+tercih RAM'de kalır; tek seferlik Sleep bunu silmez. New Chat/çıkış/açık off
+tercihi temizler. Tek timer, güncel bağlantı ve kendi revision'ını kontrol
+ederek yalnız hazır/idle Live'da enterSleep kullanır. Konuşma/araç/oynatma
+bitişi/unknown ve cihaz engeli atlanmaz; Stop/Disconnect/kaynak iptali eski
+timer'ı geçersiz kılar. Mic Off tercihi kalıcı modu kapatmaz ve On yapılmaz.
+
+sleepDelay, Settings → Audio alanında 1–300 tam saniye, default 10'dur.
+Backend izinli ayar şemasına ve UI default/save/load/snapshot/backup/reset
+akışlarına dahildir. Süre kaydedilir, kalıcı uyku tercihi diske yazılmaz.
+Mic On/Off her tıklamada kamera ile aynı sfx.blip'i bir kez çağırır; efekt
+ayarları uygulanır. Source: Mic / PC Audio / App UI etiketleri gelecekteki
+kaynak sözleşmesidir; native tarafta yalnız mikrofon yakalaması çalışır.
+
 ## Güncel mikrofon ve giriş sonu — önceki gösterim sözleşmesinin yerine
 
 micB yalnız kullanıcı tercihi Microphone On/Off'tur; ışığı/aria-pressed yalnız

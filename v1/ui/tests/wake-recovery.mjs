@@ -7,23 +7,26 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 
 const source=fs.readFileSync(new URL('../js/app.js',import.meta.url),'utf8');
-const functions=['paintMic','cancelMic','blockMicrophone','resetLiveAudio','handleWakeFailure','listenForWake','enterSleep'];
+const functions=['cancelAutoSleep','scheduleAutoSleep','applySleepMode','returnToPersistentSleep','paintMic','cancelMic','blockMicrophone','resetLiveAudio','handleLiveMicFailure','settleMicrophoneFailure','handleWakeFailure','listenForWake','paintSleepControl','enterSleep'];
 function fixture(){
   const nodes={},timers=[],events=[],logs=[];
   let prepared=0;
   const node=id=>nodes[id] ||= {textContent:'',lastChild:{textContent:''},classList:{toggle(k,v){this[k]=v;}},setAttribute(){},checked:true,value:'live'};
-  const ctx=vm.createContext({document:{getElementById:node},textOperation:{uncertain:false},
-    textBusy:false,activeTextRequest:null,preparingWake:false,micRevision:0,microphoneEnabled:true,
-    nativeInitialized:true,sleeping:false,wakeSession:null,micBlocked:false,micBlockReason:null,connectionRevision:0,
-    wakeRetryTimer:null,wakeRetryCount:0,preparingAudio:false,replyMicRequest:null,pendingBargeIn:null,
+  const ctx=vm.createContext({window:{addEventListener(){}},document:{getElementById:node},textOperation:{uncertain:false,markUnknown(){this.uncertain=true;}},
+    textBusy:false,activeTextRequest:null,preparingWake:false,micRevision:0,micRecoveryCount:0,microphoneEnabled:true,playbackOnly:false,
+    nativeInitialized:true,sleeping:false,sleepPending:false,wakeSession:null,micBlocked:false,micBlockReason:null,connectionRevision:0,
+    wakeRetryTimer:null,wakeRetryCount:0,automaticSleep:false,autoSleepTimer:null,autoSleepRevision:0,store:{sleepDelay:3},preparingAudio:false,replyMicRequest:null,pendingBargeIn:null,
     liveMic:{active:false,cancel(){this.active=false;},async prepareStream(fail){prepared++;this.fail=fail;this.active=true;return true;},waitForWake(packet,wake){this.packet=packet;this.wake=wake;}},
-    liveAudio:{close(){}},liveTranscript:{finish(){}},getState:()=> 'sleeping',setState(){},
+    liveAudio:{close(){}},playSleepConfirmation:async()=>{},liveTranscript:{finish(){}},getState:()=> 'sleeping',setState(){},
     isBackendAvailable:()=>true,getAudioDeviceId:()=>'',sanitizeError:String,setConnectionStatus(){},addLog:s=>logs.push(s),
-    setTimeout(fn){const timer={fn};timers.push(timer);return timer;},clearTimeout(timer){if(timer)timer.cleared=true;},
-    emit:async(name,data)=>{events.push({name,data});return {ok:true,response:{completed:true,request_id:'local-'+events.length,wake_word:'Vex'}};},
+    setTimeout(fn,delay){const timer={fn,delay};timers.push(timer);return timer;},clearTimeout(timer){if(timer)timer.cleared=true;},
+    emit:async(name,data)=>{events.push({name,data});return {ok:true,response:{completed:true,sleeping:true,request_id:'local-'+events.length,wake_word:'Vex'}};},
     sendText:()=>assert.fail('Local recovery must not start a model request')});
   vm.runInContext(source.match(/const MIC_FAILURES = \{[^]*?\n\};/)[0],ctx);
   for(const name of functions)vm.runInContext(source.match(new RegExp('(?:async )?function '+name+'\\([^]*?\\n\\}', 'm'))[0],ctx);
+  const apiSource=fs.readFileSync(new URL('../js/api.js',import.meta.url),'utf8');
+  vm.runInContext(apiSource.match(/export function createPendingOperation\([^]*?\n\}/m)[0].replace('export ',''),ctx);
+  vm.runInContext(source.match(/const sleepOperation = createPendingOperation\([^]*?\}, 15000\);/m)[0]+';this.sleepOperation=sleepOperation;',ctx);
   return {ctx,node,timers,events,logs,get prepared(){return prepared;}};
 }
 const settle=async()=>{for(let i=0;i<10;i++)await Promise.resolve();};
@@ -58,7 +61,7 @@ for(const stop of ['off','disconnect','unknown']){
   }
 }
 const hard=fixture();hard.ctx.enterSleep();await settle();hard.ctx.liveMic.fail('device_ended');
-assert.equal(hard.timers.length,0);assert.equal(hard.ctx.micBlocked,true);
+assert.ok(hard.timers.every(t=>t.cleared));assert.equal(hard.ctx.micBlocked,true);
 assert.match(hard.node('textStatus').textContent,/capture ended/);
 assert.equal(hard.node('micB').title,'Turn microphone input off.');
 assert.equal(hard.node('micB').lastChild.textContent,'Microphone On');
@@ -67,3 +70,133 @@ hard.ctx.microphoneEnabled=false;hard.ctx.paintMic();
 assert.equal(hard.node('micB').lastChild.textContent,'Microphone Off');
 assert.equal(hard.node('micB').classList.on,false);
 console.log('PASS explicit Sleep retry, bounded local recovery, stable On, error reasons, stale/Off/Disconnect/unknown guards');
+
+// Normal konuşmada süre dolunca tek seferlik uyku; kalıcı tercih açılmaz.
+const idle=fixture();idle.ctx.scheduleAutoSleep();
+assert.equal(idle.timers.at(-1).delay,3000);idle.timers.at(-1).fn();await settle();
+assert.equal(idle.ctx.sleeping,true);assert.equal(idle.ctx.automaticSleep,false);
+// Kalıcı mod hiçbir idle timer kullanmaz; işin gerçek bitişinde hemen uyur.
+const auto=fixture();auto.ctx.applySleepMode('persistent');auto.ctx.scheduleAutoSleep();
+assert.equal(auto.ctx.autoSleepTimer,null);
+assert.equal(auto.ctx.returnToPersistentSleep({completed:true},0),true);await settle();
+assert.equal(auto.ctx.sleeping,true);assert.equal(auto.ctx.automaticSleep,true);
+auto.ctx.sleeping=false;auto.ctx.cancelMic();auto.ctx.applySleepMode('once');
+assert.equal(auto.ctx.automaticSleep,true);
+auto.ctx.applySleepMode('off');auto.ctx.scheduleAutoSleep();assert.equal(auto.timers.at(-1).delay,3000);
+for(const guard of ['textBusy','unknown','speaking','micBlocked','offline','rest','disabled']){
+  const x=fixture();
+  if(guard==='textBusy')x.ctx.textBusy=true;
+  if(guard==='unknown')x.ctx.textOperation.uncertain=true;
+  if(guard==='speaking')x.ctx.liveMic.speaking=true;
+  if(guard==='micBlocked')x.ctx.micBlocked=true;
+  if(guard==='offline')x.ctx.isBackendAvailable=()=>false;
+  if(guard==='rest')x.node('liveLatencyTest').checked=false;
+  if(guard==='disabled')x.ctx.store.sleepDelay=0;
+  x.ctx.scheduleAutoSleep();assert.equal(x.ctx.autoSleepTimer,null,guard);
+}
+for(const cancel of ['cancel','connection','persistent','busy','speech']){
+  const x=fixture();x.ctx.scheduleAutoSleep();const timer=x.timers.at(-1);
+  if(cancel==='cancel')x.ctx.cancelMic();
+  if(cancel==='connection')x.ctx.connectionRevision++;
+  if(cancel==='persistent')x.ctx.applySleepMode('persistent');
+  if(cancel==='busy')x.ctx.textBusy=true;
+  if(cancel==='speech')x.ctx.liveMic.speaking=true;
+  timer.fn();await settle();assert.equal(x.ctx.sleeping,false,cancel);
+}
+for(const guard of ['busy','unknown','pending','stale','reportedUnknown']){
+  const x=fixture();x.ctx.applySleepMode('persistent');const report={completed:true};
+  if(guard==='busy')x.ctx.textBusy=true;
+  if(guard==='unknown')x.ctx.textOperation.uncertain=true;
+  if(guard==='pending')report.completed=false;
+  if(guard==='stale')x.ctx.connectionRevision++;
+  if(guard==='reportedUnknown')report.unknown=true;
+  assert.equal(x.ctx.returnToPersistentSleep(report,0),false,guard);
+  assert.equal(x.ctx.sleeping,false);
+}
+// Yanıtta ayrı dinleme kaynağı, izin istemi veya barge-in açılamaz.
+const privateTurn=fixture();privateTurn.ctx.automaticSleep=true;
+vm.runInContext(source.match(/async function listenAutomatically\([^]*?\n\}/m)[0],privateTurn.ctx);
+await privateTurn.ctx.listenAutomatically('active');assert.equal(privateTurn.prepared,0);
+console.log('PASS normal idle timer vs immediate persistent sleep, no reply listener, terminal/unknown/stale guards');
+
+// Backend snapshot / yedek / yerel açılış aynı doğrulanmış süreyi korumalı.
+const schemaText=fs.readFileSync(new URL('../js/schema.js',import.meta.url),'utf8');
+const {validateAndNormalizeSnapshot}=await import('data:text/javascript;base64,'+Buffer.from(schemaText).toString('base64'));
+for(const sleepDelay of [0,1,3,300]){
+  assert.equal(validateAndNormalizeSnapshot({sleepDelay}).candidate.sleepDelay,sleepDelay);
+}
+for(const sleepDelay of [-1,301,1.5,'3',null]){
+  assert.equal(validateAndNormalizeSnapshot({sleepDelay}).candidate.sleepDelay,undefined);
+}
+console.log('PASS sleep delay survives snapshot and rejects invalid values');
+
+// Uyku kabulü beklenirken SLEEPING/Wake gösterilmez; Mic Off onayı bozmaz.
+const pending=fixture();let accept;
+pending.ctx.emit=()=>new Promise(resolve=>{accept=resolve;});pending.ctx.enterSleep();
+assert.equal(pending.ctx.sleeping,false);assert.equal(pending.ctx.sleepPending,true);
+assert.equal(pending.node('sleep').textContent,'Preparing sleep…');
+pending.ctx.microphoneEnabled=false;pending.ctx.cancelMic();
+accept({ok:true,response:{completed:true,sleeping:true,request_id:'pending',wake_word:'Vex'}});
+await settle();assert.equal(pending.ctx.sleeping,true);assert.equal(pending.ctx.sleepPending,false);
+assert.equal(pending.prepared,0);assert.equal(pending.node('sleep').textContent,'Wake');
+assert.match(pending.node('textStatus').textContent,/Microphone Off/);
+const rejected=fixture();rejected.ctx.emit=async()=>({ok:false,response:{completed:true,sleeping:false,code:'sleep_rejected'}});
+rejected.ctx.enterSleep();await settle();assert.equal(rejected.ctx.sleeping,false);
+assert.equal(rejected.node('sleep').textContent,'Sleep');assert.equal(rejected.prepared,0);
+assert.match(rejected.node('textStatus').textContent,/rejected.*awake/);
+const unknown=fixture();unknown.ctx.emit=async()=>({ok:false,response:null});
+unknown.ctx.enterSleep();await settle();assert.equal(unknown.ctx.textOperation.uncertain,true);
+assert.equal(unknown.ctx.sleeping,false);assert.equal(unknown.node('sleep').textContent,'Sleep state unknown');
+// Geciken cevap timeout veya Disconnect sonrasında yeni kaynak açamaz.
+for(const action of ['timeout','disconnect']){
+ const x=fixture();let reply;x.ctx.emit=()=>new Promise(r=>{reply=r;});x.ctx.enterSleep();
+ if(action==='timeout')x.timers.at(-1).fn();else x.ctx.resetLiveAudio();
+ reply({ok:true,response:{completed:true,sleeping:true,request_id:'late',wake_word:'Vex'}});
+ await settle();assert.equal(x.ctx.textOperation.uncertain,true);assert.equal(x.prepared,0);
+ assert.equal(x.ctx.sleeping,false);assert.equal(x.node('sleep').textContent,'Sleep state unknown');
+}
+const onlyWake=fixture();onlyWake.ctx.automaticSleep=true;
+assert.equal(onlyWake.ctx.returnToPersistentSleep({completed:true,wake_only:true},0),false);
+assert.equal(onlyWake.ctx.sleeping,false);
+console.log('PASS host-confirmed sleep, rejection vs unknown, late/Off guards, wake-only is not a completed task');
+
+// Wake -> Live devrinde artık wake retry değil normal Stop/gerçek bitiş
+// uygulanır. Kesin bitişten sonra yalnız boş dinleme hazırlanabilir.
+const handoffFailure=fixture();handoffFailure.ctx.activeTextRequest='live-now';
+handoffFailure.ctx.handleWakeFailure('stream_backpressure',0);
+assert.equal(handoffFailure.ctx.micBlocked,true);
+assert.ok(handoffFailure.events.some(e=>e.name==='stop_task' && e.data.request_id==='live-now'));
+handoffFailure.ctx.settleMicrophoneFailure({completed:false},0);
+assert.equal(handoffFailure.ctx.micBlocked,true);
+handoffFailure.ctx.settleMicrophoneFailure({completed:true,stopped:true},0);
+assert.equal(handoffFailure.ctx.micBlocked,false);assert.equal(handoffFailure.ctx.micRecoveryCount,1);
+assert.equal(handoffFailure.prepared,0); // Burada eski komut veya yeni model isteği yok.
+assert.match(handoffFailure.node('textStatus').textContent,/Input discarded/);
+for(const guard of ['unknown','stale','permission','budget']){
+ const x=fixture();x.ctx.micBlocked=true;x.ctx.micBlockReason='stream_backpressure';
+ const report={completed:true};
+ if(guard==='unknown')report.unknown=true;
+ if(guard==='stale')x.ctx.connectionRevision++;
+ if(guard==='permission')x.ctx.micBlockReason='permission_denied';
+ if(guard==='budget')x.ctx.micRecoveryCount=2;
+ x.ctx.settleMicrophoneFailure(report,0);assert.equal(x.ctx.micBlocked,true,guard);
+}
+
+// Onay yalnız host sleeping=true sonrasında; ret/unknown başarı sesi çalmaz.
+for(const accepted of [true,false]){
+ const x=fixture();let acknowledgements=0;
+ x.ctx.playSleepConfirmation=async mode=>{assert.equal(x.ctx.sleeping,true);assert.equal(mode,'persistent');acknowledgements++;};
+ x.ctx.emit=async()=>({ok:accepted,response:{completed:true,sleeping:accepted}});
+ x.ctx.enterSleep('persistent');await settle();assert.equal(acknowledgements,Number(accepted));
+}
+const confirm=fixture(), spoken=[], bubbles=[];
+confirm.ctx.msg=(role,text)=>bubbles.push(text);confirm.ctx.uniqueRecordId=()=> 'fixed-local';
+confirm.ctx.liveAudio.control=async(id,mode,lang)=>{spoken.push({id,mode,lang});return {status:'finished'};};
+vm.runInContext(source.match(/async function playSleepConfirmation\([^]*?\n\}/m)[0],confirm.ctx);
+await confirm.ctx.playSleepConfirmation('once',0);
+assert.equal(bubbles[0],'Uyku moduna geçtim.');assert.equal(spoken[0].lang,'tr');
+confirm.ctx.store.prof={pLang:'en'};await confirm.ctx.playSleepConfirmation('off',0);
+assert.equal(bubbles[1],'Stay asleep mode is off.');assert.equal(spoken[1].lang,'en');
+confirm.ctx.connectionRevision++;await confirm.ctx.playSleepConfirmation('once',0);
+assert.equal(spoken.length,2);
+console.log('PASS wake handoff failure settles without replay, guarded rearm and host-confirmed localized audio');

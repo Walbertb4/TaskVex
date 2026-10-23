@@ -60,11 +60,17 @@ conversation. Do not assume `Open Notepad` is supported by the model yet.
 | `Explain what a CPU does.` | Answers a general question; this is not a system measurement or a saved operation. |
 | `For this conversation, my favorite color is purple.` then `What color did I mention?` | Uses recent conversation context, including after a Live session reset. This does not create a permanent user profile. |
 | **New Chat** button | After confirmation, clears the temporary conversation memory and displayed messages. Saved notes and preferences stay. Unavailable during an active/unknown request. |
-| **Microphone Off / On** button | Disables/enables microphone capture. Off does not interrupt Vex's reply. Its label, light and pressed state show only your On/Off input preference. Errors and connection states are shown separately; On does not guarantee a working device. |
+| **Microphone Off / On** button | Disables/enables microphone capture. Off does not interrupt Vex's reply. Its label, light and pressed state show only your On/Off input preference. Errors and connection states are shown separately; On does not guarantee a working device. Each click uses the camera click effect, respecting Sound effects and Effects volume. |
 | **Stop Task** button | Requests cancellation of the current response/task. Completed actions remain completed; controls wait for confirmed termination. A normal confirmed stop shows neutral LIVE READY, not a connection failure. |
 | **Mute / Unmute** button | Mutes/unmutes voice playback; sound effects are separate. |
 | **Disconnect** button | Releases the model connection/audio resources. |
 | **F11** | Toggles fullscreen in the native desktop app. |
+
+If the browser suspends the microphone audio engine, Vex tries to resume the
+same source once, within one second. A failed recovery shows a separate error;
+use **Microphone Off**, then **On** to prepare a new source. This does not replay
+your previous command. An idle timeout includes PCM sent/event counts and a
+wait phase for troubleshooting; these do not prove the provider caused it.
 
 The buttons above are UI controls, not implemented spoken commands. Temporary
 memory is held only in RAM: up to 12 recent turns and 16,000 JSON characters,
@@ -75,17 +81,47 @@ connection, history is supplied as data without replaying old tool calls.
 Reused/resumed sessions do not receive duplicate history. This is not perfect
 recall or a substitute for reading current saved notes. Restart loses it.
 
-## One-time sleep and wake — available in desktop Live mode
+## Sleep and wake — available in desktop Live mode
 
 | Say, type or select | What happens |
 | --- | --- |
-| `Vex, go to sleep.` / `Enter sleep mode.` | Enters one-time sleep. Turkish equivalents include `Vex uyku moduna geç`, `uykuya geç` and `uykuya dal`. The configured wake word can address the command; Rex/Max/Veks transcription variants are accepted only before an exact sleep phrase. Quotes, questions and compound requests are not treated as sleep commands. |
-| **Sleep** button | Enters the same sleep mode after the current turn has finished. |
-| Say `Vex` while asleep | The local detector wakes Vex. Normal conversation continues afterward; it does not automatically sleep again. |
+| `Go to sleep.` / `Switch to sleep mode, please.` / `Uyku moduna gir.` | Requests one-time sleep. Also accepts Turkish `uyku moduna geç`, `uykuya geç`, `uykuya dal`, `uyu` and English `enter sleep mode`, `sleep`. Addressing Vex is optional while awake. |
+| **Sleep** button | Sleeps after the current turn has finished. Does not enable or disable the persistent return preference. |
+| Say `Vex` while asleep | The local detector wakes Vex. A finalized transcript containing only the configured wake word is not a completed task; Vex waits for the actual request. Normal conversation continues afterward. Automatic return happens only if you explicitly enabled persistent sleep for this chat. |
 | `Vex, tell me something interesting.` while asleep | Wakes and forwards the addressed utterance through the existing Live input. |
 | **Wake** button or an explicit typed Live message | Exits sleep without needing the wake word. |
+| `Stay in sleep mode.` / `Return to sleep after every task.` / `Kalıcı olarak uyku moduna gir.` | Enables automatic return-to-sleep for this chat and sleeps now. Turkish `bundan sonra uyku moduna geç` and `artık uyku modunda kal` also work. After the addressed interaction and reply playback finish, returns to sleep immediately. Wake again for another task. “Permanent” here means this chat only. |
+| `Stop returning to sleep.` / `Uyku modundan kalıcı olarak çık.` / `Kalıcı uyku modunu kapat.` | Disables stay-asleep mode. Turkish `otomatik geri uyumayı kapat` also works. The independent normal idle timer still applies; set it to 0 to disable timed sleep. Wake first or type the command while asleep. |
+| **Settings → Audio → Idle sleep timer** | Saves 0–300 whole seconds (default 10; 0 disables the timer). In normal conversation, idle time triggers one-time sleep. Does not delay return in stay-asleep mode. |
 | **Personalization → Wake word** | Saves the keyword used for the next sleep. Default: Vex. Supports 1–3 words in the local English pronunciation dictionary, such as Hey Vex or Computer. |
 | **Settings → Theme → SLEEPING** | Customizes the color of the real sleeping reactor state. This is distinct from IDLE and does not change the wake word. |
+
+Stay-asleep mode is a chat-only preference held in RAM. Explicit disable,
+New Chat or application exit clears it. A one-time Sleep command does not
+disable it. An addressed interaction returns to sleep immediately after its
+confirmed response/tools/playback finish; it does not listen for a new
+barge-in request during that reply. Unknown outcomes and active tasks cannot
+be bypassed by sleeping. No old audio, model request or tool is replayed.
+
+The idle sleep timer is independent and saved across restarts. In normal
+conversation it measures inactivity after the reply finishes; speech and
+active tasks postpone it. It triggers one-time sleep, without enabling
+stay-asleep mode. Stop/Disconnect or connection changes cancel old timers.
+Mic Off does not become On automatically in either sleep mode.
+
+Sleep controls use a bounded full-sentence Turkish/English grammar;
+the Vex prefix is optional while awake. Leading/trailing `please` / `lütfen`,
+extra whitespace and letter case are supported. The configured wake word can
+address the command; Rex/Max/Veks transcription variants apply only to this
+host parser, not local wake detection. Questions (including `sleep?`), quotes,
+negations and additional tasks do not trigger a mode change. This is not unrestricted intent
+recognition. An acknowledgement to an unrecognized phrase is not proof of a
+host mode change. Rex/X-like local wake alternatives are not implemented yet.
+No speaker identification separates simultaneous background speakers.
+
+**Source: Mic** is a separate audio-source selector placeholder. The UI has
+PC/app audio labels, but only microphone capture is currently implemented in
+the desktop backend. Those other sources are not working integrations yet.
 
 While asleep, microphone PCM is processed locally rather than streamed to
 Gemini. Mic Off also disables local wake detection; turning it On resumes
@@ -108,11 +144,34 @@ choice. Permission, device, setup, invalid-packet and wake-handoff failures
 require manual action. Explicit Sleep can retry an earlier local microphone
 block; Off, Disconnect and unknown-result guards remain effective.
 
-After a detected wake word, a short silence explicitly ends that input so a
-wake-only greeting need not wait for the 15-second capture bound. That bound
+During wake setup, a local pause preserves buffered speech. After setup,
+local end-of-speech or a finalized provider transcript ends the old input.
+Speech after that boundary belongs to a fresh turn. A wake-only
+transcript completes without running a tool or treating the greeting as a task. That bound
 ends input, not the model response or your On preference. A complete spoken
 sleep candidate is handled by the host; tentative matching phrases that
 become questions are not treated as sleep commands.
+
+Sleep first shows **Preparing sleep**. **SLEEPING / Wake** appears only after
+the host confirms sleep. A rejected request stays awake; an unknown result
+locks controls instead of claiming success. Microphone Off remains usable.
+Explicit successful sleep controls also show and speak a short confirmation
+in the selected Turkish/English language. These packaged offline clips use a
+different voice from Gemini, respect Mute and your selected speaker, and need
+no model/TTS request. A rejection/unknown result never plays a success clip.
+Automatic return after each task does not repeat the sleep announcement.
+
+After backend input setup is ready, 700 ms of local silence ends that input.
+The host sends explicit activityStart/activityEnd markers with provider VAD
+disabled; it does not mix these markers with audioStreamEnd. Setup-time wake
+pauses preserve buffered speech. A 15-second cap remains. A temporary input
+queue/transport failure may prepare fresh listening at most twice after the
+old turn is confirmed finished. It never replays the discarded request;
+repeat your request when ready. Permission/unknown failures remain blocked
+with an explicit reason rather than only a generic Stopped status.
+
+Wake-only classification still needs the provider's final transcript; it does
+not eliminate all API latency or the pending 25-second silence investigation.
 
 The pinned local model must be installed. It is installed on this development
 machine; on a new installation, run the following from `v1` once:
@@ -131,8 +190,6 @@ The existing Wake sensitivity slider is not yet connected to this detector.
 ## Planned — not available yet
 
 - Persistent user facts and editable/forgettable user memory in Personalization.
-- Automatic return-to-sleep after an interaction.
-- A sleep-delay setting in Settings.
 - Model-driven skill/routine/calendar/weather/Google/Telegram/Discord actions.
 
 Move an item into the available tables only after its implementation and

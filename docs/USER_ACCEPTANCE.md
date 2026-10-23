@@ -1,5 +1,146 @@
 # TaskVex — Kullanıcının katılacağı gerçek kullanım kontrolleri
 
+## Güncel kısa test — 5.R2 sesli tur sınırı
+
+Uygulamayı tamamen kapatıp `v1` içinden yeniden aç:
+`./.venv/Scripts/python.exe -m app.main --debug`.
+Önce uyku zamanlayıcısını geçici olarak 0 yap; aynı Live modelinde:
+
+1. Yazıyla “Merhaba” gönder: kontrol olarak yanıt gelsin.
+2. Mic On ile “Merhaba, nasılsın?” de, ardından sessiz kal. Art arda üç ayrı
+   sesli turda yanıt, transkript ve yeniden dinlemeyi kontrol et.
+3. Sleep → “Vex, merhaba” ile uyan; ardından yeni bir soru sor.
+4. Bir yanıtı Stop ile kesip yeniden konuş. Mic Off yalnız girişi kapatmalı.
+
+Tekrar takılırsa durum satırının tamamını paylaş: PCM sent, events,
+before/after input final, **input end: sent/missing**, **speech chars**.
+Bu test geçmeden 5.R2 kapanmış veya yeni özellik sırası açılmış sayılmaz.
+Otomatik 921 pytest/7 JS/10 native gerçek mikrofon/API kabulü yerine geçmez.
+
+## Önceki kısa test — 5.R1 birleşik kararlılık
+
+Uygulamayı yeniden aç; normal Idle sleep timer'ı 0 yap. Önce TR dilini seç.
+
+1. “Uyku moduna gir” de/yaz. Gerçek SLEEPING sonrası “Uyku moduna geçtim”
+   hem yazılmalı hem duyulmalı. Bu kısa onayın sesi Gemini'den farklıdır.
+2. “Vex” diyerek uyandır, kısa bir soru sor; üç döngü dene. Sonra uzun bir
+   yanıta araya gir; yanıt bitince normal sesin yeni istek olarak alınmalı.
+3. “Kalıcı olarak uyku moduna gir”, ardından uyandırıp kısa soru ve yazılı
+   “Kalıcı uyku modunu kapat”. İlk açılış/kapanış sesleri duyulmalı; her
+   otomatik geri uyumada tekrar onay beklenmez. Mic Off yanıtı kesmemeli.
+4. Mute açıkken aynı kontrol: metin/durum doğru, ses kapalı olmalı. Wake veya
+   Stop onay sesi çalarken kullanılabilir; eski ses sonra geri başlamamalı.
+5. Takılırsa Engine log'daki **ilk Microphone capture** nedenini ve durum
+   satırını paylaş. Stopped tek başına neden değildir. “Input discarded…”
+   sonrası yeni dinleyici hazırlanır; kaybolmuş isteği kendin tekrar söyle.
+
+Fiziksel mikrofon, gerçek sağlayıcı ve oda/yankı kabulü henüz yok; 920 pytest,
+7 JS, native ve yapay gerçek KWS geçişleri bunların yerine geçmez. Sabit 700 ms
+sessizlik uzun düşünme duraklamasını yeni tur sınırı yapabilir. Uyanışta yeni
+Live bağlantısı hâlâ kurulur; toplam gecikme garantisi verilmez. Sorun sürerse
+F4/new feature eklenmeden bu ölçümler üzerinden aynı yol incelenecek.
+
+## Güncel kısa test — 5.F3
+
+Önce normal Idle sleep timer'ı 0 yap; sonraki testleri yanlışlıkla timer uyutmasın.
+
+1. Uyanıkken “Uyku moduna gir” yaz; SLEEPING olmalı. Wake ile uyandırıp
+   aynı sözü sesli dene; Vex hitabı zorunlu olmamalı.
+2. “Kalıcı olarak uyku moduna gir” de. Uyandırıp kısa bir soru sor;
+   gerçek yanıt ve ses bitince tekrar uyumalı. “Kalıcı uyku modunu kapat”
+   yazıp yeni kısa sorudan sonra uyanık kaldığını kontrol et.
+3. “Uyku moduna girme”, “Uyku moduna gir ne demek?” ve tırnak içinde
+   `"uyku moduna gir"` yaz. Hiçbiri uyutmamalı. İngilizce karşılıklar:
+   “Please switch to sleep mode”, “Return to sleep after every task”,
+   “Stop returning to sleep”.
+
+Ses alınmıyorsa aynı ifadeyi yazılı dene: niyet ayrımını giriş canlılığından
+ayırır. F2 fiziksel uyanış/25 s bildirimi ve F4 yerel telaffuz hâlâ açıktır;
+bu adım bunları düzeltmiş sayılmaz. Yeni testler geçmeden commit yok.
+
+## Güncel kısa test — 5.F2
+
+1. Uygulamayı kapatıp yeniden aç; Idle sleep timer'ı 0 yap. Sleep düğmesiyle
+   uyut, “Vex” diyerek uyandır ve kısa bir soru sor. Bunu üç kez dene.
+2. Uyanıp komut almıyorsa önce durum satırını kaydet. Microphone Off/On
+   yapıp aynı kısa soruyu yeni istek olarak sor; toparlanıp toparlanmadığını bildir.
+3. 25 s bekleme tekrarlanırsa durum satırındaki `PCM sent`, `events`,
+   `before_input_final` / `after_input_final` bilgisini paylaş. Anahtar veya
+   kişisel not/ses paylaşma. Motor toparlanamazsa “audio engine did not resume”
+   açıkça görünmeli; On ışığı kullanıcı tercihi olduğu için yanmaya devam eder.
+
+Fiziksel uyanış sorunu açık tutuluyor. 853 pytest ve sentetik/native test
+gerçek mikrofon/sağlayıcı kabulünün yerine geçmez. “Uyku moduna gir” ve
+Rex/X varyantları hâlâ F3/F4'tür; bu test Sleep düğmesini kullanır.
+
+## Güncel kısa test — 5.F1
+
+Uygulamayı yeniden aç; testte Idle sleep timer'ı önce 0 yap.
+
+1. Sleep düğmesine bas: önce kısa Preparing sleep, kabul sonrası SLEEPING
+   ve Wake olmalı. Uykuda Mic Off yapıp Wake'e bas: Mic Off korunmalı.
+2. On ile tekrar Sleep yap. Yalnız “Vex” de, ardından kısa duraklayıp
+   “Bana kısa bir selam ver” de. Asıl istek alınmalı. Wake sözcüğü tek başına
+   kalıcı modda bir görev bitmiş gibi hemen yeniden uyutmamalı.
+3. Mevcut tanınan “Vex bundan sonra uyku modunda kal” ile kalıcı modu aç;
+   uyandırıp kısa istek ver. Gerçek yanıt ve ses bitince hemen uyumalı.
+   Normal modda 3 s timer ise yalnız idle'da tek seferlik uyutmalı.
+
+Bu tur “uyku moduna gir” listesi veya Rex/X algısı genişletilmedi. Özellikle
+bu ifadelerle test edip 5.F1'in bunları düzelttiği sonucunu çıkarma; 5.F3/5.F4
+açık. 25 s Thinking veya Idle'da ses almama tekrarlanırsa durum satırını
+bildir; 5.F2'nin kapsamıdır. Gerçek hesap/mikrofon kabulü bu kısa testle
+beklenir; otomatik/sentetik kanıt fiziksel başarının yerine geçmez.
+
+## Güncel durum — yeni kabul istemeden önce açıkları kapat
+
+Kullanıcının “uyku moduna gir” ve “kalıcı olarak uyku moduna gir” örnekleri
+host parser'ında reddediliyor. İçeride çift boşluk da eşleşmeyi bozabiliyor.
+Bunlar kullanıcı kullanım hatası değildir. Beş somut runtime açık için
+[denetim](STAGE5_SLEEP_AUDIT.md) ve [güncel sıra](../aşamalar.md) tutuluyor.
+Bu tur kullanıcıdan önceki testleri tekrar etmesi istenmiyor; düzeltme sonrası
+ilgili açıkları hedefleyen kısa fiziksel kabul verilecek. Eski başarılı
+native/pytest sonuçları bu bug'ları çözülmüş saymaz.
+
+## Güncel test — düzeltme planı adım 1 / iki bağımsız uyku
+
+1. Önce Ayarlar → Audio → Idle sleep timer değerini 0 yap. “Vex bundan sonra
+   uyku modunda kal” de; uyandırıp kısa bir soru sor. Yanıt/ses biter bitmez
+   tekrar SLEEPING olmalı. 10 saniye beklememeli. Yanıt sürerken konuşman
+   ikinci bir görev/interrupt başlatmamalı; yeni görev için tekrar uyandır.
+2. Uyandırıp “Vex uyku modundan kalıcı olarak çık” de. Süre 0 iken normal
+   konuşmada uyanık kalmalı. Sonra Idle sleep timer'ı 3 yap: boşta üç saniye
+   sonra tek seferlik uyumalı. Vex ile uyandırıp normal soru sorabilmelisin;
+   kalıcı moda kendiliğinden geçmiş olmamalı.
+3. Normal modda uzun yanıt iste: ses sürerken üç saniye geçti diye uyumamalı.
+   Mikrofonu Off yapmak tercihini değiştirmemeli; Wake düğmesi kullanılabilir.
+
+25 s Thinking ve Idle'da algılamama hâlâ ikinci adımda incelenecek. Rex/X wake
+ve liste dışı uyku niyeti henüz eklenmedi. Bu testlerde mevcut tanınan ifadeyi
+kullan. Telegram işlemi henüz entegre değil; gizlilik senaryosunu mevcut
+kısa yanıt veya geçici bir test notu göreviyle dene. Gerçek mikrofon kabulü
+sentetik/native testin yerine geçmez. Alttaki eski testlerde timer'ın Stay
+asleep'e bağlı anlatımı bu güncel adım tarafından değiştirilmiştir.
+
+## Güncel kısa test — kalıcı uyku / süre / efekt sesi
+
+Önceki wake/giriş testlerini başarılı bildirdin (`701f33f`). Yeni dilim:
+
+1. Ayarlar → Audio → Automatic return-to-sleep delay alanına 3 yazıp kaydet.
+   Sound effects açıkken Microphone Off/On'a bas: kameradaki tıklama sesi
+   her basışta bir kez gelmeli; On/Off davranışı değişmemeli.
+2. “Vex bundan sonra uyku modunda kal” de. Uyandırıp kısa bir soru sor.
+   Yanıt ve ses bittikten yaklaşık üç saniye sonra yeniden SLEEPING olmalı.
+   Bunu iki kez dene. Uzun yanıt sürerken üç saniye geçti diye uyumamalı.
+3. Uyandırıp “Vex uyku modundan kalıcı olarak çık” de. Sonraki yanıttan sonra
+   üç saniyeden uzun bekle: tekrar uyumamalı. Normal tek seferlik “Vex uykuya
+   dal” da çalışmalı; yeni sohbette kalıcı mod başlangıçta kapalı olmalı.
+4. Uygulamayı kapat/aç: süre 3 kalmalı, kalıcı mod yeniden açılmamalı.
+   Uyurken Mic Off ise wake sözcüğü dinlenmez; Wake düğmesi kullanılabilir.
+
+Sentetik/native testler gerçek mikrofon, sağlayıcı ve hoparlörden efekt
+ duyumunun yerine geçmez. Aşağıdaki başlıklar önceki dilimlerin kayıtlarıdır.
+
 ## Güncel tekrar test — wake yanıtı / çelişkili uyku / On–Off
 
 Uygulamayı yeniden aç, Live ve Microphone On kullan.

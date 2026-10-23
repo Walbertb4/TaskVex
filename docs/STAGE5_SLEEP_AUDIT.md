@@ -1,5 +1,39 @@
 # TaskVex — 23 Ekim 2026 genel denetim ve uyku/ses bulguları
 
+## Güncel yeniden açılış — 5.R1
+
+Kullanıcı Stopped→Idle, gecikme ve sesli onay eksikliği bildirdi. Yeni
+[inceleme](STAGE5_SLEEP_STABILITY_REVIEW.md) iki başarısız yeniden üretim
+ile EOS ve yanıt-sonrası gürültü tabanı açıklarını doğruladı. Yerel onay,
+sınırlı terminal sonrası capture toparlanması ve wake motoru cache'i eklendi.
+920 pytest/7 JS/native ve yapay gerçek KWS kanıtı var; fiziksel/sağlayıcı
+kabulü yoktur. F4 önüne R1 kabulü alındı, bütün gecikmeler kapatılmadı.
+
+## Önceki denetim sonrası durum — 5.F3
+
+U03 için ortak parser gir/kalıcı gir/nezaket/boşluk ve EN varyantlarıyla
+düzeltildi; soruyu komuta dönüştüren soru işareti silme de kaldırıldı.
+916 pytest/yedi JS ve tip kontrolü geçti; gerçek mikrofon/API kabulü açık.
+F2 fiziksel uyanış/25 s bildirimi ve F4 telaffuz açık kalır. Son kanıt ve
+native sonucu STAGE5_MODEL.md / ../aşamalar.md içindedir.
+
+## Önceki güncel durum — 5.F2
+
+U04'ün sonradan askıya alınmış AudioContext açığı aynı kaynakta sınırlı
+resume/hata temizliğiyle düzeltildi. 853 pytest/yedi JS ve tip kontrolü geçti.
+Fiziksel uyanış/komut alamama bildirimi hâlâ açık; 25 s için içeriksiz
+gönderim/olay ölçümleri eklendi, gerçek örneğin nedeni henüz kanıtlanmadı.
+Son kanıt ve native sonucu STAGE5_MODEL.md / ../aşamalar.md içindedir.
+
+## Önceki güncel durum — 5.F1
+
+Aşağıdaki deneyler denetim anındaki kodu gösterir; tarihsel kanıttır. U01,
+U02 ve U05 için 5.F1 kod/test düzeltmesi uygulandı ve manuel kabul bekler.
+850 pytest/7 JS/10 native + ek chat kontrolü geçti. Ayrıntı STAGE5_MODEL.md,
+güncel durum ../aşamalar.md içindedir. U03 (niyet), U04 (ses canlılığı) ve
+gerçek 25 s beklemenin neden zinciri açıktır. Eski deney betiklerindeki
+"bug var" assert'leri güncel kabul testleri değildir.
+
 TaskVex, tek yerel kullanıcının Windows masaüstünde UI/Live ses yoluyla
 konuştuğu ve sınırlı araçları registry/policy/TaskManager üzerinden çalıştırdığı
 bir uygulamadır. Beklenen yük bir masaüstü oturumu, tek aktif model turu ve tek

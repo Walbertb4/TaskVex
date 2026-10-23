@@ -193,13 +193,17 @@ let micRevision = 0;
 let microphoneEnabled = true, nativeInitialized = false;
 let micBlocked = false, micBlockReason = null;
 let replyMicRequest = null, pendingBargeIn = null;
-let sleeping = false, wakeSession = null, preparingWake = false;
+let sleeping = false, sleepPending = false, wakeSession = null, preparingWake = false;
 let wakeRetryTimer = null, wakeRetryCount = 0;
+let micRecoveryCount = 0;
+// Tercih yalnız bu sohbetin RAM'inde; saniye ayarı diskte saklanır.
+let automaticSleep = false, autoSleepTimer = null, autoSleepRevision = 0;
 const MIC_FAILURES = {
   microphone_unavailable:'Microphone unavailable or permission denied.',
   permission_denied:'Microphone permission denied.',
   device_unavailable:'Selected microphone unavailable.',
   device_ended:'Microphone capture ended.', device_removed:'Selected microphone was removed.',
+  audio_context_unavailable:'Microphone audio engine did not resume.',
   worklet_failed:'Microphone audio processor failed.', invalid_pcm:'Microphone data was invalid.',
   input_limit:'Microphone input limit reached.', stream_backpressure:'Live input queue filled.',
   stream_rejected:'Live input was rejected.', wake_backpressure:'Local wake queue filled.',
@@ -220,7 +224,44 @@ function paintMic() {
   button.title = microphoneEnabled ? 'Turn microphone input off.' : 'Turn microphone input on.';
   button.disabled = false; // Belirsizlikte bile kullanıcı tercihini Off yapabilsin.
 }
+function cancelAutoSleep() {
+  clearTimeout(autoSleepTimer); autoSleepTimer = null; autoSleepRevision++;
+}
+
+function scheduleAutoSleep() {
+  cancelAutoSleep();
+  // Yanıt/ses/araç bitmeden veya sonuç belirsizken uyutma. Bu timer yeni
+  // model/araç çağırmaz; yalnız mevcut enterSleep yaşam döngüsünü kullanır.
+  if (automaticSleep || store.sleepDelay === 0 || sleeping || sleepPending || textBusy || textOperation.uncertain || micBlocked ||
+      liveMic.speaking || !nativeInitialized || !isBackendAvailable() ||
+      !document.getElementById('liveLatencyTest')?.checked || !document.getElementById('mSel')?.value) return;
+  const revision = autoSleepRevision, connection = connectionRevision;
+  const delay = Number.isInteger(store.sleepDelay) && store.sleepDelay >= 1 && store.sleepDelay <= 300 ? store.sleepDelay : 10;
+  autoSleepTimer = setTimeout(() => {
+    autoSleepTimer = null;
+    if (revision !== autoSleepRevision || connection !== connectionRevision || automaticSleep || store.sleepDelay === 0 || sleeping ||
+        textBusy || textOperation.uncertain || micBlocked || liveMic.speaking || !isBackendAvailable()) return;
+    enterSleep();
+  }, delay * 1000);
+}
+
+function returnToPersistentSleep(report, connection) {
+  // Tek adresli etkileşim gerçekten bitti: ikinci mikrofon/boşta süre açma.
+  // Unknown/aktif görevde uykuyla kilidi aşma; Stop kabulü bitiş değildir.
+  if (!automaticSleep || report?.wake_only || sleepPending || textBusy || textOperation.uncertain || !report || report.completed !== true ||
+      report.unknown || connection !== connectionRevision || !nativeInitialized || !isBackendAvailable()) return false;
+  enterSleep(null); // Her görev sonrası otomatik dönüşte aynı onayı tekrarlama.
+  return true;
+}
+
+function applySleepMode(mode) {
+  if (!['once', 'persistent', 'off'].includes(mode)) return;
+  if (mode !== 'once') automaticSleep = mode === 'persistent';
+  cancelAutoSleep();
+}
+
 function cancelMic(message = 'Recording cancelled. Nothing sent.') {
+  cancelAutoSleep();
   clearTimeout(wakeRetryTimer); wakeRetryTimer = null;
   if (wakeSession) { void emit('wake_close', wakeSession); wakeSession = null; }
   micRevision++;
@@ -242,9 +283,11 @@ function blockMicrophone(message, reason = 'microphone_unavailable') {
   if (textBusy && getState() === 'listening') setState('thinking', true);
 }
 function resetLiveAudio(pause = true) {
+  if (sleepPending) sleepOperation.markUnknown();
   liveTranscript.finish(activeTextRequest, {}, 'interrupted');
   connectionRevision++; if (preparingAudio) cancelBeforeSend = true;
   liveAudio.close();
+  micRecoveryCount = 0;
   if (pause) { micBlocked = true; micBlockReason = 'disconnected'; }
   cancelMic();
 }
@@ -255,7 +298,11 @@ function resetLiveAudio(pause = true) {
  * komut tekrar edilmez. Donanım/Disconnect/unknown engeli ayrıca korunur.
  */
 async function listenAutomatically(replyRequest = null, preserveStatus = false) {
+  if (sleepPending) return;
   if (sleeping) { if (!textBusy) void listenForWake(); return; }
+  // Stay asleep tek çağrılık giriş açar; yanıt/araç sırasında arkadaşların
+  // konuşmasını barge-in (yanıtı kesen yeni istek) olarak yakalama.
+  if (automaticSleep && replyRequest) return;
   if (!microphoneEnabled || micBlocked || !nativeInitialized || !isBackendAvailable() || (textBusy && (!activeTextRequest || replyRequest !== activeTextRequest)) ||
       textOperation.uncertain || liveMic.active ||
       !document.getElementById('liveLatencyTest').checked || !document.getElementById('mSel').value) return;
@@ -266,16 +313,16 @@ async function listenAutomatically(replyRequest = null, preserveStatus = false) 
   if (!replyRequest && !preserveStatus) document.getElementById('textStatus').textContent = 'Preparing automatic listening…';
   try {
     const started = await liveMic.prepareStream(code => {
-      if (revision !== micRevision) return;
-      const target = activeTextRequest;
-      blockMicrophone((MIC_FAILURES[code] || MIC_FAILURES.microphone_unavailable) + ' Check Audio settings, then toggle Microphone Off and On.', code);
-      if (target && !playbackOnly) emit('stop_task', {request_id:target});
+      handleLiveMicFailure(code, revision);
     }, getAudioDeviceId('dIn'), speaking => {
       // Yalnız mevcut mikrofonun yerel enerji geçişi görünümü etkiler.
       // Sessizce hazır beklemek listening değildir; model yanıtında speaking korunur.
       if (revision !== micRevision || !microphoneEnabled || textOperation.uncertain) return;
-      if (speaking) setState('listening', true);
-      else if (pendingBargeIn || !replyMicRequest) setState(textBusy ? 'thinking' : 'idle', true);
+      if (speaking) { cancelAutoSleep(); setState('listening', true); }
+      else {
+        if (pendingBargeIn || !replyMicRequest) setState(textBusy ? 'thinking' : 'idle', true);
+        if (!textBusy) scheduleAutoSleep();
+      }
       if (textBusy && !replyMicRequest) document.getElementById('textStatus').textContent = speaking
         ? 'Listening live · pause to finish · maximum 15 s. Stop cancels.'
         : 'Waiting for Live reply · Stop cancels. No new message will be sent automatically.';
@@ -284,6 +331,7 @@ async function listenAutomatically(replyRequest = null, preserveStatus = false) 
     queryDevices();
     liveMic.waitForSpeech(() => {
       if (revision !== micRevision || !microphoneEnabled) return;
+      cancelAutoSleep();
       // Yanıt bittiyse aynı dinleyici artık boşta çalışır; closure içindeki
       // eski request_id yeni konuşmayı yanlışlıkla engellememeli.
       const target = replyMicRequest;
@@ -308,12 +356,33 @@ async function listenAutomatically(replyRequest = null, preserveStatus = false) 
         ? previousStatus + ' · Listening for speech'
         : 'Listening for speech · speak without pressing a button. Audio stays local until speech starts.';
       setState('idle', true);
+      scheduleAutoSleep();
     }
   } catch (error) {
     if (revision !== micRevision) return;
     const code = Object.hasOwn(MIC_FAILURES,error?.message) ? error.message : 'microphone_unavailable';
     blockMicrophone(MIC_FAILURES[code] + ' Check Audio settings, then toggle Microphone Off and On.', code);
   }
+}
+
+function handleLiveMicFailure(code, revision) {
+  if (revision !== micRevision) return;
+  const target = activeTextRequest;
+  addLog('Microphone capture: ' + code + '. Current input discarded.', true);
+  blockMicrophone((MIC_FAILURES[code] || MIC_FAILURES.microphone_unavailable) + ' Check Audio settings, then toggle Microphone Off and On.', code);
+  if (target && !playbackOnly) void emit('stop_task', {request_id:target});
+}
+
+function settleMicrophoneFailure(report, connection) {
+  if (!micBlocked || connection !== connectionRevision) return;
+  const label = document.getElementById('textStatus'), reason = micBlockReason;
+  // Yalnız kesin bitmiş turun geçici kuyruk/taşıma kaybından sonra yeni
+  // boş dinleyici aç. Eski ses/komut tekrar edilmez; izin/unknown aşılmaz.
+  if (report?.completed === true && !report.unknown && !textOperation.uncertain && micRecoveryCount < 2 &&
+      ['stream_backpressure','stream_rejected','wake_bridge_rejected'].includes(reason)) {
+    micRecoveryCount++; micBlocked = false; micBlockReason = null;
+    label.textContent += ' · Input discarded; preparing fresh listening. Repeat the request if needed.';
+  } else label.textContent += ' · ' + (MIC_FAILURES[reason] || MIC_FAILURES.microphone_unavailable) + ' Toggle Microphone Off and On.';
 }
 const textOperation = createPendingOperation(() => {
   liveTranscript.finish(activeTextRequest, {}, 'unknown');
@@ -323,10 +392,19 @@ const textOperation = createPendingOperation(() => {
   document.getElementById('textStatus').textContent = 'Result unknown. Reopen the app and check notes before retrying.';
   setConnectionStatus('offline', 'TEXT RESULT UNKNOWN');
 }, 240000);
+const sleepOperation = createPendingOperation(() => {
+  sleepPending = false;
+  textOperation.markUnknown();
+  paintSleepControl();
+}, 15000);
 window.addEventListener('pagehide', () => cancelMic());
+window.addEventListener('taskvex-sleep-delay-changed', scheduleAutoSleep);
 
 function handleWakeFailure(code, revision) {
   if (revision !== micRevision) return;
+  // Devirden sonra bu kaynak artık Live girişidir. Yerel wake hatası diye
+  // kilitleyip aktif turu sahipsiz bırakma; aynı normal hata yolundan bitir.
+  if (!sleeping && !sleepPending) { handleLiveMicFailure(code, revision); return; }
   code = Object.hasOwn(MIC_FAILURES,code) ? code : 'wake_bridge_rejected';
   const retryable = ['wake_backpressure','wake_prefix_expired','wake_alignment_failed','wake_bridge_rejected'].includes(code);
   addLog('Local wake: ' + code + '. Previous input discarded.', true);
@@ -349,15 +427,44 @@ function handleWakeFailure(code, revision) {
     (retryable ? ' Automatic recovery limit reached.' : ''), code);
 }
 
-async function listenForWake() {
-  if (!sleeping || preparingWake || wakeRetryTimer || textBusy || liveMic.active ||
+async function listenForWake(confirmation = null) {
+  if ((!sleeping && !sleepPending) || preparingWake || wakeRetryTimer || textBusy || liveMic.active ||
       textOperation.uncertain || !nativeInitialized || !isBackendAvailable()) return;
   preparingWake = true;
-  const revision = micRevision;
+  const revision = micRevision, connection = connectionRevision;
   let session = null;
   try {
     const started = await emit('sleep_start');
-    if (!started.ok || !started.response?.request_id) throw new Error('wake_engine_unavailable');
+    const status = started.response;
+    if (connection !== connectionRevision || textOperation.uncertain || (!sleeping && !sleepPending)) {
+      if (status?.request_id) void emit('wake_close', status.request_id);
+      return;
+    }
+    if (status?.completed !== true || typeof status.sleeping !== 'boolean') {
+      sleepOperation.markUnknown(); return;
+    }
+    sleepOperation.finish(); sleepPending = false; sleeping = status.sleeping;
+    paintSleepControl();
+    setState(sleeping ? 'sleeping' : 'idle', true);
+    if (!sleeping) {
+      document.getElementById('textStatus').textContent = 'Sleep was rejected; Vex is awake. Try again when ready.';
+      setConnectionStatus('idle', 'AWAKE · SLEEP REJECTED');
+      return;
+    }
+    // Onay sesi çalarken yerel wake hazırlığını bekletme; kullanıcı uyanmak
+    // için sesin bitmesini beklemek zorunda kalmasın. Wake/Stop aynı sesi keser.
+    if (confirmation) void playSleepConfirmation(confirmation, connection);
+    if (connection !== connectionRevision || !sleeping || textOperation.uncertain) {
+      if (status.request_id) void emit('wake_close', status.request_id);
+      return;
+    }
+    if (!started.ok || !status.request_id) {
+      if (!microphoneEnabled) {
+        document.getElementById('textStatus').textContent = 'Asleep · Microphone Off. Use Wake to exit sleep.';
+        return;
+      }
+      throw new Error(status.code || 'wake_engine_unavailable');
+    }
     session = started.response.request_id;
     if (revision !== micRevision || !sleeping || !microphoneEnabled || micBlocked) {
       void emit('wake_close', session);
@@ -410,17 +517,42 @@ async function listenForWake() {
   }
 }
 
-function enterSleep() {
+function paintSleepControl() {
+  const button = document.getElementById('sleep');
+  if (!button) return;
+  button.disabled = sleepPending || textBusy || textOperation.uncertain;
+  button.textContent = textOperation.uncertain ? 'Sleep state unknown' : sleepPending ? 'Preparing sleep…' : sleeping ? 'Wake' : 'Sleep';
+}
+
+function enterSleep(confirmation = 'once') {
+  if (sleepPending || textBusy || textOperation.uncertain || !isBackendAvailable()) return;
   wakeRetryCount = 0;
   if (micBlocked && !['disconnected','unknown'].includes(micBlockReason)) {
     micBlocked = false; micBlockReason = null;
   }
-  sleeping = true; resetLiveAudio(false);
-  setState('sleeping', true);
-  document.getElementById('sleep').textContent = 'Wake';
-  document.getElementById('textStatus').textContent = 'Sleep mode · local wake preparation…';
-  setConnectionStatus('idle', 'ASLEEP');
-  void listenForWake();
+  resetLiveAudio(false);
+  // İstek gönderildi diye SLEEPING gösterme; host kabulü listenForWake'de.
+  sleepPending = true; sleepOperation.begin(); paintSleepControl();
+  setState('idle', true);
+  document.getElementById('textStatus').textContent = 'Preparing sleep · awaiting host confirmation…';
+  setConnectionStatus('idle', 'PREPARING SLEEP');
+  void listenForWake(confirmation);
+}
+
+async function playSleepConfirmation(mode, connection) {
+  // Metin ve paketlenmiş ses yalnız gerçek host durumundan sonra kullanılır.
+  // Sabit kısa onay için model/TTS HTTP çağrısı yapıp gecikme ekleme.
+  if (connection !== connectionRevision || textOperation.uncertain) return;
+  const language = store.prof?.pLang === 'en' ? 'en' : 'tr';
+  const phrases = language === 'en'
+    ? {once:'Sleep mode is on.',persistent:'Stay asleep mode is on.',off:'Stay asleep mode is off.'}
+    : {once:'Uyku moduna geçtim.',persistent:'Kalıcı uyku moduna geçtim.',off:'Kalıcı uyku modunu kapattım.'};
+  if (!Object.hasOwn(phrases, mode)) return;
+  msg('j', phrases[mode]);
+  try {
+    const result = await liveAudio.control(activeTextRequest || uniqueRecordId([], 'sleep'), mode, language, getAudioDeviceId('dOut'));
+    if (connection === connectionRevision && result.error) addLog('Sleep confirmation: ' + sanitizeError(result.error), true);
+  } catch { addLog('Sleep confirmation audio unavailable; confirmed mode is unchanged.', true); }
 }
 
 /** Sağlayıcı ham hatası yerine host'un güvenli kodlarını ve ölçülen süreyi göster. */
@@ -433,6 +565,13 @@ function textDiagnostics(report) {
   if (Number.isInteger(report.websocket_code)) parts.push('WebSocket ' + report.websocket_code);
   if (report.model) parts.push(sanitizeError(report.model));
   if (Number.isFinite(report.elapsed_ms)) parts.push((report.elapsed_ms / 1000).toFixed(1) + ' s');
+  if (report.code === 'live_idle_timeout') {
+    if (Number.isInteger(report.input_sent_packets)) parts.push('PCM sent: ' + report.input_sent_packets);
+    if (Number.isInteger(report.received_events)) parts.push('events: ' + report.received_events);
+    if (report.input_boundary) parts.push('input end: ' + (Number.isFinite(report.input_end_sent_ms) ? 'sent' : 'missing'));
+    parts.push('speech chars: ' + (typeof report.input_text === 'string' ? report.input_text.length : 0));
+    if (report.wait_phase) parts.push(sanitizeError(report.wait_phase));
+  }
   return parts.length ? ' · ' + parts.join(' · ') : '';
 }
 
@@ -514,7 +653,8 @@ async function sendText(text = null, audio = null) {
   const v = text != null ? text.trim() : (inp && inp.value.trim());
   if (!v && !audio) return;
   if (isBackendAvailable()) {
-    if (textBusy || textOperation.uncertain) return;
+    if (textBusy || sleepPending || textOperation.uncertain) return;
+    cancelAutoSleep();
     if (sleeping && !audio) {
       sleeping = false; cancelMic(); document.getElementById('sleep').textContent = 'Sleep';
     }
@@ -590,10 +730,21 @@ async function sendText(text = null, audio = null) {
         setConnectionStatus('idle', liveTest ? 'LIVE READY · new session on next message' : 'REST READY');
       addLog('Response stopped. Completed actions were not undone.');
     } else if (result.ok && report?.completed === true && typeof report.text === 'string') {
-      if (!liveTest) msg('j', report.text);
+      if (!liveTest && report.mode !== 'local_sleep') msg('j', report.text);
       label.textContent = 'Answered by ' + report.model + ' · ' + report.model_attempts.length + ' model request(s)' +
         (Number.isFinite(report.elapsed_ms) ? ' · ' + (report.elapsed_ms / 1000).toFixed(1) + ' s' : '');
-      if (['live_latency_test', 'live_session_test', 'live_session'].includes(report.mode)) {
+      if (report.mode === 'local_sleep') {
+        liveAudio.close();
+        label.textContent = 'Applying sleep control…';
+        if (report.sleep_mode === 'off') {
+          applySleepMode('off');
+          playbackOnly = true;
+          await playSleepConfirmation('off', replyConnectionRevision);
+          playbackOnly = false;
+          if (!textOperation.isCurrent(revision)) return;
+          label.textContent = 'Stay-asleep preference disabled.';
+        }
+      } else if (['live_latency_test', 'live_session_test', 'live_session'].includes(report.mode)) {
         label.textContent += ' · first text ' + (report.first_text_ms / 1000).toFixed(1) + ' s · ' +
           (report.session_resumed ? 'session resumed' : report.session_reused ? 'session reused' : 'new session');
         if (report.context_reset_reason) label.textContent += ' · context reset: ' + sanitizeError(report.context_reset_reason);
@@ -661,7 +812,7 @@ async function sendText(text = null, audio = null) {
       setConnectionStatus('offline', liveTest ? 'LIVE TEST FAILED' : 'TEXT REQUEST FAILED');
     }
     // Native tur ve varsa çalma birlikte bitti; eski Stop yeni isteğe taşınmaz.
-    if (liveTest) liveTranscript.finish(activeTextRequest, report,
+    if (liveTest) liveTranscript.finish(activeTextRequest, report?.mode === 'local_sleep' ? {...report, text:''} : report,
       report?.stopped || report?.code === 'live_interrupted' ? 'interrupted' : report?.ok ? 'complete' : 'failed');
     // Not yenilemesi de await içerir. Dinleyiciyi boşta moda geçirmek ve eski
     // kimliği bırakmak bu beklemeden sonra, arada await olmadan yapılır.
@@ -671,7 +822,7 @@ async function sendText(text = null, audio = null) {
     const canHandoff = handoff && handoff.requestId === activeTextRequest && handoff.revision === micRevision &&
       handoff.connection === connectionRevision && microphoneEnabled && liveMic.active &&
       report?.completed === true && (report.ok === true || report.stopped === true);
-    const keepListening = !handoff && replyMicRequest === activeTextRequest && microphoneEnabled &&
+    const keepListening = !automaticSleep && !handoff && replyMicRequest === activeTextRequest && microphoneEnabled &&
       !micBlocked && report?.completed === true && !report.audio_error && !playbackProblem &&
       replyConnectionRevision === connectionRevision && liveMic.continueListening();
     if (keepListening) replyMicRequest = null;
@@ -685,8 +836,12 @@ async function sendText(text = null, audio = null) {
     setState('idle');
     controls.forEach(el => { el.disabled = false; });
     textBusy = false;
+    settleMicrophoneFailure(report, replyConnectionRevision);
+    if (report?.ok && replyConnectionRevision === connectionRevision) applySleepMode(report.sleep_mode);
     if (report?.sleep_requested && replyConnectionRevision === connectionRevision) {
-      enterSleep();
+      enterSleep(report.sleep_mode || 'once');
+    } else if (returnToPersistentSleep(report, replyConnectionRevision)) {
+      // Kaynaklar enterSleep tarafından bırakıldı; normal dinlemeye dönme.
     } else if (canHandoff && handoff.revision === micRevision && handoff.connection === connectionRevision && microphoneEnabled && liveMic.active) {
       replyMicRequest = pendingBargeIn = null;
       void sendText('', {stream:true});
@@ -698,6 +853,7 @@ async function sendText(text = null, audio = null) {
       // başarısız araç veya aynı model mesajı yeniden gönderilmez.
       void listenAutomatically(null, true);
     }
+    scheduleAutoSleep();
     return;
   }
   if (typeof window.vex?.onEvent !== 'function') {
@@ -1128,20 +1284,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const micB = document.getElementById('micB');
   if (micB) {
     micB.addEventListener('click', async function () {
+      sfx.blip();
       if (isBackendAvailable()) {
         if (microphoneEnabled) {
           microphoneEnabled = false;
           cancelMic('Microphone Off.');
           microphoneInput?.finish();
         } else {
-          microphoneEnabled = true; micBlocked = false; micBlockReason = null; wakeRetryCount = 0; paintMic();
+          microphoneEnabled = true; micBlocked = false; micBlockReason = null; wakeRetryCount = micRecoveryCount = 0; paintMic();
           if (textOperation.uncertain) {
             document.getElementById('textStatus').textContent = 'Result unknown. Microphone capture remains blocked; reopen and check notes.';
           } else void listenAutomatically(textBusy && !pendingBargeIn ? activeTextRequest : null);
         }
+        if (!textBusy) scheduleAutoSleep();
         return;
       }
-      sfx.blip();
       const prevOn = this.classList.contains('on');
       const on = !prevOn;
       this.classList.toggle('on', on);
@@ -1256,7 +1413,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Yeni sohbet yalnız kesin host onayında ekran/RAM bağlamını temizler;
   // kayıtlı notlar ve unknown işlem kilidi bu düğmeyle sıfırlanmaz.
   document.getElementById('newChat')?.addEventListener('click', async () => {
-    if (textBusy || textOperation.uncertain) return;
+    if (textBusy || sleepPending || textOperation.uncertain) return;
     if (!isBackendAvailable()) { addLog('New Chat requires the desktop backend.', true); return; }
     if (!window.confirm('Start a new chat? Temporary conversation memory will be cleared. Saved notes will stay.')) return;
     textBusy = true;
@@ -1271,6 +1428,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (result.ok && result.response?.completed === true && result.response.memory_cleared === true) {
       document.getElementById('msgs').replaceChildren(); streamReset();
+      automaticSleep = false; cancelAutoSleep();
       sleeping = false; document.getElementById('sleep').textContent = 'Sleep';
       document.getElementById('textStatus').textContent = 'New chat. Temporary conversation memory cleared; saved notes preserved.';
       setConnectionStatus('offline', 'NEW CHAT');
@@ -1284,9 +1442,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Disconnect button
   document.getElementById('sleep')?.addEventListener('click', async () => {
-    if (textBusy || textOperation.uncertain || !isBackendAvailable()) return;
+    if (textBusy || sleepPending || textOperation.uncertain || !isBackendAvailable()) return;
     if (!sleeping) { enterSleep(); return; }
     sleeping = false; // Geç sleep_start sonucu tekrar yerel dinleme başlatamaz.
+    liveAudio.close();
     cancelMic();
     const button = document.getElementById('sleep');
     textBusy = true;
@@ -1302,7 +1461,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // normal Live dinlemeyi sonsuza kadar engellememeli. İzin/cihaz yeniden doğrulanır.
     micBlocked = false; micBlockReason = null; setState('idle', true); paintMic();
     document.getElementById('textStatus').textContent = 'Awake. Waiting for speech.';
-    void listenAutomatically();
+    void listenAutomatically().then(scheduleAutoSleep);
   });
 
   const disc = document.getElementById('disc');
@@ -1316,8 +1475,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // Stop task button
   if (stopTask) {
     stopTask.addEventListener('click', async () => {
+      if (sleepPending) { sleepOperation.markUnknown(); return; }
       // Stop yalnız bu turu ve eski ses tamponunu durdurur; On tercihini kapatmaz.
       if (liveMic.active) cancelMic();
+      if (!textBusy) liveAudio.close();
       if (!textBusy && microphoneEnabled) { void listenAutomatically(); return; }
       sfx.del();
       if (!isBackendAvailable()) {

@@ -100,8 +100,7 @@ class LiveConnection:
             input_audio_transcription=types.AudioTranscriptionConfig() if audio_input else None,
             realtime_input_config=types.RealtimeInputConfig(
                 automatic_activity_detection=types.AutomaticActivityDetection(
-                    disabled=audio_input != 'stream',
-                    silence_duration_ms=700 if audio_input == 'stream' else None)) if audio_input else None,
+                    disabled=True)) if audio_input else None,
             output_audio_transcription=types.AudioTranscriptionConfig(),
             session_resumption=types.SessionResumptionConfig(handle=handle),
             tools=[types.Tool(function_declarations=functions)] if functions else None,

@@ -28,7 +28,7 @@ class Audio {
   }
 }
 globalThis.window = {AudioContext: Audio, addEventListener(name, fn){listeners[name]=fn;}};
-const source = fs.readFileSync(new URL('../js/live_audio.js', import.meta.url), 'utf8');
+const source = fs.readFileSync(new URL('../js/live_audio.js', import.meta.url), 'utf8').replace('import.meta.url',JSON.stringify(new URL('../js/live_audio.js', import.meta.url).href));
 const {liveAudio} = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
 const packet = (id, data=Buffer.from([0,128,255,127])) => ({request_id:id, mime_type:'audio/pcm;rate=24000', data:data.toString('base64')});
 
@@ -118,3 +118,23 @@ const timedRoute=liveAudio.begin('timeout-route','slow-speaker');expire();await 
 assert.equal((await liveAudio.finish('timeout-route')).error,'output_device_unavailable');
 globalThis.setTimeout=originalTimeout;Audio.prototype.setSinkId=route;
 console.log('PASS PCM, drain, scoped Stop, Mute, bounds, routing/failure/removal and cleanup');
+
+// Sabit onaylar aynı gain/cihaz/Stop sahibinden geçer; kontrol için ağ TTS yok.
+let localFetches=0;
+globalThis.fetch=async url=>{localFetches++;assert.match(url.pathname,/assets\/controls\/sleep-(once|persistent|off)-(tr|en)\.wav$/);return {ok:true,arrayBuffer:async()=>new ArrayBuffer(44)};};
+Audio.prototype.decodeAudioData=async()=>({numberOfChannels:1,duration:1,length:24000});
+const flush=async()=>{for(let i=0;i<12;i++)await Promise.resolve();};
+const spoken=liveAudio.control('local','persistent','tr','speaker-1');await flush();
+assert.equal(contexts.at(-1).sinkId,'speaker-1');assert.equal(contexts.at(-1).nodes.length,1);
+contexts.at(-1).nodes[0].onended();assert.equal((await spoken).status,'finished');
+liveAudio.setMuted(true);const mutedLocal=await liveAudio.control('muted-local','once','en');
+assert.equal(mutedLocal.status,'muted');assert.equal(localFetches,1);liveAudio.setMuted(false);
+let fetched;
+globalThis.fetch=()=>new Promise(resolve=>{fetched=resolve;});
+const lateControl=liveAudio.control('old-local','once','tr');await flush();
+liveAudio.stop('old-local');await liveAudio.begin('new-model');
+const freshContext=contexts.at(-1);
+fetched({ok:true,arrayBuffer:async()=>new ArrayBuffer(44)});
+assert.equal((await lateControl).status,'stopped');assert.equal(freshContext.nodes.length,0);
+liveAudio.close();
+console.log('PASS fixed local confirmation, selected output, Mute and stale fetch/Stop isolation');

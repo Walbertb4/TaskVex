@@ -5,6 +5,12 @@ okumadan neyin çalıştığını, neyin açık olduğunu ve sırada ne bulundu�
 Son güncelleme: 23 Ekim 2026. Mevcut aşama: **Aşama 5, uyku/ses kararlılığı**.
 Aşama 5 kapanmadı; Aşama 6 uygulamasına geçilmedi.
 
+**Güncel öncelik 5.R3:** kullanıcı 5.R2 testlerini başarılı bildirdi; sesli tur
+sınırı kabul edildi. Ayrı yerel onay seslerini istemediğini belirtti: kaldırılacak,
+komutla uyku Vex'in kendi yanıtı ve çalması tamamlandıktan sonra uygulanacak.
+Bu yeni davranışın kabulü henüz yapılmadı. Ayrıntı:
+[uyku kararlılık incelemesi](docs/STAGE5_SLEEP_STABILITY_REVIEW.md).
+
 ## Nasıl güncellenir?
 
 - Aşama yeni adımlara bölündüğünde, kapsam/sıra değiştiğinde ve her adım sonunda
@@ -102,16 +108,95 @@ Bu liste önceki parçalı uyku planlarının güncel karşılığıdır. Somut 
 
 | Kimlik | Yapılacak iş | Kabul koşulu | Durum |
 |---|---|---|---|
-| 5.F1 | Tek tur ses/giriş bitişi ve UI/host uyku durumunu tutarlı yap (U01, U02, U05) | Bitmiş transkript sonrası yeni ortam PCM'i eski tura gitmez; backend reddinde UI uyuyor demez; yalnız wake ile görev birbirine karışmaz; Stop/unknown korunur | **Sıradaki; açık** |
-| 5.F2 | Idle mikrofon canlılığı ve 25 s Thinking'i ayrı teşhis et (U04) | AudioContext suspend/cihaz/uyku turu sonrası gerçek kaynak durumu anlaşılır; güvenli toparlanma ve eski kaynak koruması test edilir; 25 s için olay zamanlarıyla neden kanıtlanır | Açık |
-| 5.F3 | Türkçe/İngilizce uyku niyetini gerçek host sonucuna bağla (U03) | “uyku moduna gir” ve “kalıcı olarak uyku moduna gir” gibi doğal varyantlar; soru/olumsuz/alıntı/ek işte yanlış geçiş yok; yalnız model onayı başarı sayılmaz | Açık |
-| 5.F4 | Wake telaffuzu ve yanlış uyanma | Vex/Rex/X benzeri adaylar gerçek yerel motor ve negatif seslerle değerlendirilir; gelişigüzel X sesi kesin wake sayılmaz | Planlandı |
+| 5.F1 | Tek tur ses/giriş bitişi ve UI/host uyku durumunu tutarlı yap (U01, U02, U05) | Bitmiş transkript sonrası yeni ortam PCM'i eski tura gitmez; backend reddinde UI uyuyor demez; yalnız wake ile görev birbirine karışmaz; Stop/unknown korunur | **Uygulandı; manuel kabul bekliyor** |
+| 5.F2 | Idle mikrofon canlılığı ve 25 s Thinking'i ayrı teşhis et (U04) | AudioContext suspend/cihaz/uyku turu sonrası gerçek kaynak durumu anlaşılır; güvenli toparlanma ve eski kaynak koruması test edilir; 25 s için olay zamanlarıyla neden kanıtlanır | **U04 düzeltmesi/ölçümler uygulandı; fiziksel uyanış ve 25 s neden doğrulaması açık** |
+| 5.F3 | Türkçe/İngilizce uyku niyetini gerçek host sonucuna bağla (U03) | “uyku moduna gir” ve “kalıcı olarak uyku moduna gir” gibi doğal varyantlar; soru/olumsuz/alıntı/ek işte yanlış geçiş yok; yalnız model onayı başarı sayılmaz | **Uygulandı; fiziksel kabul bekliyor** |
+| 5.R1 | Sesli gerçek onay, EOS/Idle kilidi ve wake kurulum maliyeti | Host sonrası TR/EN ses; EOS bekleyen sağlayıcıda tur bitişi; yanıt sonrası aday algısı; geçici giriş hatası sonrası replay olmadan sınırlı toparlanma | **F4 önüne alındı; kod uygulandı, fiziksel kabul açık** |
+| 5.R2 | Yazı çalışırken sesli turun 25 s takılması | Yerel bitiş sağlayıcıya açık activityEnd olarak gider; otomatik VAD/EOS ile karışmaz; üç sesli tur ve uyku/uyanış gerçek hesapta doğrulanır | **921 pytest, 7 JS, 10/10 native; kullanıcı testleri başarılı bildirdi (23 Ekim)** |
+| 5.R3 | Yerel sesli onay yerine Vex'in doğal yanıtını bekle | Sabit WAV/metin yolu yok; komut yanıtı ve çalması tamamlanmadan uyku uygulanmaz; hata/Stop/unknown başarıya dönüşmez | **Başlandı; kullanıcı commit izni verdi** |
+| 5.F4 | Wake telaffuzu ve yanlış uyanma | Vex/Rex/X benzeri adaylar gerçek yerel motor ve negatif seslerle değerlendirilir; gelişigüzel X sesi kesin wake sayılmaz | R2 fiziksel kabulü sonrası |
 | 5.F5 | Birleşik uzun kullanım ve fiziksel kabul | Normal ve stay-asleep döngüleri, Mic Off, Stop, hata, yeni sohbet, disconnect/restart; farklı bekleme süreleri; gerçek hesap/donanım ayrımı | Açık |
 | 5.F6 | Kapanış bakımı ve belgeler | UI temizliği/debloat ölçülü; eski planlar güncel gibi görünmez; 256 görev sınırı ve restart replay sınırı için karar; README kapsamı doğru | Başladı; kapanmadı |
 
 5.F1–5.F4 tamamlanmadan yeni entegrasyon eklenmez. Hatalı sözleşmenin etrafına
 bir if/kelime daha eklemek kalıcı çözüm sayılmaz. Her düzeltmenin eski hatayı
 başarısız gösteren hedefli testi olmalıdır.
+
+### 5.F1 uygulama kanıtı
+
+- 850 pytest, 7 JS süiti, app/hedefli tip kontrolü 0 hata/uyarı.
+- 10 native senaryo: docs/stage5-f1-native.json; ek host ret/gecikmiş kabul:
+  docs/stage5-f1-native-chat.json. Gerçek sağlayıcı/mikrofon denenmedi.
+- U01: bitmiş transkript sonrası yeni PCM reddedilir; model yanıtı/araç
+  durdurulmaz. U02: hazırlık/ret/unknown/gerçek uyku ayrıdır. U05: yerel
+  duraklama akışı atmaz; kesin wake-only gerçek görev bitişi sayılmaz.
+- 5.F2 (canlılık/25 s), 5.F3 (niyet) ve 5.F4 (telaffuz) açık kaldı.
+- Onaylanan denetim belgeleri 06d8e8f commit'ine alındı; yeni runtime kodu
+  manuel kabul bekliyor. Tarihsel denetim deneyleri eski hatayı gösterir;
+  güncel kabul testleri bu düzeltme diliminin testleridir.
+
+### 5.F2 — ses motoru canlılığı ve bekleme tanısı
+
+- Kullanıcı F1 sonrasında uyanınca hâlâ komut alınmadığını bildirdi; tam manuel
+  kabul/commit sayılmadı. Kullanıcının devam isteğiyle F2 uygulandı.
+- Sonradan suspended/interrupted AudioContext aynı kaynakta bir kez resume
+  edilir. 1 s içinde düzelmezse sabit hata ve kaynak temizliği; sonsuz yeniden
+  izin/cihaz açma yoktur. Mic On tercihi değişmez; açık Off/On tekrar hazırlar.
+- Eski resume/cihaz callback'i yeni mikrofonu kapatamaz. Yerel toparlanma
+  yeni model/araç çağrısı veya eski PCM yeniden gönderimi yapmaz.
+- 25 s süre düşürülmedi. Tur raporu SDK'ye gerçekten gönderilmiş PCM sayısı,
+  ilk ses/EOS, alınan olay ve kesin transkript zamanlarını taşır; timeout
+  durum satırında sayılar/aşama görünür. Sentetik üç ayrı bekleme ayrıldı.
+- 853 pytest, 7 JS süiti, app/hedefli Pyright 0 hata/uyarı. Native kanıt:
+  docs/stage5-f2-native.json (10/10, yeni context toparlanması dahil).
+  İlk yanlış cwd ile native deneme başarısızdı; doğru v1 dizininde tekrar
+  geçti, ayrıntı STAGE5_MODEL.md içinde. Gerçek hesap/mikrofon kullanılmadı.
+- **Açık:** fiziksel uyanış sorununun tüm nedenleri ve gerçek 25 s örneğinin
+  neden zinciri henüz kanıtlanmadı. Test başarısı bu bildirimi kapatmaz.
+  Bu F2 kaydı sırasında F3/F4 uygulanmamıştı; güncel F3 kaydı aşağıdadır.
+
+### 5.F3 — Türkçe/İngilizce uyku niyeti
+
+- Ortak sleep_mode ayrıştırıcısı metin ve kesin ses transkriptinde kullanılır.
+  “uyku moduna gir”, “kalıcı olarak uyku moduna gir”, nezaket/boşluk/büyük
+  harf ve İngilizce varyantları once/persistent/off ayrımını korur.
+- İsim söylemek uyanıkken şart değildir. Kalıcı burada sohbet boyunca geri
+  uyumadır; diske tercih veya işletim sistemi uyutma eklenmedi.
+- Tam cümle eşleştirilir; soru işareti artık silinmez. Alıntı, olumsuz,
+  açıklama ve ek iş içeren cümle uyku kontrolüne dönüşmez. Parçalı transkript
+  sonradan soru/olumsuz/ek iş olursa bekletilen model çıktısı geri verilir.
+- Yeni model aracı/niyet modeli yok; mevcut host kabul/ret/unknown ve tek
+  Live/core/kaynak sahipliği değişmedi. U03'ün önce başarısız testleri
+  doğrulandı (24 başarısız / 24 başarılı), sonra düzeltildi.
+- 916 pytest ve 7 JS süiti geçti; app/hedefli Pyright 0 hata/uyarı.
+  Native 10/10 geçti; rapor: docs/stage5-f3-native.json. Yeni ifadelerle
+  host onaylı tek seferlik/kalıcı mod kontrolü geçti. Fiziksel ses/API kabulü açık.
+- Kullanıcı yalnız devam izni verdi; manuel test sonucunu bildirmedi.
+  F1/F2'nin fiziksel uyanış/25 s açıklığı kapatılmadı; runtime commit yok.
+  F4 telaffuz/yanlış uyanma sıradaki planlı adımdır.
+
+### 5.R1 — gecikme / sesli onay / Stopped incelemesi
+
+- Rapor: docs/STAGE5_SLEEP_STABILITY_REVIEW.md. EOS bekleyen taşıma ve yanıt
+  sonrası gürültü eşiği sorunları önce başarısız testle üretildi, sonra düzeltildi.
+- Backend hazır olduktan sonra 700 ms yerel sessizlik EOS üretir; final
+  transkriptle kapanan girişte de eksik EOS açıkça gönderilir. Eski PCM/araç
+  replay yok; Stop/unknown ve 15 s üst sınır korunur.
+- Host onayından sonra TR/EN metin + sabit yerel WAV; Mute/Stop/özel çıkış ve
+  geç fetch korunur. Gemini'den farklı Windows sesi; API/TTS isteği yok.
+- Tek wake motoru RAM cache'i, her uykuda yeni decoder/ID/boş tampon; gerçek
+  KWS'nin aynı yapay WAV ile üç restart'ı başarılı. docs/stage5-sleep-stability-real-kws.json.
+- Wake→Live kaynak hatası normal hata/Stop hattına gider. Kesin bitişten sonra
+  geçici giriş hatasında en fazla iki yeni boş dinleyici; izin/unknown aşılmaz.
+- 920 pytest, 7 JS süiti, Pyright 0 hata/uyarı. Native 10/10:
+  docs/stage5-sleep-stability-native.json. Son hybrid/cache sürümü için ek
+  chat geçti: docs/stage5-sleep-stability-final-chat.json.
+- İlk ek chat, kısa Thinking anını süreyle yakalayan testte başarısızdı;
+  test sunucu bariyeriyle düzeltildi. Başarısız kanıt silinmedi:
+  docs/stage5-sleep-stability-chat-timing-failure.json.
+- Gerçek kullanıcı sesi/notu, API anahtarı veya ücretli API kullanılmadı.
+  Fiziksel ve sağlayıcı kabulü açık; tüm 25 s örnekleri çözüldü denmez.
+  F4'e geçmeden bu birleşik yolun kullanıcı kabulü gerekiyor; commit yok.
 
 ### Bugünkü kanıt — 23 Ekim
 

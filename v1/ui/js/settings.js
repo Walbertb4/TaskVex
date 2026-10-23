@@ -14,7 +14,7 @@ const DEBUG = false;
 
 export function defaultInterfaceSettings() {
   // Her çağrıda yeni nesne: colors gibi değişebilir alanlar varsayılanı kirletmesin.
-  return { theme: '#a78bfa', colors: {}, sfx: true, vol: 0.8, wake: 50,
+  return { theme: '#a78bfa', colors: {}, sfx: true, vol: 0.8, wake: 50, sleepDelay: 10,
     noise: 420, onTop: false, cmp: 'auto', tab: 'theme', layout: null };
 }
 
@@ -180,6 +180,8 @@ export function saveAll(options = {}) {
   store.sfx = sfxT ? sfxT.checked : true;
   store.vol = volR ? +volR.value / 100 : 0.8;
   store.wake = wakeR ? +wakeR.value : 50;
+  const sleepDelay = document.getElementById('sleepDelay');
+  if (sleepDelay && sleepDelay.checkValidity()) store.sleepDelay = +sleepDelay.value;
   store.noise = thr ? +thr.value : 420;
   store.onTop = onTop ? onTop.checked : false;
   store.cmp = cmpSel ? cmpSel.value : 'auto';
@@ -617,7 +619,8 @@ export function loadStore(o, options = {}) {
     'wake',
     'routines',
     'onTop',
-    'noise'
+    'noise',
+    'sleepDelay'
   ].forEach(k => {
     if (o[k] != null) store[k] = o[k];
   });
@@ -654,6 +657,8 @@ export function loadStore(o, options = {}) {
   const nv = document.getElementById('nv');
   const nth = document.getElementById('nth');
 
+  const sleepDelay = document.getElementById('sleepDelay');
+  if (sleepDelay) sleepDelay.value = store.sleepDelay ?? 10;
   if (sfxT) sfxT.checked = store.sfx !== false;
   if (volR) volR.value = (store.vol == null ? 0.8 : store.vol) * 100;
   if (cmpSel) cmpSel.value = store.cmp || 'auto';
@@ -689,6 +694,7 @@ export function loadStore(o, options = {}) {
       queueSettingsSave(store);
     }
   }
+  if (o.sleepDelay != null) window.dispatchEvent(new Event('taskvex-sleep-delay-changed'));
 }
 
 export function initSettings(options = {}) {
@@ -836,6 +842,15 @@ export function initSettings(options = {}) {
     });
   }
 
+  const sleepDelay = document.getElementById('sleepDelay');
+  if (sleepDelay) {
+    sleepDelay.value = store.sleepDelay ?? 10;
+    sleepDelay.addEventListener('change', () => {
+      if (!sleepDelay.checkValidity()) { sleepDelay.reportValidity(); sleepDelay.value = store.sleepDelay; return; }
+      store.sleepDelay = +sleepDelay.value; saveAll();
+      window.dispatchEvent(new Event('taskvex-sleep-delay-changed'));
+    });
+  }
   const wakeR = document.getElementById('wakeR');
   const wv = document.getElementById('wv');
   if (wakeR) {

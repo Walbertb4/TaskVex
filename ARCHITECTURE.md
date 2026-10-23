@@ -1,5 +1,80 @@
 # TaskVex — Mimari ve geliştirme rehberi
 
+## Güncel öncelik — 5.R2 sesli tur sınırı
+
+Yazı çalışırken sesli girişte 25 s bekleme kullanıcı tarafından tekrar bildirildi.
+Tek Live sahibi, ses setup'ında otomatik VAD'yi kapatır; LiveInput sırayla
+activityStart → PCM → activityEnd gönderir. Yerel 700 ms sessizlik, ön tampon,
+15 s sınırı ve Stop/unknown kuralları korunur; audioStreamEnd ile karıştırılmaz.
+921 pytest, 7 JS ve 10/10 native geçti; gerçek sağlayıcı/fiziksel kabul açık.
+Güncel durum [aşamalar.md](aşamalar.md), eski protokol aşağıda tarihsel kayıttır.
+
+## Önceki uygulama — 5.R1 uyku/algılama kararlılığı
+
+Yeni özellik sırası durduruldu; kullanıcıdaki gecikme/Stopped/Idle bildirimi
+incelendi. Açık EOS, yanıt sonrası gürültü sınırı, tek wake motoru cache'i ve
+host sonrası sabit yerel onay sesleri uygulandı. Live/core/kaynak sahipliği ve
+Stop/unknown korunur; otomatik araç replay yoktur. Gerçek mikrofon/sağlayıcı
+kabulü açık. Kanıt/karar: [inceleme](docs/STAGE5_SLEEP_STABILITY_REVIEW.md),
+güncel sıra [aşamalar.md](aşamalar.md). Runtime manuel kabul bekler.
+
+## Önceki uygulama — 5.F3
+
+Metin ve kesin ses transkriptindeki uyku niyeti ortak host parser'da
+once/persistent/off olarak ayrılır. TR/EN fiil/nezaket/boşluk varyantları
+tam cümlede tanınır; soru/olumsuz/alıntı/ek iş reddedilir. Model onayı
+gerçek uyku kabulü sayılmaz; sleep_start, tek Live/core/kaynak sahipliği
+korundu. F2 fiziksel uyanış/25 s ve F4 telaffuz açık. Güncel kayıt
+[aşamalar.md](aşamalar.md) içindedir; runtime manuel kabul bekler.
+
+## Önceki uygulama — 5.F2
+
+Tek mikrofon sahibi AudioContext statechange ile aynı kaynağı sınırlı resume
+eder; başarısızlıkta kaynak kapanır ve açık hata gösterilir. PCM/metin
+saklamayan tur ölçümleri 25 s beklemeyi ayırır; otomatik istek/araç replay
+eklenmedi. Uyanınca komut alamama fiziksel bildirimi henüz kapanmadı.
+Güncel kabul/açıklar [aşamalar.md](aşamalar.md) içindedir; commit yok.
+
+## Önceki uygulama — 5.F1
+
+5.F1 kod/hedefli regresyon/native doğrulaması tamam; manuel kabul bekler.
+Kesin konuşma bitişi eski PCM'i kapatır, model/araç sonucu devam eder.
+UI uyku hazırlığını gerçek host kabulünden ayırır; belirsizlikte kilitlenir.
+Wake-only bir görev tamamlaması değildir. Tek Live/core/mikrofon sahipliği
+korundu; yeni framework/servis yok. Güncel sıra [aşamalar.md](aşamalar.md)
+içindedir; sıradaki 5.F2, mevcut Idle/25 s sorunlarıdır.
+
+## Güncel durum — 23 Ekim genel denetim
+
+Güncel aşama/alt adım kaydı artık [aşamalar.md](aşamalar.md) içindedir.
+Uyku/ses katmanında beş yeniden üretilmiş runtime açığı açıktır; kodun varlığı
+ve geçen regresyon bunları kapatmaz. Ayrıntı: [uyku/genel denetim](docs/STAGE5_SLEEP_AUDIT.md).
+Bu tur uygulama kodu değiştirilmedi; aşama güncelleme zorunluluğu AGENTS.md'ye
+kaydedildi. Aşama 5 kapanmadı, Aşama 6'ya geçilmedi. Önceki alt başlıklar
+tarihsel çalışma kayıtlarıdır; güncel sıra aşamalar.md içindeki 5.F1–5.F6'dır.
+
+## Güncel kapsam — uyku davranışını düzeltme / ilk adım
+
+Kullanıcının anlam düzeltmesiyle Stay asleep, görev/yanıt bitince hemen geri
+uyuma; sleepDelay ise normal konuşmada tek seferlik idle uyku olarak ayrıldı.
+Yanıtta persistent barge-in açılmaz; mevcut tek mikrofon/Live/core hattı,
+aktif/unknown/eski kaynak engelleri korunur. Süre 0 ile kapatılabilir.
+Bu dilim manuel kabul bekler, önceki dilim tam kabul/commit sayılmadı.
+Kalan sıra: (2) wake/idle giriş yaşam döngüsü, (3) esnek TR/EN uyku niyeti,
+(4) yerel wake telaffuzu ve yanlış uyanma, (5) birleşik kabul. Ayrıntı
+ve kanıt docs/STAGE5_MODEL.md'de; sonraki aşama açılmadı.
+
+## Güncel dilim — otomatik geri uyuma ve saniye ayarı
+
+Uyku/giriş düzeltmeleri kullanıcı onayıyla `701f33f` commit'ine alındı; push
+yok. Kalıcı uyku tercihi ve açık kapatma, aynı host kontrol hattına eklendi.
+Tercih sohbet RAM'inde, sleepDelay (1–300 s/default 10) ayarlar dosyasında
+kalır. Tek UI timer'ı yalnız kesin bitiş/idle sonrasında mevcut sleep_start
+kullanır; aktif/unknown/konuşma atlanmaz, yeni worker veya araç replay yoktur.
+Mic On/Off kamera efektiyle eşlendi. Bu dilim manuel kabul bekler; sonraki
+adım Aşama 5 açık sınırları/genel kabul ve debloat kontrolüdür. Kanıt ve
+sınırlar docs/STAGE5_MODEL.md'de; alttaki eski dilimler tarihsel kayıttır.
+
 ## Güncel kabul — wake giriş sonu ve sade mikrofon
 
 R4–R5 ve bildirilen uyku ret çıktısı için düzeltmeler yapıldı; fiziksel kabul

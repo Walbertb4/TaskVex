@@ -6,14 +6,26 @@ class MicrophonePCM extends AudioWorkletProcessor {
   constructor() {
     super(); this.samples = new Int16Array(1600); this.offset = 0; this.packets = 0; this.active = false;
     this.port.onmessage = event => {
+      if (event?.data === 'arm-end') {
+        // EOS yalnız backend hazır olduktan sonra etkinleşir. Wake hazırlığı
+        // sırasında duraklayan kullanıcının tamponunu erken bitirme.
+        this.endArmed = true;
+        if (!this.waiting && !this.localWake && !this.speaking && this.silent >= 7) {
+          this.active = false; this.port.postMessage({speechEnd:true});
+        }
+        return;
+      }
       if (event?.data === 'wake-to-live') {
         // Aynı cümlenin yarım PCM paketini atma; yalnız hedef/limit değişir.
         this.localWake = this.waiting = false; this.packets = 0;
-        this.speaking = true; this.silent = 0; this.wakeHandoff = true;
+        this.speaking = true; this.silent = 0;
         return;
       }
       // Yanıt bitince aynı mikrofon/ön tampon kalır; yalnız aday eşiği değişir.
       if (typeof event?.data?.replyPlaying === 'boolean') {
+        // Yanıt/yankı sırasında öğrenilen tabanı normal konuşmaya taşıma;
+        // ön tampon ve başlamış aday korunur, yalnız gürültü öğrenimi sıfırlanır.
+        if (this.replyPlaying && !event.data.replyPlaying) this.noise = 0;
         this.replyPlaying = event.data.replyPlaying;
         return;
       }
@@ -23,7 +35,8 @@ class MicrophonePCM extends AudioWorkletProcessor {
       this.replyPlaying = event?.data === 'barge';
       this.previous = this.filtered = this.noise = 0;
       this.speaking = false; this.silent = 0;
-      this.prefix = []; this.limited = false; this.wakeHandoff = false;
+      this.prefix = []; this.limited = false;
+      this.endArmed = false;
     };
   }
   process(inputs) {
@@ -66,23 +79,21 @@ class MicrophonePCM extends AudioWorkletProcessor {
             this.prefix = [];
           }
         } else {
-          // Yalnız değişimde küçük durum bildirimi; sessizlik PCM'i sunucu
-          // VAD'sine akmaya devam eder. Bu yerel gösterim turu bitirmez.
+          // Aktivite görünümü ayrıdır; backend hazırlığı bitince aşağıdaki
+          // hybrid EOS girişi kapatır, model/araç yanıtını Stop etmez.
           if (rms >= Math.max(.015, this.noise * 3)) {
             this.silent = 0;
             if (!this.speaking) { this.speaking = true; this.port.postMessage({activity:true}); }
           } else if (this.speaking && ++this.silent >= 7) {
             this.speaking = false; this.port.postMessage({activity:false});
-            // Yalnız wake devrinde sözcükten sonraki sessizlik giriş sonudur.
-            // Sunucu VAD'si çok kısa wake sözcüğünü kaçırsa da açık EOS alır.
-            if (this.wakeHandoff) {
-              this.active = false; this.port.postMessage(bytes.buffer, [bytes.buffer]);
-              this.port.postMessage({speechEnd:true}); this.offset = this.energy = 0;
-              return true;
-            }
+            // Hazırlık sırasında yalnız görünüm değişir. arm-end sonrasında
+            // sessizlik açık EOS üretir; 15 s üst sınırı ayrıca korunur.
           }
           this.port.postMessage(bytes.buffer, [bytes.buffer]);
           this.packets++;
+          if (this.endArmed && !this.localWake && !this.speaking && this.silent >= 7) {
+            this.active = false; this.port.postMessage({speechEnd:true});
+          }
         }
         this.energy = 0;
         this.offset = 0;

@@ -25,7 +25,7 @@ def socket(monkeypatch):
         async def send(self, message):
             payload = json.loads(message)
             state.sent.append(payload)
-            if "realtime_input" in payload:
+            if "realtime_input" in payload and 'activityStart' not in payload['realtime_input']:
                 state.turn_open = True
 
         async def recv(self, **kwargs):

@@ -6,6 +6,7 @@ taşma veya cihaz hatasında tur iptal edilir, kayıp sesle işleme devam edilme
 import asyncio
 from queue import Empty, Full, Queue
 from threading import Lock
+from time import perf_counter
 
 from google.genai import types
 
@@ -22,6 +23,11 @@ class LiveInput:
         self.closed = False
         self.failed = False
         self._sequence = self._bytes = 0
+        # Kabul edilen kuyruk ile gerçekten socket'e gönderilen ses ayrıdır.
+        # İçerik tutulmaz; yalnız bu turun gecikme tanısı için sayaç/zaman.
+        self.sent_packets = 0
+        self.first_sent_at: float | None = None
+        self.end_sent_at: float | None = None
 
     def feed(self, sequence: int, data: bytes | None) -> bool:
         """Yalnız sıradaki 100 ms PCM'i al; None açık konuşma bitişidir."""
@@ -45,7 +51,12 @@ class LiveInput:
             return True
 
     async def send(self, session):
-        """SDK socket'ine yalnız sahibi yazar; sessizlik VAD için de iletilir."""
+        """Tek yerel konuşmanın sınırını açık başlat/bitir ile SDK'ye aktar.
+
+        Başlangıç gönderilmeden ready açılmaz. Son paket sıralı kuyruktan
+        sonra activity_end üretir; otomatik VAD/EOS ile iki ayrı bitiş sahibi yoktur.
+        """
+        await session.send_realtime_input(activity_start=types.ActivityStart())
         self.ready = True
         while True:
             if self.failed:
@@ -55,9 +66,13 @@ class LiveInput:
             except Empty:
                 continue
             if chunk is None:
-                await session.send_realtime_input(audio_stream_end=True)
+                await session.send_realtime_input(activity_end=types.ActivityEnd())
+                self.end_sent_at = perf_counter()
                 return
             await session.send_realtime_input(audio=types.Blob(data=chunk, mime_type='audio/pcm;rate=16000'))
+            self.sent_packets += 1
+            if self.first_sent_at is None:
+                self.first_sent_at = perf_counter()
 
     def close(self):
         """Geç paketleri reddet ve bekleyen PCM'i bırak; başka turun kuyruğuna dokunma."""

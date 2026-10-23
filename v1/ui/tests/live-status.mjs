@@ -10,7 +10,7 @@ const listeners={};
 let response;
 globalThis.window={addEventListener:(name,fn)=>{listeners[name]=fn;},pywebview:{api:{event:async()=>response}}};
 const source=fs.readFileSync(new URL('../js/api.js',import.meta.url),'utf8');
-const {emit,addLog,createPendingOperation,setConnectionStatus}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+const {emit,addLog,createPendingOperation,setConnectionStatus,sanitizeError}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
 const request={request_id:'current'};
 response={ok:false,code:'stopped',stopped:true,completed:true,request_id:'current'};
 assert.equal((await emit('live_audio_start',request)).ok,false);
@@ -49,3 +49,13 @@ try {
  listeners.pagehide();assert.equal(unknown,2);
 } finally {globalThis.setTimeout=originalSet;globalThis.clearTimeout=originalClear;}
 console.log('PASS normal Stop/close vs real errors, redacted bounded log and stale/unknown deadlines');
+
+// Gerçek hata satırı sıfır PCM/olay değerini kayıp veri sanmamalı; serbest
+// sağlayıcı metni yerine mevcut sanitizeError sınırından geçen kodları göster.
+const appSource=fs.readFileSync(new URL('../js/app.js',import.meta.url),'utf8');
+const diagnostics=new Function('sanitizeError', appSource.match(/function textDiagnostics\(report\) \{[\s\S]*?\n\}/)[0]+';return textDiagnostics;')(sanitizeError);
+const detail=diagnostics({code:'live_idle_timeout',input_sent_packets:0,received_events:0,wait_phase:'before_input_final'});
+assert.ok(detail.includes('PCM sent: 0') && detail.includes('events: 0') && detail.includes('before_input_final'));
+assert.ok(!diagnostics({ok:true,input_sent_packets:7,received_events:2}).includes('PCM'));
+assert.ok(!diagnostics({code:'live_idle_timeout',wait_phase:'AQ.'+'a'.repeat(40)}).includes('a'.repeat(40)));
+console.log('PASS timeout diagnostics show zero counts and redact free text');

@@ -1,6 +1,7 @@
 /** Otomatik yerel bekleme ve tek konuşmayı 16 kHz PCM olarak gönderme sahibi.
  * waitForSpeech sınırlı ön tamponla konuşma adayını bulur; activateStream
- * aynı AudioWorklet'in tamponunu akıtır. Konuşma bitişi sağlayıcı VAD'sindedir.
+ * aynı AudioWorklet'in tamponunu akıtır. Hazır onayından sonra yerel sessizlik
+ * EOS bildirir; sağlayıcının otomatik VAD'si de açık kalır (hibrit VAD).
  * Önceki start/finish sınırlı MediaRecorder sözleşmesi uyumluluk için korunur.
  * İki yol da RAM ile sınırlıdır; aynı anda yalnız bir mikrofon kaynağı açılır.
  * İzin geç verilirse iptal edilmiş kaydın track'leri de hemen kapatılır.
@@ -13,6 +14,8 @@ let current = null;
 
 function release(state) {
   clearTimeout(state.timer);
+  clearTimeout(state.resumeTimer);
+  if (state.context) state.context.onstatechange = null;
   state.stream?.getTracks().forEach(track => { track.onended = null; track.stop(); });
   if (state.recorder?.state === 'recording') state.recorder.stop();
   if (state.node) { state.node.port.onmessage = null; state.node.disconnect(); }
@@ -44,6 +47,28 @@ export const liveMic = {
       state.source = state.context.createMediaStreamSource(state.stream);
       state.source.connect(state.node); state.node.connect(state.context.destination);
       state.fail = (code = 'microphone_unavailable') => { if (current === state) { this.cancel(); onError(code); } };
+      // Tarayıcı/işletim sistemi kaynağı sonradan askıya alabilir. Aynı
+      // context'i bir kez uyandır; izin/kaynak açma veya eski PCM replay yok.
+      // resume hiç dönmezse aktif görünen sessiz mikrofonu açık bırakma.
+      state.context.onstatechange = () => {
+        if (current !== state) return;
+        if (state.context.state === 'running') {
+          clearTimeout(state.resumeTimer); state.resumeAttempt = null; return;
+        }
+        if (state.context.state === 'closed') { state.fail('audio_context_unavailable'); return; }
+        if (state.resumeAttempt) return;
+        const attempt = state.resumeAttempt = {};
+        state.resumeTimer = setTimeout(() => state.fail('audio_context_unavailable'), 1000);
+        Promise.resolve().then(() => {
+          if (current === state && state.resumeAttempt === attempt) return state.context.resume();
+        }).then(() => {
+          if (current !== state || state.resumeAttempt !== attempt) return;
+          if (state.context.state !== 'running') state.fail('audio_context_unavailable');
+          else { clearTimeout(state.resumeTimer); state.resumeAttempt = null; }
+        }, () => {
+          if (state.resumeAttempt === attempt) state.fail('audio_context_unavailable');
+        });
+      };
       state.stream.getTracks().forEach(track => { track.onended = () => state.fail('device_ended'); });
       state.node.onprocessorerror = () => state.fail('worklet_failed');
       state.node.port.onmessage = event => {
@@ -177,7 +202,10 @@ export const liveMic = {
     };
     if (state.queue.length && !state.sending) state.drain();
     else if (state.inputEnded && !state.sending) state.endInput();
-    if (current === state) state.timer = setTimeout(state.endInput, 15000);
+    if (current === state) {
+      state.node.port.postMessage('arm-end');
+      state.timer = setTimeout(state.endInput, 15000);
+    }
     return true;
   },
   async start(onLimit, onError, deviceId = '') {

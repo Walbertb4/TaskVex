@@ -17,6 +17,55 @@ from test_native_bridge import bridge, ready
 from test_live_probe import socket, frame
 
 
+@pytest.mark.parametrize('text,expected', [
+    ('uyku moduna gir', 'once'),
+    ('Vex, uyku moduna gir.', 'once'),
+    ('Lütfen, uyku moduna gir.', 'once'),
+    ('lütfen Vex uykuya dal', 'once'),
+    ('UYKU   MODUNA\tGİR', 'once'),
+    ('uykuya geç lütfen', 'once'),
+    ('Please, enter sleep mode.', 'once'),
+    ('Vex, switch to sleep mode please.', 'once'),
+    ('Computer please go to sleep', 'once'),
+    ('kalıcı olarak uyku moduna gir', 'persistent'),
+    ('Vex kalıcı olarak uyku moduna gir', 'persistent'),
+    ('KALICI OLARAK UYKU MODUNA GİR', 'persistent'),
+    ('bundan sonra uyku moduna geç', 'persistent'),
+    ('artık uyku modunda kal', 'persistent'),
+    ('lütfen uyku modunda kal', 'persistent'),
+    ('Please Vex stay in sleep mode', 'persistent'),
+    ('return to sleep after every task please', 'persistent'),
+    ('from now on stay in sleep mode', 'persistent'),
+    ('permanently enter sleep mode', 'persistent'),
+    ('kalıcı uyku modunu kapat', 'off'),
+    ('otomatik geri uyumayı kapat lütfen', 'off'),
+    ('PLEASE STOP RETURNING TO SLEEP', 'off'),
+])
+def test_sleep_intent_accepts_complete_tr_en_variants(text, expected):
+    """Hitap zorunlu değildir; boşluk/nezaket kipin anlamını değiştirmez."""
+    from app.session.sleep_intent import sleep_mode
+    assert sleep_mode(text, 'Computer') == expected
+    assert wants_sleep(text, 'Computer') == (expected == 'once')
+
+
+@pytest.mark.parametrize('text', [
+    'uyku moduna gir?', 'Vex uykuya dal?', 'sleep?',
+    'uyku moduna girme', 'sakın uyku moduna girme', 'uyku moduna girmeyelim',
+    'do not enter sleep mode', "don't go to sleep", 'please do not sleep',
+    'uyku moduna gir ne demek', 'can you explain enter sleep mode',
+    'kalıcı olarak uyku moduna gir ne demek?',
+    '"uyku moduna gir"', '“uyku moduna gir”', "'go to sleep'", '`sleep`',
+    'notuma uyku moduna gir yaz', 'say go to sleep',
+    'uyku moduna gir ve not ekle', 'not ekle sonra uyku moduna gir',
+    'sleep and delete my notes', 'stay in sleep mode after deleting my notes',
+    'uyku moduna gir ya da girme', 'uyku moduna gir ama önce saati söyle',
+    'Vex başka uygulamayı uyku moduna al', 'Windows uyku moduna gir',
+])
+def test_sleep_intent_rejects_questions_negations_quotes_and_extra_work(text):
+    from app.session.sleep_intent import sleep_mode
+    assert sleep_mode(text) is None
+
+
 @pytest.mark.parametrize('text', ['Vex uyku moduna geç.', 'uyu', 'go to sleep', 'Vex, enter sleep mode',
     'Rex, uykuya dal.', 'Max, uyku moduna geç.', 'Vex uykuya dal', 'Veks, uykuya dal.'])
 def test_explicit_sleep_phrase(text):
@@ -195,13 +244,15 @@ def test_boundary_verifies_fresh_window_instead_of_trusting_old_segment_time(sta
         with pytest.raises(ValueError):detector._boundary(old,657)
 
 
+@pytest.mark.parametrize('phrase', ['Vex uykuya dal', 'uyku moduna gir',
+    'kalıcı olarak uyku moduna gir', 'please switch to sleep mode'])
 @pytest.mark.parametrize('finished_empty', [False, True])
-def test_sleep_candidate_holds_denial_audio_until_host_decision(socket, finished_empty):
+def test_sleep_candidate_holds_denial_audio_until_host_decision(socket, finished_empty, phrase):
     """Bitmemiş tam adayın ret sesi oynatılmaz; bitiş host uyku sonucudur."""
     from app.session.live_probe import probe_live_text
     import asyncio
     socket.frames = [{'setupComplete': {}},
-        {'serverContent': {'inputTranscription': {'text': 'Vex uykuya dal'}}},
+        {'serverContent': {'inputTranscription': {'text': phrase}}},
         frame('Main computer access needed.', audio=True),
         {'serverContent': {'inputTranscription': {'finished': True}}} if finished_empty else frame(complete=True)]
     audio, text = [], []
@@ -213,15 +264,144 @@ def test_sleep_candidate_holds_denial_audio_until_host_decision(socket, finished
     assert all('Main computer' not in value for _, value in text)
 
 
-def test_sleep_candidate_becomes_question_releases_held_output_in_order(socket):
+@pytest.mark.parametrize('candidate,suffix', [
+    ('uyku moduna geç', ' ne demek?'),
+    ('uyku moduna gir', 'me'),
+    ('kalıcı olarak uyku moduna gir', ' ne demek?'),
+    ('please switch to sleep mode', ' and delete my notes')])
+def test_sleep_candidate_becomes_question_releases_held_output_in_order(socket, candidate, suffix):
     """Aday soru olursa gerçek cevap kaybolmaz, uykuya geçilmez."""
     from app.session.live_probe import probe_live_text
     import asyncio
     socket.frames = [{'setupComplete': {}},
-        {'serverContent': {'inputTranscription': {'text': 'uyku moduna geç'}}},
+        {'serverContent': {'inputTranscription': {'text': candidate}}},
         frame('Sleep '),
-        {'serverContent': {'inputTranscription': {'text': ' ne demek?', 'finished': True}}},
+        {'serverContent': {'inputTranscription': {'text': suffix, 'finished': True}}},
         frame('explained.', complete=True)]
     report = asyncio.run(probe_live_text('', 'future-live', audio_input=bytes(3200)))
     assert report['ok'] and not report.get('sleep_requested')
     assert report['text'] == 'Sleep explained.'
+
+
+@pytest.mark.parametrize('text, expected', [
+    ('Vex bundan sonra uyku modunda kal', 'persistent'),
+    ('Veks, uyku modunda kal.', 'persistent'),
+    ('Computer, stay in sleep mode', 'persistent'),
+    ('Vex uyku modundan kalıcı olarak çık', 'off'),
+    ('disable automatic sleep', 'off'),
+    ('Vex uykuya dal', 'once'),
+    ('uyku modunda kal ne demek?', None),
+    ('uyku modunda kal ve not ekle', None),
+    ('"stay in sleep mode"', None)])
+def test_sleep_mode_is_explicit_and_not_a_question(text, expected):
+    from app.session.sleep_intent import sleep_mode
+    assert sleep_mode(text, 'Computer') == expected
+
+
+@pytest.mark.parametrize('text, mode', [
+    ('Vex bundan sonra uyku modunda kal', 'persistent'),
+    ('Vex uyku modundan kalıcı olarak çık', 'off'),
+    ('Lütfen, uyku moduna gir.', 'once'),
+    ('Vex kalıcı olarak uyku moduna gir', 'persistent'),
+    ('kalıcı uyku modunu kapat', 'off'),
+    ('Computer please switch to sleep mode', 'once'),
+    ('return to sleep after every task please', 'persistent'),
+    ('please stop returning to sleep', 'off')])
+def test_persistent_sleep_controls_work_typed_and_voice_without_tools(socket, text, mode):
+    with create_core() as core:
+        chat = TextChat(core)
+        typed = chat.run_live(text, 'future-live', profile={'pWake':'Computer'})
+        assert typed['ok'] and typed['sleep_mode'] == mode
+        assert typed['sleep_requested'] == (mode != 'off') and not typed['model_attempts']
+        socket.frames = [{'setupComplete': {}},
+            {'serverContent': {'inputTranscription': {'text': text, 'finished': True}}}]
+        voice = chat.run_live('', 'future-live', audio_input=bytes(3200), profile={'pWake':'Computer'})
+        assert voice['ok'] and voice['sleep_mode'] == mode
+        assert voice['sleep_requested'] == (mode != 'off') and not voice['tool_results']
+        assert chat.close()
+
+
+@pytest.mark.parametrize('value', [-1, 301, 1.5, '5', True])
+def test_sleep_delay_rejects_invalid_persisted_values(value):
+    from app.bridge.settings import validate_settings
+    from app.core.contracts import ContractError
+    with pytest.raises(ContractError):
+        validate_settings({'sleepDelay': value})
+
+
+def test_sleep_delay_saved_and_read_back_with_other_settings(bridge):
+    assert ready(bridge)['ok']
+    assert bridge.event('save', {'sleepDelay': 3})['ok']
+    assert bridge._store.read()['sleepDelay'] == 3
+    assert bridge.event('save', {'sleepDelay': 301})['ok'] is False
+    assert bridge._store.read()['sleepDelay'] == 3
+
+
+def test_zero_disables_idle_sleep_timer_without_changing_other_settings(bridge):
+    assert ready(bridge)['ok']
+    assert bridge.event('save', {'sleepDelay': 0})['ok']
+    assert bridge._store.read()['sleepDelay'] == 0
+
+
+
+def test_refused_sleep_reports_confirmed_awake_state(bridge, monkeypatch):
+    assert ready(bridge)['ok']
+    monkeypatch.setattr(bridge._chat, 'reset_live', lambda: False)
+    result = bridge.event('sleep_start')
+    assert result['ok'] is False and result['completed'] is True
+    assert result['sleeping'] is False and not bridge._sleeping
+    assert result['code'] == 'sleep_rejected'
+
+
+def test_wake_model_is_reused_but_input_id_and_state_are_fresh(bridge, monkeypatch):
+    """Pahalı ağırlık kurulumu bir kez; eski hit/PCM yeni uykuya taşınmaz."""
+    from uuid import uuid4
+    built = []
+    class Detector:
+        def __init__(self, word):
+            built.append(word)
+            self.restart()
+        def restart(self):
+            self.id = uuid4().hex
+            self.sequence = 0
+        def feed(self, sequence, pcm):
+            assert sequence == self.sequence
+            self.sequence += 1
+            return False
+    monkeypatch.setattr('app.bridge.webview_bridge.WakeWord', Detector)
+    assert ready(bridge)['ok']
+    first = bridge.event('sleep_start')
+    assert bridge.event('wake_feed', {'request_id':first['request_id'], 'sequence':0,
+        'data':b64encode(bytes(3200)).decode()})['ok']
+    assert bridge.event('wake')['ok']
+    second = bridge.event('sleep_start')
+    assert second['request_id'] != first['request_id'] and len(built) == 1
+    assert bridge._wake.sequence == 0
+    assert not bridge.event('wake_feed', {'request_id':first['request_id'], 'sequence':1,
+        'data':b64encode(bytes(3200)).decode()})['ok']
+    assert bridge.event('wake')['ok']
+    assert bridge.event('save', {'prof':{'pWake':'Computer'}})['ok']
+    assert bridge.event('sleep_start')['ok'] and built == ['Vex', 'Computer']
+
+
+def test_control_audio_assets_are_small_valid_pcm_waves():
+    """Üretimle paketlenen sabit onay sesleri: kullanıcı sesi veya API yok."""
+    import wave
+    directory = Path(__file__).resolve().parents[1] / 'ui' / 'assets' / 'controls'
+    for language in ('tr', 'en'):
+        for mode in ('once', 'persistent', 'off'):
+            with wave.open(str(directory / f'sleep-{mode}-{language}.wav')) as audio:
+                assert (audio.getnchannels(), audio.getsampwidth(), audio.getframerate()) == (1, 2, 24000)
+                assert 0 < audio.getnframes() / 24000 < 8
+
+
+def test_broken_wake_cleanup_cannot_prevent_explicit_wake(bridge):
+    assert ready(bridge)['ok']
+    def broken_restart():
+        raise RuntimeError('Synthetic decoder cleanup failure')
+    detector = SimpleNamespace(id='broken-input', restart=broken_restart)
+    bridge._sleeping = True
+    bridge._wake = detector
+    bridge._wake_cached = ('Vex', detector)
+    assert bridge.event('wake')['completed']
+    assert not bridge._sleeping and bridge._wake is None and bridge._wake_cached is None
