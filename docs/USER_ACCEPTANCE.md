@@ -1,6 +1,25 @@
 # TaskVex — Kullanıcının katılacağı gerçek kullanım kontrolleri
 
-## Güncel kısa test — 5.R5 not seçimi / toplu silme
+## Güncel kısa test — 5.R6 toplu not tamamlama
+
+Uygulamayı yeniden aç; yalnız deneme notları olan test profilinde dene.
+
+1. Üç farklı geçici not ekle, tarihlerini listele. “Son iki notumu tamamlandı
+   işaretle” de: yalnız yeni iki kaydın kutusu işaretlensin; metin/ID/tarih korunsun.
+2. “Tüm notlarımı tamamla” de; hepsi işaretlensin. “Tüm notlarımı tamamlanmadı
+   işaretle” ile kutular boşalsın. Kapat/aç; son durum korunsun.
+3. İki notun metninde “deneme”, diğerinde farklı içerik olsun. “İçinde deneme
+   geçen notların hepsini tamamla” de; yalnız bu grup işaretlensin.
+4. Aynı metinli iki not için tek notu tamamlama isteğinde açıklama istesin;
+   sessizce ikisini tamamlamasın. Açık gerçek ID grubuyla yalnız o grup değişsin.
+5. Engine log'da notes.select ardından notes.complete_many verified görülmeli.
+   İngilizce “Mark my last two notes as completed” gibi bir ifade de dene.
+
+REST ve Live sentetik/native kontrolleri ajan tarafından yapılır. Gerçek
+sağlayıcının yeni şemayı kabulü ve dil yorumu kullanıcı tarafından başarılı
+bildirildi (23 Ekim 2026). Bu sonuç tüm gelecek ifadelerin garantisi değildir.
+
+## Önceki kısa test — 5.R5 not seçimi / toplu silme
 
 Uygulamayı yeniden aç. Gerçek notlarının olmadığı, yalnız geçici notlarla dolu
 bir test profili kullan; özellikle tümünü sil komutu o profilde denenmelidir.
@@ -19,8 +38,7 @@ bir test profili kullan; özellikle tümünü sil komutu o profilde denenmelidir
    sırasında değişirse tekrar seçmeni istemeli; otomatik hedef değiştirmemeli.
 
 Stop yalnız yazıdan önce silmeyi önleyebilir; tamamlanmış silmeyi geri almaz.
-Şüpheli sonuçta aynı komutu tekrar göndermeden notları listele. Gerçek
-sağlayıcının şema kabulü ve doğal dil seçimi bu manuel testte hâlâ açıktır.
+Şüpheli sonuçta aynı komutu tekrar göndermeden notları listele. 5.R5 kullanıcı tarafından başarılı bildirildi ve `2120113` commit’ine alındı.
 
 ## Önceki kısa test — 5.R4 model araçlı uyku
 

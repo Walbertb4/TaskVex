@@ -1,6 +1,23 @@
 # UI/backend sözleşmesi
 
-## Güncel 5.R5 — yapılandırılmış not seçimi / toplu silme
+## Güncel 5.R6 — toplu not tamamlama
+
+- Not aktarımı onaylanınca REST/Live kataloğuna `notes.complete_many` eklenir;
+  notes.write ve aynı notes kaynak kilidi zorunludur. Yeni kanal yetkisi yoktur.
+- Parametreler yalnız ids (boş olmayan benzersiz gerçek ID listesi),
+  expected_snapshot ve boolean done'dır. True tamamlar, False yeniden açar.
+  Metin topluca değiştirilmez; kimlik, tarih, sıra ve ui_migrated korunur.
+- Model aynı turdaki başarılı `notes.select(cardinality=many)` sonucunun tam
+  kümesini kullanır. Alt/üst/boş küme, tekli belirsizliği çoğaltma ve eski seçim
+  engellenir. Core değişmiş snapshot veya eksik hedefte hiçbirini değiştirmez.
+- Tek `_commit` ve tam geri okuma sonrası doğrulanmış notes/migrated yanında
+  updated_ids, updated_count, done döner. Sayı hedeflenen kayıtlardır; zaten
+  aynı durumda olan kayıtlar da buna dahildir. Yazı öncesi Stop korur, geç Stop
+  gerçek sonucu geri almaz; geri okuma kaybı UNKNOWN, otomatik replay yoktur.
+- Mevcut notes.* sonucu sonrası backend okuması paneli yeniler. Yeni save veya
+  note_done yankısı, ayrı UI executor'ı ya da tekli update döngüsü eklenmedi.
+
+## Önceki 5.R5 — yapılandırılmış not seçimi / toplu silme
 
 - Not aktarım onayından sonra REST ve Live aynı notes.add/list/select/update/
   delete/delete_many kataloğunu görür. select notes.read, mutasyonlar notes.write

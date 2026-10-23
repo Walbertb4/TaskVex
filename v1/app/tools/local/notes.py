@@ -51,6 +51,11 @@ DELETE_MANY_SCHEMA = {
         "items": {"type": "string", "pattern": r"\S"}}, "expected_snapshot": SNAPSHOT_SCHEMA},
     "required": ["ids", "expected_snapshot"],
 }
+COMPLETE_MANY_SCHEMA = {
+    "type": "object", "additionalProperties": False,
+    "properties": {**DELETE_MANY_SCHEMA["properties"], "done": {"type": "boolean"}},
+    "required": ["ids", "expected_snapshot", "done"],
+}
 SELECT_SCHEMA = {"type": "object", "properties": {
     "kind": {"enum": ["ids", "text", "contains", "latest", "all"]},
     "cardinality": {"enum": ["one", "many"]},
@@ -384,6 +389,36 @@ class NotesTools:
         result = self._commit([note for note in notes if note['id'] not in targets], None, context)
         if result.verified:
             return replace(result, data={**result.data, 'deleted_ids': ids, 'deleted_count': len(ids)})
+        return result
+
+    def complete_many(self, arguments: dict, context: ToolContext) -> ToolResult:
+        """Seçilen tam grupta yalnız done değiştir; metin/kimlik/tarih korunur.
+
+        done=True tamamlar, False yeniden açar. Eksik ID veya değişmiş snapshot
+        varsa hiçbir kayıt yazılmaz. Tek _commit toplu silmeyle aynı atomik
+        yazı, geç iptal ve belirsiz geri okuma kurallarını uygular.
+        """
+        ids = arguments.get('ids')
+        if (set(arguments) != {'ids', 'expected_snapshot', 'done'} or type(ids) is not list or not ids
+                or any(not isinstance(i, str) or not i.strip() for i in ids) or len(set(ids)) != len(ids)
+                or type(arguments.get('done')) is not bool):
+            return _error(context, 'invalid_arguments', 'Expected unique IDs, selected snapshot and boolean done')
+        if context.cancel_event.is_set():
+            return ToolResult(task_id=context.task_id, status=TaskStatus.CANCELLED)
+        try:
+            notes = self._load()
+        except StoreError as error:
+            return _error(context, error.code, str(error))
+        if arguments['expected_snapshot'] != notes_snapshot(notes):
+            return _error(context, 'notes_changed', 'Notes changed after selection; no completion was applied')
+        targets = set(ids)
+        if not targets <= {note['id'] for note in notes}:
+            return _error(context, 'not_found', 'One or more notes were not found; none were changed')
+        updated = [{**note, 'done': arguments['done']} if note['id'] in targets else note for note in notes]
+        result = self._commit(updated, None, context)
+        if result.verified:
+            return replace(result, data={**result.data, 'updated_ids': ids,
+                'updated_count': len(ids), 'done': arguments['done']})
         return result
 
     @staticmethod

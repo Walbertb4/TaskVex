@@ -1,4 +1,4 @@
-"""Toplu not silmede seçim kapsamı, tek yazı, iptal ve belirsiz sonucu doğrular.
+"""Toplu not silme/tamamlamada seçim kapsamı, tek yazı, iptal ve belirsiz sonucu doğrular.
 
 Gerçek core/JSON store kullanılır; REST/Live sağlayıcıları sentetiktir. Notlar
 geçici test deposundadır; gerçek kullanıcı verisi veya ücretli API kullanılmaz.
@@ -22,6 +22,20 @@ from test_live_probe import socket
 from test_live_tools import notes
 
 
+@pytest.fixture(params=[None, True, False], ids=['delete', 'complete', 'reopen'])
+def batch_change(request):
+    """Aynı kapsam/iptal/atomiklik sözleşmesini iki toplu araçta sına."""
+    done = request.param
+    return ('notes.delete_many', {}) if done is None else ('notes.complete_many', {'done': done})
+
+
+def changed_notes(items, ids, fields):
+    """Beklenen sonucu üret; seçilmeyen kayıtta hiçbir alan değişmemeli."""
+    if not fields:
+        return [n for n in items if n['id'] not in ids]
+    return [{**n, 'done': fields['done']} if n['id'] in ids else n for n in items]
+
+
 @pytest.mark.parametrize('mode', ['rest', 'live'])
 @pytest.mark.parametrize('selector', [
     {'kind': 'all', 'cardinality': 'many'},
@@ -29,9 +43,13 @@ from test_live_tools import notes
     {'kind': 'contains', 'text': 'not', 'cardinality': 'many'},
     {'kind': 'ids', 'ids': ['new-real-id', 'old-real-id'], 'cardinality': 'many'},
 ])
-def test_model_deletes_exact_group_in_one_verified_write(mode, selector, transport, socket, taskvex_home, monkeypatch):
+def test_model_changes_exact_group_in_one_verified_write(mode, selector, transport, socket, taskvex_home, monkeypatch, batch_change):
+    tool, fields = batch_change
     with create_core() as core:
         items = records(core)
+        if fields.get('done') is False:
+            items = [{**n, 'done': True} for n in items]
+            confirmed(core, request('notes.replace', 'start-done', {'notes': items}))
         writes = []
         original_write = JsonStore.write
         def write(store, data):
@@ -43,12 +61,12 @@ def test_model_deletes_exact_group_in_one_verified_write(mode, selector, transpo
         chat = TextChat(core)
         try:
             report = execute(chat, mode, 'Explicit request for this group', [('notes.select', selector, 'select'),
-                ('notes.delete_many', {'ids': ids}, 'delete-group')], transport, socket)
+                (tool, {'ids': ids, **fields}, 'change-group')], transport, socket)
             assert report['ok'] and len(writes) == 1
             final = report['tool_results'][-1]['result']
-            assert final['verified'] and final['data']['deleted_count'] == len(ids)
-            assert set(final['data']['deleted_ids']) == set(ids)
-            assert notes(taskvex_home) == [n for n in items if n['id'] not in ids]
+            assert final['verified'] and final['data']['updated_count' if fields else 'deleted_count'] == len(ids)
+            assert set(final['data']['updated_ids' if fields else 'deleted_ids']) == set(ids)
+            assert notes(taskvex_home) == changed_notes(items, ids, fields)
             saved = JsonStore(taskvex_home/'notes.json').read()
             assert saved is not None and saved['ui_migrated'] is True
         finally:
@@ -57,45 +75,49 @@ def test_model_deletes_exact_group_in_one_verified_write(mode, selector, transpo
 
 @pytest.mark.parametrize('bad_ids', [['new-real-id'], ['new-real-id', 'old-real-id', 'extra'],
     ['new-real-id', 'new-real-id'], []])
-def test_model_cannot_shrink_widen_or_duplicate_selected_group(bad_ids, taskvex_home):
+def test_model_cannot_shrink_widen_or_duplicate_selected_group(bad_ids, taskvex_home, batch_change):
+    tool, fields = batch_change
     with create_core() as core:
         records(core); tools = gateway(core); tools.begin_turn('Delete all')
         selected = selection(tools, {'kind': 'all', 'cardinality': 'many'})['result']['data']
         before = (taskvex_home/'notes.json').read_bytes()
         with pytest.raises(ContractError):
-            tools.submit({'id': 'wrong-group', 'name': 'notes.delete_many',
-                'arguments': {'ids': bad_ids, 'expected_snapshot': selected['snapshot']}})
+            tools.submit({'id': 'wrong-group', 'name': tool,
+                'arguments': {**fields, 'ids': bad_ids, 'expected_snapshot': selected['snapshot']}})
         assert (taskvex_home/'notes.json').read_bytes() == before
 
 
-def test_single_selection_cannot_be_used_as_batch(taskvex_home):
+def test_single_selection_cannot_be_used_as_batch(taskvex_home, batch_change):
+    tool, fields = batch_change
     with create_core() as core:
         records(core); tools = gateway(core); tools.begin_turn('Delete one')
         selected = selection(tools, {'kind': 'latest', 'count': 1, 'cardinality': 'one'})['result']['data']
         with pytest.raises(NoteTargetError):
-            tools.submit({'id': 'widen', 'name': 'notes.delete_many',
-                'arguments': {'ids': ['new-real-id'], 'expected_snapshot': selected['snapshot']}})
+            tools.submit({'id': 'widen', 'name': tool,
+                'arguments': {**fields, 'ids': ['new-real-id'], 'expected_snapshot': selected['snapshot']}})
         assert len(notes(taskvex_home)) == 2
 
 
-def test_new_note_after_all_selection_prevents_every_deletion(taskvex_home):
+def test_new_note_after_all_selection_prevents_every_mutation(taskvex_home, batch_change):
+    tool, fields = batch_change
     with create_core() as core:
         items = records(core); tools = gateway(core); tools.begin_turn('Delete all')
         selected = selection(tools, {'kind': 'all', 'cardinality': 'many'})['result']['data']
         seed(core, 'New UI note')
         before = (taskvex_home/'notes.json').read_bytes()
-        task = tools.submit({'id': 'stale-all', 'name': 'notes.delete_many', 'arguments': {
-            'ids': [n['id'] for n in items], 'expected_snapshot': selected['snapshot']}})
+        task = tools.submit({'id': 'stale-all', 'name': tool, 'arguments': {
+            **fields, 'ids': [n['id'] for n in items], 'expected_snapshot': selected['snapshot']}})
         result = tools.result(task.task_id, timeout=2)
         assert result['status'] == 'failed' and result['result']['error']['code'] == 'notes_changed'
         assert (taskvex_home/'notes.json').read_bytes() == before
 
 
-def test_missing_id_in_core_batch_deletes_nothing(taskvex_home):
+def test_missing_id_in_core_batch_changes_nothing(taskvex_home, batch_change):
+    tool, fields = batch_change
     with create_core() as core:
         records(core); before = (taskvex_home/'notes.json').read_bytes()
-        result = run(core, request('notes.delete_many', 'missing', {
-            'ids': ['new-real-id', 'missing'], 'expected_snapshot': current_snapshot()}))
+        result = run(core, request(tool, 'missing', {
+            **fields, 'ids': ['new-real-id', 'missing'], 'expected_snapshot': current_snapshot()}))
         assert result.status == TaskStatus.FAILED and result.result is not None
         assert result.result.error is not None and result.result.error.code == 'not_found'
         assert (taskvex_home/'notes.json').read_bytes() == before
@@ -116,23 +138,25 @@ def test_latest_group_rejects_only_a_tie_crossing_the_boundary(boundary_tied):
             assert {n['id'] for n in result.result.data['notes']} == {'new-real-id', 'old-real-id'}
 
 
-def test_replayed_batch_is_same_task_not_second_write(taskvex_home, monkeypatch):
+def test_replayed_batch_is_same_task_not_second_write(taskvex_home, monkeypatch, batch_change):
+    tool, fields = batch_change
     with create_core() as core:
         items = records(core); tools = gateway(core); tools.begin_turn('Delete all')
         selected = selection(tools, {'kind': 'all', 'cardinality': 'many'})['result']['data']
-        call = {'id': 'batch', 'name': 'notes.delete_many', 'arguments': {
-            'ids': [n['id'] for n in items], 'expected_snapshot': selected['snapshot']}}
+        call = {'id': 'batch', 'name': tool, 'arguments': {
+            **fields, 'ids': [n['id'] for n in items], 'expected_snapshot': selected['snapshot']}}
         task = tools.submit(call); assert tools.result(task.task_id, timeout=2)['result']['verified']
         def forbidden(*args):
             pytest.fail('Replay must not write again')
         monkeypatch.setattr(JsonStore, 'write', forbidden)
         tools.begin_turn('Another turn')
         assert tools.submit(call).task_id == task.task_id
-        assert tools.result(task.task_id)['result']['data']['deleted_count'] == 2
-        assert notes(taskvex_home) == []
+        assert tools.result(task.task_id)['result']['data']['updated_count' if fields else 'deleted_count'] == 2
+        assert notes(taskvex_home) == changed_notes(items, [n['id'] for n in items], fields)
 
 
-def test_batch_readback_failure_is_unknown_without_retry(taskvex_home, monkeypatch):
+def test_batch_readback_failure_is_unknown_without_retry(taskvex_home, monkeypatch, batch_change):
+    tool, fields = batch_change
     with create_core() as core:
         items = records(core); snapshot = current_snapshot()
         original_write, original_read = JsonStore.write, JsonStore.read
@@ -146,17 +170,18 @@ def test_batch_readback_failure_is_unknown_without_retry(taskvex_home, monkeypat
             return original_read(store)
         with monkeypatch.context() as patch:
             patch.setattr(JsonStore, 'write', write); patch.setattr(JsonStore, 'read', read)
-            result = run(core, request('notes.delete_many', 'unknown', {
-                'ids': [n['id'] for n in items], 'expected_snapshot': snapshot}))
+            result = run(core, request(tool, 'unknown', {
+                **fields, 'ids': [n['id'] for n in items], 'expected_snapshot': snapshot}))
         assert result.status == TaskStatus.UNKNOWN and result.result is not None and not result.result.verified
-        assert notes(taskvex_home) == []
+        assert notes(taskvex_home) == changed_notes(items, [n['id'] for n in items], fields)
 
 
 @pytest.mark.parametrize('cancel_before', [True, False])
-def test_batch_stop_before_write_preserves_and_late_stop_keeps_real_result(taskvex_home, monkeypatch, cancel_before):
+def test_batch_stop_before_write_preserves_and_late_stop_keeps_real_result(taskvex_home, monkeypatch, cancel_before, batch_change):
+    tool, fields = batch_change
     with create_core() as core:
         items = records(core); snapshot = current_snapshot()
-        args = {'ids': [n['id'] for n in items], 'expected_snapshot': snapshot}
+        args = {**fields, 'ids': [n['id'] for n in items], 'expected_snapshot': snapshot}
         stopped = Event()
         if cancel_before:
             stopped.set()
@@ -164,7 +189,19 @@ def test_batch_stop_before_write_preserves_and_late_stop_keeps_real_result(taskv
         def write(store, data):
             original_write(store, data); stopped.set()
         monkeypatch.setattr(JsonStore, 'write', write)
-        result = NotesTools(JsonStore(taskvex_home/'notes.json')).delete_many(args,
-            ToolContext(task_id='cancel-batch', request=request('notes.delete_many', 'cancel', args), cancel_event=stopped))
+        result = getattr(NotesTools(JsonStore(taskvex_home/'notes.json')), tool.split('.')[1])(args,
+            ToolContext(task_id='cancel-batch', request=request(tool, 'cancel', args), cancel_event=stopped))
         assert result.status == (TaskStatus.CANCELLED if cancel_before else TaskStatus.SUCCEEDED)
-        assert notes(taskvex_home) == (items if cancel_before else [])
+        assert notes(taskvex_home) == (items if cancel_before else changed_notes(items, [n['id'] for n in items], fields))
+
+
+@pytest.mark.parametrize('done', [None, 'true', 1, [], {}])
+def test_invalid_batch_completion_state_never_writes(done, taskvex_home):
+    """Boolean dışındaki değerleri kayıt katmanına ulaşmadan reddet."""
+    with create_core() as core:
+        records(core)
+        before = (taskvex_home/'notes.json').read_bytes()
+        with pytest.raises(ContractError):
+            core.submit(request('notes.complete_many', 'invalid-state', {
+                'ids': ['new-real-id'], 'expected_snapshot': current_snapshot(), 'done': done}))
+        assert (taskvex_home/'notes.json').read_bytes() == before

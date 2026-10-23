@@ -127,7 +127,7 @@ def check_native_note_crud(home, window, js, wait_until, outcome, mode, target):
 
 
 def check_native_note_batches(api, home, window, js, wait_until, outcome):
-    """Geçici notlarda REST/Live toplu silme ve yankısız panel yenilemeyi sına."""
+    """Geçici notlarda REST/Live toplu silme/tamamlama ve yankısız paneli sına."""
     from app.core.contracts import ToolRequest
     from uuid import uuid4
     # Yalnız geçici native profil: REST ve Live toplu silme gerçek
@@ -144,13 +144,20 @@ def check_native_note_batches(api, home, window, js, wait_until, outcome):
         finished = api._core.wait(task.task_id,3)
         assert finished.result is not None and finished.result.verified
         js(f"document.getElementById('liveLatencyTest').checked={str(batch_mode=='live').lower()};return true;")
-        for operation in ('latest','all'):
+        for operation in ('latest_done','all_done','all_reopen','latest','all'):
             prompt = 'Native BULK '+operation
             js(f"document.getElementById('inp').value={json.dumps(prompt)};document.getElementById('send').click();return true;")
             wait_until(lambda: prompt+' confirmed' in window.evaluate_js("document.getElementById('msgs').textContent") and not window.evaluate_js("document.getElementById('send').disabled"))
             stored = JsonStore(home/'notes.json').read()
             assert stored is not None
-            if operation == 'latest':
+            if operation in ('latest_done', 'all_done', 'all_reopen'):
+                target_ids = {n['id'] for n in additions[1:]} if operation == 'latest_done' else {n['id'] for n in stored['notes']}
+                expected = [{**n, 'done': operation != 'all_reopen'} if n['id'] in target_ids else n for n in data['notes']+additions]
+                assert stored['notes'] == expected
+                assert js("const n=await import('./js/notes.js');return n.getNotes().filter(x=>x.d).length;") == sum(n['done'] for n in expected)
+                assert window.evaluate_js("document.querySelectorAll('#notes .nt.d').length") == sum(n['done'] for n in expected)
+                outcome[batch_mode+'_'+operation+'_preserves_records_and_refreshes_panel'] = True
+            elif operation == 'latest':
                 assert additions[0] in stored['notes'] and all(n['id'] not in {additions[1]['id'],additions[2]['id']} for n in stored['notes'])
                 assert 'Batch 1' in window.evaluate_js("document.getElementById('notes').textContent")
                 assert 'Batch 2' not in window.evaluate_js("document.getElementById('notes').textContent")
@@ -462,11 +469,12 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 data = JsonStore(home / 'notes.json').read()
                 assert data is not None
                 saved = data['notes']
-                latest = text == 'Native BULK latest'
+                latest = text in ('Native BULK latest', 'Native BULK latest_done')
                 selected = sorted(saved, key=lambda n:n.get('created_at') or '', reverse=True)[:2] if latest else saved
                 return [('notes.select', {'kind':'latest','count':2,'cardinality':'many'} if latest else
-                    {'kind':'all','cardinality':'many'}), ('notes.delete_many', {
-                        'ids':[n['id'] for n in selected], 'expected_snapshot':notes_snapshot(saved)})]
+                    {'kind':'all','cardinality':'many'}), ('notes.complete_many' if text.endswith(('_done','_reopen')) else 'notes.delete_many', {
+                        'ids':[n['id'] for n in selected], 'expected_snapshot':notes_snapshot(saved),
+                        **({'done':not text.endswith('_reopen')} if text.endswith(('_done','_reopen')) else {})})]
             verb, target = text.removeprefix("Native CRUD ").split(": ", 1)
             target = target.split(" | ", 1)[0]
             snapshot = JsonStore(home / "notes.json").read()

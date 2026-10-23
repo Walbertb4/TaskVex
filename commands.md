@@ -28,6 +28,10 @@ Update it whenever an implemented command or its behavior changes.
 | `Change the note "Buy milk" to "Buy oat milk".` | Updates the text of one unambiguous existing note. |
 | `Mark the note "Buy milk" as completed.` | Sets the selected note's completion state to done. |
 | `Mark the note "Buy milk" as not completed.` | Sets the selected note's completion state back to incomplete. |
+| `Mark my last two notes as completed.` | Selects the two newest records and completes them together in one verified write. |
+| `Complete all notes containing "test".` | Completes exactly the explicitly requested matching group; other notes are preserved. |
+| `Mark all my notes as completed.` | Completes the entire current note set without changing text, IDs or creation dates. |
+| `Mark all my notes as not completed.` | Reopens the selected entire set using the same verified batch tool. Latest N, matching content and explicit ID groups also work. |
 | `Delete the note "Buy milk".` | Deletes one unambiguous existing note. |
 | `Delete the note with ID <note-id>.` | Deletes only the selected record, even if other notes have the same text. |
 | `Delete the note containing "merh".` | Selects by literal substring and deletes only if there is exactly one match. Quotes are examples, not required command syntax. |
@@ -36,7 +40,7 @@ Update it whenever an implemented command or its behavior changes.
 | `Delete all notes containing "test".` | Selects the explicitly requested matching group and deletes exactly those records together. |
 | `Delete all my notes.` | Selects the entire current note set and deletes it in one verified write. This is a destructive command; use a temporary-note profile when testing it. |
 
-Before editing or deleting, Vex must call `notes.select` with a structured
+Before editing, completing or deleting, Vex must call `notes.select` with a structured
 selector (`ids`, `text`, `contains`, `latest` with a count, or `all`) and an
 explicit single/group scope. The model interprets your wording; the backend
 does not match command phrases. It returns real records and a snapshot.
@@ -54,8 +58,10 @@ the existing set is rejected. Editing preserves creation time and record IDs.
 
 Mutations use the selected snapshot. If any note changes between selection
 and execution, nothing is changed by that mutation; Vex must ask you to select
-again. Batch deletion requires exactly the selected IDs, rejects missing
-targets without partial deletion, and does not loop through single deletes.
+again. Batch deletion and completion require exactly the selected IDs, reject
+missing targets without a partial change, and never loop through single mutations.
+Batch completion changes only the boolean done state and supports reopening;
+its reported updated_count counts targeted records, including already-matching states.
 Stop before the write preserves notes; Stop after a verified write does not
 restore them. Unknown readback outcomes are not automatically retried.
 

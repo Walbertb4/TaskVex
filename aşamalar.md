@@ -5,11 +5,13 @@ okumadan neyin çalıştığını, neyin açık olduğunu ve sırada ne bulundu�
 Son güncelleme: 23 Ekim 2026. Mevcut aşama: **Aşama 5, uyku/ses kararlılığı**.
 Aşama 5 kapanmadı; Aşama 6 uygulamasına geçilmedi.
 
-**Güncel öncelik 5.R5:** kullanıcı uyku testlerini başarılı bildirdi; 5.R4
+**Güncel öncelik 5.R6:** Toplu tamamlama mevcut yapılandırılmış seçim ve atomik yazma hattına eklendi; 929 pytest, 7 JS ve native 10/10 geçti. 5.R5 kullanıcı kabulüyle `2120113` commit’ine alındı. 5.R6 kullanıcı tarafından tamamen başarılı doğrulandı; onaylanan adım commit’e alınıyor. Sıradaki iş 5.F4 wake telaffuzu/yanlış uyanma kontrolü.
+
+**Önceki 5.R5:** kullanıcı uyku testlerini başarılı bildirdi; 5.R4
 `5fb30d3` commit'ine alındı (push yok). Not hedefleri yapılandırılmış seçiciye
 taşındı, atomik toplu silme eklendi. 885 pytest, 7 JS, Pyright 0 ve native
-10/10 geçti; REST/Live batch panel kontrolü de doğrulandı. Yeni gerçek hesap
-kabulü ve bu yeni adımın commit'i henüz yok.
+10/10 geçti; REST/Live batch panel kontrolü de doğrulandı. Kullanıcı 5.R5’i
+başarılı bildirdi; commit `2120113`. 5.R6 kullanıcı kabulü de başarılı.
 
 Önceki 5.R3: ayrı yerel ses kaldırıldı; Vex'in kendi yanıtı ve
 çalması ardından uyku uygulanıyor (d9caf91). Kullanıcı “kalıcı uyku moduna geç”
@@ -125,8 +127,9 @@ Bu liste önceki parçalı uyku planlarının güncel karşılığıdır. Somut 
 | 5.R2 | Yazı çalışırken sesli turun 25 s takılması | Yerel bitiş sağlayıcıya açık activityEnd olarak gider; otomatik VAD/EOS ile karışmaz; üç sesli tur ve uyku/uyanış gerçek hesapta doğrulanır | **921 pytest, 7 JS, 10/10 native; kullanıcı testleri başarılı bildirdi (23 Ekim)** |
 | 5.R3 | Yerel sesli onay yerine Vex'in doğal yanıtını bekle | Sabit WAV/metin yolu yok; komut yanıtı ve çalması tamamlanmadan uyku uygulanmaz; hata/Stop/unknown başarıya dönüşmez | **Uygulandı; 923 pytest, 7 JS, Pyright 0, 10/10 native + [Stop/çalma kontrolü](docs/stage5-natural-sleep-stop-chat.json) geçti. Yeni fiziksel kabul açık; kullanıcı commit izni verdi** |
 | 5.R4 | Uyku kararını ortak araç hattına taşı; mimari sapmaları denetle | Yapılandırılmış araç + registry/policy/TaskManager, yanıt/çalma sonrası uygulama; regex niyet yolu yok; eski çağrı yeni geçiş üretmez; diğer sapmalar kanıtıyla kaydedilir | **Kullanıcı testleri başarılı; 5fb30d3 commit'i alındı, push yok** |
-| 5.R5 | Not seçimini yapılandırılmış araca taşı ve toplu silme ekle | Tekli/çoklu gerçek hedef, taze seçim, veri değişiminde ret, tek atomik yazı/geri okuma; belirsiz hedefe işlem yok; REST/Live aynı hat | **Uygulandı; 885 pytest + son 62 seçim/batch kontrolü, 7 JS, Pyright 0, [native 10/10](docs/stage5-note-selection-batch-native.json). Gerçek kabul/commit açık** |
-| 5.F4 | Wake telaffuzu ve yanlış uyanma | Vex/Rex/X benzeri adaylar gerçek yerel motor ve negatif seslerle değerlendirilir; gelişigüzel X sesi kesin wake sayılmaz | R5 fiziksel kabulü sonrası |
+| 5.R5 | Not seçimini yapılandırılmış araca taşı ve toplu silme ekle | Tekli/çoklu gerçek hedef, taze seçim, veri değişiminde ret, tek atomik yazı/geri okuma; belirsiz hedefe işlem yok; REST/Live aynı hat | **Uygulandı; 885 pytest + son 62 seçim/batch kontrolü, 7 JS, Pyright 0, [native 10/10](docs/stage5-note-selection-batch-native.json). Kullanıcı kabulü başarılı; commit `2120113`** |
+| 5.R6 | Seçilen notları toplu tamamla | Son N, tümü veya içerik grubunda yalnız done değişir; taze seçim, tam ID kümesi, snapshot, tek yazı ve geri okuma; REST/Live ortak hat | **Uygulandı; 929 pytest, 7 JS, app/not hattında Pyright 0; [native 10/10](docs/stage5-note-completion-native.json). Kullanıcı testleri tamamen başarılı; commit onayı alındı. Eski policy testlerinin 6 tip hatası STAGE5_MODEL.md’de kayıtlı** |
+| 5.F4 | Wake telaffuzu ve yanlış uyanma | Vex/Rex/X benzeri adaylar gerçek yerel motor ve negatif seslerle değerlendirilir; gelişigüzel X sesi kesin wake sayılmaz | Sıradaki adım; R5/R6 kullanıcı kabulü başarılı |
 | 5.F5 | Birleşik uzun kullanım ve fiziksel kabul | Normal ve stay-asleep döngüleri, Mic Off, Stop, hata, yeni sohbet, disconnect/restart; farklı bekleme süreleri; gerçek hesap/donanım ayrımı | Açık |
 | 5.F6 | Kapanış bakımı ve belgeler | UI temizliği/debloat ölçülü; eski planlar güncel gibi görünmez; 256 görev sınırı ve restart replay sınırı için karar; README kapsamı doğru | Başladı; kapanmadı |
 

@@ -1,6 +1,31 @@
 # Aşama 5 — Model, araç çağrıları ve ses
 
-## Güncel uygulama — 5.R5 yapılandırılmış not seçimi / toplu silme
+## Güncel 5.R6 — toplu not tamamlama
+
+5.R5 kullanıcı tarafından başarılı doğrulandı, `2120113` commit'ine alındı.
+Bu ek adım notes.complete_many(ids, expected_snapshot, done) aracını mevcut
+not onayı sonrası REST/Live kataloğuna açar. Aynı notes.select grubu, gerçek
+ID'ler, snapshot ve ortak core/policy/TaskManager/_commit hattı kullanılır.
+Yalnız done değişir; metin/ID/tarih/sıra/aktarım metadata'sı korunur. Son N,
+tümü, contains veya açık ID grupları tamamlanabilir/yeniden açılabilir.
+Kapsam genişletme, tekli belirsizliği gruba çevirme ve veri değişiminden sonra
+otomatik yeniden seçim yoktur. Yeni NLP parser, executor veya UI save yolu yoktur.
+
+Doğrulama: **929 pytest**, **7 JS süiti**, üretim app ve not hattı testlerinde
+**Pyright 0 hata/uyarı**, [native 10/10](stage5-note-completion-native.json).
+Native REST/Live son iki/tümü tamamlama, tümünü yeniden açma, ID/metin/tarih
+koruma ve panel kutularını gerçek WebView2'de doğruladı; save/note_done yankısı
+sıfır kaldı. Toplu silme, ses/Stop/uyku regresyonları da geçti.
+
+İlk geniş Pyright komutuna test_policy.py de dahil edildiğinde **6 mevcut tip
+hatası** görüldü: bilerek set verme/read-only alanı değiştirme ve iki eski
+optional sonuç daraltması. Yeni araç katalog satırı dışındaki bu kodlar önceki
+commit'te aynıdır; bu adımda değiştirilmedi. Son 0 sonucu yalnız yukarıdaki
+açık kapsam içindir, tüm test ağacı için temiz tip kontrolü iddiası değildir.
+Ajan gerçek hesap/ücretli API veya kullanıcı notları kullanmadı. Kullanıcı
+5.R6 testlerini tamamen başarılı bildirdi; manuel kabul ve commit onayı alındı.
+
+## Önceki uygulama — 5.R5 yapılandırılmış not seçimi / toplu silme
 
 Uyku 5.R4 kullanıcı tarafından onaylandı ve `5fb30d3` commit'ine alındı; push
 yok. Yeni not adımı henüz kullanıcı kabulü/commit almadı.

@@ -11,7 +11,7 @@ from app.policy.engine import PolicyEngine
 from app.session.tool_registry import ToolRegistry
 from app.storage.json_store import JsonStore
 from app.tasks.manager import TaskManager
-from app.tools.local.notes import ADD_SCHEMA, DELETE_SCHEMA, DELETE_MANY_SCHEMA, SELECT_SCHEMA, INITIALIZE_SCHEMA, REPLACE_SCHEMA, UPDATE_SCHEMA, NotesTools
+from app.tools.local.notes import ADD_SCHEMA, DELETE_SCHEMA, DELETE_MANY_SCHEMA, COMPLETE_MANY_SCHEMA, SELECT_SCHEMA, INITIALIZE_SCHEMA, REPLACE_SCHEMA, UPDATE_SCHEMA, NotesTools
 from app.tools.local.telemetry import system_status
 from app.tools.local.apps import STATUS_SCHEMA, app_catalog, app_open, app_status
 from app.tools.local.assistant import SLEEP_SCHEMA, request_sleep_mode
@@ -81,6 +81,11 @@ def create_core(*, principal: str = "local-user") -> TaskManager:
     registry.register(ToolSpec(
         name="notes.delete_many", description="Delete exactly the current notes.select group in one atomic write. Use only for an explicitly requested group; pass its exact IDs and snapshot. Missing targets or changed snapshot delete nothing. Never guess or broaden a single ambiguous target.",
         input_schema=DELETE_MANY_SCHEMA, handler=notes.delete_many,
+        required_capabilities=("notes.write",), exclusive_resources=("notes",),
+    ))
+    registry.register(ToolSpec(
+        name="notes.complete_many", description="Set completion for exactly the current notes.select group in one atomic write. done=true completes; done=false reopens. Use for explicitly requested groups such as latest N, all, or matching content. Pass exact selected IDs and snapshot. Never widen ambiguous single targets; preserve text, IDs and dates.",
+        input_schema=COMPLETE_MANY_SCHEMA, handler=notes.complete_many,
         required_capabilities=("notes.write",), exclusive_resources=("notes",),
     ))
     registry.register(ToolSpec(

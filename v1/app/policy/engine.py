@@ -29,6 +29,7 @@ _TOOL_CAPABILITIES = MappingProxyType({
     "notes.list": frozenset({"notes.read"}),
     "notes.select": frozenset({"notes.read"}),
     "notes.delete_many": frozenset({"notes.write"}),
+    "notes.complete_many": frozenset({"notes.write"}),
     "system.status": frozenset({"system.read"}),
 })
 _KNOWN_CAPABILITIES = frozenset().union(*_TOOL_CAPABILITIES.values())

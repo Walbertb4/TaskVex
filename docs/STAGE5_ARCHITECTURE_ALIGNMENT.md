@@ -8,7 +8,7 @@ diğer bulguların uygulaması bu adımda açılmadı.
 | Durum | Bulgu ve kaynak | Gerekli işlem |
 |---|---|---|
 | 5.R4'te taşındı — kullanıcı kabul etti | Uyku kararı `sleep_intent.py` cümle kalıplarındaydı | Dosya kaldırıldı. `assistant.request_sleep_mode` artık ModelTools → registry/policy/TaskManager yolunda. Kullanıcı test onayıyla 5fb30d3 commit'ine alındı. |
-| 5.R5'te taşındı — fiziksel kabul açık | `model_tools.py::_check_note_target` içindeki son not ve içerik filtresi cümle kalıpları kaldırıldı | Kayıtlı `notes.select` gerçek ID/cardinality/snapshot üretir; tekli mutasyon ve atomik `notes.delete_many` aynı core hattını kullanır. Belirsizlik, taze seçim, tarih, Stop/unknown/replay koruması sürer. |
+| 5.R5'te taşındı — kullanıcı kabul etti | `model_tools.py::_check_note_target` içindeki son not ve içerik filtresi cümle kalıpları kaldırıldı | Kayıtlı `notes.select` gerçek ID/cardinality/snapshot üretir; tekli mutasyon ve atomik `notes.delete_many` aynı core hattını kullanır. 5.R6 `notes.complete_many` ile aynı tam-grup tamamlamayı ekler; metin/ID/tarih korunur. Belirsizlik, taze seçim, tarih, Stop/unknown/replay koruması sürer. |
 | Açık — rutin/skill yürütme entegrasyonu | `ui/js/routines.js::runRoutine` ve `skills.js::runSkill` desteklenmeyen `run_routine/run_skill` olaylarını gönderiyor; bridge bunları not_implemented olarak reddediyor | Registry/policy/TaskManager yürütücüsü eklenmeden çalışır özellik sayma. Timeline'daki “Routine started” / “Skill run” kayıtları gerçek kabulden önce üretiliyor; kabul ile başlama ayrılmalı. |
 | Açık — rutin sahiplik devri | `routines.js::initRoutines` içinde UI'a ait 15 s aralıklı zaman denetimi ve app/Wi-Fi tetikleme girişi var | Backend scheduler eklendiğinde aynı anda iki tetikleyici bırakma; UI scheduler'ı kapat ve tek yürütme sahibine geçir. Şu an ikinci backend scheduler yok. |
 | Planlı eksik kapsam | Rutin/skill tanımları UI store/localStorage'da saklanıyor; native `validate_settings` bunları settings.json'a yazmıyor. Sayaç/kronometre UI'da çalışıyor; bunlar henüz model araç kataloğunda yok | Modele açıldıklarında yapılandırılmış araç/tek veri sahibi kullan. Generic save'e ikinci mutasyon bağlama. Yerel UI işlevini bugün bozma. |
@@ -34,7 +34,7 @@ Güncel 5.R5 kanıtı: 885 tam pytest, son değişiklik sonrası 62 seçim/batch
 regresyonu, 7 JS süiti, Pyright 0 hata/uyarı, REST/Live batch chat ve
 [tam native 10/10](stage5-note-selection-batch-native.json). Seçim ile yazı
 arasında veri değişiminde ret, tek yazı, geri okuma, Stop ve replay sınandı.
-Gerçek modelin yeni şemayı seçmesi/hesap kabulü henüz kullanıcıya açıktır.
+5.R5 gerçek kullanıcı kabulü başarılı; `2120113` commit’ine alındı. 5.R6 tamamlamanın kullanıcı kabulü de başarılı.
 
 Sentetik SDK/HTTP/WebSocket testleri, core ve native WebView2 kontrolleri
 kullanılır. Gerçek hesap, kullanıcı notları veya ücretli API kullanılmaz.

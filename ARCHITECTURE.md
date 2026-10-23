@@ -1,6 +1,16 @@
 # TaskVex — Mimari ve geliştirme rehberi
 
-## Güncel uygulama — 5.R5 not seçimi ve toplu silme
+## Güncel uygulama — 5.R6 toplu not tamamlama
+
+5.R5 kullanıcı kabulüyle `2120113` commit'ine alındı. `notes.complete_many`
+aynı `notes.select` sonucundaki tam ID kümesini ve snapshot'ı kullanır;
+yalnız boolean done alanı değişir. Son N, tümü, içerik veya açık ID grupları
+aynı ModelTools → registry/policy → TaskManager → `_commit` yolundadır.
+Metin/kimlik/tarih korunur; taze seçim, veri değişimi, Stop/unknown/replay
+kuralları toplu silmeyle aynıdır. Yeni cümle parser'ı veya UI mutasyon yolu yoktur.
+Güncel test/kabul [aşamalar.md](aşamalar.md).
+
+## Önceki uygulama — 5.R5 not seçimi ve toplu silme
 
 Uyku 5.R4 kullanıcı kabulüyle `5fb30d3` commit'ine alındı. Not hedefini cümle
 kalıplarından çıkaran kod kaldırıldı: model `notes.select` ile yapılandırılmış

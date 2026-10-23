@@ -38,7 +38,7 @@ def seed(core, text="Temporary note"):
 def gateway(core):
     """Modelin gördüğü dar CRUD kapsamı; initialize/replace hâlâ kapalıdır."""
     return ModelTools(core, principal="local-user", session_id="mutation-test",
-                      allowed_tools=("notes.add", "notes.list", "notes.select", "notes.update", "notes.delete", "notes.delete_many"))
+                      allowed_tools=("notes.add", "notes.list", "notes.select", "notes.update", "notes.delete", "notes.delete_many", "notes.complete_many"))
 
 
 def current_snapshot():
@@ -59,7 +59,7 @@ def execute(chat, mode, prompt, calls, transport, socket, *, ready=True, ending=
     # metni yorumlanmaz; seçici her test planında açıkça tanımlıdır.
     snapshot = current_snapshot()
     calls = [(n, {**a, 'expected_snapshot': a.get('expected_snapshot', snapshot)}
-              if n in {'notes.update','notes.delete','notes.delete_many'} else a, i) for n,a,i in calls]
+              if n in {'notes.update','notes.delete','notes.delete_many','notes.complete_many'} else a, i) for n,a,i in calls]
     if mode == "rest":
         transport.responses = [reply([rest_call(name, args, call_id)]) for name, args, call_id in calls]
         transport.responses += ([reply([{"text": "Verified"}])] if ending == "ok" else
