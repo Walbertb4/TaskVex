@@ -102,10 +102,10 @@ export async function emit(name, data = null) {
     const safeError = name === 'apikey' ? new Error('API key storage was not confirmed') : error;
     // Beklenen kapanış hata spam'i değildir; dönüş hâlâ ok:false kalır.
     // Belirsiz/başarısız iptal ve bozuk/taşmış ses kuyruğu gizlenmez.
-    const stopped = ['text', 'live_text', 'live_audio', 'live_audio_start', 'read_reply'].includes(name) &&
+    const stopped = ['text', 'live_text', 'live_audio', 'live_audio_start', 'clock_finished', 'read_reply'].includes(name) &&
       typeof data?.request_id === 'string' && response?.request_id === data.request_id &&
       (response?.code === 'stopped' && response.stopped === true ||
-       ['live_text', 'live_audio', 'live_audio_start'].includes(name) && response?.code === 'live_interrupted') &&
+       ['live_text', 'live_audio', 'live_audio_start', 'clock_finished'].includes(name) && response?.code === 'live_interrupted') &&
       response.completed === true && !response.unknown;
     const closed = name === 'live_audio_feed' && response?.closed === true && response.failed === false &&
       !response.unknown && !response.error;

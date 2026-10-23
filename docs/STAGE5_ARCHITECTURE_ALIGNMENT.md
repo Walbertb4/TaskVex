@@ -1,5 +1,16 @@
 # Aşama 5 — ortak mimari uyum kontrolü
 
+## Güncel 5.R8.2–5 bağlantı düzeltmeleri
+
+Timer bitişindeki sabit boss/say yolu kaldırıldı. Host gerçek Clocks kaydını
+onaylayıp mevcut TextChat/PersistentLive ile, boş araç kataloğunda bildirir.
+Modelden doğal dil eylemleri aynı registry/policy/TaskManager hattında kaldı;
+bildirim hiçbir eylem izni eklemez. UI poll görünümü ve boşta bildirim kuyruğunu
+besler; ikinci worker, zamanlayıcı, mikrofon veya ses oynatıcı yoktur.
+Katalog otomatikleşti; var olan credential/model ayarı depoları kullanıldı.
+noise/wake sürgülerinin gösterilip uygulanmayan kısmı kendi sahiplerine bağlandı.
+Diğer planlı eksik entegrasyonlar aşağıda açık kalır; debloat/kapanış yapılmadı.
+
 23 Ekim 2026. Kapsam: kaynak kodda model → araç → core akışı, UI olayları ve
 mevcut veri/kaynak sahipliği. Tüm donanım ve gelecek entegrasyonların çalıştığı
 iddia edilmez. 5.R4 uyku geçişini, 5.R5 not hedeflerini ortak hatta taşıdı;

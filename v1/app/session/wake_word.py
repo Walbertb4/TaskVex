@@ -85,7 +85,11 @@ def setup():
 class WakeWord:
     """Bridge'in kısa kilidinde seri PCM alır; kendi thread/worker'ı yoktur."""
 
-    def __init__(self, word: str):
+    def __init__(self, word: str, sensitivity: float = 50):
+        if type(sensitivity) not in (int, float) or not math.isfinite(sensitivity) or not 0 <= sensitivity <= 100:
+            raise ValueError('Wake sensitivity must be between 0 and 100')
+        # Yüksek duyarlılık daha düşük akustik olasılık eşiğidir; 50 eski 0.25'i korur.
+        threshold = .45 - .004 * sensitivity
         import sherpa_onnx
         if sherpa_onnx.__version__ != '1.13.8':
             raise ValueError('Wake alignment requires the pinned sherpa-onnx version')
@@ -120,7 +124,7 @@ class WakeWord:
                 encoder=str(directory/'encoder-epoch-13-avg-2-chunk-8-left-64.int8.onnx'),
                 decoder=str(directory/'decoder-epoch-13-avg-2-chunk-8-left-64.onnx'),
                 joiner=str(directory/'joiner-epoch-13-avg-2-chunk-8-left-64.int8.onnx'),
-                keywords_file=str(keyword_file), num_threads=1, keywords_threshold=0.25, num_trailing_blanks=1)
+                keywords_file=str(keyword_file), num_threads=1, keywords_threshold=threshold, num_trailing_blanks=1)
         finally:
             keyword_file.unlink(missing_ok=True)
         self.restart()

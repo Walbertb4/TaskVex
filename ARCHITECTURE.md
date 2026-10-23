@@ -1,5 +1,28 @@
 # TaskVex — Mimari ve geliştirme rehberi
 
+## Güncel uygulama — 5.R8.2–5 son işlevsel tweak’ler
+
+Önceki seçici kullanıcı onayıyla 6918038 commit’inde. Kalan işlevler aynı
+sahiplerde: connections.loadLiveModels tek katalog işlemi; credentials yalnız
+Windows Credentials; model seçimi settings.conn.model. Native hazır ve anahtar
+kaydı otomatik katalog yükler. Eksik model/hata sahte model listesi üretmez.
+
+Timer bitişi tek Clocks snapshot’ından id/generation ile doğrulanır. Aynı
+500 ms UI poll’ü bekleyen bildirimi yalnız boşta gönderir; yeni scheduler yok.
+TextChat/PersistentLive ve mevcut canlı ses/Stop/transkript hattı kullanılır.
+Bildirimde araç kataloğu boştur: label veya model yanıtı mutasyon üretemez.
+Araç kapsamı değişimi mevcut sahibin kontrollü oturum yenilemesini gerektirebilir;
+ikinci/paralel Live sahibi yoktur, yakın sohbet bağlamı mevcut bellekten taşınır.
+Aynı bitiş tek kez denenir; hata/Stop otomatik retry değildir. Uyurken konuşmaz;
+bekleyen eski bildirimler Stop, bağlantı/model/anahtar/uyku bağlamı sıfırlamasında
+atılır. Alarm ve sayaçlar UI açık olmasına bağlıdır; işletim sistemi alarmı değildir.
+
+Mikrofon eşiği/seviyesi aynı tek AudioWorklet’e bağlıdır; ek mikrofon akışı
+veya ses yüklemesi yok. Tarayıcı noiseSuppression zaten etkin; sürgü temizlenmiş
+seste konuşma algılama eşiğini değiştirir, sunucuya sahte/filtrelenmiş PCM üretmez.
+Wake sensitivity ayrı yerel KWS olasılık eşiğidir; sonraki sleep’te kayıtlı
+ayardan okunur. Cache anahtarı sözcük+duyarlılıktır; eski hit/PCM taşınmaz.
+Debloat/kapanış yapılmadı; Aşama 5 açık. Güncel kanıt ve kabul aşamalar.md’dedir.
 
 23 Ekim 2026: kullanıcı çoklu timer/stopwatch testlerini başarılı bildirdi.
 Bu onay önceki sayaç kapsamına aittir; sonraki görsel/ses tweak’lerini kapsamaz.

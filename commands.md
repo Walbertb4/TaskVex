@@ -108,6 +108,16 @@ Without the native backend, the existing single timer/stopwatch UI stays local;
 those are not model integrations. Alarm timing depends on the UI being active;
 a late UI refresh reads the correct backend deadline but is not a system alarm.
 
+In the native app, a finished timer also requests a brief spoken Live notification
+in your saved language and personal style. No fixed “boss” phrase is used; an
+honorific is requested only when your personal preferences ask for one. Mic Off
+still allows output; Mute suppresses it. The notification exposes no action tools.
+It waits for an active conversation to finish and does not speak while asleep.
+Stop and connection/model/key/sleep context resets discard older pending events;
+failed or stopped notifications are not automatically repeated. Valid Live access
+is required for speech; the local alarm still works independently of that access.
+
+
 ## Application shutdown — available
 
 | Say or type | What Vex does |
@@ -267,7 +277,13 @@ Explicit Wake retries normal Live microphone preparation after a local detector
 failure. It preserves Microphone Off and cannot bypass an unknown active result.
 The local stream refreshes every 60 seconds and can miss a word at that
 boundary. Real microphone/accent accuracy is pending manual acceptance.
-The existing Wake sensitivity slider is not yet connected to this detector.
+The Wake sensitivity slider now controls the local keyword detector on the next
+sleep entry. Higher means easier triggering and potentially more false wakes;
+50 preserves the previous threshold. It does not change the wake-word vocabulary.
+The speech detection threshold controls the existing microphone worklet live;
+browser noise suppression remains enabled. The meter shows measured activity
+only while the existing capture is active; Mic Off resets it to zero.
+Idle sleep +/- buttons adjust the same saved 0–300 second timer setting.
 
 ## Planned — not available yet
 
@@ -278,3 +294,14 @@ Move an item into the available tables only after its implementation and
 relevant verification. A visible UI panel or saved setting alone is not an
 implemented conversational command. REST is reserved for future tool/channel
 uses; the intended main desktop experience is Live.
+
+## Connection settings — available UI behavior
+
+Save an API key once in Settings → it stays in Windows credential storage for
+this TaskVex data profile; the app never puts it in a JSON backup or browser store.
+Choose a returned Live model → the selection is saved and restored if still
+returned by the API. Live models load automatically at native startup and after
+saving a key. There is no Load Live Models button, invented catalog or automatic
+retry loop after failure; reopen or explicitly save the key to try again.
+Google account integration is still planned; removing the button emoji does not
+implement account access.

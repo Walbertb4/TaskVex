@@ -9,7 +9,7 @@ import {uniqueRecordId} from './schema.js';
 let records=[], sample=-1, mode='timer', ready=false, busy=false, uncertain=false, poll=null, reading=false, chatLocked=false;
 const selected={timer:null,stopwatch:null};
 const seen=new Map(), lastSeconds=new Map();
-let showTab=null, finished=null, initialized=false, configuredId=null;
+let onPoll=null, showTab=null, finished=null, initialized=false, configuredId=null;
 const el=id=>document.getElementById(id);
 const time=s=>String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
 // Native sahipliği başladıktan sonra taşıma kaybı ikinci yerel motor açmaz.
@@ -89,6 +89,7 @@ export async function refreshClocks(){
       return false;
     }
     if(!uncertain&&el('clockStatus')?.textContent==='Clock view unavailable')el('clockStatus').textContent='';
+    onPoll?.();
     return true;
   }finally{reading=false;}
 }
@@ -124,7 +125,7 @@ export function controlNativeClock(kind,action,duration=null){
 export function hasNativeClock(kind){return records.some(c=>c.id===selected[kind]);}
 
 export function initNativeClocks(options){
-  showTab=options.showTab;finished=options.onTimerFinished;
+  showTab=options.showTab;finished=options.onTimerFinished;onPoll=options.onClockPoll;
   el('clockSelect')?.addEventListener('change',e=>{selected[mode]=e.target.value;sfx.blip();renderNativeClocks();});
   el('clockNew')?.addEventListener('click',()=>{
     const seconds=Math.max(0,Number(el('tmMin')?.value)||0)*60+Math.max(0,Math.min(59,Number(el('tmSec')?.value)||0));

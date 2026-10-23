@@ -13,7 +13,7 @@ function fixture(){
   let prepared=0;
   const node=id=>nodes[id] ||= {textContent:'',lastChild:{textContent:''},classList:{toggle(k,v){this[k]=v;}},setAttribute(){},checked:true,value:'live'};
   const ctx=vm.createContext({window:{addEventListener(){}},document:{getElementById:node},textOperation:{uncertain:false,markUnknown(){this.uncertain=true;}},
-    textBusy:false,activeTextRequest:null,preparingWake:false,micRevision:0,micRecoveryCount:0,microphoneEnabled:true,playbackOnly:false,
+    pendingClockAnnouncements:new Map(),textBusy:false,activeTextRequest:null,preparingWake:false,micRevision:0,micRecoveryCount:0,microphoneEnabled:true,playbackOnly:false,
     nativeInitialized:true,sleeping:false,sleepPending:false,wakeSession:null,micBlocked:false,micBlockReason:null,connectionRevision:0,
     wakeRetryTimer:null,wakeRetryCount:0,automaticSleep:false,autoSleepTimer:null,autoSleepRevision:0,store:{sleepDelay:3},preparingAudio:false,replyMicRequest:null,pendingBargeIn:null,
     liveMic:{active:false,cancel(){this.active=false;},async prepareStream(fail){prepared++;this.fail=fail;this.active=true;return true;},waitForWake(packet,wake){this.packet=packet;this.wake=wake;}},

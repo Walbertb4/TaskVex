@@ -59,6 +59,32 @@ export function setLocationStatus(data, { emitSave = false } = {}) {
   }
 }
 
+// Native hazır ve anahtar değişimi aynı tek katalog işlemini kullanır.
+const catalogOperation = createPendingOperation(() => {
+  const status = document.getElementById('liveCatalogStatus');
+  if (status) status.textContent = 'Catalog result unknown. Reopen the app before loading again.';
+}, 65000);
+export async function loadLiveModels() {
+  if (!isBackendAvailable() || catalogOperation.pending || catalogOperation.uncertain) return false;
+  const status = document.getElementById('liveCatalogStatus');
+  const revision = catalogOperation.begin();
+  setCatalog({models:[]});
+  if (status) status.textContent = 'Loading Live models from Gemini API…';
+  const result = await emit('query_catalog');
+  if (!catalogOperation.isCurrent(revision)) return false;
+  catalogOperation.finish();
+  if (!result.ok || result.response?.completed !== true || !Array.isArray(result.response.models)) {
+    if (status) status.textContent = sanitizeError(result.error || result.response?.error || 'Catalog was not confirmed') + ' Reopen the app or save your key to try again.';
+    return false;
+  }
+  setCatalog(result.response);
+  if (status) status.textContent = result.response.models.length
+    ? 'API Live models loaded automatically. Saved Live selection restored when available.'
+    : 'API returned no conversational Live models.';
+  if (result.response.models.length) saveStoreCb?.();
+  return true;
+}
+
 export function setCatalog(cat) {
   if (!cat) return;
 
@@ -332,40 +358,10 @@ export function initConnections(options = {}) {
   addTimelineCb = options.addTimeline || null;
   logMessageCb = options.logMessage || null;
 
-  // Modeller yalnız açık düğme tıklamasıyla API'den yüklenir. Boş/hatalı katalog
+  // Native başlangıcı ve anahtar kaydı API kataloğunu otomatik yükler. Boş/hatalı katalog
   // sabit model adlarıyla doldurulmaz; katalog başarısı Live bağlantısı değildir.
-  const refreshModels = document.getElementById('refreshModels');
   const catalogStatus = document.getElementById('liveCatalogStatus');
-  const catalogOperation = createPendingOperation(() => {
-    if (catalogStatus) catalogStatus.textContent = 'Catalog result unknown. Reopen the app before loading again.';
-  }, 65000);
-  refreshModels?.addEventListener('click', async () => {
-    if (catalogOperation.pending || catalogOperation.uncertain) return;
-    if (!isBackendAvailable()) {
-      catalogStatus.textContent = 'Live model loading requires the desktop app.';
-      return;
-    }
-    const revision = catalogOperation.begin();
-    refreshModels.disabled = true;
-    setCatalog({ models: [] });
-    catalogStatus.textContent = 'Loading Live models from Gemini API…';
-    const result = await emit('query_catalog');
-    if (!catalogOperation.isCurrent(revision)) return;
-    catalogOperation.finish();
-    refreshModels.disabled = false;
-    if (!result.ok || result.response?.completed !== true || !Array.isArray(result.response.models)) {
-      catalogStatus.textContent = sanitizeError(result.error || result.response?.error || 'Catalog was not confirmed');
-      return;
-    }
-    setCatalog(result.response);
-    catalogStatus.textContent = result.response.models.length
-      ? 'API Live models loaded. Live uses this selection, available local tools and audio replies. Uncheck Live for REST chat.'
-      : 'API returned no models with Live capability. No fallback list was added.';
-  });
-  window.addEventListener('taskvex-key-saved', () => {
-    setCatalog({ models: [] });
-    if (catalogStatus) catalogStatus.textContent = 'Key changed. Load the Live catalog again.';
-  });
+  window.addEventListener('taskvex-key-saved', () => { void loadLiveModels(); });
 
   const mSel = document.getElementById('mSel');
   if (mSel) {
@@ -373,7 +369,7 @@ export function initConnections(options = {}) {
       sfx.blip();
       const previous = store.conn?.model;
       const result = await emit('model', this.value);
-      if (!result.ok) { if (previous) this.value = previous; return; }
+      if (!result.ok || result.response?.completed !== true || result.response?.model !== this.value) { if (previous) this.value = previous; return; }
       store.conn = store.conn || {};
       store.conn.model = this.value;
       window.dispatchEvent(new CustomEvent('taskvex-live-model-ready', {detail:{ready:true}}));

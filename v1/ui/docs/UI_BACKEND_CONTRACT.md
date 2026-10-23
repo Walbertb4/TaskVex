@@ -1,5 +1,45 @@
 # UI/backend sözleşmesi
 
+## Güncel 5.R8.2–5 — otomatik katalog, bildirim ve ses ayarları
+
+- nativeReady → loadLiveModels; taskvex-key-saved → aynı yükleyici. Tek pending
+  işlem, 65 s unknown kilidi ve sıra kimliği korunur. Manuel refreshModels düğmesi
+  kaldırıldı. Hata/boş katalog otomatik döngü veya sabit isimli fallback üretmez;
+  uygulamayı yeniden açmak veya açıkça anahtar kaydetmek yeni denemedir.
+- API anahtarı mevcut Windows Credentials deposunda kalır; store/localStorage/
+  JSON yedeğe girmez. conn.model ayarlarda saklanır; backend katalogdaki kayıtlı
+  seçimi döndürür. Mevcut değilse ilk API sonucu seçilir, UI ayarı güncellenir.
+  Model değişiminde completed=true ve model kimliği onayı gerekir.
+- clock_finished: {request_id,id,generation}. UI yalnız boşta, uyanık ve geçerli
+  katalog/bağlantıda gönderir; native busy/sleep/unknown sınırları ayrıca korunur.
+  Backend aynı Clocks nesnesinden timer/finished/generation doğrular ve her ID’nin
+  generation’ını yalnız bir kez kabul eder. Reset/eski/uydurulmuş hedef reddedilir.
+- Bildirim TextChat.run_live(notification=true) → aynı PersistentLive/ses hattı.
+  ModelTools kataloğu boştur; hiçbir mutasyon yetkisi yoktur. Profil pLang/pIns
+  kullanılır, sabit boss cevabı/TTS yok. UI’a sahte kullanıcı mesajı eklenmez;
+  yanıt akışla görünür ve aynı liveAudio kuyruğunda çalar. Scoped oturum gerekirse
+  mevcut sahip tarafından yenilenir; ikinci Live bağlantı sahibi açılmaz.
+- Bitiş meşgul turu kesmez. Aynı poll bekleyen bildirimleri dener; ayrı zamanlayıcı
+  yoktur. Sleep’te sesli bildirim bekler, wake sonrasında hâlâ aynı bağlam/gerçek
+  generation geçerliyse teslim edilebilir. Stop/Disconnect/model/anahtar/uyku
+  sıfırlaması eski pending olayları düşürür. Kabul sonrası hata/Stop tekrar üretmez.
+  Mute ses çıkışını kapatır, Mic Off yalnız girişi kapatır; bildirim Mic Off’ta
+  da çalabilir. Tarayıcı-only alarm ve “Timer finished.” metniyle sınırlıdır.
+- noise 0–1000: mevcut save şeması aynı. Yerel taskvex-noise-changed olayı aynı
+  mikrofon işçisine minimum RMS=max(.001, noise/28000) yollar. 420 eski .015’tir;
+  uyarlanan gürültü tabanı ve daha sıkı barge-in eşiği ayrıca korunur. Bu ayar
+  konuşma adayını etkiler; tarayıcı noiseSuppression açık, PCM wire biçimi aynı.
+  İşçi 100 ms’de ölçülen enerjiyi 0–1000 meter olarak iletir, eski kaynak sonucu
+  yok sayılır. Off/kaynak kapanışında gösterge 0; ayrı ölçüm stream’i açılmaz.
+- wake 0–100: kayıtlı ayar sonraki sleep’te KWS’ye gider. Threshold=.45-.004*wake;
+  50 → .25, 100 → .05, 0 → .45. Daha yüksek duyarlılık yanlış uyanmayı artırabilir;
+  fiziksel kalibrasyon kullanıcı kabulüdür. Cache (word,sensitivity) değişince
+  yeniden kurulur; restart eski input ID/hit/PCM’i korumaz. noise/wake_sens
+  desteklenmeyen anlık backend olayları kaldırıldı; kalıcılık generic save’dir.
+- Idle sleep +/- aynı sleepDelay alanı/change doğrulamasını ve 0–300 sınırını
+  kullanır; tema/SFX mevcut. Google düğmesinde emoji yok; Google entegrasyonu
+  hâlâ uygulanmış değildir.
+
 ## Güncel 5.R8.1 — sayaç seçici sunumu
 
 Önceki 5.R7.2 kullanıcı kabulü başarılı; af834ff commit’inde. clockSelect hâlâ

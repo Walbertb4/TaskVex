@@ -11,6 +11,7 @@
  * kullanılır, erişilemeyen mikrofon yerine başka cihaz açılmaz.
  */
 let current = null;
+let noiseThreshold = 420;
 
 function release(state) {
   clearTimeout(state.timer);
@@ -28,12 +29,17 @@ export const liveMic = {
   get ready() { return current?.recorder?.state === 'recording'; },
   get waitingForSpeech() { return !!current?.waiting && !current.triggered; },
   get speaking() { return current?.speaking === true; },
-  async prepareStream(onError, deviceId = '', onActivity = null) {
+  setNoiseThreshold(value) {
+    if (!Number.isFinite(value) || value < 0 || value > 1000) return;
+    noiseThreshold = value;
+    current?.node?.port.postMessage({noiseThreshold:value});
+  },
+  async prepareStream(onError, deviceId = '', onActivity = null, onLevel = null) {
     // İzin/setup beklerken ses gönderilmez; activateStream açık hazır el
     // sıkışmasından sonra 100 ms paket akışını başlatır. Eski izin sonucu
     // iptal edilen/yeni kaydı açamaz.
     if (current) throw new Error('microphone_busy');
-    const state = current = {stream:null, timer:null, deviceId, onError, queue:[], armed:false};
+    const state = current = {stream:null, timer:null, deviceId, onError, onLevel, queue:[], armed:false};
     try {
       state.stream = await navigator.mediaDevices.getUserMedia({audio:{channelCount:1, echoCancellation:true,
         noiseSuppression:true, autoGainControl:false, ...(deviceId ? {deviceId:{exact:deviceId}} : {})}, video:false});
@@ -44,6 +50,7 @@ export const liveMic = {
       if (current !== state) { release(state); return false; }
       if (state.context.sampleRate !== 16000 || state.context.state !== 'running') throw new Error();
       state.node = new AudioWorkletNode(state.context, 'taskvex-microphone-pcm');
+      state.node.port.postMessage({noiseThreshold, meter:!!onLevel});
       state.source = state.context.createMediaStreamSource(state.stream);
       state.source.connect(state.node); state.node.connect(state.context.destination);
       state.fail = (code = 'microphone_unavailable') => { if (current === state) { this.cancel(); onError(code); } };
@@ -73,6 +80,7 @@ export const liveMic = {
       state.node.onprocessorerror = () => state.fail('worklet_failed');
       state.node.port.onmessage = event => {
         if (current !== state) return;
+        if (Number.isFinite(event.data?.level)) { onLevel?.(Math.max(0, Math.min(1000, event.data.level))); return; }
         if (typeof event.data?.activity === 'boolean' && (state.triggered || state.armed)) {
           state.speaking = event.data.activity;
           onActivity?.(event.data.activity);
@@ -278,7 +286,7 @@ export const liveMic = {
   cancel() {
     const state = current;
     current = null;
-    if (state) { release(state); state.chunks = []; }
+    if (state) { release(state); state.chunks = []; state.onLevel?.(0); }
   }
 };
 

@@ -212,7 +212,7 @@ export function resetStopwatch() {
 
 export function initTimers(options = {}) {
   onTimerFinishedCb = options.onTimerFinished || null;
-  initNativeClocks({showTab:showTimerTab,onTimerFinished:onTimerFinishedCb});
+  initNativeClocks({showTab:showTimerTab,onTimerFinished:onTimerFinishedCb,onClockPoll:options.onClockPoll});
 
   const tabTmB = document.getElementById('tabTmB');
   const tabSwB = document.getElementById('tabSwB');

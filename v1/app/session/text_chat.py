@@ -92,7 +92,7 @@ class TextChat:
                 **({"accepted": True} if accepted else {"error": "No matching active request"})}
 
     def run_live(self, text: object, model: str, *, notes_ready: bool = False, request_id: str | None = None,
-                 audio_input: bytes | LiveInput | None = None, profile: dict | None = None) -> dict:
+                 audio_input: bytes | LiveInput | None = None, profile: dict | None = None, notification: bool = False) -> dict:
         """Aynı Live oturumuna bir mesaj; REST ile ortak meşgul/kapanış kilidi."""
         if audio_input is not None:
             # UI'ya güvenme: 15 saniye, mono/16 kHz/16-bit; PCM rapora yazılmaz.
@@ -110,7 +110,9 @@ class TextChat:
             if self._closed:
                 return {"ok": False, "error": "Text session is closed; reopen the app"}
             allowed = ("apps.catalog", "system.status", "assistant.request_sleep_mode", "assistant.request_shutdown", "clocks.create", "clocks.control", "clocks.list")
-            if notes_ready:
+            if notification:
+                allowed = ()  # Host bildirimi konuşur; kullanıcı adına araç çalıştıramaz.
+            elif notes_ready:
                 allowed += ("notes.add", "notes.list", "notes.select", "notes.update", "notes.delete", "notes.delete_many", "notes.complete_many")
             tools = ModelTools(self._core, principal="local-user", session_id=uuid4().hex, allowed_tools=allowed)
             # Ses yalnız bu host isteğine bağlıdır; sağlayıcı/UI yeni hedef

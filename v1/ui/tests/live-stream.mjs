@@ -63,6 +63,24 @@ assert.equal(packets.length,0);
 processor.process([[tone(.1)]]);processor.process([[tone(.1)]]);
 assert.equal(packets.length,1);
 
+// Canlı sürgü eşiği aynı işçiye ulaşır; meter opt-in'dir ve orijinal PCM'i değiştirmez.
+packets.length=0;
+const configured=new Processor();
+configured.port.onmessage({data:{noiseThreshold:1000,meter:true}});
+configured.port.onmessage({data:'listen'});
+configured.process([[tone(.02)]]);configured.process([[tone(.02)]]);
+assert.equal(packets.filter(p=>p.speech).length,0);
+assert.ok(packets.some(p=>p.level>0 && p.level<=1000));
+configured.port.onmessage({data:{noiseThreshold:100}});
+configured.process([[tone(.1)]]);configured.process([[tone(.1)]]);
+assert.equal(packets.filter(p=>p.speech).length,1);
+const configuredBytes=new DataView(packets.find(p=>p.speech).speech.at(-1));
+assert.equal(configuredBytes.getInt16(0,true),3276);
+configured.port.onmessage({data:{noiseThreshold:0}});
+configured.port.onmessage({data:'listen'});packets.length=0;
+for(let i=0;i<10;i++)configured.process([[new Float32Array(1600)]]);
+assert.equal(packets.filter(p=>p.speech).length,0);
+
 let permission, node, context, track, command;
 const listeners = {};
 Object.defineProperty(globalThis,'navigator',{value:{mediaDevices:{
@@ -266,3 +284,14 @@ context.state='closed';context.onstatechange();
 assert.equal(liveMic.active,false);assert.equal(engineErrors.length,3);
 globalThis.setTimeout=setTimer;globalThis.clearTimeout=clearTimer;
 console.log('PASS bounded AudioContext resume, failed/hung recovery and stale source isolation');
+
+track={stop(){this.closed=true;}};
+const measured=[];
+liveMic.setNoiseThreshold(700);
+await liveMic.prepareStream(()=>assert.fail(),'12345',null,value=>measured.push(value));
+assert.deepEqual(command,{noiseThreshold:700,meter:true});
+liveMic.setNoiseThreshold(100);assert.deepEqual(command,{noiseThreshold:100});
+node.port.onmessage({data:{level:250}});assert.deepEqual(measured,[250]);
+const staleMeter=node.port.onmessage;liveMic.cancel();assert.deepEqual(measured,[250,0]);
+staleMeter({data:{level:900}});assert.deepEqual(measured,[250,0]);
+console.log('PASS saved/live threshold reaches the same worklet; meter and stale-source cleanup');

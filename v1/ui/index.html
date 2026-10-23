@@ -155,18 +155,17 @@
   <div class="row"><span class="sub" id="devMsg" role="status" aria-live="polite">Audio devices refresh automatically.</span></div>
   <div class="row"><span>Sound effects</span><input type="checkbox" id="sfxT" checked></div>
   <div class="f"><label>Effects volume</label><input type="range" id="volR" min="0" max="100" value="80"></div>
-  <div class="f"><label>Noise filter threshold (<span id="nv">420</span>) · live microphone level</label><div class="nmeter"><i id="nlv"></i><b id="nth"></b></div><input id="thr" type="range" min="0" max="1000" value="420"></div>
-  <div class="f"><label>Wake sensitivity (<span id="wv">50</span>)</label><input type="range" id="wakeR" min="0" max="100" value="50"></div>
-  <div class="f"><label for="sleepDelay">Idle sleep timer (seconds; 0 = off)</label><input class="mi" id="sleepDelay" type="number" min="0" max="300" step="1" value="10"><div class="sub">In normal conversation, sleeps once after this idle time. Stay in sleep mode returns immediately after each interaction, without this timer.</div></div>
+  <div class="f"><label>Speech detection threshold (<span id="nv">420</span>) · live microphone level (after noise suppression)</label><div class="nmeter"><i id="nlv"></i><b id="nth"></b></div><input id="thr" type="range" min="0" max="1000" value="420"></div>
+  <div class="f"><label>Wake sensitivity (<span id="wv">50</span>)</label><input type="range" id="wakeR" min="0" max="100" value="50"><div class="sub">Higher is more sensitive; applies on the next sleep. Noise suppression is enabled for microphone capture.</div></div>
+  <div class="f"><label for="sleepDelay">Idle sleep timer (seconds; 0 = off)</label><div class="sleep-stepper"><button class="chip" id="sleepLess" aria-label="Decrease idle sleep seconds">−</button><input class="mi" id="sleepDelay" type="number" min="0" max="300" step="1" value="10"><button class="chip" id="sleepMore" aria-label="Increase idle sleep seconds">+</button></div><div class="sub">In normal conversation, sleeps once after this idle time. Stay in sleep mode returns immediately after each interaction, without this timer.</div></div>
   </div><div class="tp" data-t="connection"><span class="lbl">Connection &amp; Voice Model</span>
   <div class="f"><label for="apiKeyIn">API Key</label><input type="password" id="apiKeyIn" placeholder="Enter API key" autocomplete="new-password" value=""></div>
   <div class="row"><button class="cb" id="saveApiKey">Save API key</button><span class="sub" id="apiKeyStatus" role="status" aria-live="polite">Checking key storage…</span></div>
-  <div class="f"><label for="mSel">Live model (from Gemini API)</label><select id="mSel" disabled><option value="" disabled selected>Load Live models to choose…</option></select>
-  <button class="cb" id="refreshModels">Load Live models</button>
-  <div id="liveCatalogStatus" class="sub" role="status" aria-live="polite">Load a conversational Live model for text and audio replies.</div></div>
+  <div class="f"><label for="mSel">Live model (from Gemini API)</label><select id="mSel" disabled><option value="" disabled selected>Live models load automatically…</option></select>
+  <div id="liveCatalogStatus" class="sub" role="status" aria-live="polite">Live models load automatically after startup or saving an API key.</div></div>
   <div class="f"><label>Voice (Google Voice Model Catalog)</label><select id="vSel"><option value="" disabled selected>Loading voices…</option></select></div>
   <span class="lbl sec">Google Account (Calendar &amp; Tasks)</span>
-  <div class="f"><div style="display:flex;gap:8px;align-items:center"><button class="cb" id="gConnB">🔗 Connect Google Account</button><span class="sub" id="gConnStatus">Not Connected</span></div></div>
+  <div class="f"><div style="display:flex;gap:8px;align-items:center"><button class="cb" id="gConnB">Connect Google Account</button><span class="sub" id="gConnStatus">Not Connected</span></div></div>
   <span class="lbl sec">Weather Location</span>
   <div class="f"><div style="display:flex;gap:8px"><input class="mi" id="locIn" placeholder="Format: Province or Province / District"><button class="cb" id="locSaveB">Set</button><button class="cb" id="locAutoB">Auto</button></div><div class="sub" id="locMsg" style="margin-top:4px">Format: Province or Province / District (e.g. Istanbul or Istanbul / Beylikduzu). Press the Set button to save.</div></div>
   </div><div class="tp" data-t="interface"><span class="lbl">Interface Layout</span>

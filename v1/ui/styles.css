@@ -1558,3 +1558,10 @@ input[type=color] {
     opacity: 0;
   }
 }
+
+/* Aynı sayı alanı ve change doğrulaması; tarayıcının beyaz spinner'ı yerine tema düğmeleri. */
+.sleep-stepper { display: flex; align-items: center; gap: 6px; }
+.sleep-stepper .mi { width: 64px; text-align: center; appearance: textfield; }
+.sleep-stepper .mi::-webkit-inner-spin-button,
+.sleep-stepper .mi::-webkit-outer-spin-button { appearance: none; margin: 0; }
+.sleep-stepper .chip { flex: none; width: 30px; padding: 6px; }

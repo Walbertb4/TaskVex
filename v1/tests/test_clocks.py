@@ -9,6 +9,7 @@ from uuid import uuid4
 import pytest
 
 from app.bootstrap import create_core
+from app.config import get_data_home
 from app.bridge.webview_bridge import NativeBridge
 from app.core.contracts import ContractError, ToolContext, TaskStatus
 from app.session.model_tools import ModelTools
@@ -202,3 +203,49 @@ def test_timer_set_preserves_id_and_other_clocks_while_stopwatch_rejects_duratio
             result=run(core,request('clocks.control',uuid4().hex,args))
             assert result.status==TaskStatus.FAILED
         assert clocks.snapshot()['clocks'][1]==watch
+
+
+def test_timer_notification_verifies_actual_generation_and_never_retries(clock_time, monkeypatch):
+    clocks=module.Clocks()
+    with create_core(clocks=clocks) as core:
+        api=NativeBridge(core, JsonStore(get_data_home()/'settings.json'), clocks=clocks)
+        monkeypatch.setattr(api,'_window',FakeWindow())
+        assert ready(api)['ok']
+        api._live_model='synthetic-live';api._live_models={'synthetic-live':{}}
+        created=mutate(core,'clocks.create',{'kind':'timer','start':True,'duration_seconds':1,'label':'Tea'})['clock']
+        payload={'request_id':'notification-1','id':created['id'],'generation':created['generation']}
+        calls=[]
+        def notify(text, model, **options):
+            calls.append((text,options))
+            return {'ok':True,'completed':True,'text':'Your timer has finished.'}
+        monkeypatch.setattr(api._chat,'run_live',notify)
+        assert not api.event('clock_finished',payload)['ok'] and not calls
+        clock_time[0]+=2
+        assert api.event('clock_finished',payload)['ok']
+        assert calls[0][1]['notification'] is True and 'Tea' in calls[0][0]
+        assert not api.event('clock_finished',payload)['ok'] and len(calls)==1
+        mutate(core,'clocks.control',{'id':created['id'],'action':'start'})
+        assert not api.event('clock_finished',payload)['ok']
+        clock_time[0]+=2
+        next_payload={**payload,'request_id':'notification-2','generation':created['generation']+1}
+        api._sleeping=True
+        assert not api.event('clock_finished',next_payload)['ok']
+        api._sleeping=False
+        monkeypatch.setattr(api._chat,'run_live',lambda *a,**k:{'ok':False,'completed':True,'stopped':True})
+        assert api.event('clock_finished',next_payload)['stopped']
+        assert not api.event('clock_finished',next_payload)['ok']
+
+
+def test_host_notification_uses_profile_and_exposes_no_mutation_tools(monkeypatch):
+    with create_core() as core:
+        chat=TextChat(core)
+        def ask(text, model, tools, **kwargs):
+            assert tools.declarations() == []
+            assert kwargs['profile']=={'pLang':'en','pIns':'Call me Captain.'}
+            with pytest.raises(ContractError):
+                tools.submit({'id':'unexpected','name':'notes.delete','arguments':{'id':'anything'}})
+            return {'ok':True,'completed':True,'text':'Timer finished, Captain.','tool_results':[]}
+        monkeypatch.setattr(chat._live,'ask',ask)
+        result=chat.run_live('Host timer event','synthetic-live',profile={'pLang':'en','pIns':'Call me Captain.'}, notification=True)
+        assert result['ok'] and not chat.busy
+        assert chat.close()

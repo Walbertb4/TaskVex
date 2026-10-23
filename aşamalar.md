@@ -5,10 +5,13 @@ okumadan neyin çalıştığını, neyin açık olduğunu ve sırada ne bulundu�
 Son güncelleme: 23 Ekim 2026. Mevcut aşama: **Aşama 5, uyku/ses kararlılığı**.
 Aşama 5 kapanmadı; Aşama 6 uygulamasına geçilmedi.
 
-**Güncel 5.R8.1:** Sayaç seçicisini tema, klavye erişimi ve mevcut SFX ile
-uyumlu hale getirme uygulandı. 9 JS paketi ve [native chat/CSS](docs/stage5-clock-selector-native-chat.json) geçti; kullanıcı kabulü/commit bekler. Önceki 5.R7.2 kullanıcı tarafından kabul edildi;
-commit `af834ff` (push yok). Aşağıdaki tweak sırası kapanıştan önce uygulanacak.
-Aşama 5 açık; her dilimin otomatik ve fiziksel kabulü ayrı tutulur.
+**Güncel 5.R8.2–5:** Timer sesli bildirimi, otomatik Live katalog/model geri
+yükleme, mikrofon seviye/eşik, wake sensitivity ve küçük ayar UI işleri uygulandı.
+988 tam pytest, 10 JS süiti, app/hedefli Pyright 0 ve [tam native 10/10](docs/stage5-final-tweaks-native.json)
+geçti. [Son native chat](docs/stage5-final-tweaks-native-chat.json), gerçek WebView
+meter/Off sıfırlama ve timer sesini de doğruladı. 5.R8.1 devam onayıyla `6918038`
+commit’inde; bu yeni dilim fiziksel kullanıcı kabulü/commit bekler. Debloat/kapanış
+(5.F6) yapılmadı; Aşama 5 açık. Gerçek API hesabı/ücretli çağrı kullanılmadı.
 
 **Önceki 5.R7.1:** Kullanıcının UI kontrol kapsamı shutdown ve çoklu timer/stopwatch.
 Bu tur shutdown ortak araç/host hattına bağlandı; 957 pytest, 8 JS ve app/araç/native
@@ -144,11 +147,11 @@ Bu liste önceki parçalı uyku planlarının güncel karşılığıdır. Somut 
 | 5.R7 | Mevcut UI uygulama kontrollerini Vex araçlarına bağla | Kapatma gibi istenen düğmelerin kapsamı/sahibi/izinleri belirlenir; yapılandırılmış araç ve mevcut host sahibi kullanılır, başarı ile istek kabulü ayrılır | **5.R7.1 / 20c755c ve 5.R7.2 / af834ff kullanıcı kabulü başarılı. 5.R8 tweak’leri ardından debloat; Aşama 5 açık** |
 | 5.R7.1 | Vex üzerinden uygulamayı kapatma | Kayıtlı araç yalnız istek kabul eder; başarılı yanıt/çalma sonrası mevcut Shutdown host yolu; Stop/eski tur/unknown kapatmaz; Windows kapanmaz | **Uygulandı; 957 pytest, 8 JS, app/araç/native Pyright 0, native 10/10. Kullanıcı çalıştığını bildirdi; `20c755c` commit’inde** |
 | 5.R7.2 | Çoklu timer ve stopwatch | Gerçek kayıt ID'leriyle oluştur/listele/başlat/durdur/devam/sıfırla; UI/model tek durum sahibi; farklı sayaçlar birbirini ezmez | **Uygulandı; 980 tam pytest + son 40 sayaç/profil, 9 JS, app/hedefli Pyright 0 ve [native 10/10](docs/stage5-clocks-native.json). Kullanıcı manuel kabulü başarılı; af834ff commit’inde** |
-| 5.R8.1 | Timer/stopwatch seçici görünümü ve ses | Mevcut tema değişkenleri, klavye erişimi, seçimde tek SFX; poll/model odağı ses üretmez, gerçek ID korunur | Uygulandı; 9 JS paketi + [gerçek WebView2 chat/CSS](docs/stage5-clock-selector-native-chat.json) geçti. Kullanıcı görsel/ses kabulü ve commit bekler |
-| 5.R8.2 | Timer bitince Vex’in kişiselleştirilmiş sesli bildirimi | Sabit “boss”/yerel say yerine mevcut Live yanıt ve ses sahibi; meşgul, Sleep, Mic Off, Stop/Disconnect, tekrar ve süresi geçmiş olay sınırları belirlenir; ikinci TTS/oturum yok | Planlandı; şu an app.js sabit metni yalnız gösteriyor, konuşmuyor |
-| 5.R8.3 | Anahtar/model geri yükleme ve otomatik Live katalog | Mevcut Windows credentials ve conn.model korunur; kayıt ve yeniden açılış denetlenir. Manuel Load kaldırılır; native hazır/anahtar değişiminde tek katalog isteği, eski yanıt ve hata koruması | Planlandı; güvenli anahtar kaydı zaten var, ikinci depolama yazılmayacak |
-| 5.R8.4 | Audio filtresi, mikrofon düzeyi ve wake sensitivity | Mevcut tek mikrofon sahibinde filtrenin uçtan uca etkisi ve gerçek seviye; Mic Off/yerel uyku sınırı korunur. Wake slider şu an backend KWS eşiğine bağlı değil; ölçülü eşleme ve yanlış uyanma sınırı test edilir | Planlandı; fiziksel mikrofon kabulü gerekecek |
-| 5.R8.5 | Küçük ayar UI temizliği | Google bağlantı emojisinin kaldırılması, idle sleep artı/eksi kontrollerinin mevcut tema/SFX ve 0–300 doğrulamasıyla uyumu | Planlandı |
+| 5.R8.1 | Timer/stopwatch seçici görünümü ve ses | Mevcut tema değişkenleri, klavye erişimi, seçimde tek SFX; poll/model odağı ses üretmez, gerçek ID korunur | Kullanıcı devam onayıyla 6918038 commit’inde; 9 JS + native CSS kanıtı korundu |
+| 5.R8.2 | Timer bitince Vex’in kişiselleştirilmiş sesli bildirimi | Sabit “boss”/yerel say yerine mevcut Live yanıt ve ses sahibi; meşgul, Sleep, Mic Off, Stop/Disconnect, tekrar ve süresi geçmiş olay sınırları belirlenir; ikinci TTS/oturum yok | Uygulandı: sabit boss kaldırıldı; doğrulanmış bitiş, boş araç kataloğu ve aynı Live/Stop/ses hattı. 988 pytest, 10 JS ve native 10/10; fiziksel kabul bekler |
+| 5.R8.3 | Anahtar/model geri yükleme ve otomatik Live katalog | Mevcut Windows credentials ve conn.model korunur; kayıt ve yeniden açılış denetlenir. Manuel Load kaldırılır; native hazır/anahtar değişiminde tek katalog isteği, eski yanıt ve hata koruması | Uygulandı: başlangıç/anahtar kaydında otomatik tek yükleme, conn.model geri yükleme; Windows credential cross-process native kabulü geçti. Gerçek API kabulü kullanıcıda |
+| 5.R8.4 | Audio filtresi, mikrofon düzeyi ve wake sensitivity | Mevcut tek mikrofon sahibinde filtrenin uçtan uca etkisi ve gerçek seviye; Mic Off/yerel uyku sınırı korunur. Wake slider kayıtlı ayardan KWS eşiğine bağlanır; duyarlılık artışı/yanlış uyanma sınırı ölçülür | Uygulandı: aynı worklet eşik/meter, Off sıfırlama; wake sonraki sleep’te kayıtlı eşik. Sentetik/native geçti; fiziksel kalibrasyon bekler |
+| 5.R8.5 | Küçük ayar UI temizliği | Google bağlantı emojisinin kaldırılması, idle sleep artı/eksi kontrollerinin mevcut tema/SFX ve 0–300 doğrulamasıyla uyumu | Uygulandı: emoji kaldırıldı; temalı/sesli +/- aynı 0–300 doğrulamasını kullanır; native sınır testi geçti. Kullanıcı görsel kabulü bekler |
 | 5.F6 | Kapanış bakımı ve belgeler | UI temizliği/debloat ölçülü; eski planlar güncel gibi görünmez; 256 görev sınırı ve restart replay sınırı için karar; README kapsamı doğru | Başladı; kapanmadı |
 
 5.R3 varyant takibi: “kalıcı uyku moduna geç” için “olarak” zorunluluğu

@@ -16,6 +16,13 @@ UI dropdown/New ve Vex aynı kayıtlı araçları kullanır. Model işlemi doğr
 otomatik seçer. Kayıtlar yalnız uygulama açıkken RAM'dedir. Native başladıktan
 sonra köprü kaybı ikinci yerel sayaç motoru açmaz. Tarayıcı-only tekli mod korunur.
 
+Son tweak’ler: Live modeller native başlangıcında/anahtar kaydında otomatik
+listelenir, kayıtlı seçim korunur; anahtar Windows Credentials içindedir.
+Timer bitişi aynı Live ses hattından kişiselleştirilmiş bildirim üretir;
+meşgul/uyku/Stop ve tekrar sınırları UI_BACKEND_CONTRACT.md’de açıklanır.
+Audio sürgüsü gerçek konuşma eşiğine bağlıdır; seviye aynı mikrofon işçisinden
+gelir. Wake sensitivity sonraki sleep’te uygulanır. Google henüz bağlı değildir.
+
 ## Açılış
 
 Test edilen yöntem: klasörü yerel HTTP üzerinden sunmak ve Edge/Chromium ile açmak. Testler Node HTTP sunucusu ve Playwright ile çalıştırıldı. ES modülleri için HTML dosyasını doğrudan file:// ile açmak yerine HTTP kullanın. Harici font isteği başarısız olursa sistem fontu kullanılır; testlerde dış ağ istekleri engellendi.

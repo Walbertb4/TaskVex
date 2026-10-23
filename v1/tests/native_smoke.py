@@ -210,6 +210,14 @@ def check_native_clocks(window, api, js, wait_until, outcome):
     assert window.evaluate_js('window.clockEcho')==[]
     js("window.pywebview.api.event=clockEvent;document.getElementById('liveLatencyTest').checked=true;return true;")
     outcome['clock_mutations_no_settings_save_echo']=True
+    # Kısa gerçek timer: özel kullanıcı metni/boss yok; aynı Live ses/transkript hattı.
+    js("testMicOff();const c=await import('./js/clocks.js');await c.createNativeClock('timer',1);return true;")
+    wait_until(lambda:'Native personalized timer completion' in window.evaluate_js("document.getElementById('msgs').textContent") and not window.evaluate_js("document.getElementById('send').disabled"))
+    assert 'Timer finished, boss.' not in window.evaluate_js("document.getElementById('msgs').textContent")
+    assert 'Host event:' not in window.evaluate_js("document.getElementById('msgs').textContent")
+    assert 'playback finished' in window.evaluate_js("document.getElementById('textStatus').textContent")
+    outcome['timer_completed_via_scoped_live_audio_without_fake_user_bubble']=True
+
 
 
 def check_native_shutdown_request(window, api, js, wait_until, outcome):
@@ -293,10 +301,13 @@ def check_local_sleep(window, api, js, wait_until, live_state, wake_state, outco
     local_before = wake_state['packets']
     js("wakeOsc.connect(wakeDestinations.at(-1));return true;")
     wait_until(lambda: wake_state['packets'] >= local_before + 5)
+    assert js("return parseFloat(document.getElementById('nlv').style.width)>0;")
+    outcome['real_worklet_microphone_meter_received_synthetic_audio']=True
     assert (live_state['opened'], len(live_state['sent'])) == live_before_sleep
     assert api._sleeping and not api._chat.busy
     js("testMicOff();return true;")
     wait_until(lambda: api._wake is None)
+    assert window.evaluate_js("document.getElementById('nlv').style.width")=='0%'
     after_off = wake_state['packets']; time.sleep(.2)
     assert wake_state['packets'] == after_off
     js("testMicOn();return true;")
@@ -327,7 +338,7 @@ def check_local_sleep(window, api, js, wait_until, live_state, wake_state, outco
     # Yerel motor hatası açık Wake'ten sonra normal konuşmayı kilitlememeli.
     from app.bridge import webview_bridge as bridge_module
     original_detector = bridge_module.WakeWord
-    def unavailable(word):
+    def unavailable(word, sensitivity=50):
         raise FileNotFoundError('Synthetic missing local model')
     bridge_module.WakeWord = unavailable
     js("testMicOn();return true;")
@@ -500,6 +511,11 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
     wake_state = {'packets':0, 'detect':False, 'instances':0}
     speech_state = {'requests': [], 'fail': False, 'block': False, 'started': Event(), 'release': Event()}
     text_payloads = []  # Yalnız geçici test profilinin SDK talimatını denetler.
+    if phase != 'chat':
+        # Otomatik katalog yeni açılış davranışıdır; gerçek hesap/ağ kullanma.
+        from app.bridge import webview_bridge as catalog_bridge
+        catalog_bridge.load_live_catalog = lambda: {'ok':True,'completed':True,'models':[]}
+    catalog_ready = Event()
     live_state: dict = {"opened": 0, "closed": False, "sent": [], "waiting": Event(), "stall": False,
                         "resumed": False}
     if phase == "chat":
@@ -509,7 +525,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
         from app.bridge import webview_bridge as bridge_module
         class SyntheticWake:
             """Yalnız algılama sınırı sahte; gerçek PCM/bridge/Live devri denenir."""
-            def __init__(self, word):
+            def __init__(self, word, sensitivity=50):
                 wake_state['instances'] += 1
                 self.id = 'native-local-wake-' + str(wake_state['instances'])
                 self.sequence = 0
@@ -596,6 +612,8 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                                 if any(row['user'] == 'Native temporary name is Ada' for row in history):
                                     remembered_name = 'Ada'
                         return
+                    if 'setup' in message:
+                        self.setup_tools=message['setup'].get('tools',[])
                     if "setup" in message and live_state["opened"] == 2:
                         assert message["setup"]["sessionResumption"]["handle"] == "NATIVE_SYNTHETIC_RESUME_HANDLE"
                         live_state["resumed"] = True
@@ -641,6 +659,11 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                         text = message["realtime_input"].get("text", "")
                         # Yalnız sentetik sağlayıcının önceden belirlenmiş araç
                         # seçimi; üretimde cümle kalıbı veya niyet parser'ı yok.
+                        if text.startswith('Host event: the following timer has actually finished.'):
+                            assert not self.setup_tools
+                            live_state['timer_announcements']=live_state.get('timer_announcements',0)+1
+                            frames.append(audio_reply('Native personalized timer completion'))
+                            return
                         if text.startswith('Native CLOCK '):
                             frames.extend({'toolCall':{'functionCalls':[{'id':'clock-'+text+'-'+str(i),'name':name,'args':args}]}}
                                 for i,(name,args) in enumerate(clock_plan(text)))
@@ -787,6 +810,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                     {'type':'model_output', 'content':[{'type':'audio', 'mime_type':'audio/l16',
                      'sample_rate':24000, 'data':b64encode(bytes(4800)).decode()}]}]})
             if request.method == "GET":
+                assert catalog_ready.wait(10), "Synthetic capture was not installed before catalog loading"
                 return httpx.Response(200, json={"models": [
                     {"name": "models/text-only", "supportedGenerationMethods": ["generateContent"]},
                     {"name": "models/future-live", "displayName": "Future Live", "supportedGenerationMethods": ["bidiGenerateContent"]},
@@ -971,7 +995,10 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 wait_until(lambda: window.evaluate_js("document.getElementById('dIn').options.length>0 && document.getElementById('dOut').options.length>0"))
                 assert window.evaluate_js("document.getElementById('devB')===null")
                 outcome['audio_devices_listed_at_startup_without_scan_button'] = True
-                js("document.getElementById('refreshModels').click();return true;")
+                assert js("const input=document.getElementById('sleepDelay');document.getElementById('sleepMore').click();if(input.value!=='1')return false;document.getElementById('sleepLess').click();document.getElementById('sleepLess').click();if(input.value!=='0')return false;input.value='300';document.getElementById('sleepMore').click();if(input.value!=='300')return false;input.value='0';input.dispatchEvent(new Event('change'));return true;")
+                outcome['themed_sleep_stepper_bounded_to_0_300']=True
+                catalog_ready.set()
+                assert window.evaluate_js("document.getElementById('refreshModels')===null")
                 wait_until(lambda: 'Listening for speech' in window.evaluate_js("document.getElementById('textStatus').textContent"))
                 silent_requests = len(live_state['sent'])
                 time.sleep(.3)
@@ -1070,7 +1097,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 assert len(text_requests) == before_rest_stop + 1 and not api._chat.busy
                 check_native_note_crud(home, window, js, wait_until, outcome, "rest", "Chat synthetic note")
                 document = (home / "notes.json").read_bytes()
-                js("document.getElementById('refreshModels').click();return true;")
+                assert window.evaluate_js("document.getElementById('mSel').value") == 'future-live'
                 wait_until(lambda: "API Live models loaded" in window.evaluate_js("document.getElementById('liveCatalogStatus').textContent"))
                 assert window.evaluate_js("Array.from(document.getElementById('mSel').options).map(o=>o.value)") == ['future-live']
                 js("const select=document.getElementById('mSel');select.value='future-live';"

@@ -5,7 +5,15 @@
 class MicrophonePCM extends AudioWorkletProcessor {
   constructor() {
     super(); this.samples = new Int16Array(1600); this.offset = 0; this.packets = 0; this.active = false;
+    this.minimum = .015; this.meter = false;
     this.port.onmessage = event => {
+      if (Number.isFinite(event?.data?.noiseThreshold)) {
+        // 0–1000 sürgüsü RMS 0–0.036 aralığıdır; eski 420 yaklaşık 0.015'tir.
+        if (event.data.noiseThreshold >= 0 && event.data.noiseThreshold <= 1000)
+          this.minimum = Math.max(.001, event.data.noiseThreshold / 28000);
+        if (typeof event.data.meter === 'boolean') this.meter = event.data.meter;
+        return;
+      }
       if (event?.data === 'arm-end') {
         // EOS yalnız backend hazır olduktan sonra etkinleşir. Wake hazırlığı
         // sırasında duraklayan kullanıcının tamponunu erken bitirme.
@@ -61,12 +69,13 @@ class MicrophonePCM extends AudioWorkletProcessor {
         const bytes = new Uint8Array(3200), view = new DataView(bytes.buffer);
         for (let j = 0; j < 1600; j++) view.setInt16(j * 2, this.samples[j], true);
         const rms = Math.sqrt(this.energy / 1600);
+        if (this.meter) this.port.postMessage({level:Math.min(1000, rms * 28000)});
         if (this.waiting) {
           // Yanıtı kesmek için daha güçlü 300 ms, boşta 200 ms aday gerekir.
           // Kısa tık/darbe kesmez; 500 ms ön tampon ilk heceleri saklar.
           this.prefix.push(bytes.buffer);
           if (this.prefix.length > 5) this.prefix.shift();
-          const threshold = Math.max(this.replyPlaying ? .025 : .015, this.noise * 3);
+          const threshold = Math.max(this.replyPlaying ? Math.max(.025, this.minimum) : this.minimum, this.noise * 3);
           this.voiced = rms >= threshold ? this.voiced + 1 : 0;
           // Aday sesi gürültü tabanına katmak konuşmanın kendi eşiğini yükseltir.
           if (!this.voiced) this.noise = .9 * this.noise + .1 * rms;
@@ -81,7 +90,7 @@ class MicrophonePCM extends AudioWorkletProcessor {
         } else {
           // Aktivite görünümü ayrıdır; backend hazırlığı bitince aşağıdaki
           // hybrid EOS girişi kapatır, model/araç yanıtını Stop etmez.
-          if (rms >= Math.max(.015, this.noise * 3)) {
+          if (rms >= Math.max(this.minimum, this.noise * 3)) {
             this.silent = 0;
             if (!this.speaking) { this.speaking = true; this.port.postMessage({activity:true}); }
           } else if (this.speaking && ++this.silent >= 7) {

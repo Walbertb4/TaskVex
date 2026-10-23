@@ -596,3 +596,14 @@ def test_main_missing_window_stops_core_without_starting_gui(monkeypatch):
     with pytest.raises(RuntimeError, match="window could not be created"):
         entry.main()
     assert not captured["core"]._worker.is_alive()
+
+
+def test_saved_live_model_is_restored_before_automatic_catalog(bridge, monkeypatch):
+    from app.bridge import webview_bridge
+    assert ready(bridge)['ok']
+    assert bridge.event('save',{'conn':{'model':'saved-live'}})['ok']
+    reopened=NativeBridge(bridge._core, bridge._store)
+    monkeypatch.setattr(reopened,'_window',FakeWindow())
+    assert ready(reopened)['ok']
+    monkeypatch.setattr(webview_bridge,'load_live_catalog',lambda:{'ok':True,'completed':True,'models':[{'id':'first-live'},{'id':'saved-live'}]})
+    assert reopened.event('query_catalog')['currentModel']=='saved-live'

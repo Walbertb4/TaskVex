@@ -1,5 +1,46 @@
 # Aşama 5 — Model, araç çağrıları ve ses
 
+## Güncel 5.R8.2–5 — son işlevsel tweak’ler (kapanış değil)
+
+23 Ekim 2026. Seçici dilimi devam onayıyla 6918038 commit’inde (push yok).
+Timer sabit “boss” cevabı yerine mevcut Live ses hattından, kayıtlı pLang/pIns
+ile bildirilir; hitap yalnız tercihte istendiyse kullanılmalı talimatı vardır.
+Host gerçek bitiş ID/generation’ını doğrular; tools boş, aynı bitiş tek deneme.
+Aktif konuşma/sleep/Stop/Disconnect/unknown sınırları UI_BACKEND_CONTRACT.md’de.
+Katalog otomatik, kayıtlı model geri yükleniyor. Anahtarın mevcut güvenli sahibi
+korundu ve ayrı süreçten okunması doğrulandı; ikinci anahtar depolama yok.
+Mic worklet eşiği/seviyesi, Off sıfırlama ve sonraki sleep’te wake duyarlılığı
+bağlandı; idle sleep +/- temalı/sesli ve sınırlı, Google emojisi kaldırıldı.
+
+Doğrulama:
+- Tam pytest: **988 geçti**. Yeni bitiş/generation/replay/Stop/sleep, araçsız
+  bildirim, profil, kayıtlı model ve wake duyarlılığı/cache testleri dahil.
+- **10 JS süiti geçti:** eşik/meter, geç kaynak, bildirim kuyruğu, tek katalog
+  isteği/boş-hata, mevcut ses/Stop/uyku/not/shutdown regresyonları.
+- Pyright: app + test_clocks.py + native_smoke.py **0 hata/0 uyarı**.
+  Eski test_policy.py’nin negatif testlerdeki 6 tip bulgusu bu sayıya dahil değil;
+  kapanış borcu olarak önceki notta açık kalıyor.
+- [Tam WebView2 native](stage5-final-tweaks-native.json) **10/10**: restart,
+  ayar/not/yedek, Windows credential cross-process, sohbet ve hasarlı kayıtlar.
+- [Son native chat](stage5-final-tweaks-native-chat.json): otomatik başlangıç,
+  gerçek worklet’te sentetik ses → meter, Mic Off → 0, aynı Live ses kuyruğunda
+  timer bildirimi/playback finished, sahte kullanıcı balonu yok. Gerçek model
+  sözcük seçimi ve fiziksel cihaz testi değildir.
+- İlk native deneme [başarısızlık raporunda](stage5-final-tweaks-native-chat-initial-failure.json)
+  korunmuştur: katalog kodu taşınırken initConnections içindeki catalogStatus
+  kapsamı eksikti; onarıldı, son native ve tam paket geçti. İlk JS fixture’ındaki
+  eksik pendingClockAnnouncements bağımlılığı güncellendi; üretim hatası gizlenmedi.
+- Son chat stderr mevcut 30 s faulthandler durum dökümünü içerebilir; test sonra
+  exit=0/ok=true ile tamamlandı. Rapor ham tanıyı korur; temiz stderr iddiası yok.
+
+Gerçek API kotası/hesabı kullanılmadı. Native testler tüm diğer fazlarda da
+otomatik kataloğu sentetik sınırdan sağlar; üretim hesabına istek çıkarmaz.
+Fiziksel mikrofon/gürültü ve wake yanlış uyanma dengesi, gerçek kişiselleştirilmiş
+ses ve gerçek API kataloğu kullanıcı kabulü bekler. Debloat/5.F6 ve aşama kapanışı
+yapılmadı; yeni dilim kabul gelene kadar commit edilmedi.
+
+Sağlayıcı/algılayıcı referansları: [Live ses ve kapsam](https://ai.google.dev/gemini-api/docs/live-api/capabilities),
+[sherpa KWS eşik yönü](https://k2-fsa.github.io/sherpa/onnx/kws/index.html).
 
 23 Ekim 2026: kullanıcı çoklu timer/stopwatch testlerini başarılı bildirdi.
 Bu onay önceki sayaç kapsamına aittir; sonraki görsel/ses tweak’lerini kapsamaz.

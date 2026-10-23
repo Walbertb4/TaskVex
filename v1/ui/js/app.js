@@ -54,6 +54,7 @@ import {
   initConnections,
   stopCalendarScheduler,
   setCatalog,
+  loadLiveModels,
   setGoogleStatus,
   setWeather,
   setCalendar,
@@ -284,6 +285,7 @@ function blockMicrophone(message, reason = 'microphone_unavailable') {
   if (textBusy && getState() === 'listening') setState('thinking', true);
 }
 function resetLiveAudio(pause = true) {
+  pendingClockAnnouncements.clear();
   if (sleepPending) sleepOperation.markUnknown();
   liveTranscript.finish(activeTextRequest, {}, 'interrupted');
   connectionRevision++; if (preparingAudio) cancelBeforeSend = true;
@@ -327,7 +329,7 @@ async function listenAutomatically(replyRequest = null, preserveStatus = false) 
       if (textBusy && !replyMicRequest) document.getElementById('textStatus').textContent = speaking
         ? 'Listening live · pause to finish · maximum 15 s. Stop cancels.'
         : 'Waiting for Live reply · Stop cancels. No new message will be sent automatically.';
-    });
+    }, value => setMicLevel(value, store.noise));
     if (!started || revision !== micRevision) return;
     queryDevices();
     liveMic.waitForSpeech(() => {
@@ -477,7 +479,7 @@ async function listenForWake() {
     }, getAudioDeviceId('dIn'), speaking => {
       if (!sleeping && revision === micRevision && microphoneEnabled && !textOperation.uncertain)
         setState(speaking ? 'listening' : textBusy ? 'thinking' : 'idle', true);
-    });
+    }, value => setMicLevel(value, store.noise));
     if (!prepared || revision !== micRevision || !sleeping) return;
     liveMic.waitForWake(async data => {
       if (wakeSession !== session) return null;
@@ -655,10 +657,23 @@ async function shutdownApplication() {
   return true;
 }
 
-async function sendText(text = null, audio = null) {
+// Yeni scheduler yok: aynı sayaç snapshot poll'u yalnız boşta bu kuyruğu kontrol eder.
+const pendingClockAnnouncements = new Map();
+function flushClockAnnouncement() {
+  if (!pendingClockAnnouncements.size || !nativeInitialized || !isBackendAvailable() || sleeping || sleepPending || textBusy ||
+      textOperation.uncertain || !canSendClockText() || liveMic.speaking || liveMic.active && !liveMic.waitingForSpeech ||
+      micBlockReason === 'disconnected' || !document.getElementById('mSel')?.value) return;
+  const [id, pending] = pendingClockAnnouncements.entries().next().value;
+  pendingClockAnnouncements.delete(id);
+  if (pending.connection !== connectionRevision) return;
+  // Tek deneme: hata/Stop'ta otomatik yeniden gönderme yok; backend gerçek bitişi doğrular.
+  void sendText('', null, {id, generation:pending.generation});
+}
+
+async function sendText(text = null, audio = null, notification = null) {
   const inp = document.getElementById('inp');
   const v = text != null ? text.trim() : (inp && inp.value.trim());
-  if (!v && !audio) return;
+  if (!v && !audio && !notification) return;
   if (isBackendAvailable()) {
     if (textBusy || sleepPending || textOperation.uncertain) return;
     if(!canSendClockText()){document.getElementById('textStatus').textContent='A clock action is pending or unknown. Wait or reopen before retrying.';return;}
@@ -670,7 +685,7 @@ async function sendText(text = null, audio = null) {
       if (!liveMic.waitingForSpeech) return;
       cancelMic(); // Yazılı mesaj bekleyen mikrofonla yarışmaz; yanıt sonrası yeniden açılır.
     }
-    const liveTest = document.getElementById('liveLatencyTest')?.checked === true;
+    const liveTest = !!notification || document.getElementById('liveLatencyTest')?.checked === true;
     let outputDevice = '', outputProblem = null;
     try { outputDevice = getAudioDeviceId('dOut'); }
     catch {
@@ -696,7 +711,7 @@ async function sendText(text = null, audio = null) {
     if (liveStop) liveStop.disabled = false;
     const label = document.getElementById('textStatus');
     label.textContent = liveTest ? 'Live session…' : 'Thinking…';
-    if (!audio) user(v);
+    if (!audio && !notification) user(v);
     setState(audio?.stream && liveMic.speaking ? 'listening' : 'thinking', !!audio?.stream);
     // Live: 120 s tur + araç temizliği/çalma payı. Bu UI bekleme sınırıdır;
     // aşımı gerçek iptal veya güvenli yeniden deneme anlamına gelmez.
@@ -712,6 +727,7 @@ async function sendText(text = null, audio = null) {
     const result = cancelBeforeSend || connectionRevision !== replyConnectionRevision
       ? {ok:true, response:{stopped:true, completed:true}}
       : audio?.stream ? await streamMicrophone(activeTextRequest)
+      : notification ? await emit('clock_finished', {...notification, request_id:activeTextRequest})
       : await emit(audio ? 'live_audio' : liveTest ? 'live_text' : 'text',
         audio ? {...audio, request_id:activeTextRequest} : { text: v, request_id: activeTextRequest });
     if (!textOperation.isCurrent(revision)) return;
@@ -791,7 +807,7 @@ async function sendText(text = null, audio = null) {
       // başarılı metin yeni bağlantıyı online gösteremez.
       if (replyConnectionRevision === connectionRevision)
         setConnectionStatus('online', (liveTest ? 'LAST LIVE TEST · ' : 'TEXT · ') + report.model);
-      if (!audio && inp?.value === v) inp.value = '';
+      if (!audio && !notification && inp?.value === v) inp.value = '';
     } else {
       liveAudio.close();
       const message = {
@@ -1061,10 +1077,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 2. Reactor
   initReactor();
+  liveMic.setNoiseThreshold(store.noise);
+  window.addEventListener('taskvex-noise-changed', () => liveMic.setNoiseThreshold(store.noise));
 
   // 3. Timers & Stopwatch
   initTimers({
-    onTimerFinished: () => say('Timer finished, boss.')
+    onTimerFinished: clock => {
+      if (!clock) { msg('j', 'Timer finished.'); return; } // Backend olmayan tarayıcıda yalnız alarm/metin.
+      pendingClockAnnouncements.set(clock.id, {generation:clock.generation, connection:connectionRevision});
+    },
+    onClockPoll: flushClockAnnouncement
   });
 
   // 4. Notes
@@ -1168,7 +1190,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 9. API & Bridge bindings
   initApi({
-    nativeReady: async () => { queryDevices(); await connectTimers(); await connectNativeNotes(); nativeInitialized = true; void listenAutomatically(); },
+    nativeReady: async () => { queryDevices(); await connectTimers(); await connectNativeNotes(); nativeInitialized = true; void loadLiveModels(); void listenAutomatically(); },
     initApp: (s) => applySnapshot(s, { emitSave: false }),
     startupStatus,
     loadStore: (s) => applySnapshot(s, { emitSave: false }),
@@ -1400,7 +1422,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('mSel')?.addEventListener('change', () => resetLiveAudio(false));
   window.addEventListener('taskvex-live-model-ready', event => {
     if (event.detail.ready) { micBlocked = false; micBlockReason = null; void listenAutomatically(); }
-    else cancelMic('Load a Live model to start automatic listening.');
+    else cancelMic('Waiting for the automatic Live model catalog.');
   });
   document.getElementById('liveLatencyTest')?.addEventListener('change', event => {
     if (event.target.checked) void listenAutomatically(); else resetLiveAudio(false);
@@ -1489,6 +1511,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Stop task button
   if (stopTask) {
     stopTask.addEventListener('click', async () => {
+      pendingClockAnnouncements.clear();
       if (sleepPending) { sleepOperation.markUnknown(); return; }
       // Stop yalnız bu turu ve eski ses tamponunu durdurur; On tercihini kapatmaz.
       if (liveMic.active) cancelMic();

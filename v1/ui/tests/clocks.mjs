@@ -3,6 +3,8 @@
  */
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
+import fs from 'node:fs';
+import vm from 'node:vm';
 class Element{
   constructor(){this.dataset={};this.children=[];this.handlers={};this.style={};this.value='';this.textContent='';this.disabled=false;this.hidden=true;this.classes=new Set();this.classList={toggle:(k,v)=>v?this.classes.add(k):this.classes.delete(k)};}
   addEventListener(name,fn){this.handlers[name]=fn;}
@@ -70,3 +72,21 @@ globalThis.window={addEventListener(){},removeEventListener(){}};globalThis.setI
 const t=await import(${JSON.stringify(new URL('../js/timers.js',import.meta.url).href)});t.initTimers();t.startTimer(30);assert.equal(element('tm').textContent,'00:30');t.startStopwatch();assert.ok(element('tabSwB').classes.has('on'));`;
 const browser=spawnSync(process.execPath,['--input-type=module','-e',browserScript],{encoding:'utf8'});assert.equal(browser.status,0,browser.stderr);
 console.log('PASS multi-clock IDs, automatic tab/focus, stale snapshots, pause/create, alarms, unknown lock, native ownership latch and browser fallback');
+
+// Bildirim kuyruğu yeni bir yürütücü değildir; mevcut sendText'e yalnız boşta gider.
+const appSource=fs.readFileSync(new URL('../js/app.js',import.meta.url),'utf8');
+const notices=[],pending=new Map([['timer-a',{generation:2,connection:4}]]);
+const view=vm.createContext({pendingClockAnnouncements:pending,nativeInitialized:true,isBackendAvailable:()=>true,
+ sleeping:false,sleepPending:false,textBusy:true,textOperation:{uncertain:false},canSendClockText:()=>true,
+ liveMic:{speaking:false,active:false},micBlockReason:null,connectionRevision:4,
+ document:{getElementById:()=>({value:'live-model'})},sendText:(...args)=>notices.push(args)});
+vm.runInContext(appSource.match(/function flushClockAnnouncement\([^]*?\n\}/m)[0],view);
+view.flushClockAnnouncement();assert.equal(pending.size,1);assert.equal(notices.length,0);
+view.textBusy=false;view.sleeping=true;view.flushClockAnnouncement();assert.equal(pending.size,1);
+view.sleeping=false;view.flushClockAnnouncement();assert.equal(pending.size,0);
+assert.equal(JSON.stringify(notices),JSON.stringify([['',null,{id:'timer-a',generation:2}]]));
+view.flushClockAnnouncement();assert.equal(notices.length,1);
+pending.set('old',{generation:1,connection:3});view.flushClockAnnouncement();assert.equal(notices.length,1);
+pending.set('timer-b',{generation:1,connection:4});view.micBlockReason='disconnected';view.flushClockAnnouncement();assert.equal(notices.length,1);
+view.micBlockReason=null;view.textOperation.uncertain=true;view.flushClockAnnouncement();assert.equal(notices.length,1);
+console.log('PASS timer notification waits for idle/wake, respects Disconnect/unknown/scope and never resends');

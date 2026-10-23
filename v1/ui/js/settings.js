@@ -695,6 +695,7 @@ export function loadStore(o, options = {}) {
     }
   }
   if (o.sleepDelay != null) window.dispatchEvent(new Event('taskvex-sleep-delay-changed'));
+  if (o.noise != null) window.dispatchEvent(new Event('taskvex-noise-changed'));
 }
 
 export function initSettings(options = {}) {
@@ -830,21 +831,25 @@ export function initSettings(options = {}) {
     thr.value = store.noise != null ? store.noise : 420;
     if (nv) nv.textContent = thr.value;
     if (nth) nth.style.left = thr.value / 10 + '%';
-    let noiseDebounceTimer = null;
     thr.addEventListener('input', function () {
-      const th = +this.value;
-      if (nv) nv.textContent = th;
-      if (nth) nth.style.left = th / 10 + '%';
-      clearTimeout(noiseDebounceTimer);
-      noiseDebounceTimer = setTimeout(() => {
-        emit('noise', th);
-      }, 150);
+      store.noise = +this.value;
+      if (nv) nv.textContent = this.value;
+      if (nth) nth.style.left = this.value / 10 + '%';
+      window.dispatchEvent(new Event('taskvex-noise-changed'));
     });
+    thr.addEventListener('change', () => { sfx.blip(); saveAll(); });
   }
 
   const sleepDelay = document.getElementById('sleepDelay');
   if (sleepDelay) {
     sleepDelay.value = store.sleepDelay ?? 10;
+    for (const [id, direction] of [['sleepLess', -1], ['sleepMore', 1]]) {
+      document.getElementById(id)?.addEventListener('click', () => {
+        if (!sleepDelay.checkValidity() || !sleepDelay.value) { sleepDelay.reportValidity(); return; }
+        sleepDelay.value = Math.max(0, Math.min(300, +sleepDelay.value + direction));
+        sfx.blip(); sleepDelay.dispatchEvent(new Event('change'));
+      });
+    }
     sleepDelay.addEventListener('change', () => {
       if (!sleepDelay.checkValidity()) { sleepDelay.reportValidity(); sleepDelay.value = store.sleepDelay; return; }
       store.sleepDelay = +sleepDelay.value; saveAll();
@@ -863,7 +868,7 @@ export function initSettings(options = {}) {
     wakeR.addEventListener('change', function () {
       sfx.blip();
       saveAll();
-      emit('wake_sens', +this.value);
+      // Yeni eşik bir sonraki uyku girişinde kayıtlı ayardan okunur.
     });
   }
 

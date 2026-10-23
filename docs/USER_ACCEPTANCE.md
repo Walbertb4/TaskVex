@@ -1,5 +1,26 @@
 # TaskVex — Kullanıcının katılacağı gerçek kullanım kontrolleri
 
+## Güncel kısa test — 5.R8.2–5
+
+1. Uygulamayı normal aç: Load Live Models düğmesi olmadan katalog gelsin.
+   Bir model seç; kapat/açınca anahtarı tekrar girmeden aynı model seçili kalsın.
+   Anahtar kutusunun boş kalması normaldir; gizli değer DOM’a geri verilmez.
+2. Kişiselleştirmede dil/hitap tercihini kaydet; 5 saniyelik timer başlat.
+   Bitişte tek alarm ve Vex’in kendi sesli cümlesi gelsin. Tercihte hitap yoksa
+   özel bir boss/sabit hitap beklenmez. Mic Off’ta çıkış sürmeli; Mute sessiz olmalı.
+3. Uzun yanıtta timer bitsin: mevcut konuşmayı kesmeden bildirsin. Bildirim
+   sesinde Stop’a basınca dursun; aynı bitiş tekrar başlamasın. Uyurken timer
+   sesli model yanıtı açmamalı. Alarm/UI ve uygulama açık olma sınırı korunur.
+4. Audio’da konuş: seviye yükselsin. Mic Off → 0. Eşiği yükselt/azalt, konuşma
+   algısına etkisini dene; bu sürgü hoparlör sesi veya birden fazla mikrofon açmaz.
+5. Wake sensitivity 50 önceki davranış. Değeri değiştirip sonraki sleep’te
+   wake-word dene; yüksek değer daha kolay/yanlış uyanmaya neden olabilir.
+   50 varsayılan güvenli karşılaştırmadır; fiziksel kabul olmadan optimum denmez.
+6. Idle sleep +/- ve klavyeyle sayı girme: 0–300 sınırı, yeni tema ve tıklama sesi.
+   Google düğmesinde emoji kalkmalı; hesap erişimi henüz uygulanmış değil.
+
+Otomatik kanıt: 988 pytest, 10 JS, hedefli Pyright 0; native 10/10 ve son chat.
+Yeni değişiklikler manuel kabul/commit bekler. Debloat ve Aşama 5 kapanışı yapılmadı.
 
 23 Ekim 2026: kullanıcı çoklu timer/stopwatch testlerini başarılı bildirdi.
 Bu onay önceki sayaç kapsamına aittir; sonraki görsel/ses tweak’lerini kapsamaz.

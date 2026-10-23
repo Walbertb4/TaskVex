@@ -80,7 +80,7 @@ def test_local_wake_gate_order_and_stale_packets(bridge, monkeypatch):
     assert ready(bridge)['ok']
     class Detector:
         id='synthetic-wake'
-        def __init__(self, word): self.sequence=0
+        def __init__(self, word, sensitivity=50): self.sequence=0
         def feed(self, seq, pcm):
             assert len(pcm)==3200 and seq==self.sequence
             self.sequence+=1
@@ -113,7 +113,7 @@ def test_rejected_ui_prefix_keeps_host_asleep_and_revokes_pending_hit(bridge):
 
 def test_missing_model_or_bad_packet_stays_asleep_manual_wake_recovers(bridge, monkeypatch):
     assert ready(bridge)['ok']
-    def missing(word):raise FileNotFoundError('synthetic')
+    def missing(word, sensitivity=50):raise FileNotFoundError('synthetic')
     monkeypatch.setattr('app.bridge.webview_bridge.WakeWord',missing)
     assert not bridge.event('sleep_start')['ok'] and bridge._sleeping
     assert bridge.event('live_audio_start',{'request_id':'blocked'})['code']=='sleeping'
@@ -159,6 +159,7 @@ def test_pcm_sequence_endian_and_keyword_boundary(monkeypatch,tmp_path):
     state=SimpleNamespace(ready=False,samples=[],hit=False)
     class Kernel:
         def __init__(self,**kwargs):
+            state.threshold=kwargs['keywords_threshold']
             assert Path(kwargs['keywords_file']).read_text().splitlines() == ['V EH1 K S @WAKE', 'R EH1 K S @WAKE']
             self.keyword_spotter=self
         def create_stream(self):return self
@@ -170,6 +171,11 @@ def test_pcm_sequence_endian_and_keyword_boundary(monkeypatch,tmp_path):
         def get_result(self,s):return SimpleNamespace(keyword='WAKE' if state.hit else '',timestamps=[0.1])
     monkeypatch.setattr(sherpa_onnx,'KeywordSpotter',Kernel)
     detector=wake_word.WakeWord('Vex')
+    assert state.threshold == pytest.approx(.25)
+    wake_word.WakeWord('Vex', 100)
+    assert state.threshold == pytest.approx(.05)
+    wake_word.WakeWord('Vex', 0)
+    assert state.threshold == pytest.approx(.45)
     assert not list(tmp_path.glob('keyword-*'))
     with pytest.raises(ValueError):detector.feed(True,bytes(3200))
     assert not detector.feed(0,b'\x00\x80'*1600)
@@ -311,8 +317,8 @@ def test_wake_model_is_reused_but_input_id_and_state_are_fresh(bridge, monkeypat
     from uuid import uuid4
     built = []
     class Detector:
-        def __init__(self, word):
-            built.append(word)
+        def __init__(self, word, sensitivity=50):
+            built.append((word, sensitivity))
             self.restart()
         def restart(self):
             self.id = uuid4().hex
@@ -334,7 +340,11 @@ def test_wake_model_is_reused_but_input_id_and_state_are_fresh(bridge, monkeypat
         'data':b64encode(bytes(3200)).decode()})['ok']
     assert bridge.event('wake')['ok']
     assert bridge.event('save', {'prof':{'pWake':'Computer'}})['ok']
-    assert bridge.event('sleep_start')['ok'] and built == ['Vex', 'Computer']
+    assert bridge.event('sleep_start')['ok'] and built == [('Vex', 50), ('Computer', 50)]
+    assert bridge.event('wake')['ok']
+    assert bridge.event('save', {'wake':80})['ok']
+    assert bridge.event('sleep_start')['ok'] and built[-1] == ('Computer', 80)
+    assert len(built) == 3
 
 
 def test_broken_wake_cleanup_cannot_prevent_explicit_wake(bridge):
@@ -368,3 +378,9 @@ def test_custom_wake_word_excludes_default_variants():
     assert wake_word.is_wake_only('Computer!', 'Computer')
     assert not wake_word.is_wake_only('Vex', 'Computer')
     assert not wake_word.is_wake_only('Rex', 'Computer')
+
+
+@pytest.mark.parametrize('sensitivity', [True, -1, 101, float('nan'), '50'])
+def test_wake_sensitivity_rejects_invalid_values_before_model_setup(sensitivity):
+    with pytest.raises(ValueError):
+        wake_word.WakeWord('Vex', sensitivity)

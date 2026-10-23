@@ -8,6 +8,7 @@ node ui/tests/live-mic.mjs
 node ui/tests/note-timestamps.mjs
 node ui/tests/shutdown.mjs
 node ui/tests/clocks.mjs
+node ui/tests/catalog.mjs
 ```
 
 clocks.mjs; model sonucu ile otomatik sekme/ID seçimi, eski snapshot, UI mutasyonu,
@@ -41,3 +42,9 @@ Edge varsayılan Windows konumunda değilse `BROWSER_PATH` ortam değişkenini t
 Kapsam: dosya baytları/boş dosya/tekrar seçim/boyut sınırı/okuma ve taşıma hataları; iptal kabulü, ret, tamamlanma, zaman aşımı, eski Promise ve otoritatif bildirim; rutin/takvim döngüsü devir ve pagehide temizliği; eski ayar okuması ve tek anahtar yazımı.
 
 Gerçek Python backend, cihaz sürücüleri, OAuth veya konum sağlayıcısı testi değildir.
+
+5.R8.2–5: catalog.mjs gerçek katalog modülünde tek yükleme, kayıtlı seçim,
+hata/boş katalog ve tekrar etmeme kontrolüdür. live-stream.mjs eşik/meter
+konfigürasyonu ve eski kaynak ölçümlerini sınar. clocks.mjs bildirim kuyruğunun
+busy/sleep/unknown/Disconnect/eski bağlam korumasını da denetler. Native smoke,
+API/cihaz yerine sentetik taşıma ve ses kullanır; fiziksel kabul değildir.
