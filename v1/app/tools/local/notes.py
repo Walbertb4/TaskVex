@@ -8,12 +8,16 @@ Eski UI notları ancak host'un açık aktarım akışıyla initialize'a verilir.
 
 from uuid import uuid4
 from datetime import datetime, timezone
+from hashlib import sha256
+from dataclasses import replace
+import json
 
 from app.core.contracts import TaskStatus, ToolContext, ToolError, ToolResult
 from app.storage.json_store import JsonStore, StoreError
 
 
 MAX_NOTE_LENGTH = 10_000
+SNAPSHOT_SCHEMA = {"type": "string", "pattern": "^[0-9a-f]{64}$"}
 CREATED_AT_SCHEMA = {"anyOf": [{"type": "null"}, {"type": "string",
     "pattern": r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$"}]}
 ADD_SCHEMA = {
@@ -29,6 +33,7 @@ UPDATE_SCHEMA = {
         "id": {"type": "string", "pattern": r"\S"},
         "text": ADD_SCHEMA["properties"]["text"],
         "done": {"type": "boolean"},
+        "expected_snapshot": SNAPSHOT_SCHEMA,
     },
     "required": ["id"],
     "anyOf": [{"required": ["text"]}, {"required": ["done"]}],
@@ -36,10 +41,33 @@ UPDATE_SCHEMA = {
 }
 DELETE_SCHEMA = {
     "type": "object",
-    "properties": {"id": {"type": "string", "pattern": r"\S"}},
+    "properties": {"id": {"type": "string", "pattern": r"\S"}, "expected_snapshot": SNAPSHOT_SCHEMA},
     "required": ["id"],
     "additionalProperties": False,
 }
+DELETE_MANY_SCHEMA = {
+    "type": "object", "additionalProperties": False,
+    "properties": {"ids": {"type": "array", "minItems": 1, "uniqueItems": True,
+        "items": {"type": "string", "pattern": r"\S"}}, "expected_snapshot": SNAPSHOT_SCHEMA},
+    "required": ["ids", "expected_snapshot"],
+}
+SELECT_SCHEMA = {"type": "object", "properties": {
+    "kind": {"enum": ["ids", "text", "contains", "latest", "all"]},
+    "cardinality": {"enum": ["one", "many"]},
+    "ids": DELETE_MANY_SCHEMA["properties"]["ids"], "text": ADD_SCHEMA["properties"]["text"],
+    "count": {"type": "integer", "minimum": 1}}, "required": ["kind", "cardinality"], "anyOf": [
+    {"type": "object", "additionalProperties": False, "properties": {
+        "kind": {"enum": ["ids"]}, "ids": DELETE_MANY_SCHEMA["properties"]["ids"],
+        "cardinality": {"enum": ["one", "many"]}}, "required": ["kind", "ids", "cardinality"]},
+    {"type": "object", "additionalProperties": False, "properties": {
+        "kind": {"enum": ["text", "contains"]}, "text": ADD_SCHEMA["properties"]["text"],
+        "cardinality": {"enum": ["one", "many"]}}, "required": ["kind", "text", "cardinality"]},
+    {"type": "object", "additionalProperties": False, "properties": {
+        "kind": {"enum": ["latest"]}, "count": {"type": "integer", "minimum": 1},
+        "cardinality": {"enum": ["one", "many"]}}, "required": ["kind", "count", "cardinality"]},
+    {"type": "object", "additionalProperties": False, "properties": {
+        "kind": {"enum": ["all"]}, "cardinality": {"enum": ["many"]}}, "required": ["kind", "cardinality"]},
+]}
 INITIALIZE_SCHEMA = {
     "type": "object",
     "properties": {"notes": {"anyOf": [
@@ -67,6 +95,20 @@ REPLACE_SCHEMA = {
 def _valid_text(value) -> bool:
     """Boş/yalnız boşluk veya aşırı uzun metinleri reddet; asıl metni değiştirme."""
     return isinstance(value, str) and bool(value.strip()) and len(value) <= MAX_NOTE_LENGTH
+
+
+def notes_snapshot(notes: list[dict]) -> str:
+    """Kimlik/içerik/tarih/durum değişimini yakalayan depo parmak izini üret.
+
+    Gizli yetki anahtarı değildir. ModelTools taze seçimin sahibini denetler;
+    bu değer worker'da seçimden sonra verinin değişmediğini doğrular.
+    """
+    return sha256(json.dumps(notes, sort_keys=True, ensure_ascii=False, separators=(',', ':')).encode('utf-8')).hexdigest()
+
+
+def _fold_text(value: str) -> str:
+    """Literal metin karşılaştırması; doğal dil niyeti veya regex çözümlemez."""
+    return ' '.join(value.casefold().replace('i\u0307', 'i').split())
 
 
 def _valid_created_at(value) -> bool:
@@ -196,6 +238,57 @@ class NotesTools:
         return ToolResult(task_id=context.task_id, status=TaskStatus.SUCCEEDED,
                           verified=True, data={"notes": notes}, evidence={"store_read": True})
 
+    def select(self, arguments: dict, context: ToolContext) -> ToolResult:
+        """Modelin yapılandırılmış ölçütünü gerçek kayıtlarda deterministik uygula.
+
+        Cümle, dil veya kelime sırası yorumlanmaz. Tekli seçimde sıfır/çoklu
+        eşleşme mutasyon yetkisi üretmez; adaylar açıklama için döner. Latest
+        sıralamasında bilinmeyen tarih veya kesim sınırındaki eşitlik tahminle
+        çözülmez. Snapshot, seçimden sonra değişmiş dosyaya işlem yapılmasını önler.
+        """
+        kind, cardinality = arguments.get('kind'), arguments.get('cardinality')
+        fields = {'ids': {'ids'}, 'text': {'text'}, 'contains': {'text'}, 'latest': {'count'}, 'all': set()}
+        if (not isinstance(kind, str) or kind not in fields or cardinality not in ('one', 'many')
+                or set(arguments) != {'kind', 'cardinality'} | fields[kind]
+                or kind == 'all' and cardinality != 'many'
+                or kind in ('text', 'contains') and not _valid_text(arguments.get('text'))
+                or kind == 'latest' and (type(arguments.get('count')) is not int or arguments['count'] < 1)
+                or kind == 'ids' and (type(arguments.get('ids')) is not list or not arguments['ids']
+                    or any(not isinstance(i, str) or not i.strip() for i in arguments['ids'])
+                    or len(set(arguments['ids'])) != len(arguments['ids']))):
+            return _error(context, 'invalid_arguments', 'Expected one structured note selector')
+        if context.cancel_event.is_set():
+            return ToolResult(task_id=context.task_id, status=TaskStatus.CANCELLED)
+        try:
+            notes = self._load()
+        except StoreError as error:
+            return _error(context, error.code, str(error))
+        if kind == 'ids':
+            targets = set(arguments['ids'])
+            selected = [note for note in notes if note['id'] in targets]
+            if len(selected) != len(arguments['ids']):
+                return _error(context, 'not_found', 'One or more requested notes were not found; no selection was approved')
+        elif kind in ('text', 'contains'):
+            value = _fold_text(arguments['text'])
+            selected = [note for note in notes if
+                (_fold_text(note['text']) == value if kind == 'text' else value in _fold_text(note['text']))]
+        elif kind == 'latest':
+            count = arguments['count']
+            if any(not note.get('created_at') for note in notes):
+                return _error(context, 'note_target_required', 'Creation time is unknown; ask for actual note IDs')
+            if count > len(notes):
+                return _error(context, 'note_target_required', 'Fewer notes exist than requested; clarify the count')
+            ordered = sorted(notes, key=lambda note: note['created_at'], reverse=True)
+            if count < len(ordered) and ordered[count - 1]['created_at'] == ordered[count]['created_at']:
+                return _error(context, 'note_target_required', 'Creation times tie at the selection boundary; ask for IDs')
+            selected = ordered[:count]
+        else:
+            selected = notes
+        return ToolResult(task_id=context.task_id, status=TaskStatus.SUCCEEDED, verified=True,
+            data={'notes': selected, 'cardinality': cardinality,
+                  'selection_ready': cardinality == 'many' or len(selected) == 1,
+                  'snapshot': notes_snapshot(notes)}, evidence={'store_read': True})
+
     def add(self, arguments: dict, context: ToolContext) -> ToolResult:
         """Notu kaydet ve geri okuyarak doğrula; kayıt sonrası belirsizlikte dur.
 
@@ -224,7 +317,7 @@ class NotesTools:
         yoksa yeni not yaratılmaz; not_found döner ve dosyaya dokunulmaz.
         """
         if (not self._valid_target(arguments)
-                or not set(arguments) <= {"id", "text", "done"}
+                or not set(arguments) <= {"id", "text", "done", "expected_snapshot"}
                 or not ({"text", "done"} & set(arguments))
                 or ("text" in arguments and not _valid_text(arguments["text"]))
                 or ("done" in arguments and type(arguments["done"]) is not bool)):
@@ -235,10 +328,12 @@ class NotesTools:
             notes = self._load()
         except StoreError as error:
             return _error(context, error.code, str(error))
+        if 'expected_snapshot' in arguments and arguments['expected_snapshot'] != notes_snapshot(notes):
+            return _error(context, 'notes_changed', 'Notes changed after selection; no update was applied')
         original = next((note for note in notes if note["id"] == arguments["id"]), None)
         if original is None:
             return _error(context, "not_found", "Note was not found")
-        note = {**original, **arguments}
+        note = {**original, **{k: v for k, v in arguments.items() if k != 'expected_snapshot'}}
         updated = [note if item["id"] == note["id"] else item for item in notes]
         return self._commit(updated, note, context)
 
@@ -248,7 +343,7 @@ class NotesTools:
         Bulunamayan hedef hata verir. Aynı request_id'nin tekrarını TaskManager
         mevcut oturumda önler; bu handler kendi kendine tekrar deneme yapmaz.
         """
-        if not self._valid_target(arguments) or set(arguments) != {"id"}:
+        if not self._valid_target(arguments) or not set(arguments) <= {"id", "expected_snapshot"}:
             return _error(context, "invalid_arguments", "Expected a note id")
         if context.cancel_event.is_set():
             return ToolResult(task_id=context.task_id, status=TaskStatus.CANCELLED)
@@ -256,11 +351,40 @@ class NotesTools:
             notes = self._load()
         except StoreError as error:
             return _error(context, error.code, str(error))
+        if 'expected_snapshot' in arguments and arguments['expected_snapshot'] != notes_snapshot(notes):
+            return _error(context, 'notes_changed', 'Notes changed after selection; no deletion was applied')
         note = next((item for item in notes if item["id"] == arguments["id"]), None)
         if note is None:
             return _error(context, "not_found", "Note was not found")
         updated = [item for item in notes if item["id"] != note["id"]]
         return self._commit(updated, note, context)
+
+    def delete_many(self, arguments: dict, context: ToolContext) -> ToolResult:
+        """Tam ID kümesini tek yazıyla sil; eksik/stale hedefte hiçbirini silme.
+
+        Her kayıt için ayrı görev/silme döngüsü kurulmaz. Aynı _commit iptal,
+        atomik dosya değişimi ve geri okumayı uygular. Geç Stop tamamlanan
+        silmeyi geri almaz; doğrulama kaybı UNKNOWN olarak korunur.
+        """
+        ids = arguments.get('ids')
+        if (set(arguments) != {'ids', 'expected_snapshot'} or type(ids) is not list or not ids
+                or any(not isinstance(i, str) or not i.strip() for i in ids) or len(set(ids)) != len(ids)):
+            return _error(context, 'invalid_arguments', 'Expected unique note IDs and the selected snapshot')
+        if context.cancel_event.is_set():
+            return ToolResult(task_id=context.task_id, status=TaskStatus.CANCELLED)
+        try:
+            notes = self._load()
+        except StoreError as error:
+            return _error(context, error.code, str(error))
+        if arguments['expected_snapshot'] != notes_snapshot(notes):
+            return _error(context, 'notes_changed', 'Notes changed after selection; no deletion was applied')
+        targets = set(ids)
+        if not targets <= {note['id'] for note in notes}:
+            return _error(context, 'not_found', 'One or more notes were not found; none were deleted')
+        result = self._commit([note for note in notes if note['id'] not in targets], None, context)
+        if result.verified:
+            return replace(result, data={**result.data, 'deleted_ids': ids, 'deleted_count': len(ids)})
+        return result
 
     @staticmethod
     def _valid_target(arguments: dict) -> bool:
@@ -272,7 +396,7 @@ class NotesTools:
         """Bütün not mutasyonlarında aynı iptal/yazma/geri okuma sözleşmesini uygula.
 
         Başarıdaki note, ekleme/güncellemede yeni kayıt; silmede silinen kayıttır.
-        note=None toplu aktarım/restore içindir; doğrulanmış tam listeyi döndürür.
+        note=None toplu aktarım/restore/silme içindir; doğrulanmış tam listeyi döndürür.
         Geri okuma başarısızsa yazılmış veri geri alınmaz ve UNKNOWN döner.
         """
         if context.cancel_event.is_set():
@@ -296,6 +420,6 @@ class NotesTools:
                           TaskStatus.UNKNOWN)
         return ToolResult(task_id=context.task_id, status=TaskStatus.SUCCEEDED,
                           verified=True,
-                          data={"note": note} if note is not None else {"notes": updated, "migrated": True},
+                          data={"note": note} if note is not None else {"notes": updated, "migrated": document.get('ui_migrated', False)},
                           evidence={"persisted": True, "read_back": True,
                                     **({"note_id": note["id"]} if note is not None else {})})

@@ -11,7 +11,7 @@ from app.policy.engine import PolicyEngine
 from app.session.tool_registry import ToolRegistry
 from app.storage.json_store import JsonStore
 from app.tasks.manager import TaskManager
-from app.tools.local.notes import ADD_SCHEMA, DELETE_SCHEMA, INITIALIZE_SCHEMA, REPLACE_SCHEMA, UPDATE_SCHEMA, NotesTools
+from app.tools.local.notes import ADD_SCHEMA, DELETE_SCHEMA, DELETE_MANY_SCHEMA, SELECT_SCHEMA, INITIALIZE_SCHEMA, REPLACE_SCHEMA, UPDATE_SCHEMA, NotesTools
 from app.tools.local.telemetry import system_status
 from app.tools.local.apps import STATUS_SCHEMA, app_catalog, app_open, app_status
 from app.tools.local.assistant import SLEEP_SCHEMA, request_sleep_mode
@@ -71,6 +71,16 @@ def create_core(*, principal: str = "local-user") -> TaskManager:
     registry.register(ToolSpec(
         name="notes.delete", description="Sabit kimlikle bir yerel notu sil",
         input_schema=DELETE_SCHEMA, handler=notes.delete,
+        required_capabilities=("notes.write",), exclusive_resources=("notes",),
+    ))
+    registry.register(ToolSpec(
+        name="notes.select", description="Select current note targets from structured intent, not a sentence. ids uses explicit record IDs; text is exact text; contains is a literal substring; latest requires count and reliable timestamps; all is only for an explicit all-notes request. cardinality=one never approves zero/multiple matches. Return real records and a snapshot; clarify if selection_ready=false. Selection does not mutate notes.",
+        input_schema=SELECT_SCHEMA, handler=notes.select,
+        required_capabilities=("notes.read",), exclusive_resources=("notes",),
+    ))
+    registry.register(ToolSpec(
+        name="notes.delete_many", description="Delete exactly the current notes.select group in one atomic write. Use only for an explicitly requested group; pass its exact IDs and snapshot. Missing targets or changed snapshot delete nothing. Never guess or broaden a single ambiguous target.",
+        input_schema=DELETE_MANY_SCHEMA, handler=notes.delete_many,
         required_capabilities=("notes.write",), exclusive_resources=("notes",),
     ))
     registry.register(ToolSpec(

@@ -5,10 +5,11 @@ okumadan neyin çalıştığını, neyin açık olduğunu ve sırada ne bulundu�
 Son güncelleme: 23 Ekim 2026. Mevcut aşama: **Aşama 5, uyku/ses kararlılığı**.
 Aşama 5 kapanmadı; Aşama 6 uygulamasına geçilmedi.
 
-**Güncel öncelik 5.R4:** uyku niyeti regex'ten çıkarılıp mevcut model araç
-hattına taşındı. Yanıt/çalma sonrası mevcut host geçişi, Stop ve replay
-koruması doğrulandı. [Mimari uyum kontrolü](docs/STAGE5_ARCHITECTURE_ALIGNMENT.md)
-tamamlandı; diğer açıklar raporlandı. Gerçek hesap/kullanıcı kabulü ve commit açık.
+**Güncel öncelik 5.R5:** kullanıcı uyku testlerini başarılı bildirdi; 5.R4
+`5fb30d3` commit'ine alındı (push yok). Not hedefleri yapılandırılmış seçiciye
+taşındı, atomik toplu silme eklendi. 885 pytest, 7 JS, Pyright 0 ve native
+10/10 geçti; REST/Live batch panel kontrolü de doğrulandı. Yeni gerçek hesap
+kabulü ve bu yeni adımın commit'i henüz yok.
 
 Önceki 5.R3: ayrı yerel ses kaldırıldı; Vex'in kendi yanıtı ve
 çalması ardından uyku uygulanıyor (d9caf91). Kullanıcı “kalıcı uyku moduna geç”
@@ -123,8 +124,9 @@ Bu liste önceki parçalı uyku planlarının güncel karşılığıdır. Somut 
 | 5.R1 | Sesli gerçek onay, EOS/Idle kilidi ve wake kurulum maliyeti | Host sonrası TR/EN ses; EOS bekleyen sağlayıcıda tur bitişi; yanıt sonrası aday algısı; geçici giriş hatası sonrası replay olmadan sınırlı toparlanma | **F4 önüne alındı; kod uygulandı, fiziksel kabul açık** |
 | 5.R2 | Yazı çalışırken sesli turun 25 s takılması | Yerel bitiş sağlayıcıya açık activityEnd olarak gider; otomatik VAD/EOS ile karışmaz; üç sesli tur ve uyku/uyanış gerçek hesapta doğrulanır | **921 pytest, 7 JS, 10/10 native; kullanıcı testleri başarılı bildirdi (23 Ekim)** |
 | 5.R3 | Yerel sesli onay yerine Vex'in doğal yanıtını bekle | Sabit WAV/metin yolu yok; komut yanıtı ve çalması tamamlanmadan uyku uygulanmaz; hata/Stop/unknown başarıya dönüşmez | **Uygulandı; 923 pytest, 7 JS, Pyright 0, 10/10 native + [Stop/çalma kontrolü](docs/stage5-natural-sleep-stop-chat.json) geçti. Yeni fiziksel kabul açık; kullanıcı commit izni verdi** |
-| 5.R4 | Uyku kararını ortak araç hattına taşı; mimari sapmaları denetle | Yapılandırılmış araç + registry/policy/TaskManager, yanıt/çalma sonrası uygulama; regex niyet yolu yok; eski çağrı yeni geçiş üretmez; diğer sapmalar kanıtıyla kaydedilir | **Uygulandı; 873 tam pytest + son ek Stop testi dahil 17 hedefli test, 7 JS, Pyright 0, 10/10 native geçti. Gerçek kabul/commit açık** |
-| 5.F4 | Wake telaffuzu ve yanlış uyanma | Vex/Rex/X benzeri adaylar gerçek yerel motor ve negatif seslerle değerlendirilir; gelişigüzel X sesi kesin wake sayılmaz | R4 fiziksel kabulü sonrası |
+| 5.R4 | Uyku kararını ortak araç hattına taşı; mimari sapmaları denetle | Yapılandırılmış araç + registry/policy/TaskManager, yanıt/çalma sonrası uygulama; regex niyet yolu yok; eski çağrı yeni geçiş üretmez; diğer sapmalar kanıtıyla kaydedilir | **Kullanıcı testleri başarılı; 5fb30d3 commit'i alındı, push yok** |
+| 5.R5 | Not seçimini yapılandırılmış araca taşı ve toplu silme ekle | Tekli/çoklu gerçek hedef, taze seçim, veri değişiminde ret, tek atomik yazı/geri okuma; belirsiz hedefe işlem yok; REST/Live aynı hat | **Uygulandı; 885 pytest + son 62 seçim/batch kontrolü, 7 JS, Pyright 0, [native 10/10](docs/stage5-note-selection-batch-native.json). Gerçek kabul/commit açık** |
+| 5.F4 | Wake telaffuzu ve yanlış uyanma | Vex/Rex/X benzeri adaylar gerçek yerel motor ve negatif seslerle değerlendirilir; gelişigüzel X sesi kesin wake sayılmaz | R5 fiziksel kabulü sonrası |
 | 5.F5 | Birleşik uzun kullanım ve fiziksel kabul | Normal ve stay-asleep döngüleri, Mic Off, Stop, hata, yeni sohbet, disconnect/restart; farklı bekleme süreleri; gerçek hesap/donanım ayrımı | Açık |
 | 5.F6 | Kapanış bakımı ve belgeler | UI temizliği/debloat ölçülü; eski planlar güncel gibi görünmez; 256 görev sınırı ve restart replay sınırı için karar; README kapsamı doğru | Başladı; kapanmadı |
 

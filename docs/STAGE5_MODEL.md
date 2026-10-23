@@ -1,6 +1,42 @@
 # Aşama 5 — Model, araç çağrıları ve ses
 
-## Güncel uygulama — 5.R4 ortak uyku aracı
+## Güncel uygulama — 5.R5 yapılandırılmış not seçimi / toplu silme
+
+Uyku 5.R4 kullanıcı tarafından onaylandı ve `5fb30d3` commit'ine alındı; push
+yok. Yeni not adımı henüz kullanıcı kabulü/commit almadı.
+
+Not cümlesi/kelime sırası regex'leri ModelTools'tan kaldırıldı. Model kayıtlı
+`notes.select` aracına kind=ids/text/contains/latest/all ve cardinality=one/many
+gönderir; core gerçek adayları, selection_ready ve snapshot döndürür. Tekli
+update/delete ve yeni delete_many, taze seçimin tam ID kümesine bağlıdır.
+Model snapshot'ı expected_snapshot olarak geri verir; worker arada değişen
+veriye mutasyon yapmaz. Snapshot yetki anahtarı değildir; taze seçim ve oturum
+sahipliği ayrıca ModelTools'ta denetlenir. Ambiguous/başarısız seçimin ardından
+aynı turda tahmini ID veya genişletilmiş kapsam kabul edilmez. Yeni kullanıcı
+açıklaması yeni tur açar; eski seçim replay'i veya ara transkript açmaz.
+
+Toplu silme tek `_commit` atomik yazısı ve geri okuma kullanır; deleted_ids ve
+deleted_count yalnız doğrulanmış sonuçta döner. Başlamamış yazı Stop ile korunur,
+geç Stop tamamlanan silmeyi geri almaz; readback kaybı UNKNOWN. ui_migrated,
+not ID'leri ve kalan kayıt metadata'sı korunur. Native tekli UI CRUD'u aynı
+protokolle sürer; modelin daha dar şemasında snapshot zorunludur. Panel mevcut
+tek backend yenilemesinden gelir; yeni save/silme yankısı yoktur.
+
+Son tam pytest 885 geçti; ilk tam koşuda yalnız eski liste→mutasyon planını
+kullanan bir ses testi başarısızdı, açık select/snapshot sözleşmesine taşındı.
+Eski doğal dil varyasyon testleri yerine yapılandırılmış hedef/izin/tarih/
+snapshot/replay testleri vardır; modelin bütün ifadeleri anladığı iddia edilmez.
+Pyright testlerdeki None daraltmaları düzeltildikten ve uzun native not
+senaryoları fonksiyonlara ayrıldıktan sonra 0 hata/uyarı verdi; bastırma yoktur.
+7 JS süiti ve geçici notlarla REST/Live toplu panel kontrolü geçti:
+[batch chat raporu](stage5-note-batch-native-chat.json). Gerçek hesap ve kullanıcı
+notları kullanılmadı. Manuel kabul USER_ACCEPTANCE.md başındadır.
+Son ayrılmış not senaryolarıyla tekrar [tam native kontrol](stage5-note-selection-batch-native.json)
+10/10 geçti; REST/Live son iki ve tüm notlar silindi, panel güncellendi,
+outbound save/note_del yankısı sıfır kaldı. Son üyelik filtresi küme kullanacak
+şekilde sadeleştirildi; ardından 62 seçim/batch testi yeniden geçti.
+
+## Önceki uygulama — 5.R4 ortak uyku aracı
 
 `sleep_intent.py` ve doğal dil regex kararları kaldırıldı. Kayıtlı
 `assistant.request_sleep_mode(mode=once|persistent|off)` aracı, desktop REST

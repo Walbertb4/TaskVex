@@ -1,6 +1,28 @@
 # TaskVex — Kullanıcının katılacağı gerçek kullanım kontrolleri
 
-## Güncel kısa test — 5.R4 model araçlı uyku
+## Güncel kısa test — 5.R5 not seçimi / toplu silme
+
+Uygulamayı yeniden aç. Gerçek notlarının olmadığı, yalnız geçici notlarla dolu
+bir test profili kullan; özellikle tümünü sil komutu o profilde denenmelidir.
+
+1. Üç farklı deneme notu ekle. “En son eklediğim iki notu sil” de: yalnız
+   iki yeni kayıt silinsin, kalan not UI'da korunsun. Kapat/aç ile doğrula.
+2. İçinde “merhaba” geçen tek not oluştur. “İçinde merh geçen notu tamamlandı
+   işaretle”, sonra metnini değiştir ve sil. Sabit ifade veya tırnak zorunlu değil.
+3. Aynı metinli iki geçici not ekle. Tekini metinle silme isteğinde açıklama
+   istesin ve ikisini korusun. Gerçek ID ile seçtiğinde yalnız o silinsin.
+4. Birden fazla geçici “test” notuyla “İçinde test geçen notların hepsini sil”
+   de: yalnız seçilen grup silinsin. Sonra test profilinde “Tüm notlarımı sil”
+   de; panel ve yeniden açılış boş olsun. İngilizce karşılıklarını da deneyebilirsin.
+5. Engine log'da notes.select ardından notes.delete_many görülmeli. Sözlü
+   başarı, tool verified sonucu olmadan işlem kanıtı değildir. Notlar seçim
+   sırasında değişirse tekrar seçmeni istemeli; otomatik hedef değiştirmemeli.
+
+Stop yalnız yazıdan önce silmeyi önleyebilir; tamamlanmış silmeyi geri almaz.
+Şüpheli sonuçta aynı komutu tekrar göndermeden notları listele. Gerçek
+sağlayıcının şema kabulü ve doğal dil seçimi bu manuel testte hâlâ açıktır.
+
+## Önceki kısa test — 5.R4 model araçlı uyku
 
 Uygulamayı tamamen kapatıp yeniden aç, normal uyku süresini geçici olarak 0
 yap. Yalnız yeni yerel test kabulüdür; gerçek hesap denemesi ajan tarafından yapılmadı.

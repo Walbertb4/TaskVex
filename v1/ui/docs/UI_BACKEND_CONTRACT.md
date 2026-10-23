@@ -1,6 +1,33 @@
 # UI/backend sözleşmesi
 
-## Güncel 5.R4 — ortak uyku isteği aracı
+## Güncel 5.R5 — yapılandırılmış not seçimi / toplu silme
+
+- Not aktarım onayından sonra REST ve Live aynı notes.add/list/select/update/
+  delete/delete_many kataloğunu görür. select notes.read, mutasyonlar notes.write
+  gerektirir. initialize/replace modele açılmaz; yeni kanal yetkisi verilmedi.
+- `notes.select` kind=ids/text/contains/latest/all, cardinality=one/many alır;
+  ilgili ids/text/count alanı zorunludur, uyumsuz/fazla alan reddedilir. Hiçbir
+  istek cümlesi regex ile çözümlenmez. Sonuç notes/cardinality/selection_ready/
+  snapshot içerir. Snapshot veri parmak izidir, kendi başına yetki değildir.
+- Model update/delete için tekli taze seçimdeki tam ID ve expected_snapshot
+  gönderir. delete_many için çoklu seçimin tam ID kümesi + expected_snapshot
+  zorunludur. Eksik/fazla/çift ID ve belirsiz seçimle yazı başlatılmaz.
+- one seçiminde sıfır/çoklu eşleşme, başarısız seçim veya değişmiş veri sonrası
+  aynı turda yeni tahmini hedefle mutasyon engellenir. Yeni kullanıcı açıklaması
+  yeni tur açar. Ara ses transkripti yeni tur sayılmaz. Eski select replay'i
+  ve sonucu yeniden okumak yeni mutasyon yetkisi üretmez.
+- Core worker yazmadan önce snapshot'ı tekrar karşılaştırır; notes_changed veya
+  eksik hedefte tekli/toplu işlem hiçbir kayıt değiştirmez. Latest seçiminde
+  bilinmeyen tarih, sınırı aşan eşitlik ve fazla istenen adet reddedilir.
+- delete_many tek `_commit` yazısı ve tam geri okuma kullanır. Sonuç deleted_ids/
+  deleted_count ve doğrulanmış son listeyi içerir; ui_migrated korunur. Stop
+  öncesi yazı yok, geç Stop gerçek sonucu geri almaz; readback kaybı UNKNOWN.
+- Panel mevcut notes.* sonuçları sonrası tek backend okumasıyla yenilenir;
+  yeni save/note_del döngüsü yoktur. Native tekli UI CRUD'u eski ID protokolünü
+  korur; daha dar model sözleşmesinde snapshot zorunludur. Mutasyon seçim
+  kanıtını tüketir. UI ile core dışındaki paralel dosya yazarları desteklenmez.
+
+## Önceki 5.R4 — ortak uyku isteği aracı
 
 - Model kataloğuna `assistant.request_sleep_mode` eklendi; mode yalnız
   once/persistent/off, ek parametre yasak. Not aktarım onayından bağımsız

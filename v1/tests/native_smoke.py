@@ -23,6 +23,146 @@ import traceback
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 
+def check_native_note_ui(home, window, js, wait_until, outcome):
+    """Not panelinin yerel CRUD, gecikmiş yanıt ve kayıt reddi senaryosu."""
+    from app.storage.json_store import StoreError
+    # Gerçek UI kontrolleri -> köprü -> worker -> gerçek dosya.
+    js("document.getElementById('noteIn').value='Duplicate';document.getElementById('noteAdd').click();return true;")
+    wait_until(lambda: len(json.loads((home / 'notes.json').read_text('utf-8'))['data']['notes']) == 2)
+    wait_until(lambda: not window.evaluate_js("document.getElementById('noteAdd').disabled"))
+    js("document.getElementById('noteIn').value='Duplicate';document.getElementById('noteAdd').click();return true;")
+    wait_until(lambda: len(json.loads((home / 'notes.json').read_text('utf-8'))['data']['notes']) == 3)
+    wait_until(lambda: not window.evaluate_js("document.getElementById('noteAdd').disabled"))
+    saved = json.loads((home / 'notes.json').read_text('utf-8'))['data']['notes']
+    assert len({note['id'] for note in saved}) == 3
+    created_at = saved[1]["created_at"]
+    assert created_at and js("const n=await import('./js/notes.js');return n.getNotes()[1].created_at;") == created_at
+    js("document.querySelectorAll('#notes input')[1].click();return true;")
+    wait_until(lambda: json.loads((home / 'notes.json').read_text('utf-8'))['data']['notes'][1]['done'])
+    wait_until(lambda: not window.evaluate_js("document.getElementById('noteAdd').disabled"))
+    assert js("const n=await import('./js/notes.js');return n.getNotes()[1].created_at;") == created_at
+    js("document.querySelectorAll('#notes button')[1].click();return true;")
+    wait_until(lambda: len(json.loads((home / 'notes.json').read_text('utf-8'))['data']['notes']) == 2)
+    wait_until(lambda: not window.evaluate_js("document.getElementById('noteAdd').disabled"))
+    assert json.loads((home / 'notes.json').read_text('utf-8'))['data']['notes'][1]['id'] == saved[2]['id']
+    js("document.querySelectorAll('#notes button')[1].click();return true;")
+    wait_until(lambda: not window.evaluate_js("document.getElementById('noteAdd').disabled"))
+    # Yazma reddinde form metni ve liste korunmalı.
+    from app.storage.json_store import JsonStore
+    original_write = JsonStore.write
+
+    def fail_note(self, data):
+        if self.path.name == 'notes.json':
+            raise StoreError('write_failed', 'Simulated note failure')
+        return original_write(self, data)
+
+    JsonStore.write = fail_note
+    try:
+        js("document.getElementById('noteIn').value='Keep input';document.getElementById('noteAdd').click();return true;")
+        wait_until(lambda: not window.evaluate_js("document.getElementById('noteAdd').disabled"))
+        assert window.evaluate_js("document.getElementById('noteIn').value") == 'Keep input'
+        assert len(json.loads((home / 'notes.json').read_text('utf-8'))['data']['notes']) == 1
+    finally:
+        JsonStore.write = original_write
+    assert js("return window.vex.initApp({notes:['Must not overwrite']});") is False
+    assert js("const n=await import('./js/notes.js');return await n.addNote('No echo',{fromUser:false,silent:true});") is False
+    # Yan etki gerçekten olur; yalnız UI yanıtı geciktirilir. Deadline
+    # sonrası geç yanıt UI'ı değiştiremez veya ikinci komut üretemez.
+    js("window._noteSends=0;const original=window.pywebview.api.event;"
+       "window.pywebview.api.event=async(name,data)=>{if(name!=='note_add')return original(name,data);"
+       "window._noteSends++;const response=await original(name,data);await new Promise(r=>setTimeout(r,13000));return response;};"
+       "document.getElementById('noteIn').value='Late note';document.getElementById('noteAdd').click();document.getElementById('noteAdd').click();return true;")
+    wait_until(lambda: 'not confirmed' in window.evaluate_js("document.getElementById('notesStatus').textContent"))
+    time.sleep(1.5)
+    assert window.evaluate_js("document.getElementById('noteAdd').disabled")
+    assert window.evaluate_js("window._noteSends") == 1
+    assert 'Late note' not in window.evaluate_js("document.getElementById('notes').textContent")
+    assert [n['text'] for n in json.loads((home / 'notes.json').read_text('utf-8'))['data']['notes']] == ['Native local note', 'Late note']
+    outcome.update(ok=True, phase="notes", real_ui_crud=True, duplicate_text_ids=True, note_time_preserved=True,
+                   write_rejection_preserved_input=True, snapshot_cannot_overwrite_notes=True,
+                   double_click_one_command=True, timeout_late_reply_ignored=True)
+    return
+
+
+def check_native_note_crud(home, window, js, wait_until, outcome, mode, target):
+    """Gerçek gönder düğmesiyle done/edit/delete; UI dosyadan yenilensin."""
+    from app.storage.json_store import JsonStore
+    snapshot = JsonStore(home / "notes.json").read()
+    assert snapshot is not None
+    initial = next(n for n in snapshot["notes"] if n["text"] == target)
+    assert initial.get("created_at")
+    js("window.crudEvents=[];window.crudOriginalEvent=window.pywebview.api.event;"
+       "window.pywebview.api.event=(name,data)=>{if(['save','note_add','note_done','note_del'].includes(name))"
+       "window.crudEvents.push(name);return window.crudOriginalEvent(name,data);};return true;")
+    for verb in ["done", "edit", "delete"]:
+        current = target + " edited" if verb == "delete" else target
+        selector = ("içinde 'synthetic' geçen notu tamamlandı işaretle" if verb == "done" else
+                    "son notu sil" if verb == "delete" else "son notun metnini değiştir")
+        prompt = f"Native CRUD {verb}: {current} | {selector}"
+        js(f"document.getElementById('inp').value={json.dumps(prompt)};"
+           "document.getElementById('send').click();return true;")
+        wait_until(lambda: prompt + " confirmed" in window.evaluate_js("document.getElementById('msgs').textContent"))
+        wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
+        snapshot = JsonStore(home / "notes.json").read()
+        assert snapshot is not None
+        saved = snapshot["notes"]
+        record = next((n for n in saved if n["id"] == initial["id"]), None)
+        if verb == "delete":
+            assert record is None and current not in window.evaluate_js("document.getElementById('notes').textContent")
+        else:
+            assert record is not None and record["done"]
+            assert record["created_at"] == initial["created_at"]
+            assert js("const n=await import('./js/notes.js');return n.getNotes();")[
+                next(i for i, n in enumerate(saved) if n["id"] == initial["id"])
+            ]["created_at"] == initial["created_at"]
+            if verb == "edit":
+                assert record["text"] == target + " edited"
+            assert record["text"] in window.evaluate_js("document.getElementById('notes').textContent")
+            assert window.evaluate_js("!!document.querySelector('#notes .d')")
+    assert window.evaluate_js("window.crudEvents") == []
+    js("window.pywebview.api.event=window.crudOriginalEvent;return true;")
+    outcome[mode + "_model_crud_panel_refreshed"] = True
+    outcome[mode + "_model_crud_no_save_echo"] = True
+    outcome[mode + "_partial_and_latest_selection"] = True
+
+
+def check_native_note_batches(api, home, window, js, wait_until, outcome):
+    """Geçici notlarda REST/Live toplu silme ve yankısız panel yenilemeyi sına."""
+    from app.core.contracts import ToolRequest
+    from uuid import uuid4
+    # Yalnız geçici native profil: REST ve Live toplu silme gerçek
+    # core/worker'dan geçer; panel tek backend okumasıyla yenilenir.
+    from app.storage.json_store import JsonStore
+    js("window.batchEvents=[];window.batchOriginalEvent=window.pywebview.api.event;window.pywebview.api.event=(name,data)=>{if(['save','note_add','note_done','note_del'].includes(name))batchEvents.push(name);return batchOriginalEvent(name,data);};return true;")
+    for batch_mode in ('rest', 'live'):
+        data = JsonStore(home/'notes.json').read()
+        assert data is not None
+        additions = [{'id':f'{batch_mode}-batch-{i}', 'text':f'Batch {i}', 'done':False,
+            'created_at':f'2099-01-01T00:00:0{i}.000Z'} for i in (1,2,3)]
+        task = api._core.submit(ToolRequest(request_id=uuid4().hex, source='desktop', principal='local-user',
+            tool='notes.replace', arguments={'notes':data['notes']+additions}))
+        finished = api._core.wait(task.task_id,3)
+        assert finished.result is not None and finished.result.verified
+        js(f"document.getElementById('liveLatencyTest').checked={str(batch_mode=='live').lower()};return true;")
+        for operation in ('latest','all'):
+            prompt = 'Native BULK '+operation
+            js(f"document.getElementById('inp').value={json.dumps(prompt)};document.getElementById('send').click();return true;")
+            wait_until(lambda: prompt+' confirmed' in window.evaluate_js("document.getElementById('msgs').textContent") and not window.evaluate_js("document.getElementById('send').disabled"))
+            stored = JsonStore(home/'notes.json').read()
+            assert stored is not None
+            if operation == 'latest':
+                assert additions[0] in stored['notes'] and all(n['id'] not in {additions[1]['id'],additions[2]['id']} for n in stored['notes'])
+                assert 'Batch 1' in window.evaluate_js("document.getElementById('notes').textContent")
+                assert 'Batch 2' not in window.evaluate_js("document.getElementById('notes').textContent")
+            else:
+                assert stored['notes']==[]
+                assert js("const n=await import('./js/notes.js');return n.getNotes().length===0;")
+        outcome[batch_mode+'_bulk_latest_and_all_panel_refresh'] = True
+    assert window.evaluate_js('window.batchEvents')==[]
+    js("window.pywebview.api.event=batchOriginalEvent;document.getElementById('liveLatencyTest').checked=true;return true;")
+    outcome['bulk_delete_no_ui_save_echo'] = True
+
+
 def check_local_sleep(window, api, js, wait_until, live_state, wake_state, outcome):
     """Tek uyku kabul senaryosunu ayrı tut; native kontrol akışını büyütme."""
     # Komut yanıtı modeldendir; uyurken sıradan ses KWS hit'i olmadan
@@ -317,6 +457,16 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
             Liste/işlem/son yanıt üretim ModelTools ve TaskManager'dan geçer.
             """
             from app.storage.json_store import JsonStore
+            from app.tools.local.notes import notes_snapshot
+            if text.startswith('Native BULK '):
+                data = JsonStore(home / 'notes.json').read()
+                assert data is not None
+                saved = data['notes']
+                latest = text == 'Native BULK latest'
+                selected = sorted(saved, key=lambda n:n.get('created_at') or '', reverse=True)[:2] if latest else saved
+                return [('notes.select', {'kind':'latest','count':2,'cardinality':'many'} if latest else
+                    {'kind':'all','cardinality':'many'}), ('notes.delete_many', {
+                        'ids':[n['id'] for n in selected], 'expected_snapshot':notes_snapshot(saved)})]
             verb, target = text.removeprefix("Native CRUD ").split(": ", 1)
             target = target.split(" | ", 1)[0]
             snapshot = JsonStore(home / "notes.json").read()
@@ -324,12 +474,14 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
             saved = snapshot["notes"]
             matches = [note for note in saved if note["text"] == target]
             assert len(matches) == 1
-            args = {"id": matches[0]["id"]}
+            args = {"id": matches[0]["id"], "expected_snapshot": notes_snapshot(saved)}
             if verb == "done":
                 args["done"] = True
             elif verb == "edit":
                 args["text"] = target + " edited"
-            return [("notes.list", {}), ("notes.delete" if verb == "delete" else "notes.update", args)]
+            selector = ({'kind':'contains','text':'synthetic','cardinality':'one'} if verb == 'done'
+                else {'kind':'latest','count':1,'cardinality':'one'})
+            return [('notes.select', selector), ('notes.delete' if verb == 'delete' else 'notes.update', args)]
 
         @asynccontextmanager
         async def live_socket(*args, **kwargs):
@@ -440,7 +592,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                         if text in {"Native playback only", "Native audio muted", "Native key switch"}:
                             frames.append(audio_reply(text + " reply", 2400 if text == "Native audio muted" else 48000))
                             return
-                        if text.startswith("Native CRUD "):
+                        if text.startswith(("Native CRUD ", "Native BULK ")):
                             for index, (name, arguments) in enumerate(crud_plan(text)):
                                 frames.append({"toolCall": {"functionCalls": [{"id": f"native-crud-{text}-{index}",
                                     "name": name, "args": arguments}]}})
@@ -539,7 +691,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
             if prompt == 'Native profile probe':
                 return httpx.Response(200, json={'candidates': [{'finishReason': 'STOP', 'content': {
                     'role': 'model', 'parts': [{'text': 'Native profile probe REST'}]}}]})
-            if prompt.startswith("Native CRUD "):
+            if prompt.startswith(("Native CRUD ", "Native BULK ")):
                 round_index = (len(body["contents"]) - 1) // 2
                 if round_index == 2:
                     parts = [{"text": prompt + " confirmed"}]
@@ -711,47 +863,6 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 assert not window.evaluate_js("document.getElementById('inp').disabled")
                 outcome['automatic_listening_after_catalog_without_click_or_idle_api'] = True
                 js("testMicOff();return true;")
-                def native_crud(mode, target):
-                    """Gerçek gönder düğmesiyle done/edit/delete; UI dosyadan yenilensin."""
-                    from app.storage.json_store import JsonStore
-                    snapshot = JsonStore(home / "notes.json").read()
-                    assert snapshot is not None
-                    initial = next(n for n in snapshot["notes"] if n["text"] == target)
-                    assert initial.get("created_at")
-                    js("window.crudEvents=[];window.crudOriginalEvent=window.pywebview.api.event;"
-                       "window.pywebview.api.event=(name,data)=>{if(['save','note_add','note_done','note_del'].includes(name))"
-                       "window.crudEvents.push(name);return window.crudOriginalEvent(name,data);};return true;")
-                    for verb in ["done", "edit", "delete"]:
-                        current = target + " edited" if verb == "delete" else target
-                        selector = ("içinde 'synthetic' geçen notu tamamlandı işaretle" if verb == "done" else
-                                    "son notu sil" if verb == "delete" else "son notun metnini değiştir")
-                        prompt = f"Native CRUD {verb}: {current} | {selector}"
-                        js(f"document.getElementById('inp').value={json.dumps(prompt)};"
-                           "document.getElementById('send').click();return true;")
-                        wait_until(lambda: prompt + " confirmed" in window.evaluate_js("document.getElementById('msgs').textContent"))
-                        wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
-                        snapshot = JsonStore(home / "notes.json").read()
-                        assert snapshot is not None
-                        saved = snapshot["notes"]
-                        record = next((n for n in saved if n["id"] == initial["id"]), None)
-                        if verb == "delete":
-                            assert record is None and current not in window.evaluate_js("document.getElementById('notes').textContent")
-                        else:
-                            assert record is not None and record["done"]
-                            assert record["created_at"] == initial["created_at"]
-                            assert js("const n=await import('./js/notes.js');return n.getNotes();")[
-                                next(i for i, n in enumerate(saved) if n["id"] == initial["id"])
-                            ]["created_at"] == initial["created_at"]
-                            if verb == "edit":
-                                assert record["text"] == target + " edited"
-                            assert record["text"] in window.evaluate_js("document.getElementById('notes').textContent")
-                            assert window.evaluate_js("!!document.querySelector('#notes .d')")
-                    assert window.evaluate_js("window.crudEvents") == []
-                    js("window.pywebview.api.event=window.crudOriginalEvent;return true;")
-                    outcome[mode + "_model_crud_panel_refreshed"] = True
-                    outcome[mode + "_model_crud_no_save_echo"] = True
-                    outcome[mode + "_partial_and_latest_selection"] = True
-
                 js("document.getElementById('liveLatencyTest').checked=false;return true;")
                 wait_until(lambda: "Use backend notes" in window.evaluate_js("document.getElementById('notesConnect').textContent"))
                 assert not api._notes_ready
@@ -841,7 +952,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
                 assert (home / "notes.json").read_bytes() == document
                 assert len(text_requests) == before_rest_stop + 1 and not api._chat.busy
-                native_crud("rest", "Chat synthetic note")
+                check_native_note_crud(home, window, js, wait_until, outcome, "rest", "Chat synthetic note")
                 document = (home / "notes.json").read_bytes()
                 js("document.getElementById('refreshModels').click();return true;")
                 wait_until(lambda: "API Live models loaded" in window.evaluate_js("document.getElementById('liveCatalogStatus').textContent"))
@@ -888,7 +999,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 assert api._chat._live._connection.logical_id == logical_id
                 assert (home / "notes.json").read_bytes() == before_stop
                 assert "NATIVE_SYNTHETIC_RESUME_HANDLE" not in window.evaluate_js("document.body.textContent")
-                native_crud("live", "Live UI synthetic note")
+                check_native_note_crud(home, window, js, wait_until, outcome, "live", "Live UI synthetic note")
                 before_stop = (home / "notes.json").read_bytes()
                 js("document.getElementById('inp').value='Native Stop';document.getElementById('send').click();return true;")
                 assert live_state["waiting"].wait(5)
@@ -1262,6 +1373,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 assert 'Native remembered name: unknown' in window.evaluate_js("document.getElementById('msgs').textContent")
                 outcome['temporary_memory_after_stop_new_chat_confirmation_and_notes_preserved'] = True
                 check_local_sleep(window, api, js, wait_until, live_state, wake_state, outcome)
+                check_native_note_batches(api, home, window, js, wait_until, outcome)
                 js("const a=await import('./js/api.js');for(let i=0;i<250;i++)a.addLog('Native bounded entry '+i);return true;")
                 assert window.evaluate_js("document.getElementById('log').childElementCount") == 200
                 outcome['engine_log_bounded_to_200_entries'] = True
@@ -1391,61 +1503,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
             wait_until(lambda: api._notes_ready)
             wait_until(lambda: not window.evaluate_js("document.getElementById('noteAdd').disabled"))
             if phase == "notes":
-                # Gerçek UI kontrolleri -> köprü -> worker -> gerçek dosya.
-                js("document.getElementById('noteIn').value='Duplicate';document.getElementById('noteAdd').click();return true;")
-                wait_until(lambda: len(json.loads((home / 'notes.json').read_text('utf-8'))['data']['notes']) == 2)
-                wait_until(lambda: not window.evaluate_js("document.getElementById('noteAdd').disabled"))
-                js("document.getElementById('noteIn').value='Duplicate';document.getElementById('noteAdd').click();return true;")
-                wait_until(lambda: len(json.loads((home / 'notes.json').read_text('utf-8'))['data']['notes']) == 3)
-                wait_until(lambda: not window.evaluate_js("document.getElementById('noteAdd').disabled"))
-                saved = json.loads((home / 'notes.json').read_text('utf-8'))['data']['notes']
-                assert len({note['id'] for note in saved}) == 3
-                created_at = saved[1]["created_at"]
-                assert created_at and js("const n=await import('./js/notes.js');return n.getNotes()[1].created_at;") == created_at
-                js("document.querySelectorAll('#notes input')[1].click();return true;")
-                wait_until(lambda: json.loads((home / 'notes.json').read_text('utf-8'))['data']['notes'][1]['done'])
-                wait_until(lambda: not window.evaluate_js("document.getElementById('noteAdd').disabled"))
-                assert js("const n=await import('./js/notes.js');return n.getNotes()[1].created_at;") == created_at
-                js("document.querySelectorAll('#notes button')[1].click();return true;")
-                wait_until(lambda: len(json.loads((home / 'notes.json').read_text('utf-8'))['data']['notes']) == 2)
-                wait_until(lambda: not window.evaluate_js("document.getElementById('noteAdd').disabled"))
-                assert json.loads((home / 'notes.json').read_text('utf-8'))['data']['notes'][1]['id'] == saved[2]['id']
-                js("document.querySelectorAll('#notes button')[1].click();return true;")
-                wait_until(lambda: not window.evaluate_js("document.getElementById('noteAdd').disabled"))
-                # Yazma reddinde form metni ve liste korunmalı.
-                from app.storage.json_store import JsonStore
-                original_write = JsonStore.write
-
-                def fail_note(self, data):
-                    if self.path.name == 'notes.json':
-                        raise StoreError('write_failed', 'Simulated note failure')
-                    return original_write(self, data)
-
-                JsonStore.write = fail_note
-                try:
-                    js("document.getElementById('noteIn').value='Keep input';document.getElementById('noteAdd').click();return true;")
-                    wait_until(lambda: not window.evaluate_js("document.getElementById('noteAdd').disabled"))
-                    assert window.evaluate_js("document.getElementById('noteIn').value") == 'Keep input'
-                    assert len(json.loads((home / 'notes.json').read_text('utf-8'))['data']['notes']) == 1
-                finally:
-                    JsonStore.write = original_write
-                assert js("return window.vex.initApp({notes:['Must not overwrite']});") is False
-                assert js("const n=await import('./js/notes.js');return await n.addNote('No echo',{fromUser:false,silent:true});") is False
-                # Yan etki gerçekten olur; yalnız UI yanıtı geciktirilir. Deadline
-                # sonrası geç yanıt UI'ı değiştiremez veya ikinci komut üretemez.
-                js("window._noteSends=0;const original=window.pywebview.api.event;"
-                   "window.pywebview.api.event=async(name,data)=>{if(name!=='note_add')return original(name,data);"
-                   "window._noteSends++;const response=await original(name,data);await new Promise(r=>setTimeout(r,13000));return response;};"
-                   "document.getElementById('noteIn').value='Late note';document.getElementById('noteAdd').click();document.getElementById('noteAdd').click();return true;")
-                wait_until(lambda: 'not confirmed' in window.evaluate_js("document.getElementById('notesStatus').textContent"))
-                time.sleep(1.5)
-                assert window.evaluate_js("document.getElementById('noteAdd').disabled")
-                assert window.evaluate_js("window._noteSends") == 1
-                assert 'Late note' not in window.evaluate_js("document.getElementById('notes').textContent")
-                assert [n['text'] for n in json.loads((home / 'notes.json').read_text('utf-8'))['data']['notes']] == ['Native local note', 'Late note']
-                outcome.update(ok=True, phase=phase, real_ui_crud=True, duplicate_text_ids=True, note_time_preserved=True,
-                               write_rejection_preserved_input=True, snapshot_cannot_overwrite_notes=True,
-                               double_click_one_command=True, timeout_late_reply_ignored=True)
+                check_native_note_ui(home, window, js, wait_until, outcome)
                 return
             if phase == "export_cancel":
                 original_export = (home / "exported-backup.json").read_bytes()

@@ -295,7 +295,7 @@ def test_native_chat_uses_host_allowlist_and_releases_client(transport, taskvex_
         assert chat.close() and not chat.run("Merhaba", gemini.DEFAULT_MODEL)["ok"]
     assert len(stored_notes(taskvex_home)) == 1
     declarations = transport.requests[0]["tools"][0]["functionDeclarations"]
-    assert {item["name"] for item in declarations} == {"apps.catalog", "system.status", "assistant.request_sleep_mode", "notes.add", "notes.list", "notes.update", "notes.delete"}
+    assert {item["name"] for item in declarations} == {"apps.catalog", "system.status", "assistant.request_sleep_mode", "notes.add", "notes.list", "notes.select", "notes.update", "notes.delete", "notes.delete_many"}
     assert transport.clients[0]._api_client._httpx_client.is_closed
 
 

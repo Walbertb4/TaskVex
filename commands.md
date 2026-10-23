@@ -30,21 +30,34 @@ Update it whenever an implemented command or its behavior changes.
 | `Mark the note "Buy milk" as not completed.` | Sets the selected note's completion state back to incomplete. |
 | `Delete the note "Buy milk".` | Deletes one unambiguous existing note. |
 | `Delete the note with ID <note-id>.` | Deletes only the selected record, even if other notes have the same text. |
-| `Delete the note containing "merh".` | Deletes a note only if the quoted literal text identifies exactly one match. |
+| `Delete the note containing "merh".` | Selects by literal substring and deletes only if there is exactly one match. Quotes are examples, not required command syntax. |
 | `Delete my latest note.` | Deletes the uniquely newest note by creation timestamp, not by list position. |
+| `Delete my last two notes.` | Selects exactly two newest records by creation timestamp and deletes them together in one atomic write. |
+| `Delete all notes containing "test".` | Selects the explicitly requested matching group and deletes exactly those records together. |
+| `Delete all my notes.` | Selects the entire current note set and deletes it in one verified write. This is a destructive command; use a temporary-note profile when testing it. |
 
-Before editing or deleting, Vex must read the current notes and use their real
-IDs. If several notes match, it should ask which ID you mean and preserve them.
-The literal substring and latest-note selectors also work for a single update.
-Do not combine them in one target description; fuzzy matching is not supported.
+Before editing or deleting, Vex must call `notes.select` with a structured
+selector (`ids`, `text`, `contains`, `latest` with a count, or `all`) and an
+explicit single/group scope. The model interprets your wording; the backend
+does not match command phrases. It returns real records and a snapshot.
+Single-target ambiguity requires clarification and cannot be widened silently
+or resolved by guessing another ID in the same turn. Literal substring and
+latest selectors also work for a single update/completion. Fuzzy matching is
+not supported. A read-only `notes.list` alone does not authorize a mutation.
+Unsupported combinations of filters require clarification or explicit IDs.
 
 Date ordering is presentation over `notes.list`, not a separate date-query tool.
 Older/imported notes may have no creation timestamp; Vex must not invent one.
-If any timestamp is missing or the newest timestamp is tied, a latest-note
-mutation requires an explicit ID. Editing a note preserves its creation time.
+If any timestamp is missing or a tie crosses the requested selection boundary,
+a latest-note mutation requires explicit IDs. A requested count larger than
+the existing set is rejected. Editing preserves creation time and record IDs.
 
-Bulk deletion such as `Delete all my notes` or `Delete my last two notes` is
-not currently offered as a supported command.
+Mutations use the selected snapshot. If any note changes between selection
+and execution, nothing is changed by that mutation; Vex must ask you to select
+again. Batch deletion requires exactly the selected IDs, rejects missing
+targets without partial deletion, and does not loop through single deletes.
+Stop before the write preserves notes; Stop after a verified write does not
+restore them. Unknown readback outcomes are not automatically retried.
 
 ## Read-only tools — available
 

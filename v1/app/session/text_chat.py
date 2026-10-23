@@ -111,7 +111,7 @@ class TextChat:
                 return {"ok": False, "error": "Text session is closed; reopen the app"}
             allowed = ("apps.catalog", "system.status", "assistant.request_sleep_mode")
             if notes_ready:
-                allowed += ("notes.add", "notes.list", "notes.update", "notes.delete")
+                allowed += ("notes.add", "notes.list", "notes.select", "notes.update", "notes.delete", "notes.delete_many")
             tools = ModelTools(self._core, principal="local-user", session_id=uuid4().hex, allowed_tools=allowed)
             # Ses yalnız bu host isteğine bağlıdır; sağlayıcı/UI yeni hedef
             # kimliği seçemez. Başlıksız eski CLI denemesi sessiz kalır.
@@ -184,7 +184,7 @@ class TextChat:
             # backend'de araç kapsamını da daraltır; yalnız UI kilidine güvenmeyiz.
             allowed = ("apps.catalog", "system.status", "assistant.request_sleep_mode")
             if notes_ready:
-                allowed += ("notes.add", "notes.list", "notes.update", "notes.delete")
+                allowed += ("notes.add", "notes.list", "notes.select", "notes.update", "notes.delete", "notes.delete_many")
             tools = ModelTools(self._core, principal="local-user", session_id=uuid4().hex,
                                allowed_tools=allowed)
             try:

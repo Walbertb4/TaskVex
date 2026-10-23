@@ -162,8 +162,6 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
                         report["input_text"] = report.get("input_text", "") + content.input_transcription.text
                         if len(report["input_text"]) > 20000:
                             raise ContractError("Microphone transcript limit exceeded")
-                        if bound_tools:
-                            bound_tools.begin_turn(report["input_text"])
                         await publish('u', report['input_text'])
                     # Yalnız ayarlı hitap bir görev değildir. İlk kesin konuşma
                     # bitişinde/araç teklifinde kapat; modelden selam/araç bekleme.

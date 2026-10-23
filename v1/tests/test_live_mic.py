@@ -84,6 +84,7 @@ def test_native_mic_envelope_is_validated_before_chat(bridge, monkeypatch):
 
 
 def test_voice_update_and_delete_use_transcribed_target_and_real_id(socket, taskvex_home):
+    from app.tools.local.notes import notes_snapshot
     with create_core() as core:
         chat = TextChat(core)
         try:
@@ -96,7 +97,8 @@ def test_voice_update_and_delete_use_transcribed_target_and_real_id(socket, task
                 ('delete', 'notes.delete', {'id':note_id}, 'Delete Voice edited note')]:
                 socket.frames = [*([{'setupComplete':{}}] if verb == 'edit' else []),
                     {'serverContent':{'inputTranscription':{'text':command}}},
-                    call('notes.list', {}, 'list-' + verb), call(name, args, 'mutate-' + verb), frame('Done', complete=True)]
+                    call('notes.select', {'kind':'ids','ids':[note_id],'cardinality':'one'}, 'select-' + verb),
+                    call(name, {**args, 'expected_snapshot':notes_snapshot(notes(taskvex_home))}, 'mutate-' + verb), frame('Done', complete=True)]
                 report = chat.run_live('', 'future-live', notes_ready=True, request_id=verb, audio_input=b'\x00\x00'*1600)
                 assert report['ok'] and report['tool_results'][-1]['result']['verified']
                 if verb == 'edit':

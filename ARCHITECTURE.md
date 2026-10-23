@@ -1,6 +1,17 @@
 # TaskVex — Mimari ve geliştirme rehberi
 
-## Güncel uygulama — 5.R4 ortak uyku aracı
+## Güncel uygulama — 5.R5 not seçimi ve toplu silme
+
+Uyku 5.R4 kullanıcı kabulüyle `5fb30d3` commit'ine alındı. Not hedefini cümle
+kalıplarından çıkaran kod kaldırıldı: model `notes.select` ile yapılandırılmış
+ids/text/contains/latest/all ve one/many kapsamı seçer. Taze seçim, gerçek ID
+ve snapshot doğrulaması ModelTools/core sınırında kalır. Tekli CRUD ve yeni
+`notes.delete_many` aynı registry/policy/TaskManager hattını ve `_commit`
+atomik yazma/geri okuma yolunu kullanır. UI mutasyon döngüsü eklenmedi.
+Veri değişimi veya belirsiz tekli seçim yeni kullanıcı isteği gerektirir;
+model kendi kendine başka hedef tahmin edemez. Güncel kabul [aşamalar.md](aşamalar.md).
+
+## Önceki uygulama — 5.R4 ortak uyku aracı
 
 Uyku niyetini cümle kalıplarından çıkaran dosya kaldırıldı. REST/Live desktop
 modeli `assistant.request_sleep_mode(mode)` aracını ortak ModelTools → registry,
