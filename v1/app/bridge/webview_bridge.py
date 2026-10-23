@@ -44,6 +44,7 @@ class NativeBridge:
         self._notes_ready = False
         self._wake: WakeWord | None = None
         self._sleeping = False
+        self._wake_detected = False
         self._restart_requested = False
         self._lock = RLock()
         self._chat = TextChat(core, audio_sink=self._audio_chunk, transcript_sink=self._transcript)
@@ -243,6 +244,7 @@ class NativeBridge:
                 return {'ok':False, 'error':'Wait for the active turn before sleeping'}
             self._sleeping = True
             self._wake = None
+            self._wake_detected = False
             try:
                 word = self._load_settings().get('prof', {}).get('pWake', 'Vex')
                 self._wake = WakeWord(word)
@@ -253,26 +255,34 @@ class NativeBridge:
             if (type(data) is not dict or set(data) != {'request_id','sequence','data'} or
                     not self._wake or data['request_id'] != self._wake.id):
                 return {'ok':False, 'error':'No matching local wake input'}
+            if self._wake_detected:
+                return {'ok':False, 'error':'Wake detection awaits UI acceptance'}
             try:
                 if not isinstance(data['data'], str) or len(data['data']) != 4268:
                     raise ValueError()
                 detected = self._wake.feed(data['sequence'], b64decode(data['data'], validate=True))
             except Exception:
                 self._wake = None
+                self._wake_detected = False
                 return {'ok':False, 'error':'Local wake input rejected; sleep remains active'}
             start = getattr(self._wake, 'start_sequence', data['sequence']) if detected else None
             if detected:
-                self._wake = None
-                self._sleeping = False
+                # Hit tek başına uyanma değildir. UI kendi ses tamponunu
+                # doğruladıktan sonra aynı ID ile wake kabulünü ister.
+                self._wake_detected = True
             return {'ok':True, 'completed':True, 'detected':detected, 'start_sequence':start}
         if name == 'wake_close':
             if self._wake and data == self._wake.id:
                 self._wake = None
+                self._wake_detected = False
             return {'ok':True, 'completed':True}
         if name == 'wake':
-            if not self._ready or data is not None or self._chat.busy:
+            confirmed_hit = (type(data) is dict and set(data) == {'request_id'} and
+                             self._wake is not None and data['request_id'] == self._wake.id and self._wake_detected)
+            if not self._ready or (data is not None and not confirmed_hit) or self._chat.busy:
                 return {'ok':False, 'error':'Cannot wake during an active turn'}
             self._wake = None
+            self._wake_detected = False
             self._sleeping = False
             return {'ok':True, 'completed':True}
         return {"ok":False, "error":"Unsupported sleep control"}
@@ -379,6 +389,7 @@ class NativeBridge:
                 if isinstance(data, str) and data.strip() and len(data) <= 20000:
                     with self._lock:
                         self._wake = None
+                        self._wake_detected = False
                         self._sleeping = False  # Açık yazılı UI isteği uyandırır.
                 return self._chat.run_live(data, live_model, notes_ready=notes_ready, request_id=request_id, profile=profile)
             return self._chat.run(data, model, notes_ready=notes_ready, request_id=request_id, profile=profile)
@@ -434,6 +445,7 @@ class NativeBridge:
                         return {'ok': False, 'error': 'Wait for the active request before starting a new chat'}
                     self._push('online', False, 'MODEL OFFLINE')
                     self._wake = None
+                    self._wake_detected = False
                     self._sleeping = False
                     return {'ok': True, 'completed': True, 'memory_cleared': True}
                 if name == "disconnect":

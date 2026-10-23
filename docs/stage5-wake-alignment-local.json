@@ -1,0 +1,45 @@
+{
+  "ok": true,
+  "real_local_model": true,
+  "synthetic_sapi_pcm": true,
+  "paid_api_used": false,
+  "cases": [
+    {
+      "case": "positive",
+      "silence_seconds": 0.0,
+      "detected": true,
+      "hit_sequence": 7,
+      "start_sequence": 2,
+      "hit_processing_ms": 22.32
+    },
+    {
+      "case": "positive",
+      "silence_seconds": 5.0,
+      "detected": true,
+      "hit_sequence": 57,
+      "start_sequence": 52,
+      "hit_processing_ms": 33.0
+    },
+    {
+      "case": "positive",
+      "silence_seconds": 61.0,
+      "detected": true,
+      "hit_sequence": 617,
+      "start_sequence": 612,
+      "hit_processing_ms": 32.22
+    },
+    {
+      "case": "positive",
+      "silence_seconds": 65.0,
+      "detected": true,
+      "hit_sequence": 657,
+      "start_sequence": 652,
+      "hit_processing_ms": 30.98
+    },
+    {
+      "case": "negative",
+      "silence_seconds": 5.0,
+      "detected": false
+    }
+  ]
+}

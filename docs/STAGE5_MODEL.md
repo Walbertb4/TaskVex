@@ -1,9 +1,83 @@
 # Aşama 5 — Model, araç çağrıları ve ses
 
+### İnceleme düzeltmesi 1 — R0 zaman hizalaması ve wake kabulü
+
+23 Ekim 2026: Kullanıcı incelemede belirlenen sırayla düzeltmeyi istedi.
+Bu tur yalnız R0: sessizlik sonrası eski segment zamanını global paket sırası
+sayma ve backend/UI uyanma devri düzeltildi. Önceki bekleyen değişiklikler
+korundu; manuel kabul/commit yok, sonraki özellik aşaması açılmadı.
+
+Sherpa 1.13.8 Python sonucu decoder'ın sessizlikte sıfırlanan timestamp'ını
+verir. Eksik global ofset tahmin edilmiyor: hit anında sözcük süresi + 0.8 s,
+en çok 3 s yerel PCM, başlangıcı bilinen yeni stream'de aynı modelle doğrulanır.
+Doğrulanan token aralığının dışındaki toplam süre, yapay 0.3 s ileri-bakış
+sessizliği dahil, motorun 1.5 s iç reset eşiğinden kısa olmalıdır. Bu koşul
+ve token zamanları doğrulanmazsa hit ile ses gönderilmez. Sıfır dolgu Live'a
+gitmez. Sürekli geçmiş yeniden çözülmez; yeni model/araç/API çağrısı yoktur.
+Yalnız 30 yerel PCM paketi ek RAM'de tutulur; kütüphane sürümü pin'i korunur.
+
+Host wake_feed hit'i artık yalnız pending kabulüdür; sleeping=True kalır.
+UI mevcut ön tampon sınırını kontrol ettikten sonra wake({request_id}) ile
+aynı hit'i kabul eder. Eski ID, iptal edilen kaynak ve onaysız hit Live açamaz.
+Mic Off sırasında gelen geç kabul On tercihini değiştirmez veya eski sesi
+göndermez. Yeni uyku/bağlantı revision'ı eski callback'i geçersiz kılar.
+Geçersiz ön tamponda wake_close host'u uykuda bırakır; durum ayrışması giderilir.
+
+Doğrulama: 816 pytest, altı JS süiti; değişen Python/native dosyalarında
+Pyright 0 hata/uyarı. Gerçek yerel model ve sentetik SAPI sesinde 0/5/61/65 s
+sessizlik sonrası başlangıçlar doğru, negatif kontrol hit üretmedi. Hit anı
+işlemi 22–33 ms ölçüldü; donanım performans garantisi değildir. Raporlar:
+stage5-wake-alignment-local.json ve stage5-wake-alignment-native.json (5 s
+beklemeli gerçek WebView2, sentetik sağlayıcı). İlk 65 s native denemesi
+uykuda kalıp zaman aşımına girdi; bu başarısızlık gizlenmedi. Aynı uzun testin
+son tekrarı geçti: stage5-wake-alignment-long-native.json. Böylece önceki R0
+eski-sınır hatası düzeltilmiş olsa da tek sentetik örnekle fiziksel algı
+kararlılığı garanti edilmez. Fiziksel kullanıcı mikrofonu ve ücretli API kullanılmadı.
+Son ek native kontrol: her birinde 5 s beklenen üç ardışık gerçek KWS/AudioWorklet
+uyku-uyanma turu da geçti (stage5-wake-alignment-cycles-native.json). İlk uzun
+denemedeki başarısızlık silinmedi; kullanıcı mikrofonuyla kabul hâlâ gereklidir.
+
+Açık kalan inceleme işleri: R2–R3 yerel hata/kuyruk/toparlanma ve açıklayıcı
+mikrofon durumu; R4–R5 wake-only sessizliği/giriş bitişi/erken düşünce kapısı;
+R1 Veks uyku eşleştirmesi. Bu tur bu hatalar düzeldi denmez. Sonraki adım
+yerel hata sonrası toparlanmadır; otomatik geri uyuma/UI temizliği bekler.
+
+### Uyku kabul hatası düzeltmesi — 23 Ekim 2026
+
+Kullanıcı fiziksel kabulde sesli uyku/wake ve Wake düğmesi sorunları bildirdi;
+önceki sentetik başarı fiziksel kabul sayılmaz. Bu tur sonraki adıma geçilmedi.
+Ekrandaki Rex/Max + tam uyku cümlesi ve "uykuya dal" host eşleştirmesine
+eklendi; alıntı/soru/ek işlem reddi korunur. Ayarlı wake sözcüğüyle hitap da
+desteklenir. Bu isim toleransı yerel KWS'ye veya not hedeflerine uygulanmaz.
+
+Somut UI hatası: yerel KWS/kurulum hatasından kalan micBlocked, açık Wake
+sonrasında temizlenmediğinden normal dinleme açılmıyordu. Wake artık bu engeli
+temizleyip izin/cihazı yeniden doğrular; Mic Off tercihi ve unknown kilidi kalır.
+Yeni SLEEPING reactor durumu yavaş/düşük renkli ayrı gösterilir ve Ayarlar →
+Tema renklerinde özelleştirilir; wake sözcüğü önceki tercihle profilde kalır.
+
+810 pytest ve altı JS süiti geçti. Gerçek WebView2'de eksik yerel motor sonrası
+Wake ile normal dinlemeye dönüş doğrulandı. Ek fixture kontrolünde gerçek
+sherpa KWS, SAPI İngilizce WAV'ını gerçek WebAudio/AudioWorklet/bridge hattında
+algılayıp aynı Live hattına devretti; sağlayıcı sentetikti. Rapor:
+stage5-wake-fix-native.json. Yerel motor bu makinedeki gerçek cache'den de
+başlatılıp sessizlik paketiyle kontrol edildi. Kullanıcının mikrofonu/telaffuzu
+ve ücretli/gerçek sağlayıcı denenmedi; fiziksel wake başarısızlığının tüm
+sebeplerinin giderildiği iddia edilmez. Değişiklikler manuel kabul bekler.
+Değişen Python dosyaları ve native testte Pyright: 0 hata/uyarı (typeshed yolu
+açık verilerek). İlk tip kontrolü araç cache'inin stdlib yolunu bulamaması
+nedeniyle geçersizdi; proje tipi hatası diye gizlenmedi veya kodla bastırılmadı.
+Native tekrarında bir tur, fixture backend wake hit'ini yeni yanıtın bitişi
+sanıp mikrofonu erken kapattığı için Disconnect beklemesinde başarısız oldu.
+Fixture artık yeni yanıt metnini ve kontrollerin açılmasını bekler.
+Düzeltme sonrası son native turu başarılı: SLEEPING renk kaydı, hata sonrası
+manuel Wake, gerçek KWS/sentetik WAV devri ve sonraki Disconnect dahil geçti.
+
 ### Güncel uygulama adımı — yerel wake-word ve tek seferlik uyku
 
 Önceki Stop gösterge düzeltmesi kullanıcı kabulüyle `515a531` commit'ine
-alındı; push yok. Bu yeni dilim manuel kabul bekler, henüz commit edilmedi.
+alındı; push yok. Uyku uygulaması daha sonra `8f65541` commit'ine alındı;
+fiziksel mikrofonla kullanıcı kabulü hâlâ beklenir.
 Otomatik geri uyuma, saniye ayarı ve kalıcı kullanıcı hafızası eklenmedi.
 
 **Davranış:** Live açıkken Sleep düğmesi veya tam "Vex uyku moduna geç" /
@@ -59,6 +133,12 @@ aynı-kaynak handoff ve kaydedilmiş Computer seçimi doğrulandı. Gerçek hesa
 ücretli API kullanılmadı. Kanıtlar: stage5-wake-local-engine.json,
 stage5-wake-native.json, stage5-wake-full-native.json. Gerçek kullanıcı
 mikrofonu/Türkçe telaffuz ve canlı sağlayıcı kabulü açık kalır.
+
+23 Ekim 2026 tekrar kontrolü: 804 pytest testi ve altı JavaScript süiti geçti.
+Gerçek WebView2 chat kontrolü tekrar geçti; mikrofon kapalıyken Sleep'in
+backend Live bağlantısını kapatması ve capture açmaması da doğrulandı.
+Bağımlılık tutarlılığı kontrolü başarılı. Bu tekrar kontrolde gerçek hesap,
+ücretli sağlayıcı çağrısı ve fiziksel kullanıcı sesi kullanılmadı.
 
 Sıradaki ayrı adım her işten sonra geri uyuma tercihi ve uygun boşta süre
 ayarının uygulanmasıdır. UI temizliği/debloat Aşama 5 kapanışında kalır.

@@ -1,5 +1,10 @@
 # TaskVex — Mark LVI incelemesi ve core başlangıç planı
 
+23 Ekim incelemesi sonrası öncelik: R0 wake zaman hizalaması/host kabulü
+bu adımda uygulanır ve manuel kabul bekler. Ardından R2–R3 hata/kuyruk
+toparlanması, R4–R5 giriş sınırları, R1 güvenli uyku tanıma kapatılır.
+Bu işler bitmeden otomatik geri uyuma veya sonraki özellik aşaması açılmaz.
+
 ## Güncel dilim — tek seferlik uyku ve yerel wake-word
 
 Stop göstergeleri kullanıcı onayıyla 515a531 commit'ine alındı; push yok.

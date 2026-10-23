@@ -1,5 +1,15 @@
 # TaskVex — Mimari ve geliştirme rehberi
 
+İnceleme düzeltme sırası başladı: bu tur yalnız R0 yerel wake zaman hizalaması
+ve UI/backend hit kabulü. Tek mikrofon/Live/core sahipliği korundu; yeni worker,
+API/araç replay veya bağımlılık yok. Hata sonrası toparlanma ve diğer inceleme
+bulguları sonraki adımdır. Ayrıntı ve açık kabul sınırları STAGE5_MODEL.md'de.
+
+23 Ekim uyku kabul düzeltmesi: fiziksel kullanıcı testinde bildirilen sorunlar
+nedeniyle sonraki adım açılmadı. Wake yerel motor hatasının mikrofon engelinden
+kurtarır; SLEEPING ayrı renk/durumdur. Dar uyku hitapları genişletildi, araç
+izinleri değişmedi. Ayrıntı ve fiziksel kabul sınırı STAGE5_MODEL.md içindedir.
+
 ## Güncel dilim — tek seferlik uyku ve yerel wake-word
 
 Stop göstergeleri kullanıcı onayıyla 515a531 commit'ine alındı; push yok.

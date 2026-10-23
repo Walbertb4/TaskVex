@@ -7,6 +7,7 @@ import { sfx } from './sfx.js';
 
 export const DEF = {
   idle: '#a78bfa',
+  sleeping: '#64748b',
   listening: '#4fd8ff',
   thinking: '#a78bfa',
   speaking: '#5dffb0',
@@ -16,6 +17,7 @@ export const DEF = {
 
 export const S = {
   idle: ['IDLE', '', '40s'],
+  sleeping: ['SLEEPING', '', '80s'],
   listening: ['LISTENING', '', '28s'],
   thinking: ['THINKING', '', '9s'],
   speaking: ['SPEAKING', '', '22s'],

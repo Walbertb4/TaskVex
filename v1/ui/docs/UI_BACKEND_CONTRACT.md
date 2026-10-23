@@ -1,5 +1,12 @@
 # UI/backend sözleşmesi
 
+Uyku kabul düzeltmesi: colors.sleeping, diğer reactor durumları gibi saklanan
+bir renktir; SLEEPING durumu IDLE'dan ayrıdır. Açık Wake, yerel uyandırıcı
+hatasından kalan micBlocked engelini temizleyip cihaz/izin kontrolünü yeniden
+yapar; Microphone Off ve belirsiz sonuç kilidi korunur. Host'un dar uyku
+eşleştirmesi uykuya dal ve yalnız tam uyku cümlesi önünde Rex/Max hitaplarını
+da kabul eder; bunlar genel komut/wake algısı için bulanık eşleşme değildir.
+
 ## Güncel: tek seferlik uyku ve yerel wake PCM
 
 pWake, profilde 1–64 karakter/1–3 ASCII İngilizce sözcüktür; default Vex.
@@ -13,11 +20,17 @@ uykuda sözlük/fonem desteğini ayrıca doğrular. Uyku tercihi RAM'dedir.
   paketi. Sıra 0'dan artar. {ok,completed,detected,start_sequence} döner;
   start_sequence hit başlangıcının 100 ms paket indeksidir. Eski ID, yanlış
   sıra/encoding/taşma reddedilir; bozuk kaynak bırakılır, uyku korunur.
+  detected:true yalnız bekleyen hit'tir; host sleeping=True kalır. UI kendi
+  ön tamponunu doğrulamadan uyanma tamamlanmış sayılmaz.
 - wake_close(request_id): yalnız eşleşen yerel kaynağı bırakır, uykuyu kaldırmaz.
 - wake(): idle/hazır host manuel olarak uyandırır ve yerel kaynağı bırakır.
+- wake({request_id}): yalnız mevcut, algılanmış hit'in UI kabulüdür. Tampon
+  doğrulamasından sonra gönderilir; completed:true gelmeden Live istenmez.
+  Eski/kapatılmış/onaysız ID reddedilir. wake_close pending hit'i iptal eder
+  ve host'u uykuda tutar. Mic Off tercihine bu kabul müdahale etmez.
 
 sleep_start kabulünden sonra Live audio start/clip host'ta sleeping koduyla
-reddedilir. Algılanmış hit veya açık yazılı Live isteği bu engeli kaldırır.
+reddedilir. UI tarafından kabul edilmiş hit veya açık yazılı Live isteği bu engeli kaldırır.
 UI da ayrı sleep kapısı tutar; sıradan enerji adayı uyandırma sayılmaz. Wake
 butonu/typed istek açık kullanıcı eylemidir. New Chat uyku durumunu temizler.
 Uyurken Mic Off kaynakları bırakır; On yeniden yerel dinleme açar.
@@ -34,6 +47,12 @@ sonrası aynı kaynaktan mevcut LiveInput hattına geçer. Yetersiz/eski tampon
 kırpılarak komut çalıştırmaz; capture engeli gösterilir. Geç callback'ler
 micRevision/session ID ile korunur. 60 s model stream yenileme sınırında
 wake kaçabilir; fiziksel kabul açıktır. Otomatik tekrar uyuma/süre ayarı yoktur.
+
+R0 düzeltmesi: timestamp doğrudan global sıra değildir. Hit'te en çok 3 s
+yerel pencere aynı KWS ile başlangıcı bilinen stream'de doğrulanır; iç reset
+olamayacağı token süresi/sessizlik marjından kontrol edilir. Yapay ileri-bakış
+sessizliği yalnız yerel doğrulamadır, PCM çıkışına eklenmez. Doğrulanmış global
+sınır yine UI'ın 3 s ön tamponunda bulunmalıdır; eski ses kırpılarak gönderilmez.
 
 ## Güncel küçük düzeltme — gösterim
 

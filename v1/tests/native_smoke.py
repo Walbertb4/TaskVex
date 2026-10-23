@@ -33,6 +33,12 @@ def check_local_sleep(window, api, js, wait_until, live_state, wake_state, outco
     wait_until(lambda: js("const m=await import('./js/live_mic.js');return m.liveMic.waitingForSpeech;"))
     js("document.getElementById('inp').value='Vex uyku moduna geç';document.getElementById('send').click();return true;")
     wait_until(lambda: 'Asleep · say' in window.evaluate_js("document.getElementById('textStatus').textContent"))
+    assert window.evaluate_js("document.getElementById('sLbl').textContent") == 'SLEEPING'
+    assert window.evaluate_js("!!document.getElementById('c_sleeping')")
+    js("const c=document.getElementById('c_sleeping');c.value='#556677';c.dispatchEvent(new Event('input',{bubbles:true}));document.getElementById('btnSaveSet').click();return true;")
+    wait_until(lambda: api._store.read().get('colors',{}).get('sleeping') == '#556677')
+    assert window.evaluate_js("document.documentElement.style.getPropertyValue('--c')") == '#556677'
+    outcome['sleeping_state_color_customization_persisted'] = True
     live_before_sleep = (live_state['opened'], len(live_state['sent']))
     local_before = wake_state['packets']
     js("wakeOsc.connect(wakeDestinations.at(-1));return true;")
@@ -68,6 +74,68 @@ def check_local_sleep(window, api, js, wait_until, live_state, wake_state, outco
     wait_until(lambda: not api._sleeping)
     outcome['sleep_with_microphone_off_closed_live_without_capture'] = True
     outcome['one_time_sleep_local_only_pcm_wake_handoff_mic_off_and_profile_word'] = True
+    # Yerel motor hatası açık Wake'ten sonra normal konuşmayı kilitlememeli.
+    from app.bridge import webview_bridge as bridge_module
+    original_detector = bridge_module.WakeWord
+    def unavailable(word):
+        raise FileNotFoundError('Synthetic missing local model')
+    bridge_module.WakeWord = unavailable
+    js("testMicOn();return true;")
+    wait_until(lambda: js("const m=await import('./js/live_mic.js');return m.liveMic.waitingForSpeech;"))
+    js("document.getElementById('sleep').click();return true;")
+    wait_until(lambda: 'Local wake unavailable' in window.evaluate_js("document.getElementById('textStatus').textContent"))
+    assert api._sleeping
+    js("document.getElementById('sleep').click();return true;")
+    wait_until(lambda: js("const m=await import('./js/live_mic.js');return m.liveMic.waitingForSpeech;"))
+    assert not api._sleeping
+    bridge_module.WakeWord = original_detector
+    outcome['manual_wake_recovered_normal_listening_after_local_engine_failure'] = True
+    js("testMicOff();return true;")
+    if os.environ.get('TASKVEX_TEST_REAL_WAKE') == '1':
+        check_real_local_wake(window, api, js, wait_until, outcome)
+
+
+def check_real_local_wake(window, api, js, wait_until, outcome):
+    """İsteğe bağlı yerel fixture: gerçek KWS + WebAudio; sağlayıcı hâlâ sentetik.
+
+    Test önceden indirilmiş hash doğrulamalı modeli ve SAPI ile oluşturulmuş
+    İngilizce WAV'ı kullanır. Ağ/gerçek mikrofon/kullanıcı sesi kullanılmaz.
+    """
+    from base64 import b64encode
+    from app.bridge import webview_bridge as bridge_module
+    from app.session import wake_word
+    fixture = Path(__file__).resolve().parents[1] / 'runtime'
+    original_home, original_detector = wake_word.model_home, bridge_module.WakeWord
+    wake_word.model_home = lambda: fixture/'wake-model'
+    bridge_module.WakeWord = wake_word.WakeWord
+    try:
+        encoded = b64encode((fixture/'wake-positive.wav').read_bytes()).decode('ascii')
+        js("const p=await import('./js/panels.js');p.openM('mProf');document.getElementById('pWake').value='Vex';document.getElementById('btnSaveProf').click();return true;")
+        wait_until(lambda: api._store.read().get('prof',{}).get('pWake') == 'Vex')
+        js("window.realWakeContext=new AudioContext();window.realWakeDest=null;"
+           "Object.defineProperty(navigator.mediaDevices,'getUserMedia',{configurable:true,value:async()=>{realWakeDest=realWakeContext.createMediaStreamDestination();return realWakeDest.stream;}});"
+           "testMicOn();return true;")
+        wait_until(lambda: js("const m=await import('./js/live_mic.js');return m.liveMic.waitingForSpeech;"))
+        js("document.getElementById('sleep').click();return true;")
+        wait_until(lambda: 'Asleep · say' in window.evaluate_js("document.getElementById('textStatus').textContent"))
+        delay = int(os.environ.get('TASKVEX_WAKE_IDLE_SECONDS','0'))
+        if delay not in (0,5,65):
+            raise ValueError('Native wake delay must be 0, 5 or 65 seconds')
+        for _ in range(delay):
+            time.sleep(1)
+        assert api._sleeping and api._wake is not None
+        before_answers = window.evaluate_js("document.getElementById('msgs').textContent").count('Native microphone answer')
+        js("const b=Uint8Array.from(atob(" + json.dumps(encoded) + "),c=>c.charCodeAt(0));const s=realWakeContext.createBufferSource();s.buffer=await realWakeContext.decodeAudioData(b.buffer);s.connect(realWakeDest);s.start();return true;")
+        wait_until(lambda: not api._sleeping)
+        # Backend hit'i, UI'nın yanıt turunu başlatıp bitirdiği anlamına gelmez.
+        # Eski enabled düğmesini görüp capture'ı erken kapatma.
+        wait_until(lambda: window.evaluate_js("document.getElementById('msgs').textContent").count('Native microphone answer') > before_answers)
+        wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
+        outcome['real_kws_sapi_wav_through_web_audio_and_native_bridge'] = True
+        outcome[f'real_wake_after_{delay}_seconds_idle'] = True
+        js("testMicOff();await realWakeContext.close();return true;")
+    finally:
+        wake_word.model_home, bridge_module.WakeWord = original_home, original_detector
 
 
 def child(home: Path, phase: str, debug: bool = False) -> None:
@@ -1412,6 +1480,8 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 outcome["native_shutdown"] = True
         except Exception as error:
             outcome.update(ok=False, phase=phase, error=repr(error), trace=traceback.format_exc())
+            outcome['wake_state'] = {'sleeping':api._sleeping, 'pending_hit':api._wake_detected,
+                                     'sequence':getattr(api._wake,'_sequence',None)}
             outcome["diagnostic"] = window.evaluate_js("({text:document.getElementById('textStatus')?.textContent,notes:document.getElementById('notesStatus')?.textContent,log:document.getElementById('log')?.textContent,ready:!!window.vex,bridge:typeof window.pywebview?.api?.event})")
             outcome["notes_file"] = (home / "notes.json").read_text("utf-8") if (home / "notes.json").exists() else None
         finally:

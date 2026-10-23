@@ -5,6 +5,7 @@ yoktur. --setup açıkça çalıştırılırsa sabit upstream modelini indirir; 
 başlangıcında sessiz indirme yapılmaz. Ağırlıklar TaskVex MIT lisansı sayılmaz.
 """
 from array import array
+from collections import deque
 from hashlib import sha256
 from pathlib import Path
 import re
@@ -63,6 +64,8 @@ class WakeWord:
 
     def __init__(self, word: str):
         import sherpa_onnx
+        if sherpa_onnx.__version__ != '1.13.8':
+            raise ValueError('Wake alignment requires the pinned sherpa-onnx version')
         if not isinstance(word, str) or not re.fullmatch(r'[A-Za-z]+(?: [A-Za-z]+){0,2}', word) or len(word) > 64:
             raise ValueError('Use one to three supported English words')
         directory = model_home()
@@ -97,13 +100,56 @@ class WakeWord:
         self._stream = self._spotter.create_stream()
         self.id = uuid4().hex
         self._sequence = self._packets = 0
-        self._stream_start = self.start_sequence = 0
+        self.start_sequence = 0
+        self._recent: deque[tuple[int, bytes]] = deque(maxlen=30)
+
+    def _boundary(self, result, sequence: int) -> int:
+        """Hit'i en çok 3 s yerel sesle yeniden doğrula; araç/API tekrarı değildir.
+
+        1.13.8 decoder sessizlikte kendi zaman sayacını sıfırlar; Python sonucu
+        bu sıfırlamanın global ofsetini açmaz. Eski timestamps'ı global saymak
+        yerine yalnız hit anında kısa, başlangıcı bilinen bir doğrulama stream'i
+        açılır. Sözcük süresi dışındaki pay 1.5 s iç-reset eşiğinden kısadır;
+        böylece yeni hit'in önünde gizli sessizlik reset'i olamaz. Bu şart veya
+        ses sınırı doğrulanamazsa zaman uydurulmaz, Live'a ses gönderilmez.
+        """
+        times = list(result.timestamps)
+        if not times or any(not math.isfinite(t) or t < 0 for t in times) or times != sorted(times):
+            raise ValueError('Wake boundary was not confirmed')
+        span = times[-1] - times[0]
+        count = math.ceil((span + .8) * 10)
+        if count > 30:
+            raise ValueError('Wake utterance exceeds the local prefix')
+        window = list(self._recent)[-count:]
+        verify = self._spotter.create_stream()
+        samples = array('h')
+        samples.frombytes(b''.join(pcm for _, pcm in window))
+        if sys.byteorder != 'little':
+            samples.byteswap()
+        # Yeni encoder'in kısa ileri bakışını doldur; bu sıfırlar yalnız
+        # doğrulamaya aittir. Live'a aktarılmaz ve hit zamanına dahil edilmez.
+        verify.accept_waveform(16000, [sample / 32768 for sample in samples] + [0.0] * 4800)
+        while self._spotter.is_ready(verify):
+            self._spotter.decode_stream(verify)
+            checked = self._spotter.keyword_spotter.get_result(verify)
+            stamps = list(checked.timestamps)
+            if checked.keyword == result.keyword and stamps:
+                if (any(not math.isfinite(t) or t < 0 for t in stamps) or stamps != sorted(stamps)
+                        or stamps[-1] >= len(window) / 10
+                        or len(window) / 10 + .3 - (stamps[-1] - stamps[0]) >= 1.5):
+                    raise ValueError('Wake alignment could include an untracked reset')
+                start = window[0][0] + math.floor(stamps[0] * 10)
+                if not window[0][0] <= start <= sequence:
+                    raise ValueError('Wake alignment is outside the local prefix')
+                return start
+        raise ValueError('Wake boundary could not be verified')
 
     def feed(self, sequence: int, pcm: bytes) -> bool:
         """Tek 100 ms PCM; bozuk sıra/ses reddedilir, sessiz sınırsız kuyruk yoktur."""
         if type(sequence) is not int or sequence != self._sequence or type(pcm) is not bytes or len(pcm) != 3200:
             raise ValueError('Invalid local wake packet')
         self._sequence += 1
+        self._recent.append((sequence, pcm))
         samples = array('h'); samples.frombytes(pcm)
         if sys.byteorder != 'little':
             samples.byteswap()
@@ -112,17 +158,13 @@ class WakeWord:
             self._spotter.decode_stream(self._stream)
             result = self._spotter.keyword_spotter.get_result(self._stream)
             if result.keyword:
-                if not result.timestamps or not math.isfinite(result.timestamps[0]):
-                    raise ValueError('Wake boundary was not confirmed')
-                self.start_sequence = min(sequence, max(self._stream_start,
-                    self._stream_start + int(result.timestamps[0] * 10)))
+                self.start_sequence = self._boundary(result, sequence)
                 return True
         self._packets += 1
         # shortcut: 60 s'de sınırlı stream yenilenir; sınırdaki bir sözcük
         # kaçarsa kullanıcı tekrar söylemeli. Fiziksel kabulde bu aralık ölçülür.
         if self._packets >= 600:
             self._stream = self._spotter.create_stream()
-            self._stream_start = self._sequence
             self._packets = 0
         return False
 

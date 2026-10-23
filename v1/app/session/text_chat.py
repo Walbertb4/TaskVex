@@ -110,7 +110,7 @@ class TextChat:
                 self._speech_reply = None
             if self._closed:
                 return {"ok": False, "error": "Text session is closed; reopen the app"}
-            if audio_input is None and wants_sleep(text):
+            if audio_input is None and wants_sleep(text, (profile or {}).get('pWake', 'Vex')):
                 if not self._live.close():
                     return {'ok':False, 'unknown':True, 'error':'Live closure could not be confirmed'}
                 return {'ok':True, 'completed':True, 'text':'Sleep mode requested.', 'sleep_requested':True,

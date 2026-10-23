@@ -1,5 +1,26 @@
 # TaskVex — Kullanıcının katılacağı gerçek kullanım kontrolleri
 
+## R0 zaman hesabı — bu adımın manuel kabulü
+
+Uygulamayı yeniden aç. Live/Microphone On ile Sleep düğmesine bas; beş saniye
+sessiz bekle, "Vex, merhaba" de. Yanıt ve normal dinleme geri gelmeli. Bunu
+üç kez tekrarla; bir denemede 65 saniye bekle. "Local wake microphone failed"
+olursa durum satırı ve engine log'u kaydet. Bu testi uyku düğmesiyle yapmak,
+henüz düzeltilmemiş Veks transkripsiyonu sorununu zaman testinden ayırır.
+Mic Off iken Wake'e basmak mikrofon tercihini On yapmamalı. Henüz R2–R5
+hata toparlanması/giriş sınırları tamamlanmış sayılmaz.
+
+## Uyku düzeltmesinin tekrar kabulü
+
+Uygulamayı yeniden aç. Live ve Microphone On ile "Vex uykuya dal" veya
+"Vex uyku moduna geç" de; SLEEPING görünmeli. Asleep iken "Vex, merhaba"
+de; yanıt bekle. Olmazsa Wake'e bas: normal dinleme geri gelmeli. Mic Off
+iken Wake'e basmak mikrofonu kendiliğinden On yapmamalı.
+Ayarlar → Tema içinde SLEEPING rengini değiştirip kaydet; uyurken rengi
+gör ve yeniden açılışta korunduğunu denetle. Wake sözcüğü profilde kalır.
+Sesle uyandırma hâlâ olmazsa Asleep durum satırını ve engine log hatasını
+bildir; İngilizce sözlük tabanlı yerel motor fiziksel telaffuz kabulü bekler.
+
 ## Güncel kısa test — tek seferlik uyku / wake-word
 
 Önceki Stop gösterge testleri kullanıcı tarafından başarılı bildirildi

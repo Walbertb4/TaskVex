@@ -17,7 +17,8 @@ from test_native_bridge import bridge, ready
 from test_live_probe import socket, frame
 
 
-@pytest.mark.parametrize('text', ['Vex uyku moduna geç.', 'uyu', 'go to sleep', 'Vex, enter sleep mode'])
+@pytest.mark.parametrize('text', ['Vex uyku moduna geç.', 'uyu', 'go to sleep', 'Vex, enter sleep mode',
+    'Rex, uykuya dal.', 'Max, uyku moduna geç.', 'Vex uykuya dal'])
 def test_explicit_sleep_phrase(text):
     assert wants_sleep(text)
 
@@ -26,6 +27,13 @@ def test_explicit_sleep_phrase(text):
     'bundan sonra uyku modunda kal', 'sleep mode is useful'])
 def test_quoted_ambiguous_or_persistent_mode_not_mistaken_for_one_time_sleep(text):
     assert not wants_sleep(text)
+
+
+def test_custom_address_and_sleeping_color_contract():
+    from app.bridge.settings import validate_settings
+    assert wants_sleep('Computer, uykuya dal.', 'Computer')
+    assert not wants_sleep('Max uyku moduna geç ne demek?')
+    assert validate_settings({'colors':{'sleeping':'#64748b'}})['colors']['sleeping']=='#64748b'
 
 
 def test_typed_sleep_does_not_call_provider_and_keeps_memory():
@@ -38,8 +46,9 @@ def test_typed_sleep_does_not_call_provider_and_keeps_memory():
         assert chat.close()
 
 
-def test_voice_sleep_closes_live_without_starting_model_tool(socket):
-    socket.frames=[{'setupComplete':{}}, {'serverContent':{'inputTranscription':{'text':'Vex uyku moduna geç','finished':True}}}]
+@pytest.mark.parametrize('text', ['Vex uyku moduna geç', 'Rex, uykuya dal.', 'Max, uyku moduna geç.'])
+def test_voice_sleep_closes_live_without_starting_model_tool(socket, text):
+    socket.frames=[{'setupComplete':{}}, {'serverContent':{'inputTranscription':{'text':text,'finished':True}}}]
     with create_core() as core:
         chat=TextChat(core)
         report=chat.run_live('', 'future-live', audio_input=bytes(3200))
@@ -76,8 +85,22 @@ def test_local_wake_gate_order_and_stale_packets(bridge, monkeypatch):
     assert not bridge.event('wake_feed',packet)['detected']
     assert not bridge.event('wake_feed',{**packet,'request_id':'old'})['ok'] and bridge._sleeping
     assert bridge.event('wake_feed',{**packet,'sequence':1})['detected']
+    assert bridge._sleeping and bridge._wake is not None
+    assert bridge.event('live_audio_start',{'request_id':'still-blocked'})['code']=='sleeping'
+    assert not bridge.event('wake',{'request_id':'old'})['ok']
+    assert bridge.event('wake',{'request_id':started['request_id']})['completed']
     assert not bridge._sleeping and bridge._wake is None
     assert not bridge.event('wake_feed',packet)['ok']
+
+
+def test_rejected_ui_prefix_keeps_host_asleep_and_revokes_pending_hit(bridge):
+    assert ready(bridge)['ok']
+    bridge._sleeping = True
+    bridge._wake = SimpleNamespace(id='pending-hit')
+    bridge._wake_detected = True
+    assert bridge.event('wake_close','pending-hit')['completed']
+    assert bridge._sleeping and bridge._wake is None
+    assert not bridge.event('wake',{'request_id':'pending-hit'})['ok']
 
 
 def test_missing_model_or_bad_packet_stays_asleep_manual_wake_recovers(bridge, monkeypatch):
@@ -134,3 +157,26 @@ def test_pcm_sequence_endian_and_keyword_boundary(monkeypatch,tmp_path):
     assert state.samples[0]==-1
     state.hit=True
     assert detector.feed(1,bytes(3200)) and detector.start_sequence==1
+
+
+@pytest.mark.parametrize('stamps,valid', [([.24,.48],True), ([float('nan')],False),
+    ([.6,.2],False), ([1.6,1.8],False), ([],False)])
+def test_boundary_verifies_fresh_window_instead_of_trusting_old_segment_time(stamps,valid,monkeypatch):
+    from collections import deque
+    detector = object.__new__(wake_word.WakeWord)
+    detector._recent = deque([(seq,bytes(3200)) for seq in range(650,658)],maxlen=30)
+    state = SimpleNamespace(ready=True)
+    class Verification:
+        def __init__(self):self.keyword_spotter=self
+        def create_stream(self):return self
+        def accept_waveform(self,rate,samples):
+            assert rate==16000 and len(samples)==8*1600+4800
+        def is_ready(self,s):return state.ready
+        def decode_stream(self,s):state.ready=False
+        def get_result(self,s):return SimpleNamespace(keyword='WAKE',timestamps=stamps)
+    monkeypatch.setattr(detector,'_spotter',Verification(),raising=False)
+    old=SimpleNamespace(keyword='WAKE',timestamps=[.4,.68])
+    if valid:
+        assert detector._boundary(old,657)==652
+    else:
+        with pytest.raises(ValueError):detector._boundary(old,657)

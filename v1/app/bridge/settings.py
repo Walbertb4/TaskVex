@@ -16,7 +16,7 @@ _WIDGETS = ["time", "system", "timer", "weather", "calendar", "remind", "notes",
 _FIELDS = {
     "theme": _COLOR,
     "colors": {"type": "object", "properties": {k: _COLOR for k in
-               ["idle", "listening", "thinking", "speaking", "executing", "activating"]}, "additionalProperties": False},
+               ["idle", "sleeping", "listening", "thinking", "speaking", "executing", "activating"]}, "additionalProperties": False},
     "prof": {"type": "object", "properties": {
         **{k: _TEXT for k in ["pLang", "pBr", "pIns", "pMem", "pSc", "pSys", "pGreet"]},
         "pWake": {"type":"string", "minLength":1, "maxLength":64, "pattern":"^[A-Za-z]+(?: [A-Za-z]+){0,2}$"},

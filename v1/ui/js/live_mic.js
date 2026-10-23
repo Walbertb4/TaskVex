@@ -113,7 +113,8 @@ export const liveMic = {
             // sonraki PCM'i devret. KWS fonem zamanı 100 ms paketlere yuvarlanır.
             state.queue = state.prefix.filter(p => p.sequence >= detected.start_sequence).map(p => p.bytes);
             state.prefix = []; state.wakeQueue = [];
-            state.speaking = true; state.node.port.postMessage('wake-to-live'); onWake(); return;
+            state.speaking = true; state.node.port.postMessage('wake-to-live');
+            Promise.resolve(onWake()).catch(state.fail); return;
           }
           if (detected !== false) throw new Error('local_wake_failed');
         }

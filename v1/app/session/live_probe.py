@@ -166,7 +166,7 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
                             bound_tools.begin_turn(report["input_text"])
                         await publish('u', report['input_text'])
                         if (content.input_transcription.finished is True and not report['tool_results']
-                                and wants_sleep(report['input_text'])):
+                                and wants_sleep(report['input_text'], (profile or {}).get('pWake', 'Vex'))):
                             # Uyku host kontrolüdür; bu açık isteği araç/model
                             # yanıtına çevirme. Socket kapanır, RAM sohbet kalır.
                             await connection.reset('sleep_requested')
@@ -273,7 +273,7 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
                     if report["tool_results"] and "extended-thinking" in model:
                         finished = status == types.InteractionStatus.IDLE
                     if finished and not message.tool_call:
-                        if not report['tool_results'] and wants_sleep(report.get('input_text', '')):
+                        if not report['tool_results'] and wants_sleep(report.get('input_text', ''), (profile or {}).get('pWake', 'Vex')):
                             await connection.reset('sleep_requested')
                             report.update(ok=True, sleep_requested=True, mode='local_sleep')
                             if not transcript and not plain:

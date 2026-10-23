@@ -6,8 +6,11 @@ geri-uyuma bu dilimde yoktur; bu ifadeler ayrı sonraki adımda ele alınacaktı
 import re
 
 
-def wants_sleep(text: str) -> bool:
+def wants_sleep(text: str, wake_word: str = 'Vex') -> bool:
     """Dar Türkçe/İngilizce uyku ifadeleri; tarihçe yerine güncel mesajı denetle."""
     value = text.casefold().replace('i\u0307', 'i').strip(' \t\r\n.!?,')
-    value = re.sub(r'^vex[ ,:]+', '', value)
-    return value in {'uyku moduna geç', 'uykuya geç', 'uyu', 'go to sleep', 'enter sleep mode', 'sleep'}
+    # Rex/Max yalnız açık uyku cümlesinde sık görülen Vex transkripsiyonlarıdır;
+    # genel komutlarda ve yerel wake algısında bulanık isim eşleştirmesi yapılmaz.
+    names = {'vex', 'rex', 'max', wake_word.casefold()}
+    value = re.sub(r'^(?:' + '|'.join(re.escape(n) for n in names) + r')[ ,:]+', '', value)
+    return value in {'uyku moduna geç', 'uykuya geç', 'uykuya dal', 'uyu', 'go to sleep', 'enter sleep mode', 'sleep'}

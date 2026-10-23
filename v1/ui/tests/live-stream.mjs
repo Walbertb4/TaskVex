@@ -146,4 +146,14 @@ assert.equal(wakes,1);assert.equal(command,'wake-to-live');assert.ok(liveMic.act
 sent=[];liveMic.activateStream(async data=>{sent.push(data);return true;},()=>assert.fail());
 for(let i=0;i<20;i++)await Promise.resolve();
 assert.equal(sent.length,1);liveMic.cancel(); // Hit öncesi ortam paketleri devredilmedi.
+// Eski sınırda onWake/kabul çağrısı yok; host pending hit'i uykuya devam eder.
+track={stop(){this.closed=true;}};
+let expiredError=0,expiredWake=0,seenPackets=0;
+await liveMic.prepareStream(()=>expiredError++,'12345');
+liveMic.waitForWake(async()=>++seenPackets===35 ? {detected:true,start_sequence:0} : false,()=>expiredWake++);
+for(let i=0;i<35;i++){
+  node.port.onmessage({data:new ArrayBuffer(3200)});
+  for(let j=0;j<5;j++)await Promise.resolve();
+}
+assert.equal(expiredError,1);assert.equal(expiredWake,0);assert.equal(liveMic.active,false);
 console.log('PASS filtered/adaptive candidates, local wake handoff, streaming bounds and Stop');

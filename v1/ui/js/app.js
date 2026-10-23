@@ -216,7 +216,7 @@ function cancelMic(message = 'Recording cancelled. Nothing sent.') {
   const active = liveMic.active;
   liveMic.cancel();
   if (active && !textBusy) {
-    setState('idle');
+    setState(sleeping ? 'sleeping' : 'idle');
     document.getElementById('textStatus').textContent = message;
   }
   paintMic();
@@ -339,13 +339,26 @@ async function listenForWake() {
       if (wakeSession !== session) return null;
       const ack = await emit('wake_feed', {request_id:session, sequence:sequence++, data});
       return ack.ok ? ack.response?.detected ? ack.response : false : null;
-    }, () => {
+    }, async () => {
       if (revision !== micRevision || wakeSession !== session || !sleeping) return;
-      wakeSession = null; sleeping = false;
+      const connection = connectionRevision;
+      const accepted = await emit('wake', {request_id:session});
+      if (connection !== connectionRevision) return;
+      if (!accepted.ok || accepted.response?.completed !== true) {
+        if (revision === micRevision) blockMicrophone('Wake handoff was not confirmed. Sleep remains active; use Wake.');
+        return;
+      }
+      sleeping = false;
       document.getElementById('sleep').textContent = 'Sleep';
+      // Off sırasında kabul edilmiş wake, Off tercihini değiştirmez ve
+      // eski kaynağın sesini yeni bir model isteğine dönüştürmez.
+      if (revision !== micRevision || wakeSession !== session || !microphoneEnabled || !liveMic.active) {
+        setState('idle', true); paintMic(); return;
+      }
+      wakeSession = null;
       void sendText('', {stream:true});
     });
-    paintMic(); setState('idle', true);
+    paintMic(); setState('sleeping', true);
     setConnectionStatus('idle', 'ASLEEP · LOCAL WAKE');
     document.getElementById('textStatus').textContent = 'Asleep · say "' + started.response.wake_word + '" to wake. Audio is processed locally.';
   } catch (error) {
@@ -359,6 +372,7 @@ async function listenForWake() {
 
 function enterSleep() {
   sleeping = true; resetLiveAudio(false);
+  setState('sleeping', true);
   document.getElementById('sleep').textContent = 'Wake';
   document.getElementById('textStatus').textContent = 'Sleep mode · local wake preparation…';
   setConnectionStatus('idle', 'ASLEEP');
@@ -964,7 +978,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setState: k => {
       // A final push invalidates an older cancellation Promise.
       if (k === 'idle') finishStop();
-      setState(k);
+      setState(sleeping ? 'sleeping' : k);
     },
     stopRoutineScheduler,
     stopCalendarScheduler,
@@ -1238,6 +1252,9 @@ document.addEventListener('DOMContentLoaded', () => {
       sleeping = true; blockMicrophone('Wake was not confirmed. Sleep remains active; try Wake again.'); return;
     }
     sleeping = false; document.getElementById('sleep').textContent = 'Sleep';
+    // Açık Wake kullanıcı eylemidir: yerel KWS hatasının micBlocked kilidi,
+    // normal Live dinlemeyi sonsuza kadar engellememeli. İzin/cihaz yeniden doğrulanır.
+    micBlocked = false; setState('idle', true); paintMic();
     document.getElementById('textStatus').textContent = 'Awake. Waiting for speech.';
     void listenAutomatically();
   });
