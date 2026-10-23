@@ -8,7 +8,7 @@
 [![Status](https://img.shields.io/badge/Status-Early%20Development-orange?style=for-the-badge)]()
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%20%7C%203.14-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://www.microsoft.com/windows)
-[![Tests](https://img.shields.io/badge/Tests-804%20Passed-2ea44f?style=for-the-badge&logo=pytest&logoColor=white)](v1/tests)
+[![Tests](https://img.shields.io/badge/Tests-843%20Passed-2ea44f?style=for-the-badge&logo=pytest&logoColor=white)](v1/tests)
 [![Memory](https://img.shields.io/badge/RAM%20Footprint-~50--80%20MB%20(Target%20Idle)-blueviolet?style=for-the-badge)]()
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
@@ -34,7 +34,7 @@ Most desktop AI assistants today are bloated Electron wrappers that consume 500+
 | **Tool Execution** | **Deterministic Single-Worker FIFO + Policy Engine** | Blind shell / uncontrolled agent execution |
 | **Credential Security** | **Windows Credential Manager** (`advapi32.dll`) | Plaintext `.env` / `config.json` |
 | **Verification Standard** | **Read-back & OS evidence required** (`verified=True`) | Assumed success on tool call |
-| **Voice Streaming** | **Sub-second Gemini 3.8 Live WebSockets** | Clunky REST STT ➔ LLM ➔ TTS cascades |
+| **Voice Streaming** | **Gemini Live WebSocket streaming (latency varies)** | Clunky REST STT ➔ LLM ➔ TTS cascades |
 
 ---
 
@@ -50,7 +50,7 @@ Most desktop AI assistants today are bloated Electron wrappers that consume 500+
 
 TaskVex evaluates and executes tasks according to strict safety invariants:
 
-### Resolution Hierarchy
+### Target Resolution Hierarchy (L1–L4 are planned)
 ```text
 [User Request / Goal] 
        │
@@ -71,10 +71,10 @@ TaskVex evaluates and executes tasks according to strict safety invariants:
 ```
 
 ### Safety Invariants:
-1. **Policy Gate (Independent Authorization):** Every tool or GUI action must be evaluated by `PolicyEngine` (`ALLOW` / `CONFIRM` / `DENY`) before execution. The model cannot authorize its own actions.
+1. **Policy Gate (Independent Authorization):** Current registered tools pass an explicit allow/deny policy before execution. The model cannot grant itself permissions. Confirmation workflows and GUI execution are planned; they are not implemented security features yet.
 2. **Mandatory Verification (`verified=True`):** A task is never assumed successful just because a command ran. Notes are verified by reading back disk state; launched apps are verified via `WS_VISIBLE` OS window handles.
 3. **Never Repeat on Uncertain:** If an action returns `UNKNOWN` or `CANCELLED`, TaskVex immediately halts execution. Blind retries that could duplicate real-world side effects are forbidden.
-4. **Data Tainting & Indirect Prompt Injection Defense:** All external data (web pages from L2, OCR text from L4, emails, clipboard or untrusted files) is tagged as untrusted data (`tainted = True`). When tainted context is active, side-effect tools (terminal, file deletion, email sending, note deletion) are automatically escalated to mandatory user confirmation (`CONFIRM`).
+4. **Untrusted Data:** The current model instruction treats tool output as data, and note mutations validate user-selected targets. Automatic taint tracking and mandatory `CONFIRM` escalation are planned; the current policy does not implement them.
 
 ---
 
@@ -86,7 +86,7 @@ In accordance with [`ARCHITECTURE.md`](ARCHITECTURE.md) and [`CORE_START_PLAN.md
 * **🗓️ Planned** (Architecturally mapped, scheduled for future stages)
 
 ### Core & Execution
-* ✅ **Single-Worker FIFO TaskManager:** Deterministic serial task execution with zero race conditions.
+* ✅ **Single-Worker FIFO TaskManager:** Serial task execution with tested request deduplication and cancellation boundaries.
 * ✅ **Policy Engine:** Capability-based access control and validation gate.
 * ✅ **Windows Credential Manager:** Secure storage for Gemini API keys via Win32 `advapi32.dll`.
 * ✅ **Atomic JSON Storage:** Crash-safe read-back verified data storage with automatic recovery.
@@ -99,7 +99,7 @@ In accordance with [`ARCHITECTURE.md`](ARCHITECTURE.md) and [`CORE_START_PLAN.md
 * 🗓️ **Google Workspace (`drive`, `calendar`, `gmail`):** Direct API integrations for calendar, files, and email.
 
 ### Model & Voice Session
-* ✅ **Gemini 3.8 Live WebSocket Streaming:** Real-time bidirectional voice conversation with sub-second latency.
+* ✅ **Gemini 3.8 Live WebSocket Streaming:** Real-time bidirectional voice conversation with provider- and network-dependent latency; see the current audio/sleep findings.
 * ✅ **Server VAD & Audio Streaming:** 16 kHz mono PCM capture through browser `AudioWorklet`.
 * ✅ **Bidirectional Barge-In (Interruption):** Speaking interrupts active voice playback with seamless sequential turn handoff.
 * ✅ **Audio Device Selection:** Dynamic input (microphone) and output (speaker) device enumeration and routing.
@@ -109,27 +109,30 @@ In accordance with [`ARCHITECTURE.md`](ARCHITECTURE.md) and [`CORE_START_PLAN.md
 * 🧪 **Local Wake-Word Detection:** Local "Vex" keyword spotting using `sherpa-onnx` ONNX models running on CPU.
 * 🧪 **Single-Turn Sleep Mode:** Sleep intent detection ("go to sleep", "sleep", "enter sleep mode") with local socket shutdown and wake capability.
 * 🧪 **REST TTS Playback:** Isolated text-to-speech voice playback for REST replies via `gemini-3.8-flash-lite-tts`.
-* 🗓️ **Automatic Return-to-Sleep:** Auto-sleep timer in settings after interaction completion.
+* 🧪 **Sleep Modes:** Stay asleep returns after one completed interaction; a separate idle timer applies during normal conversation. Current lifecycle/intent defects remain open in [aşamalar.md](aşamalar.md).
 * 🗓️ **Persistent Long-Term Memory:** Personalized user facts, memory management, and editable memory entries.
 
 ---
 
-## 🗺️ Roadmap (Aligned with CORE_START_PLAN.md)
+## 🗺️ Roadmap (current tracking: [aşamalar.md](aşamalar.md))
 
 - [x] **Stage 1 (Core Foundations):** Common Contracts, ToolRegistry, FIFO TaskManager, Atomic Storage ✅
 - [x] **Stage 2 (Native Host & Bridge):** PyWebView Native Edge Host, Settings & Window State Bridge ✅
 - [x] **Stage 3 (Notes Authority):** Backend Authority for Notes CRUD, Verified Read-Back, Backup & Restore ✅
 - [x] **Stage 4 (Windows Apps):** Windows Application Catalog & Verified Launch with Window Discovery ✅
-- [x] **Stage 5.1 – 5.5 (Gemini Live & Audio):** Real-time WebSockets, Server VAD, Barge-in, Device Routing, Conversation Memory ✅
+- [x] **Stage 5.1 – 5.5 (Gemini Live & Audio):** Implemented baseline for WebSockets, VAD, barge-in, device routing and RAM memory; current defects remain open
 - [ ] **Stage 5 Active Slice (Local Wake & Sleep):** Local Sherpa-ONNX Wake-Word ("Vex") & Sleep/Wake Mode 🧪
 - [ ] **Stage 5 Finalization:** Integrated user acceptance, UI debloat, documentation lock.
 - [ ] **Stage 6 (Personalization & External Integrations):** Long-term persistent memory, Google Workspace, Telegram & Discord bots 🗓️
-- [ ] **Stage 7 (GUI Automation - Part 1):** L3 Windows UI Automation (UIA) & L1 Memory Verified Recipes 🗓️
-- [ ] **Stage 8 (GUI Automation - Part 2):** L2 Web/DOM (CDP) & L4 Vision/OCR (with strict call budgets) 🗓️
+- [ ] **Stage 7 (GUI Resolver & Skills):** L3 UIA, L1 verified recipes, L2 DOM and last-resort L4 vision/OCR 🗓️
+- [ ] **Stage 8 (Routines & Packaging):** One scheduler owner, background services, recovery and packaged distribution 🗓️
 
 ---
 
 ## 📖 Documentation & Guides
+
+* 📋 **[Current stages and steps (aşamalar.md)](aşamalar.md):** Current progress, open blockers and acceptance status.
+* 🔎 **[23 October audit](docs/STAGE5_SLEEP_AUDIT.md):** Reproduced sleep/audio defects and regression scope.
 
 * 🗣️ **[Commands Guide (commands.md)](commands.md):** User reference detailing all available spoken and typed conversational commands.
 * 📐 **[Architecture Guide (ARCHITECTURE.md)](ARCHITECTURE.md):** Comprehensive technical specification, contracts, and lifecycle diagrams.

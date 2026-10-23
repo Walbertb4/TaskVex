@@ -1,0 +1,55 @@
+{
+  "date": "2026-10-23",
+  "application_code_changed_in_audit": false,
+  "pytest_passed": 843,
+  "javascript_suites_passed": 7,
+  "pyright_app_errors": 0,
+  "native_ok": true,
+  "native_phase_count": 10,
+  "runtime_findings_open": [
+    "U01",
+    "U02",
+    "U03",
+    "U04",
+    "U05"
+  ],
+  "documentation_finding_corrected": [
+    "D01"
+  ],
+  "python_experiments": {
+    "phrases": {
+      "Vex uyku moduna gir": null,
+      "Vex kalıcı olarak uyku moduna gir": null,
+      "uyku moduna geç": "once",
+      "uyku moduna  geç": null,
+      "enter sleep mode": "once",
+      "Vex uyku moduna geçme": null
+    },
+    "finished_input": {
+      "closed_after_final_transcript": false,
+      "later_pcm_accepted": true
+    },
+    "refused_sleep": {
+      "ok": false,
+      "backend_sleeping": false
+    }
+  },
+  "javascript_experiments": {
+    "refusedSleep": {
+      "ui_sleeping": true,
+      "button": "Wake"
+    },
+    "delayedSpeech": {
+      "eos_after_700ms": 1,
+      "subsequent_speech_messages": 0
+    },
+    "suspended": {
+      "mic_active": true,
+      "state": "suspended",
+      "error_count": 0,
+      "has_state_handler": false
+    }
+  },
+  "real_provider_tested": false,
+  "physical_microphone_tested": false
+}

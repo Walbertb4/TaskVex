@@ -76,3 +76,18 @@ Never cut: validation at trust boundaries, error handling that prevents data los
   5. Kullanıcı açıkça istemedikçe her adımda otomatik `git push` yapma; push işlemi oturum veya aşama sonuna bırakılır.
   6. Commit kaydedildikten sonra yeni adımın çalışmasına başla.
 
+
+
+## Aşama ve alt adım kaydı — zorunlu bakım
+
+- Kök `aşamalar.md`, güncel aşama ve alt adımların tek ilerleme kaydıdır.
+  Göreve başlamadan ilgili mevcut durum ve açık engellerini oku.
+- Aşamayı yeni adımlara böldüğünde, sırayı/kapsamı değiştirdiğinde ve her adım
+  sonunda aynı turda `aşamalar.md` dosyasını güncelle. Kimlik, amaç, kabul
+  koşulu, gerçek durum ve ilgili test/rapor bağlantısını koru.
+- Otomatik test başarısı, fiziksel kullanıcı kabulü ve commit ayrı durumlardır.
+  Açık yeniden üretimi olan adımı test sayısına dayanarak tamamlandı işaretleme;
+  yeni bug bulunursa ilgili adımı yeniden aç ve bağımlı işleri ona göre sırala.
+- ARCHITECTURE.md mimariyi, commands.md çalışan kullanıcı komutlarını anlatır;
+  aşamalar.md bu dosyaların yerine geçmez. Tarihsel notları güncel plan gibi
+  sunma; güncel başlıklardan aşamalar.md'ye bağlantı ver.
