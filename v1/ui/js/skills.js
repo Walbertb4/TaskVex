@@ -1,16 +1,15 @@
 /**
- * skills.js - Skills library, custom skill authoring and execution
+ * skills.js - Yerel skill tanımları ve editörü; backend yürütücü henüz yok.
  */
 
 import { sfx } from './sfx.js';
-import { emit, logBridgeError } from './api.js';
+import { logBridgeError } from './api.js';
 import { validateSkillSteps, uniqueRecordId, validateAndNormalizeSnapshot, foldTr } from './schema.js';
 import { showM } from './panels.js';
 
 let skills = [];
 let editId = null;
 let saveStoreCb = null;
-let addTimelineCb = null;
 let openModalCb = null;
 let closeModalCb = null;
 
@@ -101,12 +100,7 @@ export function renderSkills() {
 }
 
 export function runSkill(s) {
-  if (!s) return;
-  const error = validateSkillSteps(s.steps);
-  if (error) { alert(error); return; }
-  if (closeModalCb) closeModalCb();
-  if (addTimelineCb) addTimelineCb('Skill run: ' + (s.name || s.id), null, 'skill');
-  emit('run_skill', s.id);
+  if (s) alert('Skill execution is not connected yet. Your definition is saved locally.');
 }
 
 export function openSkillEdit(s = null) {
@@ -215,7 +209,7 @@ export function saveSkill() {
     return;
   }
   sfx.ok();
-  emit('skill_save', o);
+
   if (skForm) skForm.style.display = 'none';
 }
 
@@ -224,7 +218,7 @@ export function deleteSkill(id) {
   renderSkills();
   if (saveStoreCb) saveStoreCb({ emitSave: true });
   sfx.del();
-  emit('skill_delete', id);
+
 }
 
 export function setSkills(list, options = {}) {
@@ -266,18 +260,12 @@ export function skillResult(id, ok, options = {}) {
   if (!silent && saveStoreCb) saveStoreCb({ emitSave });
 }
 
-export function inspectScreen() {
-  emit('inspect');
-  // No fake mock skill injected when backend not connected (Rule 6, 8, 11)
-}
-
 export function initSkills(options = {}) {
   const rawList = Array.isArray(options.initialSkills) ? options.initialSkills : [];
   skills = rawList
     .filter(s => s && typeof s === 'object' && !Array.isArray(s))
     .map(s => ({ ...s }));
   saveStoreCb = options.saveStore || null;
-  addTimelineCb = options.addTimeline || null;
   openModalCb = options.openModal || null;
   closeModalCb = options.closeModal || null;
 
@@ -311,8 +299,6 @@ export function initSkills(options = {}) {
   const skSave = document.getElementById('skSave');
   if (skSave) skSave.addEventListener('click', saveSkill);
 
-  const inspectBtn = document.getElementById('inspectBtn');
-  if (inspectBtn) inspectBtn.addEventListener('click', inspectScreen);
 
   renderSkills();
 }

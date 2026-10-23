@@ -1,0 +1,10 @@
+{
+  "inventory_scope": "current first-party sources/tests/docs/config/legal; generated reports and historical archive counted separately",
+  "current_files": 132,
+  "python_files": 78,
+  "js_files": 34,
+  "runtime_source_lines_before": 12409,
+  "runtime_source_lines_after": 11703,
+  "runtime_source_line_delta": -706,
+  "archive_files": 133
+}

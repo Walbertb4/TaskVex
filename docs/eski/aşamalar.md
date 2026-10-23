@@ -1,0 +1,281 @@
+# TaskVex — Aşamalar ve güncel adımlar
+
+Bu dosya projenin güncel ilerleme kaydıdır. Tarihsel geliştirme notlarını tekrar
+okumadan neyin çalıştığını, neyin açık olduğunu ve sırada ne bulunduğunu gösterir.
+Son güncelleme: 23 Ekim 2026. Mevcut aşama: **Aşama 5, uyku/ses kararlılığı**.
+Aşama 5 kapanmadı; Aşama 6 uygulamasına geçilmedi.
+
+**Güncel 5.R8.6:** Sabit tema ve yalnız UI’dan timer/stopwatch silme uygulandı.
+994 tam pytest, 10 JS ve hedefli Pyright 0 geçti. [Native chat](docs/stage5-clock-delete-native-chat.json)
+renk/gerçek ID ile silme/boş kayıt görünümü ve regresyonları sınadı. Son klavye
+kontrolü de aynı rapora eklendi. Kullanıcı fiziksel/görsel kabulü ve yeni commit
+bekler. Önceki beş manuel test başarılı/00c76ce commit’inde; debloat/kapanış yok.
+
+**Önceki 5.R7.1:** Kullanıcının UI kontrol kapsamı shutdown ve çoklu timer/stopwatch.
+Bu tur shutdown ortak araç/host hattına bağlandı; 957 pytest, 8 JS ve app/araç/native
+Pyright 0. [Tam native](docs/stage5-shutdown-native.json) 10/10 geçti. 5.R7.2 çoklu timer/stopwatch sonraki
+ayrı dilimdir. Kullanıcı önceki wake/shutdown dilimi için çalıştığını bildirdi;
+onaylanan değişiklikler commit’e alınıyor.
+Kullanıcı uzun kullanım adımını ayrı plandan kaldırdı. **Aşama 5 kapanmıyor.**
+
+**Önceki 5.R5:** kullanıcı uyku testlerini başarılı bildirdi; 5.R4
+`5fb30d3` commit'ine alındı (push yok). Not hedefleri yapılandırılmış seçiciye
+taşındı, atomik toplu silme eklendi. 885 pytest, 7 JS, Pyright 0 ve native
+10/10 geçti; REST/Live batch panel kontrolü de doğrulandı. Kullanıcı 5.R5’i
+başarılı bildirdi; commit `2120113`. 5.R6 kullanıcı kabulü de başarılı.
+
+Önceki 5.R3: ayrı yerel ses kaldırıldı; Vex'in kendi yanıtı ve
+çalması ardından uyku uygulanıyor (d9caf91). Kullanıcı “kalıcı uyku moduna geç”
+ifadesinin kaçtığını bildirdi: aynı parser'da TR/EN varyantlar genişletildi.
+955 pytest ve native chat geçti; fakat “Uyku moduna kalıcı olarak gir” ifadesi
+kullanıcıda yine geçiş üretmedi. Varyasyon sorunu **açık**; test sayısıyla kapatılamaz.
+Kullanıcı kararıyla AGENTS.md'ye ortak mimari/araç hattı zorunluluğu ve özel
+doğal dil komut yolları yasağı eklendi. Uyku kararının yapılandırılmış araç
+hattına taşınması henüz uygulanmadı; bu tur yalnız proje kuralı güncellendi. Ayrıntı:
+[uyku kararlılık incelemesi](docs/STAGE5_SLEEP_STABILITY_REVIEW.md).
+
+## Nasıl güncellenir?
+
+- Aşama yeni adımlara bölündüğünde, kapsam/sıra değiştiğinde ve her adım sonunda
+  bu dosyayı güncelle. Mevcut kimlikleri koru; yeni alt adımlara yeni kimlik ver.
+- **Temel kabul tamam:** önceki kapsam uygulanmış ve kabul kaydı var. Daha sonra
+  bulunan bir sorun ilgili alt adımı yeniden açabilir; tüm ürün hatasız demek değildir.
+- **Uygulandı, kabul bekliyor:** kod ve otomatik kanıt var; gerçek kullanıcı kabulü yok.
+- **Açık / Engel / Planlandı:** tamamlandı değildir. Başarılı regresyon açık bir
+  yeniden üretimi kapatmaz. Bulguyu, düzeltmesini ve kabulünü ayrı kaydet.
+- Mimari kararlar ARCHITECTURE.md, çalışan komutlar commands.md, detaylı model
+  kanıtları docs/STAGE5_MODEL.md içindedir. Bu dosya geçmişi silmez; güncel durumu
+  gösterir. README yol haritası buradaki aşama numaralarıyla aynı kalmalıdır.
+- Kullanıcı manuel kabul etmeden commit yok; kabulden sonra AGENTS.md akışı uygulanır.
+
+## Genel yol haritası
+
+| Aşama | Kapsam | Güncel durum |
+|---|---|---|
+| 0 | Baz çizgi, veri sahipliği, MIT ve referans/lisans sınırları | Başlangıç kararları kaydedildi |
+| 1 | Modelden bağımsız core | Temel kabul tamam; uzun oturum kapasite sınırı ayrıca değerlendirilecek |
+| 2 | Native host, UI köprüsü ve ayarlar | Temel kabul tamam; bugünkü 10 native regresyon senaryosu geçti |
+| 3 | Backend otoriteli not CRUD ve aktarım/yedek | Temel kabul tamam; gerçek kullanıcı kabulü ve güncel regresyon kaydı var |
+| 4 | İlk Windows uygulama plugini | Notepad katalog/status/açma kabulü tamam; tüm uygulamalar veya modele apps.open açılması değildir |
+| 5 | Gemini, Live, araçlar, ses, geçici hafıza ve uyku | **Devam ediyor; aşağıdaki 5.F adımları açık** |
+| 6 | Kalıcı kullanıcı hafızası, yeni L0 işlemleri ve dış entegrasyonlar | Planlandı; başlamadı |
+| 7 | GUI resolver, L1 reçete, L2 DOM, L3 UIA, L4 vision ve skill yürütme | Planlandı; başlamadı |
+| 8 | Rutin/scheduler, arka plan servisleri, dağıtım ve paketleme | Planlandı; başlamadı |
+
+## Aşama 0 — Başlangıç
+
+- 0.1 UI baz çizgisi/yedek ve sözleşme kararları kaydedildi.
+- 0.2 TaskVex özgün katkıları MIT; üçüncü taraflar ayrı tutuldu.
+- 0.3 Veri sahipliği ve desteklenmeyen işlemin açık reddi tanımlandı.
+- Kaynak: docs/STAGE0_DECISIONS.md ve CORE_START_PLAN.md.
+
+## Aşama 1 — Core
+
+- 1.1 Python ortamı, pyproject ve geliştirme lock dosyası hazır.
+- 1.2 İstek/görev/araç/sonuç sözleşmeleri ve JSON doğrulaması hazır.
+- 1.3 ToolRegistry kayıt, parametre doğrulama ve isim çakışması reddi hazır.
+- 1.4 Tek worker TaskManager, kuyruk, request_id tekrar koruması, durum/iptal hazır.
+- 1.5 Açık yetki listesiyle policy ve atomik JSON saklama hazır.
+- 1.6 Yerel notlar ve salt okunur sistem aracı core hattında doğrulandı.
+- Sınır: TaskManager tüm görev kayıtları dahil 256 kayıt tutar; kapasite dolunca
+  yeni istek reddeder. Restart sonrası kalıcı exactly-once veya çok süreçli
+  yazma garantisi yoktur. Bunlar gizli sınırsız ölçek varsayımıyla sunulmaz.
+- Kaynak: docs/STAGE1_CORE.md, docs/TASK_MANAGER.md, docs/POLICY.md, docs/STORAGE.md.
+
+## Aşama 2 — Native UI
+
+- 2.1 PyWebView/EdgeChromium gerçek açılış, ES modülleri ve ui_ready köprüsü hazır.
+- 2.2 İzinli ayarlar snapshot/save/read-back/yeniden açılış ve kontrollü kurtarma hazır.
+- 2.3 Shutdown/restart, F11, varsayılan mor tema ve efekt başlangıç yolları hazır.
+- 2.4 Not/skill/rutin gibi koleksiyonların generic save ile yanlış backend yazımına
+  dönüşmemesi ve desteklenmeyen olayın reddi doğrulandı.
+- Kaynak: docs/STAGE2_NATIVE.md; bugünkü native rapor ayrı deney kanıtıdır.
+
+## Aşama 3 — Notlar
+
+- 3.1 Onaylı ilk aktarım, sabit ID ve backend tek otoritesi hazır.
+- 3.2 Ekleme/listeleme/düzenleme/tamamlama/silme ve doğrulanmış UI yenileme hazır.
+- 3.3 Yedek import/export, hata/iptal/geç yanıt ve yeniden açılış hazır.
+- Modelden CRUD, tarihe/kısmi metne göre hedef seçimi Aşama 5'te eklenmiştir.
+- Kaynak: docs/STAGE3_NOTES.md ve docs/STAGE3_VISIBLE_ACCEPTANCE.md.
+
+## Aşama 4 — İlk uygulama plugini
+
+- 4.1 apps.catalog, sabit Notepad kimliği ve yetki sınırı hazır.
+- 4.2 apps.status ve gerçek süreç/pencere gözlemi hazır.
+- 4.3 apps.open ve açma sonrası kanıt hazır.
+- 4.4 Tekrar/iptal/başlatma hatası/belirsizlik kabulü hazır.
+- 4.5 Gerçek Windows Notepad açma kabulü önceki raporlarda mevcut.
+- Kaynak: docs/STAGE4_APPS.md. Bugünkü denetimde gerçek Notepad yeniden açılmadı.
+
+## Aşama 5 — Uygulanan temel dilimler
+
+| Kimlik | Dilim | Durum ve sınır |
+|---|---|---|
+| 5.1 | REST → ModelTools → registry/policy/TaskManager | Temel kabul tamam; REST ana masaüstü ürün yolu değil |
+| 5.2 | API anahtarı ve Windows credential saklama | Temel kabul tamam; üretim anahtarı denetimde okunmadı |
+| 5.3 | API Live kataloğu, tek Live sahibi, metin ve PCM çıkışı | Uygulandı; mevcut giriş/uyku bulguları ayrıca açık |
+| 5.4 | REST/Live Stop, gerçek bitiş ve geç yanıt koruması | Temel kabul ve bugünkü regresyon geçti |
+| 5.5 | GoAway ve session resumption | Sentetik/native kanıt var; gerçek sağlayıcı GoAway kabulü açık |
+| 5.6 | Modelden not CRUD, tarih, tekil kısmi hedef ve ID doğrulama | Kullanıcı kabulü mevcut; toplu silme gibi henüz açılmamış kapsam eklenmiş sayılmaz |
+| 5.7 | Mikrofon/cihaz/VAD, transkript, barge-in, dil/kişisel talimat | Temel dilimler çalışıyor; ses yaşam döngüsü yeniden açıldı |
+| 5.8 | Sınırlı RAM sohbet hafızası ve New Chat | Uygulandı ve kabul kaydı var; kalıcı kullanıcı hafızası değildir |
+| 5.9 | Tek seferlik uyku ve yerel wake | Uygulandı fakat **açık bulgular nedeniyle kararlı kabul edilmedi** |
+| 5.10 | Stay asleep ile normal idle timer'ın ayrılması | Kod/sentetik kanıt var; normal timer kullanıcıda çalışıyor, birleşik uyku kabulü açık |
+| 5.11 | 23 Ekim genel denetimi ve yeniden üretimler | Tamamlandı: docs/STAGE5_SLEEP_AUDIT.md; denetim düzeltme değildir |
+
+## Aşama 5 — Şimdiki düzeltme sırası
+
+Bu liste önceki parçalı uyku planlarının güncel karşılığıdır. Somut açıklar
+[denetim raporunda](docs/STAGE5_SLEEP_AUDIT.md) numaralıdır.
+
+| Kimlik | Yapılacak iş | Kabul koşulu | Durum |
+|---|---|---|---|
+| 5.F1 | Tek tur ses/giriş bitişi ve UI/host uyku durumunu tutarlı yap (U01, U02, U05) | Bitmiş transkript sonrası yeni ortam PCM'i eski tura gitmez; backend reddinde UI uyuyor demez; yalnız wake ile görev birbirine karışmaz; Stop/unknown korunur | **Uygulandı; manuel kabul bekliyor** |
+| 5.F2 | Idle mikrofon canlılığı ve 25 s Thinking'i ayrı teşhis et (U04) | AudioContext suspend/cihaz/uyku turu sonrası gerçek kaynak durumu anlaşılır; güvenli toparlanma ve eski kaynak koruması test edilir; 25 s için olay zamanlarıyla neden kanıtlanır | **U04 düzeltmesi/ölçümler uygulandı; fiziksel uyanış ve 25 s neden doğrulaması açık** |
+| 5.F3 | Türkçe/İngilizce uyku niyetini gerçek host sonucuna bağla (U03) | “uyku moduna gir” ve “kalıcı olarak uyku moduna gir” gibi doğal varyantlar; soru/olumsuz/alıntı/ek işte yanlış geçiş yok; yalnız model onayı başarı sayılmaz | **Uygulandı; fiziksel kabul bekliyor** |
+| 5.R1 | Sesli gerçek onay, EOS/Idle kilidi ve wake kurulum maliyeti | Host sonrası TR/EN ses; EOS bekleyen sağlayıcıda tur bitişi; yanıt sonrası aday algısı; geçici giriş hatası sonrası replay olmadan sınırlı toparlanma | **F4 önüne alındı; kod uygulandı, fiziksel kabul açık** |
+| 5.R2 | Yazı çalışırken sesli turun 25 s takılması | Yerel bitiş sağlayıcıya açık activityEnd olarak gider; otomatik VAD/EOS ile karışmaz; üç sesli tur ve uyku/uyanış gerçek hesapta doğrulanır | **921 pytest, 7 JS, 10/10 native; kullanıcı testleri başarılı bildirdi (23 Ekim)** |
+| 5.R3 | Yerel sesli onay yerine Vex'in doğal yanıtını bekle | Sabit WAV/metin yolu yok; komut yanıtı ve çalması tamamlanmadan uyku uygulanmaz; hata/Stop/unknown başarıya dönüşmez | **Uygulandı; 923 pytest, 7 JS, Pyright 0, 10/10 native + [Stop/çalma kontrolü](docs/stage5-natural-sleep-stop-chat.json) geçti. Yeni fiziksel kabul açık; kullanıcı commit izni verdi** |
+| 5.R4 | Uyku kararını ortak araç hattına taşı; mimari sapmaları denetle | Yapılandırılmış araç + registry/policy/TaskManager, yanıt/çalma sonrası uygulama; regex niyet yolu yok; eski çağrı yeni geçiş üretmez; diğer sapmalar kanıtıyla kaydedilir | **Kullanıcı testleri başarılı; 5fb30d3 commit'i alındı, push yok** |
+| 5.R5 | Not seçimini yapılandırılmış araca taşı ve toplu silme ekle | Tekli/çoklu gerçek hedef, taze seçim, veri değişiminde ret, tek atomik yazı/geri okuma; belirsiz hedefe işlem yok; REST/Live aynı hat | **Uygulandı; 885 pytest + son 62 seçim/batch kontrolü, 7 JS, Pyright 0, [native 10/10](docs/stage5-note-selection-batch-native.json). Kullanıcı kabulü başarılı; commit `2120113`** |
+| 5.R6 | Seçilen notları toplu tamamla | Son N, tümü veya içerik grubunda yalnız done değişir; taze seçim, tam ID kümesi, snapshot, tek yazı ve geri okuma; REST/Live ortak hat | **Uygulandı; 929 pytest, 7 JS, app/not hattında Pyright 0; [native 10/10](docs/stage5-note-completion-native.json). Kullanıcı testleri tamamen başarılı; commit onayı alındı. Eski policy testlerinin 6 tip hatası STAGE5_MODEL.md’de kayıtlı** |
+| 5.F4 | Wake telaffuzu ve yanlış uyanma | Vex/Veks/Rex tek yerel tanımda; KWS ve Live aynı aileyi kullanır; özel isim korunur; X/ex/eks tek başına eklenmez | **Uygulandı; 947 pytest, 7 JS, app/wake Pyright 0; [native chat](docs/stage5-wake-variants-native-chat.json) ve 15/15 gerçek KWS/yapay ses. Kullanıcı çalıştığını bildirdi; `20c755c` commit’inde** |
+| 5.F5 | Birleşik uzun kullanım ve fiziksel kabul | Kullanıcı bu kontrolü zaten yaptığını bildirdi; ayrı uygulama/test adımı istenmiyor | **Kullanıcı isteğiyle ayrı plandan çıkarıldı; genel regresyon gereksinimi sürer** |
+| 5.R7 | Mevcut UI uygulama kontrollerini Vex araçlarına bağla | Kapatma gibi istenen düğmelerin kapsamı/sahibi/izinleri belirlenir; yapılandırılmış araç ve mevcut host sahibi kullanılır, başarı ile istek kabulü ayrılır | **5.R7.1 / 20c755c ve 5.R7.2 / af834ff kullanıcı kabulü başarılı. 5.R8 tweak’leri ardından debloat; Aşama 5 açık** |
+| 5.R7.1 | Vex üzerinden uygulamayı kapatma | Kayıtlı araç yalnız istek kabul eder; başarılı yanıt/çalma sonrası mevcut Shutdown host yolu; Stop/eski tur/unknown kapatmaz; Windows kapanmaz | **Uygulandı; 957 pytest, 8 JS, app/araç/native Pyright 0, native 10/10. Kullanıcı çalıştığını bildirdi; `20c755c` commit’inde** |
+| 5.R7.2 | Çoklu timer ve stopwatch | Gerçek kayıt ID'leriyle oluştur/listele/başlat/durdur/devam/sıfırla; UI/model tek durum sahibi; farklı sayaçlar birbirini ezmez | **Uygulandı; 980 tam pytest + son 40 sayaç/profil, 9 JS, app/hedefli Pyright 0 ve [native 10/10](docs/stage5-clocks-native.json). Kullanıcı manuel kabulü başarılı; af834ff commit’inde** |
+| 5.R8.1 | Timer/stopwatch seçici görünümü ve ses | Mevcut tema değişkenleri, klavye erişimi, seçimde tek SFX; poll/model odağı ses üretmez, gerçek ID korunur | Kullanıcı devam onayıyla 6918038 commit’inde; 9 JS + native CSS kanıtı korundu |
+| 5.R8.2 | Timer bitince Vex’in kişiselleştirilmiş sesli bildirimi | Sabit “boss”/yerel say yerine mevcut Live yanıt ve ses sahibi; meşgul, Sleep, Mic Off, Stop/Disconnect, tekrar ve süresi geçmiş olay sınırları belirlenir; ikinci TTS/oturum yok | Uygulandı: sabit boss kaldırıldı; doğrulanmış bitiş, boş araç kataloğu ve aynı Live/Stop/ses hattı. 988 pytest, 10 JS ve native 10/10; kullanıcı kabulü başarılı/00c76ce |
+| 5.R8.3 | Anahtar/model geri yükleme ve otomatik Live katalog | Mevcut Windows credentials ve conn.model korunur; kayıt ve yeniden açılış denetlenir. Manuel Load kaldırılır; native hazır/anahtar değişiminde tek katalog isteği, eski yanıt ve hata koruması | Uygulandı: başlangıç/anahtar kaydında otomatik tek yükleme, conn.model geri yükleme; Windows credential cross-process native kabulü geçti. Kullanıcı kabulü başarılı/00c76ce |
+| 5.R8.4 | Audio filtresi, mikrofon düzeyi ve wake sensitivity | Mevcut tek mikrofon sahibinde filtrenin uçtan uca etkisi ve gerçek seviye; Mic Off/yerel uyku sınırı korunur. Wake slider kayıtlı ayardan KWS eşiğine bağlanır; duyarlılık artışı/yanlış uyanma sınırı ölçülür | Uygulandı: aynı worklet eşik/meter, Off sıfırlama; wake sonraki sleep’te kayıtlı eşik. Sentetik/native geçti; kullanıcı testleri başarılı/00c76ce |
+| 5.R8.5 | Küçük ayar UI temizliği | Google bağlantı emojisinin kaldırılması, idle sleep artı/eksi kontrollerinin mevcut tema/SFX ve 0–300 doğrulamasıyla uyumu | Uygulandı: emoji kaldırıldı; temalı/sesli +/- aynı 0–300 doğrulamasını kullanır; native sınır testi geçti. Kullanıcı kabulü başarılı/00c76ce |
+| 5.R8.6 | Sabit tema ve UI sayaç silme | Sürgüler/giriş oku reaktör durumundan etkilenmez; listede sağ tıkla seçilen gerçek ID aynı core hattında silinir, modele açılmaz; hatada sahte silme yok | Uygulandı; 994 pytest, 10 JS, hedefli Pyright 0 ve native chat. Kullanıcı fiziksel sağ tık/görsel kabulü/commit bekler |
+| 5.F6 | Kapanış bakımı ve belgeler | UI temizliği/debloat ölçülü; eski planlar güncel gibi görünmez; 256 görev sınırı ve restart replay sınırı için karar; README kapsamı doğru | Başladı; kapanmadı |
+
+5.R3 varyant takibi: “kalıcı uyku moduna geç” için “olarak” zorunluluğu
+kaldırıldı; aç/kapat TR/EN eşdeğerleri eklendi. 955 pytest ve
+[native chat](docs/stage5-sleep-phrases-native-chat.json) geçti. Native'de
+bildirilen Türkçe açma ve İngilizce kapatma gerçek UI/host hattından geçti;
+sağlayıcı/mikrofon sentetik, fiziksel kabul ve bu ek düzeltmenin commit'i açık.
+
+5.F1–5.F4 tamamlanmadan yeni entegrasyon eklenmez. Hatalı sözleşmenin etrafına
+bir if/kelime daha eklemek kalıcı çözüm sayılmaz. Her düzeltmenin eski hatayı
+başarısız gösteren hedefli testi olmalıdır.
+
+### 5.F1 uygulama kanıtı
+
+- 850 pytest, 7 JS süiti, app/hedefli tip kontrolü 0 hata/uyarı.
+- 10 native senaryo: docs/stage5-f1-native.json; ek host ret/gecikmiş kabul:
+  docs/stage5-f1-native-chat.json. Gerçek sağlayıcı/mikrofon denenmedi.
+- U01: bitmiş transkript sonrası yeni PCM reddedilir; model yanıtı/araç
+  durdurulmaz. U02: hazırlık/ret/unknown/gerçek uyku ayrıdır. U05: yerel
+  duraklama akışı atmaz; kesin wake-only gerçek görev bitişi sayılmaz.
+- 5.F2 (canlılık/25 s), 5.F3 (niyet) ve 5.F4 (telaffuz) açık kaldı.
+- Onaylanan denetim belgeleri 06d8e8f commit'ine alındı; yeni runtime kodu
+  manuel kabul bekliyor. Tarihsel denetim deneyleri eski hatayı gösterir;
+  güncel kabul testleri bu düzeltme diliminin testleridir.
+
+### 5.F2 — ses motoru canlılığı ve bekleme tanısı
+
+- Kullanıcı F1 sonrasında uyanınca hâlâ komut alınmadığını bildirdi; tam manuel
+  kabul/commit sayılmadı. Kullanıcının devam isteğiyle F2 uygulandı.
+- Sonradan suspended/interrupted AudioContext aynı kaynakta bir kez resume
+  edilir. 1 s içinde düzelmezse sabit hata ve kaynak temizliği; sonsuz yeniden
+  izin/cihaz açma yoktur. Mic On tercihi değişmez; açık Off/On tekrar hazırlar.
+- Eski resume/cihaz callback'i yeni mikrofonu kapatamaz. Yerel toparlanma
+  yeni model/araç çağrısı veya eski PCM yeniden gönderimi yapmaz.
+- 25 s süre düşürülmedi. Tur raporu SDK'ye gerçekten gönderilmiş PCM sayısı,
+  ilk ses/EOS, alınan olay ve kesin transkript zamanlarını taşır; timeout
+  durum satırında sayılar/aşama görünür. Sentetik üç ayrı bekleme ayrıldı.
+- 853 pytest, 7 JS süiti, app/hedefli Pyright 0 hata/uyarı. Native kanıt:
+  docs/stage5-f2-native.json (10/10, yeni context toparlanması dahil).
+  İlk yanlış cwd ile native deneme başarısızdı; doğru v1 dizininde tekrar
+  geçti, ayrıntı STAGE5_MODEL.md içinde. Gerçek hesap/mikrofon kullanılmadı.
+- **Açık:** fiziksel uyanış sorununun tüm nedenleri ve gerçek 25 s örneğinin
+  neden zinciri henüz kanıtlanmadı. Test başarısı bu bildirimi kapatmaz.
+  Bu F2 kaydı sırasında F3/F4 uygulanmamıştı; güncel F3 kaydı aşağıdadır.
+
+### 5.F3 — Türkçe/İngilizce uyku niyeti
+
+- Ortak sleep_mode ayrıştırıcısı metin ve kesin ses transkriptinde kullanılır.
+  “uyku moduna gir”, “kalıcı olarak uyku moduna gir”, nezaket/boşluk/büyük
+  harf ve İngilizce varyantları once/persistent/off ayrımını korur.
+- İsim söylemek uyanıkken şart değildir. Kalıcı burada sohbet boyunca geri
+  uyumadır; diske tercih veya işletim sistemi uyutma eklenmedi.
+- Tam cümle eşleştirilir; soru işareti artık silinmez. Alıntı, olumsuz,
+  açıklama ve ek iş içeren cümle uyku kontrolüne dönüşmez. Parçalı transkript
+  sonradan soru/olumsuz/ek iş olursa bekletilen model çıktısı geri verilir.
+- Yeni model aracı/niyet modeli yok; mevcut host kabul/ret/unknown ve tek
+  Live/core/kaynak sahipliği değişmedi. U03'ün önce başarısız testleri
+  doğrulandı (24 başarısız / 24 başarılı), sonra düzeltildi.
+- 916 pytest ve 7 JS süiti geçti; app/hedefli Pyright 0 hata/uyarı.
+  Native 10/10 geçti; rapor: docs/stage5-f3-native.json. Yeni ifadelerle
+  host onaylı tek seferlik/kalıcı mod kontrolü geçti. Fiziksel ses/API kabulü açık.
+- Kullanıcı yalnız devam izni verdi; manuel test sonucunu bildirmedi.
+  F1/F2'nin fiziksel uyanış/25 s açıklığı kapatılmadı; runtime commit yok.
+  F4 telaffuz/yanlış uyanma sıradaki planlı adımdır.
+
+### 5.R1 — gecikme / sesli onay / Stopped incelemesi
+
+- Rapor: docs/STAGE5_SLEEP_STABILITY_REVIEW.md. EOS bekleyen taşıma ve yanıt
+  sonrası gürültü eşiği sorunları önce başarısız testle üretildi, sonra düzeltildi.
+- Backend hazır olduktan sonra 700 ms yerel sessizlik EOS üretir; final
+  transkriptle kapanan girişte de eksik EOS açıkça gönderilir. Eski PCM/araç
+  replay yok; Stop/unknown ve 15 s üst sınır korunur.
+- Host onayından sonra TR/EN metin + sabit yerel WAV; Mute/Stop/özel çıkış ve
+  geç fetch korunur. Gemini'den farklı Windows sesi; API/TTS isteği yok.
+- Tek wake motoru RAM cache'i, her uykuda yeni decoder/ID/boş tampon; gerçek
+  KWS'nin aynı yapay WAV ile üç restart'ı başarılı. docs/stage5-sleep-stability-real-kws.json.
+- Wake→Live kaynak hatası normal hata/Stop hattına gider. Kesin bitişten sonra
+  geçici giriş hatasında en fazla iki yeni boş dinleyici; izin/unknown aşılmaz.
+- 920 pytest, 7 JS süiti, Pyright 0 hata/uyarı. Native 10/10:
+  docs/stage5-sleep-stability-native.json. Son hybrid/cache sürümü için ek
+  chat geçti: docs/stage5-sleep-stability-final-chat.json.
+- İlk ek chat, kısa Thinking anını süreyle yakalayan testte başarısızdı;
+  test sunucu bariyeriyle düzeltildi. Başarısız kanıt silinmedi:
+  docs/stage5-sleep-stability-chat-timing-failure.json.
+- Gerçek kullanıcı sesi/notu, API anahtarı veya ücretli API kullanılmadı.
+  Fiziksel ve sağlayıcı kabulü açık; tüm 25 s örnekleri çözüldü denmez.
+  F4'e geçmeden bu birleşik yolun kullanıcı kabulü gerekiyor; commit yok.
+
+### Bugünkü kanıt — 23 Ekim
+
+- 843 pytest geçti; 7 JavaScript süiti geçti; app genelinde Pyright 0 hata/uyarı.
+- Native 10/10 senaryo geçti: docs/stage5-general-audit-native.json.
+- Buna rağmen 5 bağımsız runtime açığı sentetik deneyde doğrulandı. Bu deneyler
+  eski hatanın varlığını ispatlar; kabul testi geçişi değildir.
+- Deney betikleri ve ayrıntılı sonuçlar docs/STAGE5_SLEEP_AUDIT.md içinde.
+- Ücretli/gerçek API, fiziksel mikrofon ve kullanıcı notları kullanılmadı.
+- Bu tur uygulama kodu değiştirilmedi; belgeler/AGENTS kuralı güncellendi.
+  Kullanıcı bug bildirdiği için önceki bekleyen kodlar commit edilmedi.
+
+## Aşama 6 — Kalıcı hafıza ve yeni L0 entegrasyonları
+
+Tamamı planlıdır; alt adımlar uygulanırken yeniden daraltılacaktır.
+
+- 6.1 Kullanıcının çıkardığı bilgileri görme/düzeltme/unutma ve açık hafıza
+  tercihi, Personalization altında. Şu anki pMem alanı çalışan hafıza değildir.
+- 6.2 Telemetri, uygulama ve medya işlemlerini tek tek modele bağlama. Timer/stopwatch 5.R7.2’de ele alındı.
+- 6.3 Dosya okuma; sonra kontrollü değiştirme ve doğrulama.
+- 6.4 Hava durumu/konum izni ve web arama.
+- 6.5 Google Drive, Calendar ve mail: OAuth, kapsam, yenileme ve tek işlemle kabul.
+- 6.6 Telegram alma/gönderme ve Discord botu: kullanıcı/kanal/hedef yetkisi,
+  teslim kanıtı ve belirsiz gönderimde tekrar etmeme.
+- 6.7 Harici yan etkilerden önce kalıcı çağrı kaydı ve restart dedup kararını ver.
+
+## Aşama 7 — GUI resolver ve skill yürütme
+
+- 7.1 Tek uygulamada L3 UIA hedefleme ve yeniden doğrulama.
+- 7.2 Doğrulanmış akışı L1 reçete/hafıza ile tekrar kullanma.
+- 7.3 Tarayıcı L2 DOM; gerektiğinde L4 vision/OCR ve bütçe.
+- 7.4 Skill JSON adımlarını aynı registry/policy/TaskManager hattından yürütme.
+- 7.5 DPI/pencere değişimi, eski hedef, izin reddi ve belirsiz yan etki kabulü.
+
+## Aşama 8 — Rutinler, servisler ve dağıtım
+
+- 8.1 Tek backend scheduler sahibi; mevcut UI timer'ından açık sahiplik devri.
+- 8.2 Rutin CRUD, tetikleme ID'si, çift çalıştırma ve bildirim/sonuç ayrımı.
+- 8.3 Kullanıcının açtığı arka plan servisleri; log maskeleme/döndürme.
+- 8.4 Veri şeması geçişi, çökme kurtarma, normal kapanış ve güncelleme.
+- 8.5 Paketlenmiş native kurulum, model/üçüncü taraf lisansları ve temiz dağıtım.

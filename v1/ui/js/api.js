@@ -8,7 +8,7 @@
  *    - Catches sync throws and async Promise rejections without unhandled rejections.
  *    - Explicit backend errors (e.g. { ok: false, error: '...' }) are parsed as failures.
  * 2. Request Acceptance vs Operation Completion:
- *    - For async actions (camera streaming, stopping active tasks, saving location),
+ *    - For async actions such as stopping the active model request,
  *      acceptance of the event by backend does NOT equal operation completion.
  *    - Controls remain in pending/requested state until explicit completion confirmation
  *      or asynchronous state push from backend (e.g. window.vex.setState).
@@ -20,9 +20,6 @@
  *      nor falsely fail a successful native transmission or trigger command resends.
  */
 
-let isConnected = false;
-let isReconnecting = false;
-let reconnectTimer = null;
 
 export function sanitizeError(err) {
   if (!err) return 'Unknown error';
@@ -125,27 +122,13 @@ export function setConnectionStatus(status, text = null) {
   if (!netEl) return;
 
   if (status === 'online') {
-    isConnected = true;
-    isReconnecting = false;
-    if (reconnectTimer) {
-      clearTimeout(reconnectTimer);
-      reconnectTimer = null;
-    }
     netEl.className = 'pill net';
     netEl.textContent = '● ' + (text || 'ONLINE');
   } else if (status === 'reconnecting') {
-    isConnected = false;
-    isReconnecting = true;
     netEl.className = 'pill net wait';
     netEl.textContent = '● ' + (text || 'RECONNECTING');
   } else {
     // Hazır/idle açık socket iddiası değildir; normal Stop hata sayılmaz.
-    isConnected = false;
-    isReconnecting = false;
-    if (reconnectTimer) {
-      clearTimeout(reconnectTimer);
-      reconnectTimer = null;
-    }
     netEl.className = status === 'idle' ? 'pill net idle' : 'pill net off';
     netEl.textContent = '● ' + (text || (status === 'idle' ? 'READY' : 'OFFLINE'));
   }
@@ -196,9 +179,7 @@ export function initApi(handlers = {}) {
     micLevel(v) {
       if (handlers.micLevel) handlers.micLevel(v);
     },
-    setAudioListening(d) {
-      if (handlers.setAudioListening) handlers.setAudioListening(d);
-    },
+
     detachAudio() {
       if (handlers.detachAudio) handlers.detachAudio();
     },
@@ -265,12 +246,8 @@ export function initApi(handlers = {}) {
     },
 
     // Hardware & Config
-    setCamera(active) {
-      if (handlers.setCamera) handlers.setCamera(active);
-    },
-    setLocation(d) {
-      if (handlers.setLocation) handlers.setLocation(d);
-    },
+
+
     setDevices(d) {
       if (handlers.setDevices) handlers.setDevices(d);
     },
@@ -328,15 +305,9 @@ export function initApi(handlers = {}) {
     routineResult(id, ok) {
       if (handlers.routineResult) handlers.routineResult(id, ok);
     },
-    stopRoutineScheduler() {
-      if (handlers.stopRoutineScheduler) handlers.stopRoutineScheduler();
-    },
-    stopCalendarScheduler() {
-      if (handlers.stopCalendarScheduler) handlers.stopCalendarScheduler();
-    },
-    routineEvent(type, val) {
-      if (handlers.routineEvent) handlers.routineEvent(type, val);
-    },
+
+
+
 
     // Timeline
     action(x, ok, k) {
@@ -359,29 +330,6 @@ export function initApi(handlers = {}) {
   // Expose both window.vex and window.jarvis BEFORE notifying ready
   window.vex = bridge;
   window.jarvis = bridge;
-
-  // Network pill reconnect click
-  const netEl = document.getElementById('netP');
-  if (netEl) {
-    netEl.addEventListener('click', () => {
-      if (!isConnected && !netEl.classList.contains('idle')) {
-        if (!isBackendAvailable()) {
-          setConnectionStatus('offline');
-          logBridgeError('reconnect', new Error('Backend offline'));
-          return;
-        }
-        setConnectionStatus('reconnecting');
-        emit('reconnect');
-        if (reconnectTimer) clearTimeout(reconnectTimer);
-        reconnectTimer = setTimeout(() => {
-          if (isReconnecting) {
-            setConnectionStatus('offline');
-            logBridgeError('reconnect', new Error('Reconnection timed out'));
-          }
-        }, 5000);
-      }
-    });
-  }
 
   // Ready handshake - ONLY triggered AFTER window.vex and window.jarvis exist
   let readyEmitted = false;

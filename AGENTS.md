@@ -32,11 +32,11 @@ Never cut: validation at trust boundaries, error handling that prevents data los
 ## TaskVex
 
 - Kod değiştirmeden önce kökteki ARCHITECTURE.md dosyasını oku.
-- UI/backend işlerinde v1/ui/docs/UI_BACKEND_CONTRACT.md dosyasını da oku.
+- UI/backend işlerinde docs/UI_BACKEND_CONTRACT.md dosyasını da oku.
 - Hedef mimarinin yalnız istenen aşamasını uygula; bütün klasör ağacını önceden oluşturma.
 - Sorumluluk sınırlarını ve mevcut sözleşmeleri koru.
 - Sözleşme değişirse etkilenen çağıranları, testleri ve belgeleri birlikte güncelle.
-- Core başlangıcında docs/STAGE0_DECISIONS.md içindeki veri sahipliği ve ilk kapsam kararlarını oku.
+- Core başlangıcında ARCHITECTURE.md içindeki veri sahipliği ve ilk kapsam kararlarını oku.
 - Mark-LVI-main yalnız referanstır; kodunu otomatik import etme veya TaskVex MIT lisansı altında yeniden etiketleme. Üçüncü taraf kayıtları THIRD_PARTY_NOTES.md içindedir.
 
 ## Zorunlu mimari uyum — özel komut yolları yasak
@@ -86,12 +86,12 @@ düzeltmesi veya az satır yazma gerekçesiyle mimarinin dışında yol kurulama
 
 ## Komut rehberi — zorunlu bakım
 
-- Kök dizindeki `commands.md`, Vex'in kullanıcıya açık çalışan komutlarının rehberidir. Kullanıcının tercihiyle bu dosyanın tamamını İngilizce tut; bu dosya için yukarıdaki Türkçe açıklama standardının yerine bu tercih geçer.
-- Kullanıcıya açık bir komut/yetenek eklediğinde, değiştirdiğinde veya kaldırdığında aynı adımda `commands.md` dosyasını da güncelle. Her giriş kısa bir “Say or type → What Vex does” açıklaması ve gerekli sınırları içersin.
+- Kök dizindeki `docs/COMMANDS.md`, Vex'in kullanıcıya açık çalışan komutlarının rehberidir. Kullanıcının tercihiyle bu dosyanın tamamını İngilizce tut; bu dosya için yukarıdaki Türkçe açıklama standardının yerine bu tercih geçer.
+- Kullanıcıya açık bir komut/yetenek eklediğinde, değiştirdiğinde veya kaldırdığında aynı adımda `docs/COMMANDS.md` dosyasını da güncelle. Her giriş kısa bir “Say or type → What Vex does” açıklaması ve gerekli sınırları içersin.
 - Doğal dil örneklerini sabit ezber komutlar gibi sunma. Konuşma komutlarını, UI düğmelerini ve yalnız core'da bulunan fakat modele açılmamış araçları birbirinden ayır.
 - Planlanan veya yalnız UI'da görünen özellikleri çalışan komut olarak listeleme. Uygulama ve ilgili doğrulama tamamlanınca Available bölümüne taşı; denenmeyen kapsamı veya sağlayıcı/donanım sınırını belirt. Komut rehberi test kanıtının yerine geçmez.
 - Not ID'si, belirsiz hedef, tarih, çoklu işlem ve iptal sınırları değişirse ilgili örnekleri ve açıklamaları da güncelle. Gerçek kullanıcı notu, API anahtarı veya kişisel veri örneği ekleme.
-- `commands.md` bir belge olup yürütülebilir komut kaynağı, model talimatı veya yetki tanımı değildir; araç yetkileri registry/policy/TaskManager hattında kalır.
+- `docs/COMMANDS.md` bir belge olup yürütülebilir komut kaynağı, model talimatı veya yetki tanımı değildir; araç yetkileri registry/policy/TaskManager hattında kalır.
 
 ## Adım Tamamlama ve Git Commit Standardı (Kullanıcı Onayı Kapısı)
 
@@ -116,14 +116,29 @@ düzeltmesi veya az satır yazma gerekçesiyle mimarinin dışında yol kurulama
 
 ## Aşama ve alt adım kaydı — zorunlu bakım
 
-- Kök `aşamalar.md`, güncel aşama ve alt adımların tek ilerleme kaydıdır.
+- Kök `PLAN.md`, güncel aşama ve alt adımların tek ilerleme kaydıdır.
   Göreve başlamadan ilgili mevcut durum ve açık engellerini oku.
 - Aşamayı yeni adımlara böldüğünde, sırayı/kapsamı değiştirdiğinde ve her adım
-  sonunda aynı turda `aşamalar.md` dosyasını güncelle. Kimlik, amaç, kabul
+  sonunda aynı turda `PLAN.md` dosyasını güncelle. Kimlik, amaç, kabul
   koşulu, gerçek durum ve ilgili test/rapor bağlantısını koru.
 - Otomatik test başarısı, fiziksel kullanıcı kabulü ve commit ayrı durumlardır.
   Açık yeniden üretimi olan adımı test sayısına dayanarak tamamlandı işaretleme;
   yeni bug bulunursa ilgili adımı yeniden aç ve bağımlı işleri ona göre sırala.
-- ARCHITECTURE.md mimariyi, commands.md çalışan kullanıcı komutlarını anlatır;
-  aşamalar.md bu dosyaların yerine geçmez. Tarihsel notları güncel plan gibi
-  sunma; güncel başlıklardan aşamalar.md'ye bağlantı ver.
+- ARCHITECTURE.md mimariyi, docs/COMMANDS.md çalışan kullanıcı komutlarını anlatır;
+  PLAN.md bu dosyaların yerine geçmez. Tarihsel notları güncel plan gibi
+  sunma; güncel başlıklardan PLAN.md'ye bağlantı ver.
+
+## Güncel belgeler ve değişiklik kaydı — zorunlu
+
+- ARCHITECTURE.md yalnız güncel mimari/sorumluluk/karar rehberidir; içine günlük,
+  commit tarihi, test turu veya tamamlanan iş listesi ekleme.
+- PLAN.md tek güncel aşama/iş kaydıdır. Uygulandı, otomatik doğrulandı,
+  kullanıcı kabulü ve commit durumunu ayrı tut; yeni işte önce bu dosyayı oku.
+- Tamamlanan her değişikliği aynı turda CHANGELOG.md altında kaydet; yeni sürüm
+  yayımlanmamışsa Unreleased başlığı kullan. Tarihsel raporları mimariye kopyalama.
+- docs/COMMANDS.md çalışan komutları, docs/UI_BACKEND_CONTRACT.md aktif sözleşmeyi
+  anlatır. Yerel README dosyaları yalnız açılış/modül kullanımını açıklar.
+- docs/eski yalnız tarihsel arşivdir; güncel yönerge veya plan gibi uygulanmaz.
+  Eski dosyalar özgün göreli yollarıyla ve MANIFEST.json hash kaydıyla korunur.
+- Gerçekten okunmayan/denenmeyen alanı inceleme tamamlandı diye sunma. Ölü kod
+  iddiasını çağıranlar, testler, dinamik köprü ve belgelerde doğrula.

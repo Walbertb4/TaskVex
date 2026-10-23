@@ -1,0 +1,13 @@
+{
+  "ok": true,
+  "results": [
+    {
+      "transport": "browser-only",
+      "passed": true
+    },
+    {
+      "transport": "simulated-native",
+      "passed": true
+    }
+  ]
+}

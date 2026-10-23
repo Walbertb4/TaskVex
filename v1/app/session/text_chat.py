@@ -19,6 +19,13 @@ from app.session.speech import GeminiSpeech
 from app.session.conversation_memory import ConversationMemory
 
 
+# REST ve Live aynı yetki kataloğunu paylaşır; bildirim turları yine araçsızdır.
+BASE_MODEL_TOOLS = ("apps.catalog", "system.status", "assistant.request_sleep_mode",
+                    "assistant.request_shutdown", "clocks.create", "clocks.control", "clocks.list")
+NOTE_MODEL_TOOLS = ("notes.add", "notes.list", "notes.select", "notes.update",
+                   "notes.delete", "notes.delete_many", "notes.complete_many")
+
+
 class TextChat:
     """Core'u ödünç al; istemciyi her tur sonunda kapat, sırları sonuçlara koyma."""
 
@@ -109,11 +116,11 @@ class TextChat:
                 self._speech_reply = None
             if self._closed:
                 return {"ok": False, "error": "Text session is closed; reopen the app"}
-            allowed = ("apps.catalog", "system.status", "assistant.request_sleep_mode", "assistant.request_shutdown", "clocks.create", "clocks.control", "clocks.list")
+            allowed = BASE_MODEL_TOOLS
             if notification:
                 allowed = ()  # Host bildirimi konuşur; kullanıcı adına araç çalıştıramaz.
             elif notes_ready:
-                allowed += ("notes.add", "notes.list", "notes.select", "notes.update", "notes.delete", "notes.delete_many", "notes.complete_many")
+                allowed += NOTE_MODEL_TOOLS
             tools = ModelTools(self._core, principal="local-user", session_id=uuid4().hex, allowed_tools=allowed)
             # Ses yalnız bu host isteğine bağlıdır; sağlayıcı/UI yeni hedef
             # kimliği seçemez. Başlıksız eski CLI denemesi sessiz kalır.
@@ -184,9 +191,9 @@ class TextChat:
                 return {"ok": False, "error": "Text session is closed; reopen the app"}
             # Not aktarımı bekliyor diye normal sohbet kapatılmaz. Aynı durum
             # backend'de araç kapsamını da daraltır; yalnız UI kilidine güvenmeyiz.
-            allowed = ("apps.catalog", "system.status", "assistant.request_sleep_mode", "assistant.request_shutdown", "clocks.create", "clocks.control", "clocks.list")
+            allowed = BASE_MODEL_TOOLS
             if notes_ready:
-                allowed += ("notes.add", "notes.list", "notes.select", "notes.update", "notes.delete", "notes.delete_many", "notes.complete_many")
+                allowed += NOTE_MODEL_TOOLS
             tools = ModelTools(self._core, principal="local-user", session_id=uuid4().hex,
                                allowed_tools=allowed)
             try:

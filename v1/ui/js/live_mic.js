@@ -2,12 +2,11 @@
  * waitForSpeech sınırlı ön tamponla konuşma adayını bulur; activateStream
  * aynı AudioWorklet'in tamponunu akıtır. Hazır onayından sonra yerel sessizlik
  * EOS bildirir; sağlayıcının otomatik VAD'si de açık kalır (hibrit VAD).
- * Önceki start/finish sınırlı MediaRecorder sözleşmesi uyumluluk için korunur.
- * İki yol da RAM ile sınırlıdır; aynı anda yalnız bir mikrofon kaynağı açılır.
+ * Yalnız AudioWorklet yolu kullanılır; aynı anda tek mikrofon kaynağı açılır.
  * İzin geç verilirse iptal edilmiş kaydın track'leri de hemen kapatılır.
  * prepareStream onError'a yalnız sabit hata kodu iletir; izin/cihaz, bozuk
- * paket ve yerel kuyruk ayrı tutulur. Yeniden deneme kararını app.js verir.
- * start'ın üçüncü parametresi browser cihaz ID'sidir; özel seçimde exact
+ * paket ve yerel kuyruk ayrı tutulur. Yeniden deneme kararını assistant_session.js verir.
+ * prepareStream'in ikinci parametresi browser cihaz ID'sidir; özel seçimde exact
  * kullanılır, erişilemeyen mikrofon yerine başka cihaz açılmaz.
  */
 let current = null;
@@ -18,7 +17,6 @@ function release(state) {
   clearTimeout(state.resumeTimer);
   if (state.context) state.context.onstatechange = null;
   state.stream?.getTracks().forEach(track => { track.onended = null; track.stop(); });
-  if (state.recorder?.state === 'recording') state.recorder.stop();
   if (state.node) { state.node.port.onmessage = null; state.node.disconnect(); }
   state.source?.disconnect();
   state.context?.close().catch(() => {});
@@ -26,7 +24,6 @@ function release(state) {
 
 export const liveMic = {
   get active() { return current !== null; },
-  get ready() { return current?.recorder?.state === 'recording'; },
   get waitingForSpeech() { return !!current?.waiting && !current.triggered; },
   get speaking() { return current?.speaking === true; },
   setNoiseThreshold(value) {
@@ -216,77 +213,10 @@ export const liveMic = {
     }
     return true;
   },
-  async start(onLimit, onError, deviceId = '') {
-    if (current) throw new Error('microphone_busy');
-    const state = current = {stream:null, recorder:null, chunks:[], bytes:0, timer:null, deviceId, onError};
-    try {
-      state.stream = await navigator.mediaDevices.getUserMedia({audio:{channelCount:1, echoCancellation:true, noiseSuppression:true,
-        ...(deviceId ? {deviceId:{exact:deviceId}} : {})}, video:false});
-      if (current !== state) { release(state); return false; }
-      const recorder = state.recorder = new MediaRecorder(state.stream);
-      state.done = new Promise(resolve => { recorder.onstop = resolve; });
-      const fail = () => {
-        if (current !== state) return;
-        this.cancel(); onError();
-      };
-      recorder.onerror = fail;
-      state.stream.getTracks().forEach(track => { track.onended = fail; });
-      recorder.ondataavailable = event => {
-        if (current !== state || !event.data.size) return;
-        state.bytes += event.data.size;
-        if (state.bytes > 1048576) { fail(); return; }
-        state.chunks.push(event.data);
-      };
-      recorder.start(250);
-      state.timer = setTimeout(() => { if (current === state) { this.cancel(); onLimit(); } }, 15000);
-      return true;
-    } catch {
-      release(state);
-      if (current !== state) return false;
-      current = null;
-      throw new Error('microphone_unavailable');
-    }
-  },
-  async finish() {
-    const state = current;
-    if (!this.ready) throw new Error('microphone_not_ready');
-    clearTimeout(state.timer);
-    state.recorder.stop();
-    state.stream.getTracks().forEach(track => { track.onended = null; track.stop(); });
-    // Son dataavailable olayını bekle; erken gönderilen eksik WebM çözülemez.
-    let stopTimer;
-    try {
-      await Promise.race([state.done, new Promise((_, reject) => {
-        stopTimer = setTimeout(() => reject(new Error('microphone_stop_timeout')), 2000);
-      })]);
-    } catch {
-      if (current === state) this.cancel();
-      throw new Error('microphone_stop_failed');
-    } finally { clearTimeout(stopTimer); }
-    if (current !== state) return null;
-    const blob = new Blob(state.chunks, {type:state.recorder.mimeType});
-    state.chunks = [];
-    try {
-      const decoder = new OfflineAudioContext(1, 1, 16000);
-      const audio = await decoder.decodeAudioData(await blob.arrayBuffer());
-      if (current !== state) return null;
-      if (audio.sampleRate !== 16000 || audio.length < 1600) throw new Error();
-      const length = Math.min(audio.length, 240000), bytes = new Uint8Array(length * 2), view = new DataView(bytes.buffer);
-      const channels = Array.from({length:audio.numberOfChannels}, (_, i) => audio.getChannelData(i));
-      for (let i = 0; i < length; i++) {
-        const sample = Math.max(-1, Math.min(1, channels.reduce((sum, channel) => sum + channel[i], 0) / channels.length));
-        view.setInt16(i * 2, sample < 0 ? sample * 32768 : sample * 32767, true);
-      }
-      let binary = '';
-      for (let i = 0; i < bytes.length; i += 8192) binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
-      return {mime_type:'audio/pcm;rate=16000', data:btoa(binary)};
-    } catch { throw new Error('microphone_decode_failed'); }
-    finally { if (current === state) current = null; release(state); }
-  },
   cancel() {
     const state = current;
     current = null;
-    if (state) { release(state); state.chunks = []; state.onLevel?.(0); }
+    if (state) { release(state); state.onLevel?.(0); }
   }
 };
 

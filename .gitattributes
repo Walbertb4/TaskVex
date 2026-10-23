@@ -1,0 +1,3 @@
+# Tarihsel dosyaların SHA256 kaydı byte düzeyindedir; checkout/commit sırasında
+# satır sonunu dönüştürmek arşiv kanıtını bozar. Yalnız arşiv byte'larını koru.
+docs/eski/** -text

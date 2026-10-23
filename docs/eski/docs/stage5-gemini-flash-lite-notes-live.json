@@ -1,0 +1,58 @@
+{
+  "ok": true,
+  "text": "Not başarıyla eklendi ve `notes.list` ile doğrulandı:\n\n- **Not:** \"TaskVex API acceptance\"",
+  "tool_results": [
+    {
+      "id": "call_1634043",
+      "name": "notes.add",
+      "task_id": "743b11b2042548cf9f7e4a4b4e73198d",
+      "status": "succeeded",
+      "result": {
+        "task_id": "743b11b2042548cf9f7e4a4b4e73198d",
+        "status": "succeeded",
+        "verified": true,
+        "data": {
+          "note": {
+            "id": "cf326ef60ea94a67896b50abda407781",
+            "text": "TaskVex API acceptance",
+            "done": false
+          }
+        },
+        "error": null,
+        "evidence": {
+          "persisted": true,
+          "read_back": true,
+          "note_id": "cf326ef60ea94a67896b50abda407781"
+        }
+      }
+    },
+    {
+      "id": "call_1412889",
+      "name": "notes.list",
+      "task_id": "262f9c1b7f404bc49de179eb5619ba47",
+      "status": "succeeded",
+      "result": {
+        "task_id": "262f9c1b7f404bc49de179eb5619ba47",
+        "status": "succeeded",
+        "verified": true,
+        "data": {
+          "notes": [
+            {
+              "id": "cf326ef60ea94a67896b50abda407781",
+              "text": "TaskVex API acceptance",
+              "done": false
+            }
+          ]
+        },
+        "error": null,
+        "evidence": {
+          "store_read": true
+        }
+      }
+    }
+  ],
+  "model": "gemini-3.5-flash-lite",
+  "scenario": "temporary_notes",
+  "live_request_made": true,
+  "acceptance_verified": true
+}

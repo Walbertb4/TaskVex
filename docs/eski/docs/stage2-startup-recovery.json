@@ -1,0 +1,72 @@
+{
+  "ok": true,
+  "renderer": "edgechromium",
+  "hidden_window": true,
+  "phases": [
+    {
+      "default_purple": true,
+      "audio_without_gesture": true,
+      "f11_toggle": true,
+      "settings_saved": true,
+      "invalid_save_preserved": true,
+      "unsupported_rejected": true,
+      "snapshot_no_echo": true,
+      "native_on_top": true,
+      "ok": true,
+      "phase": "save",
+      "native": {
+        "alias": true,
+        "api": [
+          "event"
+        ],
+        "online": "● MODEL OFFLINE",
+        "system": "Windows · 11 · AMD64"
+      },
+      "native_restart_closed": true,
+      "restart_launch_requested": true
+    },
+    {
+      "on_top_restored": true,
+      "reopened_settings": true,
+      "local_note_preserved": true,
+      "failed_save_modal_open": true,
+      "reset_preserved_collections_profile": true,
+      "reset_failure_preserved_preferences": true,
+      "ok": true,
+      "phase": "reopen",
+      "native": {
+        "alias": true,
+        "api": [
+          "event"
+        ],
+        "online": "● MODEL OFFLINE",
+        "system": "Windows · 11 · AMD64"
+      },
+      "native_shutdown": true
+    },
+    {
+      "ok": true,
+      "phase": "corrupt",
+      "issue_visible": true,
+      "declined_repair_preserved": true,
+      "original_backed_up": true,
+      "repair_completed": true,
+      "local_data_preserved": true
+    },
+    {
+      "ok": true,
+      "phase": "schema_invalid",
+      "issue_visible": true,
+      "declined_repair_preserved": true,
+      "original_backed_up": true,
+      "repair_completed": true,
+      "local_data_preserved": true
+    },
+    {
+      "ok": true,
+      "phase": "future",
+      "future_version_preserved": true,
+      "repair_hidden": true
+    }
+  ]
+}

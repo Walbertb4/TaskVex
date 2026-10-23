@@ -98,7 +98,7 @@ const browser=spawnSync(process.execPath,['--input-type=module','-e',browserScri
 console.log('PASS multi-clock IDs, automatic tab/focus, stale snapshots, pause/create, alarms, unknown lock, native ownership latch and browser fallback');
 
 // Bildirim kuyruğu yeni bir yürütücü değildir; mevcut sendText'e yalnız boşta gider.
-const appSource=fs.readFileSync(new URL('../js/app.js',import.meta.url),'utf8');
+const appSource=fs.readFileSync(new URL('../js/assistant_session.js',import.meta.url),'utf8');
 const notices=[],pending=new Map([['timer-a',{generation:2,connection:4}]]);
 const view=vm.createContext({pendingClockAnnouncements:pending,nativeInitialized:true,isBackendAvailable:()=>true,
  sleeping:false,sleepPending:false,textBusy:true,textOperation:{uncertain:false},canSendClockText:()=>true,

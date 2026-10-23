@@ -1,0 +1,1766 @@
+[
+  {
+    "path": ".gitattributes",
+    "scope": "documentation/config/legal",
+    "bytes": 197,
+    "sha256": "f867c3c4eeb464157ab5378dc67c603eb0a5e058e9de9f15f7935f6cd72e7f7d",
+    "lines": 3
+  },
+  {
+    "path": ".gitignore",
+    "bytes": 594,
+    "sha256": "96344e04f4b762163f3a772418aa969da303ebad0bb7a39bc8928b1570556709",
+    "lines": 49,
+    "scope": "documentation/config/legal"
+  },
+  {
+    "path": "AGENTS.md",
+    "bytes": 13344,
+    "sha256": "e6bf8c7a9ede003ddb2990f85e48913c838c63ea8fbbeb930b950508f9b4334a",
+    "lines": 144,
+    "scope": "documentation/config/legal"
+  },
+  {
+    "path": "ARCHITECTURE.md",
+    "bytes": 9493,
+    "sha256": "72992809fb934a0dd1441a10f6db1015a5f5537194e1d57c9ef7840a1feca107",
+    "lines": 161,
+    "scope": "documentation/config/legal"
+  },
+  {
+    "path": "CHANGELOG.md",
+    "bytes": 2619,
+    "sha256": "7bac73d431404de72ecb118dd40a2db5dd83ae2bca191232870fbc19bc0cfe21",
+    "lines": 42,
+    "scope": "documentation/config/legal"
+  },
+  {
+    "path": "LICENSE",
+    "bytes": 1098,
+    "sha256": "d775b754b642226aa52d4b97a58ea33329ce16a7efd1ebf07409382e3a50ede1",
+    "lines": 21,
+    "scope": "documentation/config/legal"
+  },
+  {
+    "path": "PLAN.md",
+    "bytes": 5202,
+    "sha256": "281e9ef7c5219f00d78fa0a6602945cf5f63ce8ccbc897adb02ba867115441c1",
+    "lines": 79,
+    "scope": "documentation/config/legal"
+  },
+  {
+    "path": "README.md",
+    "bytes": 2560,
+    "sha256": "0f8c2d01ea91a313534de5269c49657622ba163991f167a7f1105566b08c62af",
+    "lines": 50,
+    "scope": "documentation/config/legal"
+  },
+  {
+    "path": "THIRD_PARTY_NOTES.md",
+    "bytes": 3043,
+    "sha256": "41caea7744fc0bec86e30e8d28c078c49313c2f7cdad26b053b5413dbdfc6b4c",
+    "lines": 31,
+    "scope": "documentation/config/legal"
+  },
+  {
+    "path": "docs/AUDIT.md",
+    "bytes": 10350,
+    "sha256": "21296425074a9e3702325f9423195e519df8482b7334e2cdb47c5ed4e44b0a60",
+    "lines": 119,
+    "scope": "documentation/config/legal"
+  },
+  {
+    "path": "docs/COMMANDS.md",
+    "bytes": 23464,
+    "sha256": "6a3313bedbffb6dc2e32c144187da5b4ec7fc5d98a3baf9533260d33bedef636",
+    "lines": 318,
+    "scope": "documentation/config/legal"
+  },
+  {
+    "path": "docs/README.md",
+    "bytes": 1078,
+    "sha256": "f3ca12e9a0443824a03e8c54ad04d80f9178b84ecd5eff7a0bb606e716437092",
+    "lines": 18,
+    "scope": "documentation/config/legal"
+  },
+  {
+    "path": "docs/UI_BACKEND_CONTRACT.md",
+    "bytes": 5721,
+    "sha256": "745783330b695adc003193743c7b9fdc70519593ee5967f5dc08bcd3fa8737f4",
+    "lines": 87,
+    "scope": "documentation/config/legal"
+  },
+  {
+    "path": "v1/README.md",
+    "bytes": 2998,
+    "sha256": "e790ddd9af367d18d24620a0b3ceba5e962756819fb04c15c90d0d692c779827",
+    "lines": 61,
+    "scope": "documentation/config/legal"
+  },
+  {
+    "path": "v1/app/__init__.py",
+    "bytes": 36,
+    "sha256": "00ab34ee851f02a01e4f05d7217a8f4064134a9e80d6974bd89d6687430446e3",
+    "lines": 1,
+    "syntax": "ast-ok",
+    "top_level": [],
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/app/bootstrap.py",
+    "bytes": 9522,
+    "sha256": "42ad56e436e3efedcb982270c25d50d2f42b3c0675093fbe1a297692fde8dcfb",
+    "lines": 123,
+    "syntax": "ast-ok",
+    "top_level": [
+      "create_core"
+    ],
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/app/bridge/__init__.py",
+    "bytes": 85,
+    "sha256": "3ebaf3f32c06405e1b8c03e91df85d8d1c7888dba173520c562e1849a7a76f1e",
+    "lines": 1,
+    "syntax": "ast-ok",
+    "top_level": [],
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/app/bridge/settings.py",
+    "bytes": 3794,
+    "sha256": "13194f64b60f3751ce192a06736e23119fa9b032562442fbfc093c7bff05b4d2",
+    "lines": 65,
+    "syntax": "ast-ok",
+    "top_level": [
+      "validate_settings"
+    ],
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/app/bridge/webview_bridge.py",
+    "bytes": 38929,
+    "sha256": "dc8c4810f4511a7e55739dd992d3f4a2778ac37dd4cbd701f8c551ade916475b",
+    "lines": 613,
+    "syntax": "ast-ok",
+    "top_level": [
+      "NativeBridge"
+    ],
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/app/config.py",
+    "bytes": 1212,
+    "sha256": "93ad91739a1e25c2cad655dbdb0264ae806c59287479083d872bd0c4273a5719",
+    "lines": 29,
+    "syntax": "ast-ok",
+    "top_level": [
+      "get_data_home"
+    ],
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/app/core/__init__.py",
+    "bytes": 63,
+    "sha256": "301183383e1fff8a6db52a26dc04e1bc8a921ad48b275efd65825b22dc89a46a",
+    "lines": 1,
+    "syntax": "ast-ok",
+    "top_level": [],
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/app/core/contracts.py",
+    "bytes": 17928,
+    "sha256": "a61867740aef4d5500111a62c695e38bdbdec88cbaa51b7cd06f99010f45447c",
+    "lines": 364,
+    "syntax": "ast-ok",
+    "top_level": [
+      "ContractError",
+      "_text",
+      "_tool_name",
+      "_json_copy",
+      "copy_json",
+      "_object",
+      "TaskStatus",
+      "ToolRequest",
+      "ToolError",
+      "ToolResult",
+      "Task",
+      "ToolContext",
+      "ToolSpec"
+    ],
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/app/main.py",
+    "bytes": 6573,
+    "sha256": "24b7efac3c1e23a91f038bffe4c592b92fea5526e5bbcbee14d166dd567afc4a",
+    "lines": 135,
+    "syntax": "ast-ok",
+    "top_level": [
+      "_ui_app",
+      "main",
+      "_show_startup_error",
+      "run"
+    ],
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/app/policy/__init__.py",
+    "bytes": 91,
+    "sha256": "e13481476ae85a0ae866a963dfb314f0c782a54cfba8ded6a2386b0f142941c3",
+    "lines": 1,
+    "syntax": "ast-ok",
+    "top_level": [],
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/app/policy/engine.py",
+    "bytes": 4452,
+    "sha256": "dcf57bddce511f6c273a6b1dff1c04b1df61640103bf1fe4c5af37d97b70143e",
+    "lines": 87,
+    "syntax": "ast-ok",
+    "top_level": [
+      "PolicyEngine"
+    ],
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/app/session/__init__.py",
+    "bytes": 101,
+    "sha256": "4d5e4dc635732904b612a5143381d1f23a110316273bfb7560b33781282c9bf5",
+    "lines": 1,
+    "syntax": "ast-ok",
+    "top_level": [],
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/app/session/catalog.py",
+    "bytes": 2370,
+    "sha256": "5d852c0500bfbaa19d8681c9a6288a87cc03b8091bee05bf3716d0791b4cce13",
+    "lines": 46,
+    "syntax": "ast-ok",
+    "top_level": [
+      "load_live_catalog"
+    ],
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/app/session/conversation_memory.py",
+    "bytes": 2165,
+    "sha256": "f1f51d72674ff8073238fc5cf28e4a6ffcf6651bb3c60345fbaec879e01163a0",
+    "lines": 44,
+    "syntax": "ast-ok",
+    "top_level": [
+      "ConversationMemory"
+    ],
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/app/session/gemini.py",
+    "bytes": 17483,
+    "sha256": "1b69085dae53cc90c0ecac884d2d2407820c3055384ff3dd56945ef5b181aff1",
+    "lines": 322,
+    "syntax": "ast-ok",
+    "top_level": [
+      "_Stopped",
+      "_failure",
+      "_api_failure",
+      "GeminiText"
+    ],
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/app/session/live_input.py",
+    "bytes": 3491,
+    "sha256": "3fa6bfd0cd6aba67272e6cd23086c25d97ddbe61330ea13426c1ba32194cdd62",
+    "lines": 86,
+    "syntax": "ast-ok",
+    "top_level": [
+      "LiveInput"
+    ],
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/app/session/live_probe.py",
+    "bytes": 24643,
+    "sha256": "60ccc970038ddac6f8d91720cfce8b03af82068e0ebd77d0f91421ce6b53f0b6",
+    "lines": 371,
+    "syntax": "ast-ok",
+    "top_level": [
+      "_next_message",
+      "probe_live_text"
+    ],
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/app/session/live_session.py",
+    "bytes": 14957,
+    "sha256": "8bf758fbb932a63f7da158ca3269308844479db00910583274548eaf37139e1d",
+    "lines": 291,
+    "syntax": "ast-ok",
+    "top_level": [
+      "LiveConnection",
+      "PersistentLive"
+    ],
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/app/session/model_instruction.py",
+    "bytes": 4397,
+    "sha256": "80f0336fbfd1c8605972ea1c9c03600afbf2a46656739e940be5c8d84443c92f",
+    "lines": 49,
+    "syntax": "ast-ok",
+    "top_level": [
+      "model_instruction"
+    ],
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/app/session/model_tools.py",
+    "bytes": 14024,
+    "sha256": "80f80abf1740dbfbdbe8d66e786fb30943309793ec49adab7f2680bfb015e67a",
+    "lines": 246,
+    "syntax": "ast-ok",
+    "top_level": [
+      "assistant_control_request",
+      "NoteTargetError",
+      "ModelTools"
+    ],
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/app/session/speech.py",
+    "bytes": 4831,
+    "sha256": "a67ad5d16b4df86195235f687b838492c16cf1b4c7b8fcb9fb1299d0424529af",
+    "lines": 98,
+    "syntax": "ast-ok",
+    "top_level": [
+      "GeminiSpeech"
+    ],
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/app/session/text_chat.py",
+    "bytes": 12144,
+    "sha256": "bbb3a95dcc79e85428caf40e1b0a8991dc0e2c881f538b2fbc654231c66ab265",
+    "lines": 223,
+    "syntax": "ast-ok",
+    "top_level": [
+      "TextChat"
+    ],
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/app/session/tool_registry.py",
+    "bytes": 7040,
+    "sha256": "b24dfca61dd9e4cd510af7949147029f8f2146a5ef011072867af468ce6e7172",
+    "lines": 139,
+    "syntax": "ast-ok",
+    "top_level": [
+      "RegistryError",
+      "_check_inline_schema",
+      "ToolRegistry"
+    ],
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/app/session/wake_word.py",
+    "bytes": 11716,
+    "sha256": "b39e267649ad165364e95657e7a4d2a0d34f614009ee6395425a873d7cc2ee1c",
+    "lines": 215,
+    "syntax": "ast-ok",
+    "top_level": [
+      "wake_spellings",
+      "is_wake_only",
+      "WakeAlignmentError",
+      "model_home",
+      "setup",
+      "WakeWord"
+    ],
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/app/storage/__init__.py",
+    "bytes": 89,
+    "sha256": "e2f2f80101136c53758bad4fabd5dc490421108b32e7533222224917449b5ed8",
+    "lines": 1,
+    "syntax": "ast-ok",
+    "top_level": [],
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/app/storage/credentials.py",
+    "bytes": 5129,
+    "sha256": "4f659539c1b3db09e0dd32d5d98c4de30514649449bcd6f21c459021cbd4aff1",
+    "lines": 114,
+    "syntax": "ast-ok",
+    "top_level": [
+      "CredentialError",
+      "_Credential",
+      "_library",
+      "_validate",
+      "GeminiCredentials",
+      "load_gemini_key"
+    ],
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/app/storage/json_store.py",
+    "bytes": 7702,
+    "sha256": "bcfcb1d8d20e6cdc006dd01a30fad499b6291820b596c6f44cf0b0274590e994",
+    "lines": 164,
+    "syntax": "ast-ok",
+    "top_level": [
+      "StoreError",
+      "_unique_object",
+      "_reject_constant",
+      "JsonStore"
+    ],
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/app/tasks/__init__.py",
+    "bytes": 90,
+    "sha256": "7c99b53d546ee1749dfad3c1470636f95abccc547eeb4d41908b669f53a02e85",
+    "lines": 1,
+    "syntax": "ast-ok",
+    "top_level": [],
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/app/tasks/manager.py",
+    "bytes": 15851,
+    "sha256": "db944ae8c52a4effeb8daeb1dec5d137e8156e4539ecfb6ff5fd5753d8e90c4f",
+    "lines": 299,
+    "syntax": "ast-ok",
+    "top_level": [
+      "TaskManagerError",
+      "_Entry",
+      "_copy_request",
+      "_copy_result",
+      "_snapshot",
+      "_timeout",
+      "TaskManager"
+    ],
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/app/tools/__init__.py",
+    "bytes": 77,
+    "sha256": "d337ef847fc693f894a015abf644f808edd38f487498f658e6b9d42bfd3f8769",
+    "lines": 1,
+    "syntax": "ast-ok",
+    "top_level": [],
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/app/tools/local/__init__.py",
+    "bytes": 81,
+    "sha256": "bb924fc0b17135e70c10df58219ec2e7b001f3d2cc9cf6f88f17d88b03cbf939",
+    "lines": 1,
+    "syntax": "ast-ok",
+    "top_level": [],
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/app/tools/local/apps.py",
+    "bytes": 8117,
+    "sha256": "cc4b385b836f995bacac0d0d79be148deb0c7f509bb86b730c4e421ba843bcf1",
+    "lines": 144,
+    "syntax": "ast-ok",
+    "top_level": [
+      "app_catalog",
+      "app_status",
+      "app_open"
+    ],
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/app/tools/local/assistant.py",
+    "bytes": 2915,
+    "sha256": "ce5447f5506edd6f2a657870c524cf74f1a83802e4ffc0027361008f3ee34025",
+    "lines": 52,
+    "syntax": "ast-ok",
+    "top_level": [
+      "request_sleep_mode",
+      "request_shutdown"
+    ],
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/app/tools/local/clocks.py",
+    "bytes": 11179,
+    "sha256": "e4227af9144a514913c6c3fdeb9302a2e65629ef7d606dcca51cabb9ca7897a3",
+    "lines": 188,
+    "syntax": "ast-ok",
+    "top_level": [
+      "Clocks"
+    ],
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/app/tools/local/notes.py",
+    "bytes": 26159,
+    "sha256": "ea537d1e100a40733ee98d77cb55f763da23c867f6d693675295d68b07454b7b",
+    "lines": 460,
+    "syntax": "ast-ok",
+    "top_level": [
+      "_valid_text",
+      "notes_snapshot",
+      "_fold_text",
+      "_valid_created_at",
+      "_error",
+      "NotesTools"
+    ],
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/app/tools/local/telemetry.py",
+    "bytes": 1778,
+    "sha256": "8bb9a4e47125a84d91fcbc50efbe54694627f7ba941a2bccf4580c4b55148af9",
+    "lines": 33,
+    "syntax": "ast-ok",
+    "top_level": [
+      "system_status"
+    ],
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/app/tools/local/windows_apps.py",
+    "bytes": 11206,
+    "sha256": "be51d3e96d252daf45370aebec807d56e561575cf51905acf7dcd51086a86b0c",
+    "lines": 234,
+    "syntax": "ast-ok",
+    "top_level": [
+      "_ProcessEntry",
+      "_libraries",
+      "notepad_launcher",
+      "start_notepad",
+      "_check_cancel",
+      "_candidates",
+      "_identity",
+      "_windows",
+      "observe_notepad"
+    ],
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/pyproject.toml",
+    "bytes": 729,
+    "sha256": "583790ba5997884e36f7de99dfff27de8ea4fa31333e3c584062929e189ffe3f",
+    "lines": 21,
+    "scope": "documentation/config/legal"
+  },
+  {
+    "path": "v1/requirements-dev.lock.txt",
+    "bytes": 823,
+    "sha256": "3f40a991bb8a88910cea04f6456ce40c9c6a4147a8ddab8564a2ada39bf4c1fb",
+    "lines": 43,
+    "scope": "documentation/config/legal"
+  },
+  {
+    "path": "v1/tests/apps_open_smoke.py",
+    "bytes": 3435,
+    "sha256": "f295913d47bf840bb24191dce219fb9f94d63becd8701fc324b239218fb6204f",
+    "lines": 75,
+    "syntax": "ast-ok",
+    "top_level": [
+      "main"
+    ],
+    "scope": "test"
+  },
+  {
+    "path": "v1/tests/conftest.py",
+    "bytes": 257,
+    "sha256": "b8bc2461f4e784c71e704dd76b310be10958cb7190d98e150b468af919e91715",
+    "lines": 10,
+    "syntax": "ast-ok",
+    "top_level": [
+      "taskvex_home"
+    ],
+    "scope": "test"
+  },
+  {
+    "path": "v1/tests/gemini_smoke.py",
+    "bytes": 4579,
+    "sha256": "d83ff74620cc939af0b5fdcead8bc2de501c1999db7164e64aaf87514b3cbdb4",
+    "lines": 87,
+    "syntax": "ast-ok",
+    "top_level": [
+      "main"
+    ],
+    "scope": "test"
+  },
+  {
+    "path": "v1/tests/native_scenarios.py",
+    "bytes": 43238,
+    "sha256": "ee6f0f55395bc78d3d773a31e7e9ac75312eb9f0d2f14ca3b3257bf881030be1",
+    "lines": 501,
+    "syntax": "ast-ok",
+    "top_level": [
+      "check_native_note_ui",
+      "check_native_note_crud",
+      "check_native_note_batches",
+      "check_native_clocks",
+      "check_native_shutdown_request",
+      "check_local_sleep",
+      "check_wake_recovery",
+      "check_real_local_wake"
+    ],
+    "scope": "test"
+  },
+  {
+    "path": "v1/tests/native_smoke.py",
+    "bytes": 119270,
+    "sha256": "1dfb38bc4ecf3e5b938993ce69216c17190fcfa9c6edb4e45d7a3c0aac1a3dfb",
+    "lines": 1449,
+    "syntax": "ast-ok",
+    "top_level": [
+      "child",
+      "run"
+    ],
+    "scope": "test"
+  },
+  {
+    "path": "v1/tests/test_app_open.py",
+    "bytes": 9208,
+    "sha256": "ba888ced01476f147b7ec8e4f90722a56b33d060901c22887abe22a4a339f833",
+    "lines": 194,
+    "syntax": "ast-ok",
+    "top_level": [
+      "request",
+      "snapshot",
+      "boundary",
+      "run",
+      "test_open_requires_verified_window_and_reports_whether_launch_was_needed",
+      "test_running_without_window_is_waited_without_second_launch",
+      "test_unconfirmed_launch_is_unknown_and_cannot_be_replayed",
+      "test_existing_process_timeout_is_failed_not_unknown",
+      "test_bad_initial_observation_never_launches",
+      "test_launcher_resolution_failure_happens_before_side_effect",
+      "test_launch_call_exception_is_not_permission_to_resend",
+      "test_open_cancellation_respects_whether_launch_was_requested",
+      "test_concurrent_same_request_launches_only_once",
+      "test_bad_open_arguments_never_reach_native_calls",
+      "test_open_policy_denial_prevents_native_calls",
+      "test_open_needs_both_observation_and_launch_permission"
+    ],
+    "scope": "test"
+  },
+  {
+    "path": "v1/tests/test_apps.py",
+    "bytes": 6807,
+    "sha256": "06f4a48e76bfed34e33ecd556f4db4874b84aaad4f6f8b2cb8ed0a7f58967f5f",
+    "lines": 135,
+    "syntax": "ast-ok",
+    "top_level": [
+      "request",
+      "test_catalog_uses_core_and_does_not_claim_installed_or_running",
+      "test_catalog_requires_trusted_local_identity",
+      "test_catalog_rejects_parameters_before_handler",
+      "test_catalog_is_immutable_and_results_are_independent",
+      "test_catalog_honors_cancellation_and_direct_argument_validation",
+      "test_status_uses_common_core_and_partial_read_does_not_halt_worker",
+      "test_status_invalid_target_never_reaches_observer",
+      "test_status_unavailable_is_not_closed_or_private_error_leak",
+      "test_status_honors_cancellation",
+      "test_status_denied_identity_does_not_inspect_machine"
+    ],
+    "scope": "test"
+  },
+  {
+    "path": "v1/tests/test_assistant_control.py",
+    "bytes": 11340,
+    "sha256": "8d5c93698a2b51c38e4a4b20636b0a11db83bdc8e18adea89471900c37bbe421",
+    "lines": 203,
+    "syntax": "ast-ok",
+    "top_level": [
+      "test_core_request_is_verified_but_not_applied",
+      "test_schema_rejects_invalid_control",
+      "test_rest_sleep_uses_same_tool_without_note_transfer",
+      "test_live_replayed_old_control_does_not_schedule_another_transition",
+      "test_no_completed_reply_means_no_sleep_even_after_tool_acceptance",
+      "test_model_acknowledgement_alone_does_not_change_mode",
+      "test_stop_after_control_acceptance_discards_pending_change",
+      "test_conflicting_control_requests_do_not_guess",
+      "test_shutdown_acceptance_waits_for_completed_reply_and_does_not_close_core",
+      "test_shutdown_without_completed_reply_does_not_schedule_close",
+      "test_shutdown_and_sleep_cannot_both_apply",
+      "test_live_old_shutdown_replay_and_acknowledgement_alone_do_not_close",
+      "test_shutdown_stop_after_tool_acceptance_prevents_close",
+      "test_shutdown_has_no_os_or_arbitrary_command_parameters"
+    ],
+    "scope": "test"
+  },
+  {
+    "path": "v1/tests/test_clocks.py",
+    "bytes": 17622,
+    "sha256": "917a37153fa624dfab3ec3ac197959cf6b70d9eeef49689c9650cf22644bf8eb",
+    "lines": 298,
+    "syntax": "ast-ok",
+    "top_level": [
+      "clock_time",
+      "mutate",
+      "test_multiple_clocks_pause_resume_reset_and_wall_clock_independence",
+      "test_finished_timer_reset_restart_and_snapshot_are_independent",
+      "test_invalid_creation_never_changes_collection",
+      "test_replay_is_same_clock_and_fresh_target_is_required_each_turn",
+      "test_stop_before_create_and_late_stop_preserve_real_result",
+      "test_native_ui_commands_and_poll_use_same_owner_without_poll_tasks",
+      "test_model_creation_and_fresh_list_control",
+      "test_unknown_ui_command_blocks_new_mutations_and_model_but_allows_view",
+      "test_unknown_id_changes_no_clock",
+      "test_pause_crossing_timer_deadline_finishes_instead_of_sticking_paused",
+      "test_timer_set_preserves_id_and_other_clocks_while_stopwatch_rejects_duration",
+      "test_timer_notification_verifies_actual_generation_and_never_retries",
+      "test_host_notification_uses_profile_and_exposes_no_mutation_tools",
+      "test_ui_delete_removes_only_actual_target_with_replay_protection",
+      "test_cancelled_clock_delete_does_not_mutate",
+      "test_model_catalog_does_not_expose_ui_clock_delete"
+    ],
+    "scope": "test"
+  },
+  {
+    "path": "v1/tests/test_contracts.py",
+    "bytes": 6443,
+    "sha256": "feddbbecff957135f59310c6fecab1aeba4bd6de1a247050982073611370649d",
+    "lines": 156,
+    "syntax": "ast-ok",
+    "top_level": [
+      "request",
+      "result",
+      "test_request_keeps_json_values_and_detaches_caller_and_serialized_data",
+      "test_invalid_requests_cannot_enter_core",
+      "test_circular_json_rejected_but_shared_non_circular_values_work",
+      "test_accepted_or_invalid_response_cannot_become_success",
+      "test_failure_and_uncertainty_require_reason_and_cannot_claim_verified",
+      "test_terminal_task_and_result_have_same_identity_status_and_wire_values",
+      "test_cancel_request_is_unfinished_and_different_from_cancelled",
+      "test_context_cancellation_is_per_task_and_not_an_automatic_final_result",
+      "test_invalid_deadlines_rejected",
+      "test_tool_registration_does_not_execute_handler_and_detaches_schema",
+      "test_invalid_tool_declarations_rejected",
+      "test_error_wire_data_is_structured_and_detached"
+    ],
+    "scope": "test"
+  },
+  {
+    "path": "v1/tests/test_conversation_memory.py",
+    "bytes": 6396,
+    "sha256": "035e2442879bdf81763dcbab42ba1cd4b26586f1ff4ca071b4259a75ebcc0636",
+    "lines": 125,
+    "syntax": "ast-ok",
+    "top_level": [
+      "histories",
+      "test_memory_is_bounded_and_preserves_uncertain_outcomes_without_tool_payload",
+      "test_same_socket_does_not_duplicate_history_and_disconnect_restores_data_only",
+      "test_voice_transcript_survives_input_mode_change_and_new_chat_clears",
+      "test_stop_preserves_committed_note_and_memory_without_replaying_tools",
+      "test_resume_skips_history_but_fresh_fallback_restores_it"
+    ],
+    "scope": "test"
+  },
+  {
+    "path": "v1/tests/test_credentials.py",
+    "bytes": 4323,
+    "sha256": "a8504c762d2059e6d125587d518d877c56b546c7c0e2a7fd02290cdcddf35958",
+    "lines": 115,
+    "syntax": "ast-ok",
+    "top_level": [
+      "MemoryCredentials",
+      "memory",
+      "test_write_read_verify_and_profile_isolation",
+      "test_invalid_key_never_reaches_windows",
+      "test_write_failure_preserves_old_key",
+      "test_corrupt_key_is_rejected_and_native_memory_freed",
+      "test_read_error_is_not_missing_key",
+      "test_unverified_write_is_reported",
+      "test_environment_key_precedence_and_stored_key_fallback",
+      "test_windows_credential_structure_size"
+    ],
+    "scope": "test"
+  },
+  {
+    "path": "v1/tests/test_documentation.py",
+    "bytes": 1771,
+    "sha256": "7696cd71b3327d5cc319ee776f1a429038074780c89fda5cf9142e4fbb411ab6",
+    "lines": 39,
+    "syntax": "ast-ok",
+    "top_level": [
+      "test_archived_document_contents_are_preserved",
+      "test_current_document_links_resolve_inside_repository"
+    ],
+    "scope": "test"
+  },
+  {
+    "path": "v1/tests/test_gemini.py",
+    "bytes": 27253,
+    "sha256": "0d08b124f98c7a3e7343584bcab3e8eb490ac06f77c9be8d7aa19e1e13483585",
+    "lines": 511,
+    "syntax": "ast-ok",
+    "top_level": [
+      "reply",
+      "call",
+      "transport",
+      "tools",
+      "stored_notes",
+      "test_text_only_and_closed_client",
+      "test_sdk_tool_roundtrip_preserves_signature_and_core_schema",
+      "test_repeated_provider_call_does_not_add_second_note",
+      "test_independent_user_turns_can_reuse_a_provider_call_id",
+      "test_invalid_or_unexposed_call_never_writes",
+      "test_http_errors_are_redacted_and_not_retried",
+      "test_provider_diagnostics_allow_only_known_codes",
+      "test_malformed_provider_details_do_not_break_error_reporting",
+      "test_network_errors_stop_at_retry_limit",
+      "test_network_failure_after_commit_keeps_known_result",
+      "test_transient_error_retries_primary_before_fallback",
+      "test_fallback_executes_note_once_and_keeps_model_for_tool_response",
+      "test_exhausted_fallback_stops_and_next_run_starts_with_primary",
+      "test_error_after_note_commit_never_retries_or_switches",
+      "test_explicit_model_retries_without_switching_to_another_model",
+      "test_smoke_report_preserves_actual_fallback_model",
+      "test_native_chat_rejects_invalid_text_without_network",
+      "test_native_chat_uses_host_allowlist_and_releases_client",
+      "test_native_chat_missing_key_and_unknown_exception_are_safe",
+      "test_native_chat_rejects_concurrent_work_and_close_without_blocking",
+      "test_chat_without_notes_confirmation_still_answers_with_restricted_tools",
+      "test_unconfirmed_notes_cannot_be_written_by_model",
+      "test_live_catalog_filters_capabilities_and_loads_all_pages",
+      "test_empty_live_catalog_never_invents_models",
+      "test_catalog_error_is_redacted_and_client_closed",
+      "test_catalog_page_limit_rejects_partial_list",
+      "test_provider_failure_exposes_safe_timing_and_http_code",
+      "test_add_delete_add_works_with_reused_provider_id_in_independent_turns",
+      "test_incomplete_or_empty_model_output_is_not_success",
+      "test_turn_limit_stops_before_more_tools_execute",
+      "test_missing_key_fails_before_creating_client",
+      "test_unfinished_or_uncertain_tool_does_not_continue_model_turn",
+      "test_tool_call_limit_rejects_entire_oversized_batch",
+      "test_changed_provider_call_id_content_is_not_reexecuted",
+      "test_parallel_calls_are_run_through_core_in_received_order",
+      "test_invalid_text_does_not_make_network_request",
+      "test_smoke_entrypoint_isolated_and_checks_actual_tool_use"
+    ],
+    "scope": "test"
+  },
+  {
+    "path": "v1/tests/test_json_store.py",
+    "bytes": 11315,
+    "sha256": "95dc4272ef072a939bf9f41abdb6a33d849227c6600f91dbaef95a5bec6b518c",
+    "lines": 298,
+    "syntax": "ast-ok",
+    "top_level": [
+      "store",
+      "test_missing_and_empty_records_are_distinct",
+      "test_unicode_and_json_values_round_trip_without_shared_state",
+      "test_invalid_write_preserves_existing_bytes",
+      "test_cyclic_data_does_not_create_a_directory",
+      "test_corrupt_file_is_not_silently_replaced",
+      "test_explicit_recovery_preserves_original_bytes_then_allows_new_record",
+      "test_healthy_and_missing_records_are_not_quarantined",
+      "test_future_version_cannot_be_overwritten_or_recovered_as_corrupt",
+      "fail_io",
+      "test_precommit_io_failure_preserves_previous_record",
+      "test_partial_temporary_write_never_truncates_target",
+      "test_replacement_happens_only_after_complete_new_file_is_ready",
+      "test_abrupt_process_exit_keeps_previous_record_and_ignores_orphan_temp",
+      "test_directory_creation_failure_is_not_success",
+      "test_read_error_does_not_become_missing_or_allow_write",
+      "test_recovery_failure_preserves_corrupt_original",
+      "test_invalid_store_path_is_rejected",
+      "test_config_uses_current_environment_without_creating_directory",
+      "test_invalid_configured_home_is_not_silently_replaced",
+      "test_windows_default_data_home",
+      "test_missing_default_home_is_configuration_error",
+      "test_recovery_accepts_application_schema_without_discarding_original",
+      "test_unexpected_schema_validator_error_does_not_quarantine"
+    ],
+    "scope": "test"
+  },
+  {
+    "path": "v1/tests/test_live_audio.py",
+    "bytes": 5740,
+    "sha256": "654550f78f278c78bb6d8a6eb3b5a33ba0efedf5e6d5db4c5bcae73be7e7796b",
+    "lines": 126,
+    "syntax": "ast-ok",
+    "top_level": [
+      "pcm",
+      "audio_frame",
+      "test_audio_parts_and_transcript_are_both_forwarded_without_recording",
+      "test_invalid_pcm_preserves_text_and_never_reaches_ui",
+      "test_rejected_playback_stops_forwarding_but_keeps_verified_note",
+      "test_host_scopes_audio_to_user_request_and_next_message",
+      "test_stop_during_audio_delivery_has_no_replay_or_new_audio_request",
+      "test_audio_turn_limit_bounds_total_forwarded_pcm"
+    ],
+    "scope": "test"
+  },
+  {
+    "path": "v1/tests/test_live_limits.py",
+    "bytes": 2766,
+    "sha256": "fd6576e74d9a1d3c2a26d220836fdbd405321190baf5c9886d99c2e475fa6882",
+    "lines": 55,
+    "syntax": "ast-ok",
+    "top_level": [
+      "test_idle_timeout_preserves_completed_note_and_does_not_retry",
+      "test_events_can_continue_past_idle_duration_but_total_limit_still_applies",
+      "test_feed_distinguishes_normal_close_from_invalid_input"
+    ],
+    "scope": "test"
+  },
+  {
+    "path": "v1/tests/test_live_mic.py",
+    "bytes": 6997,
+    "sha256": "41354e6e934a0de7d34cf89d1c3b91c0f8aaad4154eb71afaf8ea56b4087a64c",
+    "lines": 126,
+    "syntax": "ast-ok",
+    "top_level": [
+      "test_mic_pcm_uses_explicit_activity_and_input_transcript",
+      "test_invalid_mic_never_opens_provider",
+      "test_voice_tools_require_transcript_and_share_core",
+      "test_text_to_audio_resets_setup_instead_of_using_text_checkpoint",
+      "test_native_mic_envelope_is_validated_before_chat",
+      "test_voice_update_and_delete_use_transcribed_target_and_real_id",
+      "test_voice_stop_keeps_actual_tool_result_and_does_not_replay"
+    ],
+    "scope": "test"
+  },
+  {
+    "path": "v1/tests/test_live_probe.py",
+    "bytes": 9543,
+    "sha256": "4f36356fa184f6839266c0b34042bb306e360c188dd341181d5db934a2092197",
+    "lines": 204,
+    "syntax": "ast-ok",
+    "top_level": [
+      "socket",
+      "frame",
+      "test_live_probe_uses_audio_transcript_without_playback_or_tools",
+      "test_live_probe_waits_for_idle_despite_intermediate_turn_complete",
+      "test_live_probe_rejects_incomplete_or_unexpected_output",
+      "test_live_probe_timeout_closes_socket_without_retry",
+      "test_live_probe_exception_does_not_expose_secrets",
+      "test_live_probe_missing_key_makes_no_connection",
+      "test_live_probe_uses_same_busy_and_closed_guard_as_rest",
+      "test_persistent_live_reuses_socket_and_disconnect_opens_fresh_session",
+      "test_persistent_live_replaces_connection_on_identity_change",
+      "test_persistent_live_error_is_not_replayed_and_next_message_is_fresh"
+    ],
+    "scope": "test"
+  },
+  {
+    "path": "v1/tests/test_live_resume.py",
+    "bytes": 15060,
+    "sha256": "789315041e5315eff3ce0f988fa3e9af073085aa31f06944719d26dd0d335796",
+    "lines": 316,
+    "syntax": "ast-ok",
+    "top_level": [
+      "checkpoint",
+      "wire",
+      "setups",
+      "inputs",
+      "test_goaway_finishes_turn_then_resume_preserves_logical_scope_and_replay",
+      "test_idle_transport_drop_resumes_only_with_safe_checkpoint",
+      "test_rejected_resume_has_one_fresh_fallback_before_sending_new_text",
+      "test_resume_auth_quota_or_service_error_is_not_retried",
+      "test_nonresumable_or_empty_update_forgets_previous_handle",
+      "test_expired_checkpoint_is_not_used",
+      "test_active_checkpoint_is_not_reused_after_goaway",
+      "test_active_failure_after_commit_is_not_replayed_or_resumed",
+      "test_scope_or_disconnect_discards_resume_information",
+      "test_stop_during_resume_setup_discards_checkpoint_and_ledger",
+      "test_idle_tool_call_is_not_executed_or_resumed",
+      "test_resume_setup_must_be_confirmed_before_sending_text",
+      "test_fresh_setup_without_ack_does_not_send_user_text",
+      "test_idle_control_flood_is_bounded_and_starts_fresh"
+    ],
+    "scope": "test"
+  },
+  {
+    "path": "v1/tests/test_live_stop.py",
+    "bytes": 6041,
+    "sha256": "90e87b0bceb1d186e3620b507d637f3d1aec92fe272c55ffd3cb35a335afa69e",
+    "lines": 127,
+    "syntax": "ast-ok",
+    "top_level": [
+      "test_stop_waiting_live_closes_socket_and_preserves_completed_actions",
+      "test_stop_before_live_io_performs_no_provider_request",
+      "test_stop_waits_for_actual_core_completion",
+      "test_unresolved_tool_after_stop_remains_unknown",
+      "test_unexpected_live_host_failure_does_not_allow_blind_retry"
+    ],
+    "scope": "test"
+  },
+  {
+    "path": "v1/tests/test_live_stream.py",
+    "bytes": 17196,
+    "sha256": "751db9b5829095693f2fa61cf889fda0ea6b7d14a437de4c15d72e83facc1bb2",
+    "lines": 368,
+    "syntax": "ast-ok",
+    "top_level": [
+      "test_stream_queue_validates_order_size_and_backpressure",
+      "test_stream_sends_with_explicit_activity_boundary",
+      "test_stream_tools_require_transcript",
+      "test_stream_sender_failure_does_not_wait_for_provider_or_start_tools",
+      "test_explicit_stream_end_uses_ordered_activity_end",
+      "test_idle_timeout_identifies_input_progress_without_audio_content",
+      "test_stream_stop_is_scoped_and_closes_ingress",
+      "test_native_stream_envelope_rejects_before_dispatch",
+      "test_thought_only_does_not_close_active_microphone",
+      "test_final_transcript_closes_old_ingress_before_model_thinks",
+      "test_wake_only_turn_finishes_without_tool_or_model_answer",
+      "test_final_transcript_keeps_the_real_reply_alive",
+      "test_final_transcript_flushes_audio_before_waiting_for_reply",
+      "test_fourteen_packets_and_two_interim_transcripts_end_without_final_flag",
+      "test_wake_variation_with_task_or_custom_profile_keeps_reply"
+    ],
+    "scope": "test"
+  },
+  {
+    "path": "v1/tests/test_live_tools.py",
+    "bytes": 7561,
+    "sha256": "cab1733669bddfc9053bd857d4901e141bc2d95d95246d586d66c68d28e236b4",
+    "lines": 148,
+    "syntax": "ast-ok",
+    "top_level": [
+      "tools",
+      "call",
+      "notes",
+      "test_live_note_add_list_through_real_core_and_function_responses",
+      "test_live_duplicate_call_reuses_task_or_rejects_changed_arguments",
+      "test_live_rejects_unexposed_invalid_or_identity_injected_calls",
+      "test_live_without_notes_confirmation_has_no_note_tool",
+      "test_live_transport_error_after_note_commit_preserves_result",
+      "test_persistent_connection_keeps_replay_scope_between_user_turns",
+      "test_pending_live_tool_is_not_sent_as_completed",
+      "test_server_cancellation_does_not_undo_committed_note",
+      "test_extended_tool_completion_requires_idle",
+      "test_live_note_permission_change_reopens_socket"
+    ],
+    "scope": "test"
+  },
+  {
+    "path": "v1/tests/test_live_transcript.py",
+    "bytes": 3156,
+    "sha256": "c458a1442e69e91cede5ac00a9280a542126f3e1759bd58264dfdf6a8f4f6f77",
+    "lines": 64,
+    "syntax": "ast-ok",
+    "top_level": [
+      "test_transcript_arrives_before_completion_and_survives_stop",
+      "test_input_and_output_snapshots_are_scoped_by_host",
+      "test_transcript_delivery_error_keeps_final_text_without_retry",
+      "test_interrupted_event_keeps_its_last_text",
+      "test_bridge_serializes_transcript_as_data"
+    ],
+    "scope": "test"
+  },
+  {
+    "path": "v1/tests/test_local_tools.py",
+    "bytes": 22150,
+    "sha256": "d9617a64f75302a401169369b4a6112e60acf4119f552a55b74ed6f4fc6a6e66",
+    "lines": 462,
+    "syntax": "ast-ok",
+    "top_level": [
+      "request",
+      "run",
+      "test_add_list_and_reopen_keep_stable_note_identity",
+      "test_concurrent_replays_add_only_one_real_note",
+      "test_same_text_with_different_request_ids_creates_distinct_notes",
+      "test_update_reopen_and_delete_target_only_stable_id",
+      "test_ui_transfer_is_atomic_once_and_survives_all_notes_deleted",
+      "test_bad_bulk_notes_never_change_existing_store",
+      "test_backup_replace_keeps_ids_and_migration_marker",
+      "test_bulk_transfer_failure_preserves_source_or_reports_unknown",
+      "test_missing_note_does_not_create_or_rewrite_store",
+      "test_note_mutations_keep_commit_and_cancellation_contract",
+      "test_bad_arguments_never_reach_local_handlers",
+      "test_real_note_tool_denies_wrong_identity_without_creating_file",
+      "test_invalid_note_records_are_preserved_without_partial_append",
+      "test_corrupt_json_is_explicitly_preserved_and_recoverable_through_real_tools",
+      "test_write_failure_reports_failure_and_keeps_existing_notes",
+      "test_unverified_commit_is_unknown_and_not_repeated",
+      "test_queued_real_note_cancellation_never_writes_second_note",
+      "test_late_cancellation_does_not_erase_a_verified_write",
+      "test_running_note_cancelled_after_read_does_not_write",
+      "test_system_status_uses_real_read_only_system_calls",
+      "test_system_unavailable_cpu_count_is_not_replaced_with_fake_value",
+      "test_system_read_failure_is_not_a_fake_success"
+    ],
+    "scope": "test"
+  },
+  {
+    "path": "v1/tests/test_model_note_mutations.py",
+    "bytes": 16930,
+    "sha256": "b9da41d9c745b110a4cdf958ce420ab03d7f3fb159ad77ec89822fdef561c4d1",
+    "lines": 313,
+    "syntax": "ast-ok",
+    "top_level": [
+      "seed",
+      "gateway",
+      "current_snapshot",
+      "read",
+      "execute",
+      "test_model_updates_completes_deletes_real_id",
+      "test_unclear_target_does_not_change_any_record",
+      "test_explicit_user_id_disambiguates_duplicate_text",
+      "test_mutation_replay_keeps_original_task_without_second_write",
+      "test_disconnect_after_mutation_preserves_verified_result",
+      "test_unknown_write_is_not_retried_or_claimed_success",
+      "test_all_note_tools_hidden_until_native_transfer_confirmed",
+      "test_old_list_or_repolled_result_cannot_authorize_new_mutation",
+      "test_failed_fresh_read_cannot_leave_previous_target_authorized",
+      "test_delete_replay_after_live_resume_preserves_ids_and_single_mutation",
+      "test_target_guard_does_not_replace_registry_validation",
+      "test_stop_after_verified_mutation_keeps_the_real_result"
+    ],
+    "scope": "test"
+  },
+  {
+    "path": "v1/tests/test_model_profile.py",
+    "bytes": 9614,
+    "sha256": "e5ebb872ee5733f0163cc9e0c750db43c8b0acd0ac9898ea48601f25a3c0e230",
+    "lines": 190,
+    "syntax": "ast-ok",
+    "top_level": [
+      "system_text",
+      "test_common_instruction_is_bounded_and_only_uses_connected_profile_fields",
+      "test_invalid_profile_fails_without_reflecting_its_content",
+      "test_rest_profile_is_frozen_across_retry_and_fallback",
+      "test_personal_instructions_cannot_open_notes_before_migration_confirmation",
+      "test_live_text_and_audio_use_same_profile_instruction",
+      "test_unchanged_or_unconnected_profile_fields_reuse_live_socket",
+      "test_profile_change_cannot_resume_old_instruction_scope",
+      "test_bridge_reads_saved_profile_for_every_input_and_keeps_snapshots_independent",
+      "test_failed_profile_save_does_not_replace_model_preferences",
+      "test_unreadable_profile_blocks_model_without_silent_default",
+      "test_invalid_live_profile_is_not_sent_to_provider"
+    ],
+    "scope": "test"
+  },
+  {
+    "path": "v1/tests/test_model_tools.py",
+    "bytes": 6729,
+    "sha256": "7b2a12a173d79b87fdde663fc77820e29e44584ab861756b4bf6f0d0988c41b8",
+    "lines": 141,
+    "syntax": "ast-ok",
+    "top_level": [
+      "session",
+      "note_call",
+      "test_real_note_roundtrip_and_reconnect_replay",
+      "test_session_id_scopes_provider_call_ids",
+      "test_invalid_call_does_not_write",
+      "test_host_identity_does_not_bypass_policy",
+      "test_catalog_has_only_exposed_data_and_returns_independent_schemas",
+      "test_other_session_cannot_read_or_cancel_a_task",
+      "test_pending_cancellation_and_unknown_keep_actual_state"
+    ],
+    "scope": "test"
+  },
+  {
+    "path": "v1/tests/test_native_bridge.py",
+    "bytes": 27264,
+    "sha256": "5bd6f755110e87a560e2180030b58787eba50e3fc4aa2de79c786fcaf6d07c38",
+    "lines": 609,
+    "syntax": "ast-ok",
+    "top_level": [
+      "FakeWindow",
+      "bridge",
+      "ready",
+      "test_new_chat_clears_memory_only_after_ready_and_preserves_notes",
+      "test_key_update_clears_memory_but_disconnect_preserves_it",
+      "test_read_reply_accepts_only_host_reply_identity",
+      "test_ready_is_idempotent_and_snapshot_omits_collections",
+      "test_text_before_notes_confirmation_is_restricted_and_live_selection_is_separate",
+      "test_live_catalog_error_invalidates_cached_choices",
+      "test_key_cannot_change_during_live_catalog_query",
+      "test_live_test_routes_selected_catalog_model_without_rest_fallback",
+      "test_stop_requires_explicit_live_request_identity",
+      "test_live_envelope_and_stop_routing_do_not_wait_for_chat_lock",
+      "test_rest_envelope_preserves_request_identity_and_rejects_malformed_data",
+      "test_active_chat_does_not_hold_bridge_lock_but_blocks_conflicting_actions",
+      "test_save_projects_settings_and_reloads_in_fresh_bridge",
+      "test_bad_save_does_not_poison_file",
+      "test_invalid_disk_settings_are_preserved_and_not_marked_ready",
+      "test_write_error_returns_no_fake_confirmation",
+      "test_unsupported_events_and_bad_handshake_are_rejected",
+      "test_api_key_storage_returns_only_status_and_does_not_mark_online",
+      "test_credential_error_and_bad_status_payload_do_not_expose_key",
+      "test_system_status_passes_real_core_and_safe_js_boundary",
+      "note_command",
+      "test_native_notes_require_transfer_and_survive_fresh_bridge",
+      "test_note_command_rejects_bad_envelope_without_creating_store",
+      "test_note_timeout_is_unknown_and_does_not_resubmit",
+      "test_fullscreen_toggles_and_does_not_modify_saved_settings",
+      "test_shutdown_closes_worker_and_window",
+      "test_busy_shutdown_preserves_window_and_reports_failure",
+      "test_window_controls_reject_payloads",
+      "test_restart_requests_new_process_only_after_worker_stops",
+      "test_failed_restart_close_does_not_leave_a_deferred_restart",
+      "test_startup_repair_preserves_original_and_valid_profile",
+      "test_repair_requires_explicit_confirmation",
+      "test_newer_settings_version_cannot_be_repaired_as_corruption",
+      "test_access_error_is_retryable_but_not_destructively_repairable",
+      "test_backup_failure_never_resets_corrupt_file",
+      "test_write_failure_after_backup_keeps_original_backup",
+      "test_run_reports_startup_failure_without_resetting_data",
+      "test_startup_message_does_not_leak_raw_exception",
+      "test_on_top_is_applied_then_persisted_only_by_save",
+      "test_on_top_rejects_non_boolean_values",
+      "test_reset_preserves_profile_connections_and_core_notes",
+      "test_reset_error_preserves_original_preferences_and_window",
+      "test_main_restart_launches_trusted_command_after_cleanup",
+      "test_main_missing_window_stops_core_without_starting_gui",
+      "test_saved_live_model_is_restored_before_automatic_catalog"
+    ],
+    "scope": "test"
+  },
+  {
+    "path": "v1/tests/test_note_batches.py",
+    "bytes": 11256,
+    "sha256": "4c572a372c3c4b628b148532d84bb7198328df8883bdb53dbac96166bbfeb38f",
+    "lines": 207,
+    "syntax": "ast-ok",
+    "top_level": [
+      "batch_change",
+      "changed_notes",
+      "test_model_changes_exact_group_in_one_verified_write",
+      "test_model_cannot_shrink_widen_or_duplicate_selected_group",
+      "test_single_selection_cannot_be_used_as_batch",
+      "test_new_note_after_all_selection_prevents_every_mutation",
+      "test_missing_id_in_core_batch_changes_nothing",
+      "test_latest_group_rejects_only_a_tie_crossing_the_boundary",
+      "test_replayed_batch_is_same_task_not_second_write",
+      "test_batch_readback_failure_is_unknown_without_retry",
+      "test_batch_stop_before_write_preserves_and_late_stop_keeps_real_result",
+      "test_invalid_batch_completion_state_never_writes"
+    ],
+    "scope": "test"
+  },
+  {
+    "path": "v1/tests/test_note_selection.py",
+    "bytes": 7213,
+    "sha256": "129f4d876ae2445562aeebeef40e8dd9fd62dc75184888edb46eea50d37bd595",
+    "lines": 115,
+    "syntax": "ast-ok",
+    "top_level": [
+      "records",
+      "selection",
+      "test_structured_selectors_use_real_ids_for_all_single_mutations",
+      "test_ambiguous_or_invalid_selection_preserves_every_record",
+      "test_ambiguous_one_cannot_be_silently_widened_to_many_or_guessed_id",
+      "test_snapshot_change_rejects_mutation_and_blocks_automatic_reselection",
+      "test_old_selection_replay_cannot_authorize_a_new_turn"
+    ],
+    "scope": "test"
+  },
+  {
+    "path": "v1/tests/test_note_timestamps.py",
+    "bytes": 4813,
+    "sha256": "f18d73f6e41da1b405c114b861cf00c00579bb8a12d579f34e539a415f5359df",
+    "lines": 98,
+    "syntax": "ast-ok",
+    "top_level": [
+      "confirmed",
+      "test_new_note_time_survives_replay_edit_complete_and_reopen",
+      "test_legacy_note_unknown_time_is_not_invented_or_rewritten",
+      "test_import_keeps_known_time_and_leaves_unknown_time_unknown",
+      "test_invalid_timestamp_rejected_before_import_writes",
+      "test_normal_mutation_cannot_supply_or_change_creation_time"
+    ],
+    "scope": "test"
+  },
+  {
+    "path": "v1/tests/test_policy.py",
+    "bytes": 6244,
+    "sha256": "9bc80d6beb4aec30d402f76d5fa06a9ea8cc8595670ac1bd9dcfda793f47e4b0",
+    "lines": 127,
+    "syntax": "ast-ok",
+    "top_level": [
+      "spec",
+      "request",
+      "test_known_tools_require_explicit_grant",
+      "test_identity_source_and_tool_mismatch_denied",
+      "test_plugin_cannot_approve_itself_or_change_required_capabilities",
+      "test_write_permission_does_not_grant_read_permission",
+      "test_invalid_grants_fail_at_configuration",
+      "test_invalid_principal_fails_at_configuration",
+      "test_configuration_cannot_be_changed_through_original_set",
+      "test_invalid_callback_objects_are_denied",
+      "test_task_manager_enforces_policy_before_handler_and_preserves_replays"
+    ],
+    "scope": "test"
+  },
+  {
+    "path": "v1/tests/test_rest_stop.py",
+    "bytes": 7975,
+    "sha256": "7fad2bfcc14d4af093ff052c7174c5e757f4ef168caee02ab2084509a4e33e60",
+    "lines": 166,
+    "syntax": "ast-ok",
+    "top_level": [
+      "test_rest_stop_during_http_waits_then_blocks_tools_retry_and_fallback",
+      "test_rest_stop_before_first_request_performs_no_http",
+      "test_rest_stop_wakes_backoff_without_next_attempt",
+      "test_rest_stop_after_note_commit_preserves_verified_result",
+      "test_rest_stop_preserves_actual_tool_outcome_and_prevents_next_batch_call",
+      "test_old_rest_stop_does_not_affect_next_turn"
+    ],
+    "scope": "test"
+  },
+  {
+    "path": "v1/tests/test_sleep.py",
+    "bytes": 19640,
+    "sha256": "dea21475912e769a9a424631c2cf5b7bd201a7b61855525b87e1d87fb0317bae",
+    "lines": 386,
+    "syntax": "ast-ok",
+    "top_level": [
+      "sleep_call",
+      "test_sleeping_color_contract",
+      "test_typed_sleep_waits_for_model_response_and_keeps_memory",
+      "test_voice_sleep_waits_for_model_after_verified_control_tool",
+      "test_partial_sleep_transcript_does_not_consume_a_question",
+      "test_failed_sleep_reply_never_requests_mode_change",
+      "test_local_wake_gate_order_and_stale_packets",
+      "test_rejected_ui_prefix_keeps_host_asleep_and_revokes_pending_hit",
+      "test_missing_model_or_bad_packet_stays_asleep_manual_wake_recovers",
+      "test_wake_failure_codes_distinguish_alignment_packet_and_engine",
+      "test_model_setup_rejects_changed_archive_before_writing",
+      "test_bad_word_and_missing_model_fail_before_native_kernel",
+      "test_pcm_sequence_endian_and_keyword_boundary",
+      "test_boundary_verifies_fresh_window_instead_of_trusting_old_segment_time",
+      "test_sleep_request_streams_model_reply_before_mode_result",
+      "test_sleep_candidate_becomes_question_keeps_response_in_order",
+      "test_sleep_controls_use_registered_tool_for_typed_and_voice",
+      "test_sleep_delay_rejects_invalid_persisted_values",
+      "test_sleep_delay_saved_and_read_back_with_other_settings",
+      "test_zero_disables_idle_sleep_timer_without_changing_other_settings",
+      "test_refused_sleep_reports_confirmed_awake_state",
+      "test_wake_model_is_reused_but_input_id_and_state_are_fresh",
+      "test_broken_wake_cleanup_cannot_prevent_explicit_wake",
+      "test_wake_variants_share_one_definition",
+      "test_wake_only_never_swallows_a_task_or_short_unrelated_sound",
+      "test_custom_wake_word_excludes_default_variants",
+      "test_wake_sensitivity_rejects_invalid_values_before_model_setup"
+    ],
+    "scope": "test"
+  },
+  {
+    "path": "v1/tests/test_speech.py",
+    "bytes": 5342,
+    "sha256": "1d9fb245cd65939fc8617b24babc9c03b850e9348aa8ae085c1d4fbba48a49e4",
+    "lines": 115,
+    "syntax": "ast-ok",
+    "top_level": [
+      "audio",
+      "test_reply_read_once_without_tools_and_preserved_mutation",
+      "test_speech_failure_preserves_text_without_retry",
+      "test_pending_reply_stop_and_stale_id",
+      "test_speech_stop_during_http_waits_for_completion",
+      "test_speech_stop_before_http_and_during_delivery"
+    ],
+    "scope": "test"
+  },
+  {
+    "path": "v1/tests/test_task_manager.py",
+    "bytes": 17087,
+    "sha256": "b24b02b97517e1a5b80cccbbe11b0a206a6f34bb3d348a0c58321967d2a1be7b",
+    "lines": 420,
+    "syntax": "ast-ok",
+    "top_level": [
+      "registry_with",
+      "request",
+      "done",
+      "allow",
+      "test_default_denies_execution",
+      "test_success_and_completed_replay_only_execute_once",
+      "test_concurrent_replays_admit_one_task",
+      "test_same_request_id_with_changed_content_rejected",
+      "test_request_id_is_scoped_by_principal_and_key_order_is_irrelevant",
+      "test_fifo_and_queued_cancellation_never_run_cancelled_handler",
+      "test_running_cancel_stays_requested_until_handler_really_stops",
+      "test_cancel_during_preflight_prevents_handler_call",
+      "test_wait_timeout_does_not_cancel_or_invent_unknown_status",
+      "test_close_reports_still_running_and_late_cancel_does_not_erase_success",
+      "test_unknown_result_stops_following_work_and_never_retries",
+      "test_handler_exception_is_unknown_and_does_not_leak_exception_text",
+      "test_confirmed_failure_can_be_followed_by_another_task",
+      "test_authorization_error_is_failed_without_handler_and_does_not_stop_queue",
+      "test_manager_owns_request_and_result_copies_even_with_mutating_callback",
+      "test_capacity_keeps_replay_records_and_rejects_new_work",
+      "test_missing_task_and_invalid_request_are_controlled_errors",
+      "test_async_handler_is_not_started_by_synchronous_worker",
+      "test_sync_handler_returning_coroutine_is_closed_without_execution",
+      "test_invalid_parameters_do_not_consume_capacity_or_enter_handler",
+      "test_authorization_requires_explicit_true",
+      "test_worker_cannot_deadlock_by_waiting_for_its_own_queue",
+      "test_invalid_wait_limits_do_not_change_manager"
+    ],
+    "scope": "test"
+  },
+  {
+    "path": "v1/tests/test_tool_registry.py",
+    "bytes": 8087,
+    "sha256": "83eb79c1cc8b0fa56fe6028eab5d0c39fe232b34b9178572571a7bd979b04079",
+    "lines": 182,
+    "syntax": "ast-ok",
+    "top_level": [
+      "sample",
+      "make_request",
+      "test_register_list_and_validate_never_execute_handler",
+      "test_duplicate_name_keeps_first_registration",
+      "test_invalid_parameters_rejected_before_handler",
+      "test_invalid_or_unsupported_schema_cannot_leave_partial_registration",
+      "test_unregistered_tool_does_not_fall_back_to_another_tool",
+      "test_registry_owns_schema_and_returns_independent_copies",
+      "test_validation_returns_copy_without_inserting_defaults",
+      "test_mutated_request_rechecks_json_boundary",
+      "test_error_does_not_echo_sensitive_argument",
+      "test_empty_registry_and_sorted_catalog",
+      "test_wrong_top_level_objects_rejected"
+    ],
+    "scope": "test"
+  },
+  {
+    "path": "v1/tests/test_ui_assets.py",
+    "bytes": 2811,
+    "sha256": "47be2b64d8deae8a2f41bf348b0f0d5825ba756a129c9a14542bd632b6c8ed6f",
+    "lines": 61,
+    "syntax": "ast-ok",
+    "top_level": [
+      "request",
+      "test_all_ui_assets_have_no_store_and_launch_specific_paths",
+      "test_real_module_import_graph_uses_current_settings_export"
+    ],
+    "scope": "test"
+  },
+  {
+    "path": "v1/tests/test_windows_apps.py",
+    "bytes": 8138,
+    "sha256": "4c6975314f86eece87efad5bdeeb222ada62949c988dd1c5ef5f04089bdcfc98",
+    "lines": 197,
+    "syntax": "ast-ok",
+    "top_level": [
+      "Kernel",
+      "user_api",
+      "test_identity_requires_os_package_or_exact_system_path_and_closes_handle",
+      "test_identity_errors_do_not_leak_open_handles",
+      "test_observation_distinguishes_absence_unavailable_and_pid_reuse",
+      "test_snapshot_filters_name_and_closes_on_error_and_cancellation",
+      "test_window_callback_cancellation_and_exception_are_reported",
+      "test_launcher_uses_only_windows_system_directory",
+      "test_native_launch_has_no_user_command_arguments"
+    ],
+    "scope": "test"
+  },
+  {
+    "path": "v1/tests/wake_variants_smoke.py",
+    "bytes": 3503,
+    "sha256": "aedda97237896b682890f61757d71062474c06ab6a2812e5ff9ce55c281046f2",
+    "lines": 68,
+    "syntax": "ast-ok",
+    "top_level": [
+      "run"
+    ],
+    "scope": "test"
+  },
+  {
+    "path": "v1/ui/README.md",
+    "bytes": 2472,
+    "sha256": "49071d2ca6ddc57146ed30d2883b99b70ee4dec7275655d757954e2482af0239",
+    "lines": 46,
+    "scope": "documentation/config/legal"
+  },
+  {
+    "path": "v1/ui/index.html",
+    "bytes": 24500,
+    "sha256": "b42fcd0ef6208bd9f18127e0960e8f4571f26b425e13b291030e7939d3c66e73",
+    "lines": 248,
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/ui/js/api.js",
+    "bytes": 12720,
+    "sha256": "ad0e7a5dab1d97f6fb0965f3ea3e6f34b4d53247a07956f77b8095f1cdf4acc5",
+    "lines": 356,
+    "syntax": "node-check-ok",
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/ui/js/app.js",
+    "bytes": 12431,
+    "sha256": "d63221defb0d1f067c61786e528710e094510d7bcf1b3033fe30fff15d6bb276",
+    "lines": 323,
+    "syntax": "node-check-ok",
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/ui/js/assistant_session.js",
+    "bytes": 52063,
+    "sha256": "52a84776ca64e496fae01530badb93de084f861d3e3576703d15a36b6dec75a3",
+    "lines": 942,
+    "syntax": "node-check-ok",
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/ui/js/clocks.js",
+    "bytes": 11588,
+    "sha256": "10831882f7e4a9a8355624409ca851126269e798727c144952e79f5eac3c7500",
+    "lines": 198,
+    "syntax": "node-check-ok",
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/ui/js/connections.js",
+    "bytes": 11179,
+    "sha256": "c472e8ce61bc34b63e067ca33697a45443c676aa48fb0bb195bac5746c3efbb8",
+    "lines": 294,
+    "syntax": "node-check-ok",
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/ui/js/credentials.js",
+    "bytes": 2909,
+    "sha256": "822b36b4ea87cd206f96083391a4f27c181f07a35e9a3996072d60e300282366",
+    "lines": 64,
+    "syntax": "node-check-ok",
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/ui/js/devices.js",
+    "bytes": 7653,
+    "sha256": "1cee5550a7580fc38cedec7291503f324922e406dc7f05461da18a8542fb5c7d",
+    "lines": 187,
+    "syntax": "node-check-ok",
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/ui/js/layout.js",
+    "bytes": 4494,
+    "sha256": "4f775deb829b6902ad196aecc1da5a818a943ffc43b8c07d3c3f490cb4b6f0d5",
+    "lines": 156,
+    "syntax": "node-check-ok",
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/ui/js/live_audio.js",
+    "bytes": 6048,
+    "sha256": "c4bfad022420a6c73d73874144733b5eab0ad798c33d1d7283404aec9aba04c1",
+    "lines": 125,
+    "syntax": "node-check-ok",
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/ui/js/live_mic.js",
+    "bytes": 12705,
+    "sha256": "b4ec8cf5b491071e94bbc4fc1cad353f10de717128116ab118f153ad2101535b",
+    "lines": 233,
+    "syntax": "node-check-ok",
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/ui/js/live_transcript.js",
+    "bytes": 3139,
+    "sha256": "0cc85b1bf0a6b121b5f4ec0c2d0da280782ca9d3d3ea07f0b38c4512d10348d3",
+    "lines": 57,
+    "syntax": "node-check-ok",
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/ui/js/notes.js",
+    "bytes": 11020,
+    "sha256": "ff2c7702e05f1b8f10b6722e061391349977c5ce53f2a39fad66f8076c37e069",
+    "lines": 241,
+    "syntax": "node-check-ok",
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/ui/js/panels.js",
+    "bytes": 12518,
+    "sha256": "1c816cf6513b5670147681c7b833bd433a73a08a7015c6561396322b3817386d",
+    "lines": 408,
+    "syntax": "node-check-ok",
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/ui/js/pcm_worklet.js",
+    "bytes": 6262,
+    "sha256": "25e0e8d72f153ec40a082ce32278c57c020c4a3f48a3bec350d5b2cc6c15fc96",
+    "lines": 114,
+    "syntax": "node-check-ok",
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/ui/js/preferences.js",
+    "bytes": 552,
+    "sha256": "abd7fe6be30cadfa055945b53acfd37171ba9a529080188b4e8a1b03f75e9d50",
+    "lines": 10,
+    "syntax": "node-check-ok",
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/ui/js/reactor.js",
+    "bytes": 6880,
+    "sha256": "96e28f2cb519fb52e8ba44720620187a16c0b3b50f2cdf8b7755f6070511a5da",
+    "lines": 230,
+    "syntax": "node-check-ok",
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/ui/js/routines.js",
+    "bytes": 9719,
+    "sha256": "07d3e58800e5c5cc4d1b5f9f501d4ffb19710e99941ef7727eeeb6434a9c20b3",
+    "lines": 314,
+    "syntax": "node-check-ok",
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/ui/js/schema.js",
+    "bytes": 21412,
+    "sha256": "3060ac936d1a85d74d7b8cd46f56685c03415fafadb3feb03174551bb6c23e78",
+    "lines": 560,
+    "syntax": "node-check-ok",
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/ui/js/settings.js",
+    "bytes": 27157,
+    "sha256": "6590530c25e9c505633c27f6585515af8e070c92b51222b983deeee9dc2cd29c",
+    "lines": 701,
+    "syntax": "node-check-ok",
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/ui/js/sfx.js",
+    "bytes": 4546,
+    "sha256": "9d1d12e5f49f12f867bef256b6b6721abb865010bf7e8fc414e6c434bcd69304",
+    "lines": 156,
+    "syntax": "node-check-ok",
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/ui/js/shell.js",
+    "bytes": 5254,
+    "sha256": "6c4617faa4ce24c7134ab817e393967d40b43fafe64df593d10b5f1ac9988e91",
+    "lines": 168,
+    "syntax": "node-check-ok",
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/ui/js/skills.js",
+    "bytes": 9633,
+    "sha256": "b5846eee62fdbb74197fe2e9a19b47203a3144bb86cda452a0a1be4d89ce3648",
+    "lines": 304,
+    "syntax": "node-check-ok",
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/ui/js/storage.js",
+    "bytes": 626,
+    "sha256": "c7c6d2f42a0dc9a2b2ef934ed2ddc51753c1d1f6fd04e7532757b84c4ded2a1f",
+    "lines": 23,
+    "syntax": "node-check-ok",
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/ui/js/timers.js",
+    "bytes": 9352,
+    "sha256": "a27467522db0f6f893469897041f5db8face2348d75105948b39c8ff2983023f",
+    "lines": 296,
+    "syntax": "node-check-ok",
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/ui/styles.css",
+    "bytes": 26692,
+    "sha256": "9be5f097e81ba8a9da5230ab6b3a7fab8b5a69494287a56b7636e0568d92aaab",
+    "lines": 1582,
+    "scope": "runtime"
+  },
+  {
+    "path": "v1/ui/tests/README.md",
+    "bytes": 1824,
+    "sha256": "9231b53201faa2589910e0a00e6f9af67f7c7151298b6ea80ff10032d81a6236",
+    "lines": 41,
+    "scope": "test"
+  },
+  {
+    "path": "v1/ui/tests/audit-fixes.mjs",
+    "bytes": 5240,
+    "sha256": "a291292d5e18d7415d308dfbf43f0131ec4c99845f61d381dfc934ed17b05517",
+    "lines": 79,
+    "syntax": "node-check-ok",
+    "scope": "test"
+  },
+  {
+    "path": "v1/ui/tests/catalog.mjs",
+    "bytes": 1967,
+    "sha256": "0289a9023abfb24ffc57d3e1fe9492f1339c64ed4e5771f4f65ebed9e1c7c3da",
+    "lines": 32,
+    "syntax": "node-check-ok",
+    "scope": "test"
+  },
+  {
+    "path": "v1/ui/tests/clocks.mjs",
+    "bytes": 10369,
+    "sha256": "6d4956d8cfc0b0a05ba95b2fb4f2910482237695f3fdedf4b039181ac02e5d18",
+    "lines": 120,
+    "syntax": "node-check-ok",
+    "scope": "test"
+  },
+  {
+    "path": "v1/ui/tests/live-audio.mjs",
+    "bytes": 6397,
+    "sha256": "b9be6f28987a230be0dab829c224f44d9ebe0ad6f3a7a2e28f349daa953bad4e",
+    "lines": 120,
+    "syntax": "node-check-ok",
+    "scope": "test"
+  },
+  {
+    "path": "v1/ui/tests/live-status.mjs",
+    "bytes": 4866,
+    "sha256": "b3b9d3776b2d3943d2dfd111dd5b40e895315c1f4fe0cf9a0681660818266f11",
+    "lines": 61,
+    "syntax": "node-check-ok",
+    "scope": "test"
+  },
+  {
+    "path": "v1/ui/tests/live-stream.mjs",
+    "bytes": 17160,
+    "sha256": "0a0bbe6677094edc6d8187aff9b67d2c608ed810d4a5a688a1130e103a370d61",
+    "lines": 297,
+    "syntax": "node-check-ok",
+    "scope": "test"
+  },
+  {
+    "path": "v1/ui/tests/live-transcript.mjs",
+    "bytes": 3086,
+    "sha256": "9fdd98095922c4874f88591f36baf2c059d93676a67fb42cdd9242a165e01e3c",
+    "lines": 47,
+    "syntax": "node-check-ok",
+    "scope": "test"
+  },
+  {
+    "path": "v1/ui/tests/note-timestamps.mjs",
+    "bytes": 1439,
+    "sha256": "26c15263dc17f1f56f40078dc28b764f213b632a9c61e4ba686b800339612a6d",
+    "lines": 24,
+    "syntax": "node-check-ok",
+    "scope": "test"
+  },
+  {
+    "path": "v1/ui/tests/shutdown.mjs",
+    "bytes": 1730,
+    "sha256": "f36c8a2e3a45a22dc30bb8573358aa42befb26c579748cb16ac4bac5ce5cb14f",
+    "lines": 28,
+    "syntax": "node-check-ok",
+    "scope": "test"
+  },
+  {
+    "path": "v1/ui/tests/wake-recovery.mjs",
+    "bytes": 13386,
+    "sha256": "50a3c7a9ed628c8a4727bb18b90c79f97606cdee747dac65671967c2c71b8824",
+    "lines": 185,
+    "syntax": "node-check-ok",
+    "scope": "test"
+  }
+]

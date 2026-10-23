@@ -55,6 +55,7 @@ def test_real_module_import_graph_uses_current_settings_export():
     app = _ui_app(ui)
     index = request(app, '/')['headers']['Location']
     base = index.removesuffix('index.html')
-    assert b'getAudioDeviceId' in request(app, base + 'js/app.js')['body']
-    assert b'export function getAudioDeviceId' in request(app, base + 'js/settings.js')['body']
+    assert b'getAudioDeviceId' in request(app, base + 'js/assistant_session.js')['body']
+    assert b'getAudioDeviceId' in request(app, base + 'js/settings.js')['body']
+    assert b'export function getAudioDeviceId' in request(app, base + 'js/devices.js')['body']
     assert request(app, base + 'js/live_audio.js')['status'] == 200

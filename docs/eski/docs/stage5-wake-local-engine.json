@@ -1,0 +1,22 @@
+{
+  "ok": true,
+  "synthetic_sapi_pcm": true,
+  "real_sherpa_model": true,
+  "result": {
+    "positive": {
+      "detected": true,
+      "hits": [
+        {
+          "detected_at_seconds": 0.7,
+          "keyword_start_packet": 2
+        }
+      ]
+    },
+    "negative": {
+      "detected": false,
+      "hits": []
+    }
+  },
+  "physical_microphone_tested": false,
+  "sixty_second_stream_refresh_then_positive": true
+}

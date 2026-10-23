@@ -20,7 +20,7 @@ The UI predates stage 0. Its complete authorship/asset license provenance was no
 
 ## Dependencies
 
-Backend dependencies have not been installed or selected by version yet. Add their source/license notices as actual dependencies are introduced. Do not inherit Mark's requirements.txt wholesale.
+Runtime dependencies are declared in v1/pyproject.toml; the exact tested development environment is v1/requirements-dev.lock.txt. Third-party packages keep their own licenses. A distributable package notice/SBOM and pre-existing UI asset provenance review remain release work. Do not inherit the reference repository requirements wholesale.
 
 ## Local keyword spotting — Stage 5
 

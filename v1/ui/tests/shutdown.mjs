@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-const source=fs.readFileSync(new URL('../js/app.js',import.meta.url),'utf8');
+const source=fs.readFileSync(new URL('../js/assistant_session.js',import.meta.url),'utf8');
 function fixture(result){
   const nodes={shut:{disabled:false},textStatus:{textContent:''}}, calls=[];
   const ctx=vm.createContext({document:{getElementById:id=>nodes[id]},

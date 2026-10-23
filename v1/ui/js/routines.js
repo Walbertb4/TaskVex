@@ -1,16 +1,14 @@
 /**
- * routines.js - Automated routines, scheduled triggers and event listeners
+ * routines.js - Yerel rutin tanımları/editörü; yürütme ve scheduler henüz yok.
  */
 
 import { sfx } from './sfx.js';
-import { emit, logBridgeError } from './api.js';
-import { normalizeRoutineSteps as normalizeSteps, uniqueRecordId, validateAndNormalizeSnapshot, foldTr } from './schema.js';
+import { logBridgeError } from './api.js';
+import { normalizeRoutineSteps as normalizeSteps, uniqueRecordId, validateAndNormalizeSnapshot } from './schema.js';
 
 let routines = [];
 let rEdit = null;
 let saveStoreCb = null;
-let addTimelineCb = null;
-const RF = {}; // Routine firing cache to debounce triggers
 
 const RT = {
   manual: 'Manual / voice',
@@ -122,14 +120,7 @@ export function renderRoutines() {
 }
 
 export function runRoutine(r, src) {
-  if (!r) return;
-  const safeSteps = normalizeSteps(r && r.steps);
-  const steps = safeSteps ? safeSteps.split('\n').map(x => x.trim()).filter(Boolean) : [];
-  if (addTimelineCb) {
-    addTimelineCb(`Routine started: ${r.name} (${src})`, null, 'routine');
-  }
-  sfx.start();
-  emit('run_routine', { id: r.id, name: r.name, steps, source: src });
+  if (r) alert('Routine execution is not connected yet. Your definition is saved locally.');
 }
 
 function updateRoutineFormUI() {
@@ -236,7 +227,7 @@ export function saveRoutine() {
     return;
   }
   sfx.ok();
-  emit('routine_save', o);
+
   if (rtForm) rtForm.style.display = 'none';
 }
 
@@ -248,16 +239,6 @@ export function routineResult(id, ok, options = {}) {
   r.ok = ok !== false;
   renderRoutines();
   if (saveStoreCb) saveStoreCb({ emitSave });
-}
-
-export function routineEvent(type, val) {
-  const v = foldTr(val);
-  routines.forEach(r => {
-    if (!r.on || r.type !== type || !r.val || !v.includes(foldTr(r.val))) return;
-    if (RF[r.id] && Date.now() - RF[r.id] < 6e5) return; // 10m debounce
-    RF[r.id] = Date.now();
-    runRoutine(r, (type === 'app' ? 'app: ' : 'Wi-Fi: ') + val);
-  });
 }
 
 export function setRoutines(list, options = {}) {
@@ -280,7 +261,6 @@ export function initRoutines(options = {}) {
       steps: normalizeSteps(r.steps)
     }));
   saveStoreCb = options.saveStore || null;
-  addTimelineCb = options.addTimeline || null;
 
   const rtList = document.getElementById('rtList');
   if (rtList) {
@@ -296,7 +276,7 @@ export function initRoutines(options = {}) {
       if (action === 'on') {
         r.on = btn.checked ? 1 : 0;
         if (saveStoreCb) saveStoreCb({ emitSave: true });
-        emit('routine_save', r);
+
         sfx.check();
       } else if (action === 'run') {
         runRoutine(r, 'manual');
@@ -307,7 +287,7 @@ export function initRoutines(options = {}) {
         if (saveStoreCb) saveStoreCb({ emitSave: true });
         renderRoutines();
         sfx.del();
-        emit('routine_delete', id);
+
       }
     });
   }
@@ -330,32 +310,5 @@ export function initRoutines(options = {}) {
   const rSave = document.getElementById('rSave');
   if (rSave) rSave.addEventListener('click', saveRoutine);
 
-  // UI owns time scheduling for now. Disable this checker before enabling a backend scheduler.
-  stopRoutineScheduler();
-  routineTimer = setInterval(() => {
-    const d = new Date();
-    const hm = pad2(d.getHours()) + ':' + pad2(d.getMinutes());
-    const k = d.toDateString() + hm;
-    const wd = d.getDay();
-
-    routines.forEach(r => {
-      if (!r.on || r.type !== 'time' || r.val !== hm || RF[r.id] === k) return;
-      const dy = r.days || 'all';
-      if (dy === 'week' && (wd === 0 || wd === 6)) return;
-      if (dy === 'wend' && wd > 0 && wd < 6) return;
-      RF[r.id] = k;
-      runRoutine(r, 'time ' + hm);
-    });
-  }, 15000);
-
   renderRoutines();
 }
-
-let routineTimer = null;
-export function stopRoutineScheduler() {
-  clearInterval(routineTimer);
-  routineTimer = null;
-}
-window.addEventListener('pagehide', event => {
-  if (!event.persisted) stopRoutineScheduler();
-});

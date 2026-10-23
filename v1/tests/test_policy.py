@@ -5,6 +5,7 @@ donanım, UI veya hesap kullanılmaz; reddedilen iş handler'a hiç ulaşmamalı
 """
 
 from dataclasses import FrozenInstanceError, replace
+from typing import Any, cast
 
 import pytest
 
@@ -18,7 +19,7 @@ def spec(name="notes.list", capabilities=("notes.read",), handler=lambda a, c: N
     """Sadece izin testine gereken geçerli araç bildirimini oluştur."""
     return ToolSpec(name=name, description="Policy test aracı",
                     input_schema={"type": "object"}, handler=handler,
-                    required_capabilities=capabilities)
+                    required_capabilities=cast(Any, capabilities))
 
 
 def request(tool="notes.list", **changes):
@@ -74,22 +75,22 @@ def test_write_permission_does_not_grant_read_permission():
 @pytest.mark.parametrize("capabilities", [None, "notes.read", [None], ["*"], ["files.delete"]])
 def test_invalid_grants_fail_at_configuration(capabilities):
     with pytest.raises(ContractError):
-        PolicyEngine(principal="local-user", capabilities=capabilities)
+        PolicyEngine(principal="local-user", capabilities=cast(Any, capabilities))
 
 
 @pytest.mark.parametrize("principal", [None, 0, "", "  "])
 def test_invalid_principal_fails_at_configuration(principal):
     with pytest.raises(ContractError):
-        PolicyEngine(principal=principal)
+        PolicyEngine(principal=cast(Any, principal))
 
 
 def test_configuration_cannot_be_changed_through_original_set():
     grants = {"notes.read"}
-    policy = PolicyEngine(principal="local-user", capabilities=grants)
+    policy = PolicyEngine(principal="local-user", capabilities=cast(Any, grants))
     grants.add("notes.write")
     assert policy.capabilities == frozenset({"notes.read"})
     with pytest.raises(FrozenInstanceError):
-        policy.principal = "other-user"
+        setattr(policy, "principal", "other-user")
 
 
 @pytest.mark.parametrize("req,tool", [(None, spec()), (request(), None)])
@@ -114,10 +115,13 @@ def test_task_manager_enforces_policy_before_handler_and_preserves_replays():
         denied = manager.submit(request("notes.add", request_id="denied"))
         denied = manager.wait(denied.task_id, 2)
         assert denied.status == TaskStatus.FAILED
+        assert denied.result is not None and denied.result.error is not None
         assert denied.result.error.code == "permission_denied"
         permitted = manager.submit(request())
         assert manager.wait(permitted.task_id, 2).status == TaskStatus.SUCCEEDED
         assert manager.submit(request()).task_id == permitted.task_id
         foreign = manager.submit(request(request_id="foreign", principal="other-user"))
-        assert manager.wait(foreign.task_id, 2).result.error.code == "permission_denied"
+        finished = manager.wait(foreign.task_id, 2)
+        assert finished.result is not None and finished.result.error is not None
+        assert finished.result.error.code == "permission_denied"
     assert calls == ["p1"]

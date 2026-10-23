@@ -1,61 +1,46 @@
 # TaskVex UI
 
-Framework içermeyen HTML/CSS ve ES modülü arayüzü. Tasarım korunmuştur; Python backend bu klasöre dahil değildir.
+Vanilla HTML/CSS ve ES modülleri. Native açılış v1 içinde
+`.\.venv\Scripts\python.exe -m app.main`; [backend rehberi](../README.md).
+Bu README kullanım/modül haritasıdır; değişiklik günlüğü değildir.
 
-İlk native host artık `v1/app/` altında vardır. `v1` dizininde
-`.\.venv\Scripts\python.exe -m app.main` ile açılır. Ayar/durum köprüsü, elle
-test adımları ve henüz desteklenmeyen işlemler [native rehberde](../../docs/STAGE2_NATIVE.md).
+## Tarayıcıda görünüm
 
-Native notlar artık backend'e bağlıdır. İlk kullanımda Use backend notes ile
-yerel not aktarımını onaylayın; iptalde eski notlar değişmez. Sonraki açılışta
-backend kayıtları okunur. Tarayıcı-only yerel mod korunur. [Not devri ve güncel
-kabul sonuçları](../../docs/STAGE3_NOTES.md) aktarım, yedek ve hata sınırlarını açıklar.
+v1 içinde:
 
-Native timer/stopwatch artık çokludur: backend Clocks tek durum sahibidir;
-UI liste/New ve Vex aynı kayıtlı create/control araçlarını kullanır. Sağ tık →
-Delete yalnız UI’a açıktır; aynı backend/core kaydını siler, modele açılmaz. Model işlemi doğru sekmeyi
-otomatik seçer. Kayıtlar yalnız uygulama açıkken RAM'dedir. Native başladıktan
-sonra köprü kaybı ikinci yerel sayaç motoru açmaz. Tarayıcı-only tekli mod korunur.
+```powershell
+.\.venv\Scripts\python.exe -m http.server 8000 --directory ui --bind 127.0.0.1
+```
 
-Son tweak’ler: Live modeller native başlangıcında/anahtar kaydında otomatik
-listelenir, kayıtlı seçim korunur; anahtar Windows Credentials içindedir.
-Timer bitişi aynı Live ses hattından kişiselleştirilmiş bildirim üretir;
-meşgul/uyku/Stop ve tekrar sınırları UI_BACKEND_CONTRACT.md’de açıklanır.
-Audio sürgüsü gerçek konuşma eşiğine bağlıdır; seviye aynı mikrofon işçisinden
-gelir. Wake sensitivity sonraki sleep’te uygulanır. Google henüz bağlı değildir.
+Edge/Chrome ile http://127.0.0.1:8000 açın. ES modülleri için file:// kullanmayın.
+Bu modda tema/profil/layout, yerel notlar, skill/rutin editörleri, yedek, palet ve
+tekli yerel sayaç çalışır. Native sohbet, backend notları, çoklu sayaç, Credentials
+ve yerel KWS entegrasyonu kazanmaz. Harici font erişilemezse sistem fontu kullanılır.
 
-## Açılış
+## Modül sahipliği
 
-Test edilen yöntem: klasörü yerel HTTP üzerinden sunmak ve Edge/Chromium ile açmak. Testler Node HTTP sunucusu ve Playwright ile çalıştırıldı. ES modülleri için HTML dosyasını doğrudan file:// ile açmak yerine HTTP kullanın. Harici font isteği başarısız olursa sistem fontu kullanılır; testlerde dış ağ istekleri engellendi.
-
-## Modüller
-
-| Modül | Yetkili olduğu alan |
+| Modül | Görev |
 |---|---|
-| app.js | Başlatma, modül bağlantıları, sohbet ve snapshot uygulama sırası |
-| api.js | Native/fallback taşıma, güvenli hata gösterimi, public bridge, bağlantı durumu |
-| schema.js | Yan etkisiz snapshot/skill doğrulama ve layout normalizasyonu |
-| storage.js | Yerel kayıt ve silme; görünür hata ve boolean sonuç |
-| settings.js | Tema, profil, cihaz tercihi, layout ve kayıt nesnesi |
-| credentials.js | Native API anahtarının açık kaydı, password input temizliği ve sır içermeyen kayıt durumu |
-| notes.js / skills.js / routines.js | Kendi koleksiyonlarının canlı tek kaynağı; kayıt sırasında getter ile alınır |
-| connections.js | Kataloglar, telemetri/ağ/medya/takvim görünümü ve konum isteği |
-| panels.js | Modallar, komut paleti, drawer ve timeline |
-| reactor.js | Görsel durum ve animasyon |
-| timers.js / clocks.js / sfx.js | Native backend sayaç görünümü/komutları; yalnız tarayıcıda tekli yerel motor; ses efektleri |
+| app.js | Başlatma, modül bağlantıları, toplu snapshot |
+| assistant_session.js | Tek sohbet/mikrofon/uyku/Stop tur yaşam döngüsü |
+| shell.js | Metin balonları, başlangıç/kapanış görünümü, saat |
+| api.js | Taşıma ve public bridge; kabul/bitiş ayrımı, hata maskeleme |
+| schema.js / storage.js | Saf doğrulama / görünür hata veren localStorage |
+| preferences.js / settings.js | Tek tercih nesnesi / ayarlar, profil, yedek ve native save |
+| devices.js / layout.js | Aynı nesne üzerinden cihaz listesi/seçimi ve widget düzeni |
+| credentials.js | Windows key kayıt UI'ı; sır tarayıcı deposuna girmez |
+| notes.js | Yerel veya onaylı native not görünümü; çift mutasyon yok |
+| skills.js / routines.js | Yerel tanım editörleri; backend yürütme yok |
+| connections.js | API Live katalog ve salt okunur widget setter'ları |
+| panels.js | Modal, palet, drawer, yerel timeline |
+| reactor.js / sfx.js | Görsel durum/animasyon ve yerel efektler |
+| live_mic.js / mic_worklet.js | Tek AudioWorklet PCM girişi, VAD/seviye |
+| live_audio.js / live_transcript.js | İstek kimlikli çıktı ve transkript |
+| clocks.js / timers.js | Native çoklu sayaç görünümü / tarayıcı tekli fallback |
 
-Backend setter'ları UI'a veri uygular; kullanıcı komutu üretmez. Koleksiyonlar elle `settings.store` üzerinden değiştirilmemelidir.
+Native başladıktan sonra köprü kaybı ikinci sayaç/not otoritesi açmaz. Setters
+backend'e ikinci save/komut göndermez. Google/konum/voice/kamera/ekran/media ve
+uygulanmamış profil alanları açıkça planlı/disabled; kayıtlı metinler korunur.
 
-## Backend olmadan
-
-Tema, profil, widget düzeni, notlar, skill/rutin tanımları, yedekler, modallar, Ctrl+K, Escape ve yerel sayaç/kronometre çalışır. Kalıcılık tarayıcı depolamasına bağlıdır; hata görünür olur. Skill/rutin çalıştırma, sohbet modeli, gerçek mikrofon/kamera/sistem sesi, Google OAuth/konum ve cihaz tarama backend gerektirir. Mikrofon/mute düğmeleri kullanıcı tercihidir; gerçek ses yakalandığını kanıtlamaz. Başlangıçtaki boş takvim/hatırlatıcı listeleri backend senkronizasyonu kanıtı değildir.
-
-## Sözleşme ve test sınırı
-
-[UI/backend sözleşmesi](docs/UI_BACKEND_CONTRACT.md).
-
-[Bağımsız denetim düzeltmeleri](docs/AUDIT_FIXES.md).
-
-UI hazırlık kapsamı kapatıldı. Son eklemeler: hava null temizleme, sonlu SFX seviyesi, reactor ses kaynağı temizliği ve kamera/konum için 12 saniye sonrası belirsiz durumdan salt okunur sorguyla kurtarma. `query_camera` / `query_location` backend sözleşmeleri yukarıdaki belgede tanımlıdır; backend bu olayları ayrıca uygulamalıdır. Public eval kaldırıldı.
-
-Gerçek PyWebView penceresi, donanım sinyalleri, Google hesapları, canlı hava servisi ve gerçek masaüstü işlemleri bu UI kabul turunda çalıştırılmadı. Tarayıcıda sentetik bridge ile doğrulama yapıldı. UI testlerinin geçmesi, bu entegrasyonların uçtan uca onayı değildir.
+[Sözleşme](../../docs/UI_BACKEND_CONTRACT.md), [komutlar](../../docs/COMMANDS.md),
+[testler](tests/README.md), [açık sınırlar](../../docs/AUDIT.md).

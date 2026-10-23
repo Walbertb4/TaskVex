@@ -3,12 +3,10 @@
  */
 
 import { sfx } from './sfx.js';
-import { emit, logBridgeError } from './api.js';
+import { logBridgeError } from './api.js';
 import { writeStoredJSON } from './storage.js';
-import { S } from './reactor.js';
 import { normalizeTimeline, foldTr } from './schema.js';
 
-const DEBUG = false;
 
 let TL = [];
 let palSel = 0;
@@ -21,8 +19,6 @@ let runSkillCb = () => {};
 let runRoutineCb = () => {};
 let addNoteCb = () => {};
 let sendTextCb = () => {};
-let setStateCb = () => {};
-let getProfileShortcutsCb = () => '';
 
 const pad2 = n => String(n).padStart(2, '0');
 let modalReturnFocus = null;
@@ -68,7 +64,6 @@ export function addTL(x, ok = null, k = '', silent = false) {
     renderTL();
   }
 
-  if (!silent) emit('timeline', e);
 }
 
 export function setTimeline(a) {
@@ -201,7 +196,6 @@ export function toggleD() {
   const isOpen = drawer.classList.contains('o');
   if (isOpen) sfx.open();
   else sfx.close();
-  emit('drawer', isOpen);
 }
 
 export function setScreen(d) {
@@ -242,11 +236,7 @@ function buildPaletteItems(query) {
     }]
   ];
 
-  if (DEBUG) {
-    Object.keys(S).forEach(k => {
-      it.push(['State: ' + S[k][0], 'TEST', () => setStateCb(k)]);
-    });
-  }
+
 
   const skillsList = getSkillsCb();
   skillsList.forEach(s => {
@@ -257,26 +247,6 @@ function buildPaletteItems(query) {
   routinesList.forEach(r => {
     it.push([r.name, 'ROUTINE', () => runRoutineCb(r, 'palette')]);
   });
-
-  const shortcutsRaw = getProfileShortcutsCb() || '';
-  shortcutsRaw
-    .split('\n')
-    .map(l => {
-      const idx = l.indexOf('=');
-      if (idx === -1) return null;
-      return [l.slice(0, idx).trim(), l.slice(idx + 1).trim()];
-    })
-    .filter(a => a && a[0])
-    .forEach(([key, target]) => {
-      it.push([
-        `${key} → ${target}`,
-        'SHORTCUT',
-        () => {
-          emit('shortcut', { key, target });
-          addTL(`Shortcut: ${key} → ${target}`, null, 'shortcut');
-        }
-      ]);
-    });
 
   it = it.filter(x => foldTr(x[0]).includes(q));
 
@@ -339,8 +309,6 @@ export function initPanels(options = {}) {
   runRoutineCb = options.runRoutine || (() => {});
   addNoteCb = options.addNote || (() => {});
   sendTextCb = options.sendText || (() => {});
-  setStateCb = options.setState || (() => {});
-  getProfileShortcutsCb = options.getProfileShortcuts || (() => '');
 
   // Close buttons inside modals
   document.querySelectorAll('.btnCloseM').forEach(b => {
@@ -349,13 +317,6 @@ export function initPanels(options = {}) {
 
   const btnCloseDrawer = document.getElementById('btnCloseDrawer');
   if (btnCloseDrawer) btnCloseDrawer.addEventListener('click', toggleD);
-
-  const scrT = document.getElementById('scrT');
-  if (scrT) {
-    scrT.addEventListener('change', function () {
-      emit('screen_share', this.checked);
-    });
-  }
 
   // Action timeline controls
   const tlQ = document.getElementById('tlQ');
@@ -376,7 +337,6 @@ export function initPanels(options = {}) {
         tlSave();
         renderTL();
         sfx.del();
-        emit('timeline_clear');
       }
     });
   }

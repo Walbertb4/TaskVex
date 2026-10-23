@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 
-const source=fs.readFileSync(new URL('../js/app.js',import.meta.url),'utf8');
+const source=fs.readFileSync(new URL('../js/assistant_session.js',import.meta.url),'utf8');
 const functions=['cancelAutoSleep','scheduleAutoSleep','applySleepMode','returnToPersistentSleep','paintMic','cancelMic','blockMicrophone','resetLiveAudio','handleLiveMicFailure','settleMicrophoneFailure','handleWakeFailure','listenForWake','paintSleepControl','enterSleep'];
 function fixture(){
   const nodes={},timers=[],events=[],logs=[];

@@ -52,7 +52,7 @@ console.log('PASS normal Stop/close vs real errors, redacted bounded log and sta
 
 // Gerçek hata satırı sıfır PCM/olay değerini kayıp veri sanmamalı; serbest
 // sağlayıcı metni yerine mevcut sanitizeError sınırından geçen kodları göster.
-const appSource=fs.readFileSync(new URL('../js/app.js',import.meta.url),'utf8');
+const appSource=fs.readFileSync(new URL('../js/assistant_session.js',import.meta.url),'utf8');
 const diagnostics=new Function('sanitizeError', appSource.match(/function textDiagnostics\(report\) \{[\s\S]*?\n\}/)[0]+';return textDiagnostics;')(sanitizeError);
 const detail=diagnostics({code:'live_idle_timeout',input_sent_packets:0,received_events:0,wait_phase:'before_input_final'});
 assert.ok(detail.includes('PCM sent: 0') && detail.includes('events: 0') && detail.includes('before_input_final'));

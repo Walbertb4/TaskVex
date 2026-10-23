@@ -6,33 +6,17 @@ import { sfx, setSfxConfig } from './sfx.js';
 import { emit, logBridgeError, isBackendAvailable } from './api.js';
 import { writeStoredJSON } from './storage.js';
 import { canRestoreNativeNotes, restoreNativeNotes, setNotesImportLock } from './notes.js';
-import { validateAndNormalizeSnapshot, sanitizeLayout, LD, normalizeRoutineSteps } from './schema.js';
+import { validateAndNormalizeSnapshot, sanitizeLayout, normalizeRoutineSteps } from './schema.js';
 export { validateAndNormalizeSnapshot, validateSnapshot, sanitizeLayout, ALLOWED_WIDGET_IDS } from './schema.js';
+import {initLayoutSettings, applyLayout, renderLayout, updateCompactView} from './layout.js';
+export {applyLayout, renderLayout, updateCompactView} from './layout.js';
+import {initDeviceSettings, setDevices, queryDevices} from './devices.js';
+export {setDevices, queryDevices, getAudioDeviceId} from './devices.js';
 import { S, DEF, getState, setState } from './reactor.js';
 
-const DEBUG = false;
 
-export function defaultInterfaceSettings() {
-  // Her çağrıda yeni nesne: colors gibi değişebilir alanlar varsayılanı kirletmesin.
-  return { theme: '#a78bfa', colors: {}, sfx: true, vol: 0.8, wake: 50, sleepDelay: 10,
-    noise: 420, onTop: false, cmp: 'auto', tab: 'theme', layout: null };
-}
-
-export const store = { ...defaultInterfaceSettings(), devs: {}, prof: {}, conn: {} };
-
-const SZ = [0.85, 1, 1.15];
-const TT = {
-  time: 'Time',
-  system: 'System',
-  timer: 'Timer & Stopwatch',
-  weather: 'Weather',
-  calendar: 'Calendar',
-  remind: 'Reminders',
-  notes: 'Notes',
-  media: 'Media',
-  net: 'Network',
-  log: 'Skill Log'
-};
+import {store, defaultInterfaceSettings} from './preferences.js';
+export {store, defaultInterfaceSettings} from './preferences.js';
 
 let collectionGetters = {
   getNotes: null,
@@ -317,288 +301,12 @@ export function paint() {
   marks();
 }
 
-export function applyLayout() {
-  const aL = document.getElementById('asideL');
-  const aR = document.getElementById('asideR');
-  if (!aL || !aR || !store.layout) return;
-
-  const n = { L: 0, R: 0 };
-  store.layout.forEach(w => {
-    const e = document.getElementById('w_' + w.id);
-    if (!e) return;
-    (w.c === 'L' ? aL : aR).append(e);
-    e.style.display = w.on ? '' : 'none';
-    e.style.zoom = SZ[w.sz] !== undefined ? SZ[w.sz] : 1;
-    e.style.setProperty('--i', String(2 + (n[w.c]++)));
-  });
-}
-
-export function renderLayout() {
-  const listEl = document.getElementById('layList');
-  if (!listEl || !store.layout) return;
-
-  listEl.innerHTML = '';
-  store.layout.forEach((w, i) => {
-    const row = document.createElement('div');
-    row.className = 'row';
-
-    const span = document.createElement('span');
-    span.style.flex = '1';
-    span.textContent = TT[w.id] || w.id;
-
-    const upBtn = document.createElement('button');
-    upBtn.className = 'ib';
-    upBtn.dataset.a = 'u';
-    upBtn.dataset.i = String(i);
-    upBtn.textContent = '↑';
-
-    const downBtn = document.createElement('button');
-    downBtn.className = 'ib';
-    downBtn.dataset.a = 'd';
-    downBtn.dataset.i = String(i);
-    downBtn.textContent = '↓';
-
-    const cSel = document.createElement('select');
-    cSel.className = 'mini';
-    cSel.dataset.a = 'c';
-    cSel.dataset.i = String(i);
-
-    const optL = document.createElement('option');
-    optL.value = 'L';
-    optL.textContent = 'Left';
-    if (w.c === 'L') optL.selected = true;
-
-    const optR = document.createElement('option');
-    optR.value = 'R';
-    optR.textContent = 'Right';
-    if (w.c === 'R') optR.selected = true;
-    cSel.append(optL, optR);
-
-    const sSel = document.createElement('select');
-    sSel.className = 'mini';
-    sSel.dataset.a = 's';
-    sSel.dataset.i = String(i);
-    ['Small', 'Medium', 'Large'].forEach((label, j) => {
-      const opt = document.createElement('option');
-      opt.value = String(j);
-      opt.textContent = label;
-      if (w.sz === j) opt.selected = true;
-      sSel.append(opt);
-    });
-
-    const chk = document.createElement('input');
-    chk.type = 'checkbox';
-    chk.dataset.a = 'o';
-    chk.dataset.i = String(i);
-    chk.checked = !!w.on;
-
-    row.append(span, upBtn, downBtn, cSel, sSel, chk);
-    listEl.append(row);
-  });
-}
-
-function updateLayout() {
-  sfx.lay();
-  applyLayout();
-  renderLayout();
-  saveAll();
-  emit('layout', store.layout);
-}
-
-export function updateCompactView() {
-  const cmpSel = document.getElementById('cmpSel');
-  const m = (cmpSel && cmpSel.value) || store.cmp || 'auto';
-  document.body.classList.toggle(
-    'compact',
-    m === 'on' || (m === 'auto' && (window.innerWidth < 900 || window.innerHeight < 620))
-  );
-}
-
 export function switchTab(t) {
   if (!['theme', 'audio', 'connection', 'interface', 'system'].includes(t)) t = 'theme';
   document.querySelectorAll('#mSet .tp').forEach(p => p.classList.toggle('a', p.dataset.t === t));
   document.querySelectorAll('#setTabs .tab').forEach(b => b.classList.toggle('a', b.dataset.t === t));
   store.tab = t;
 }
-
-let devQueryTimer = null;
-let deviceQueryPending = false, deviceQueryRevision = 0, nativeDevicesScanned = false;
-
-/** Browser cihaz kimliği ile eski Python donanım indeksini karıştırma.
- * Varsayılan açık seçimdir; kaybolan/seçilemeyen özel cihazda sessiz fallback yok.
- */
-export function getAudioDeviceId(id) {
-  const value = store.devs?.[id];
-  if (value == null || value === '' || value === 'default') return '';
-  if (typeof value !== 'string' || value === '-1') throw new Error('Choose an available audio device in Settings.');
-  return value;
-}
-
-export function setDevices(data) {
-  if (devQueryTimer) {
-    clearTimeout(devQueryTimer);
-    devQueryTimer = null;
-  }
-  if (!data || typeof data !== 'object' || Array.isArray(data)) return;
-  const populate = (selId, list, kind) => {
-    const s = document.getElementById(selId);
-    if (!s) return;
-    s.innerHTML = '';
-    if (!list || !list.length) {
-      s.innerHTML = '<option value="-1">No devices found</option>';
-      return;
-    }
-    list.forEach(d => {
-      if (!d || typeof d !== 'object') return;
-      const o = document.createElement('option');
-
-      // Metadata identification & Conflict Precedence:
-      // A device entry can have either integer index or string deviceId.
-      // If both index and deviceId are provided in a single entry:
-      // Explicit Precedence Rule: Native hardware integer index takes precedence if valid integer.
-      const hasIntIndex = d.index != null && (
-        typeof d.index === 'number'
-          ? Number.isInteger(d.index)
-          : /^-?\d+$/.test(String(d.index).trim())
-      );
-      const hasDeviceId = d.deviceId != null && String(d.deviceId).trim() !== '';
-
-      if (hasIntIndex) {
-        const intIdx = typeof d.index === 'number' ? d.index : parseInt(String(d.index).trim(), 10);
-        o.value = String(intIdx);
-        o.dataset.devKind = 'index';
-        o.dataset.devIndex = String(intIdx);
-        o.textContent = d.name || d.label || `${kind} ${intIdx}`;
-        s.append(o);
-      } else if (hasDeviceId) {
-        const strId = String(d.deviceId).trim();
-        o.value = strId;
-        o.dataset.devKind = 'deviceId';
-        o.dataset.deviceId = strId;
-        o.textContent = d.name || d.label || `${kind} (${strId})`;
-        s.append(o);
-      }
-    });
-    if (store.devs && store.devs[selId] != null) {
-      const target = String(store.devs[selId]);
-      if ([...s.options].some(o => o.value === target)) {
-        s.value = target;
-      } else if (isBackendAvailable() && ['dIn', 'dOut'].includes(selId)) {
-        // Kayıtlı cihaz kaybolduysa ilk cihazı seçilmiş gibi gösterme.
-        const missing = new Option('Saved device unavailable — choose a device', target, true, true);
-        missing.disabled = true;
-        s.append(missing);
-        s.value = target;
-      }
-    }
-    s.onchange = () => {
-      store.devs = store.devs || {};
-      store.devs[selId] = s.value;
-      sfx.blip();
-      const selectedOpt = s.options[s.selectedIndex];
-      if (!selectedOpt) return;
-
-      const devKind = selectedOpt.dataset.devKind;
-      if (isBackendAvailable() && ['dIn', 'dOut'].includes(selId)) {
-        const message = document.getElementById('devMsg');
-        const saved = saveAll({emitSave:false});
-        if (message) message.textContent = saved
-          ? 'Selection cached; applies to the next recording / Live reply. Save Settings to persist in desktop storage.'
-          : 'Device preference could not be saved; check storage before restarting.';
-        return;
-      }
-      let intIndex = null;
-      let devId = null;
-
-      if (devKind === 'index') {
-        intIndex = parseInt(selectedOpt.dataset.devIndex, 10);
-        devId = null;
-      } else if (devKind === 'deviceId') {
-        intIndex = null;
-        devId = selectedOpt.dataset.deviceId;
-      }
-
-      emit('device', {
-        id: selId,
-        index: intIndex,
-        deviceId: devId,
-        label: selectedOpt?.text || ''
-      });
-    };
-  };
-
-  if ('inputs' in data) populate('dIn', data.inputs, 'Microphone');
-  if ('outputs' in data) populate('dOut', data.outputs, 'Speaker');
-  if ('cameras' in data) populate('dCam', data.cameras, 'Camera');
-
-  if (data.currentIn != null && document.getElementById('dIn')) {
-    document.getElementById('dIn').value = data.currentIn;
-  }
-  if (data.currentOut != null && document.getElementById('dOut')) {
-    document.getElementById('dOut').value = data.currentOut;
-  }
-  if (data.currentCam != null && document.getElementById('dCam')) {
-    document.getElementById('dCam').value = data.currentCam;
-  }
-
-  const devMsg = document.getElementById('devMsg');
-  if (devMsg) devMsg.textContent = '';
-}
-
-export async function queryDevices() {
-  if (isBackendAvailable()) {
-    if (deviceQueryPending) return;
-    const revision = ++deviceQueryRevision;
-    deviceQueryPending = true;
-    const message = document.getElementById('devMsg');
-    if (message) message.textContent = 'Refreshing audio devices…';
-    try {
-      // Listeleme izin veya kayıt başlatmaz. İzin yalnız Mic düğmesinden gelir;
-      // izin sonrası aynı fonksiyon adları/cihazları yeniden listeler.
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      if (revision !== deviceQueryRevision) return;
-      const list = kind => [{deviceId:'default', name:'System default'}, ...devices
-        .filter(d => d.kind === kind && d.deviceId && d.deviceId !== 'default')
-        .map((d, i) => ({deviceId:d.deviceId, name:d.label || `Audio device ${i + 1}`}))];
-      setDevices({inputs:list('audioinput'), outputs:list('audiooutput')});
-      nativeDevicesScanned = true;
-      if (message) message.textContent = 'Audio devices listed automatically. If names are hidden, enable the microphone once to grant permission. Camera is not connected.';
-    } catch {
-      if (revision === deviceQueryRevision && message)
-        message.textContent = 'Audio devices unavailable or permission denied. Existing preferences were kept.';
-    } finally {
-      if (revision === deviceQueryRevision) {
-        deviceQueryPending = false;
-      }
-    }
-    return;
-  }
-  const devMsg = document.getElementById('devMsg');
-  if (devMsg) devMsg.textContent = 'Scanning…';
-  if (devQueryTimer) {
-    clearTimeout(devQueryTimer);
-    devQueryTimer = null;
-  }
-
-  try {
-    const res = await emit('query_devices');
-    if (!res || !res.ok) {
-      if (devMsg) devMsg.textContent = 'Backend yok, cihazlar taranamadı';
-      return;
-    }
-    devQueryTimer = setTimeout(() => {
-      devQueryTimer = null;
-      if (devMsg) devMsg.textContent = 'Cihaz listesi gelmedi';
-    }, 10000);
-  } catch {
-    if (devMsg) devMsg.textContent = 'Backend yok, cihazlar taranamadı';
-  }
-}
-
-if (typeof window !== 'undefined') window.addEventListener('pagehide', () => { deviceQueryRevision++; });
-if (typeof navigator !== 'undefined') navigator.mediaDevices?.addEventListener?.('devicechange', () => {
-  if (nativeDevicesScanned) queryDevices();
-});
 
 export function loadStore(o, options = {}) {
   if (!o || typeof o !== 'object') return;
@@ -699,6 +407,7 @@ export function loadStore(o, options = {}) {
 }
 
 export function initSettings(options = {}) {
+  initDeviceSettings(saveAll);
   loadStoredData();
   setSfxConfig(store.sfx, store.vol);
 
@@ -757,8 +466,7 @@ export function initSettings(options = {}) {
 
   // State color rows
   const stCols = document.getElementById('stCols');
-  const demo = document.getElementById('demo');
-  if (stCols && demo) {
+  if (stCols) {
     Object.keys(S).forEach(k => {
       const r = document.createElement('div');
       r.className = 'row';
@@ -789,13 +497,7 @@ export function initSettings(options = {}) {
       r.append(wrap);
       stCols.append(r);
 
-      if (DEBUG) {
-        const dBtn = document.createElement('button');
-        dBtn.className = 'cb';
-        dBtn.textContent = '▶ ' + S[k][0];
-        dBtn.addEventListener('click', () => setState(k));
-        demo.append(dBtn);
-      }
+
     });
   }
 
@@ -894,41 +596,7 @@ export function initSettings(options = {}) {
   }
 
   // Layout editor
-  const layList = document.getElementById('layList');
-  if (layList) {
-    layList.addEventListener('click', e => {
-      const btn = e.target.closest('button');
-      if (!btn) return;
-      const L = store.layout;
-      const i = +btn.dataset.i;
-      const w = L[i];
-      const d = btn.dataset.a === 'u' ? -1 : 1;
-      let j = i + d;
-      while (L[j] && L[j].c !== w.c) j += d;
-      if (!L[j]) return;
-      const t = L[i];
-      L[i] = L[j];
-      L[j] = t;
-      updateLayout();
-    });
-
-    layList.addEventListener('change', e => {
-      const t = e.target;
-      const w = store.layout[+t.dataset.i];
-      if (t.dataset.a === 'c') w.c = t.value;
-      if (t.dataset.a === 's') w.sz = +t.value;
-      if (t.dataset.a === 'o') w.on = t.checked ? 1 : 0;
-      updateLayout();
-    });
-  }
-
-  const layReset = document.getElementById('layReset');
-  if (layReset) {
-    layReset.addEventListener('click', () => {
-      store.layout = JSON.parse(JSON.stringify(LD));
-      updateLayout();
-    });
-  }
+  initLayoutSettings(saveAll);
 
   // Compact mode selector
   const cmpSel = document.getElementById('cmpSel');

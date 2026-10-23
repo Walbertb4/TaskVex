@@ -1,0 +1,77 @@
+{
+  "scope": "Synthetic local cleanup acceptance; no paid API or production data",
+  "python": {
+    "status": "passed",
+    "tests": 996,
+    "seconds": 38.23
+  },
+  "javascript": {
+    "status": "passed",
+    "suites": 9
+  },
+  "browser": {
+    "status": "passed",
+    "groups": 4,
+    "unhandled_page_errors": 0
+  },
+  "native": {
+    "status": "passed",
+    "phases": 10,
+    "renderer": "edgechromium",
+    "report": "cleanup-native.json",
+    "transport": "synthetic"
+  },
+  "typecheck": {
+    "status": "passed",
+    "errors": 0,
+    "warnings": 0,
+    "scope": [
+      "app",
+      "tests/test_policy.py",
+      "tests/test_clocks.py",
+      "tests/native_smoke.py",
+      "tests/native_scenarios.py",
+      "tests/test_documentation.py"
+    ]
+  },
+  "dependencies": {
+    "status": "passed"
+  },
+  "archive": {
+    "status": "passed",
+    "files": 133,
+    "head_comparison": "content identical; 131 checkout CRLF/LF differences, 2 byte-identical",
+    "git_byte_preservation": "docs/eski/** -text"
+  },
+  "real_account": {
+    "status": "not_tested",
+    "reason": "API limit; no paid calls authorized"
+  },
+  "physical_audio": {
+    "status": "not_tested"
+  },
+  "manual_acceptance": {
+    "status": "pending"
+  },
+  "commit": {
+    "status": "pending_user_acceptance"
+  },
+  "syntax": {
+    "status": "passed",
+    "python_files": 78,
+    "javascript_files": 34
+  },
+  "documentation_links": {
+    "status": "passed"
+  },
+  "intermediate_failures": [
+    {
+      "cause": "UI asset test assumed old source-file location after extraction",
+      "resolution": "same export tested in new import graph; full suite passed"
+    },
+    {
+      "cause": "new audit linked final evidence file before it was created",
+      "resolution": "evidence file created; full 996-test run passed"
+    }
+  ]
+}
