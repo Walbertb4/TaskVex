@@ -1,6 +1,34 @@
 # Aşama 5 — Model, araç çağrıları ve ses
 
-## Güncel öncelik — 5.R2 sesli girişin 25 s beklemesi
+## Güncel öncelik — 5.R3 yerel sesli onayı kaldır
+
+Kullanıcı 5.R2 testlerini başarılı bildirdi ve ayrı sentetik sesli onayları
+istemediğini belirtti. Altı WAV, bu kliplerin fetch/decode/oynatma metodu,
+yerel onay metinleri ve model yanıtını kesip local_sleep üreten yollar kaldırıldı.
+Mevcut model talimatı kısa doğal onayı ister; ifade kodda ezberlenmez.
+Host parser yalnız başarılı model yanıtı sonunda istenen modu bildirir.
+UI aynı PCM kuyruğunun bitmesini bekler, ardından gerçek host uyku kabulünü
+ister. Stop/yeni giriş/hata/unknown değişikliği onaylamaz. off da yanıt sonrası
+uygulanır. Düğme/timer/görev sonrası dönüş ek yanıt gerektirmez.
+
+Önceki 5.R2 commit'i: ae384cb. Kullanıcı bu düzeltmenin commit'ine de açık izin
+verdi. Gerçek API çağrısı veya kullanıcı notları kullanılmadı; yeni davranışın
+fiziksel kabulü ayrıca yapılacak. 923 pytest, 7 JS süiti ve Pyright 0 hata/uyarı
+geçti. [10/10 native raporu](stage5-natural-sleep-reply-native.json), gerçek
+WebView2/çalma hattında yanıt bitmeden uyumamayı doğrular; sağlayıcı ve mikrofon
+sentetiktir. Kanıt ve sonuçlar [aşamalar.md](../aşamalar.md).
+
+Ek Stop/çalma testi ilk denemede ikinci komutu mikrofon yeniden hazırlanırken
+gönderdiği için beklenen ikinci yanıt oluşmadı; Stop'un uykuyu engellediği
+kontrol zaten geçmişti. Başarısız kanıt silinmedi:
+[zamanlama raporu](stage5-natural-sleep-stop-timing-failure.json).
+Test, yeni komuttan önce mevcut waitingForSpeech durumunu bekleyecek şekilde
+düzeltildi; bunun için üretim koduna bekleme veya yeniden gönderme eklenmedi.
+[Son chat kontrolü](stage5-natural-sleep-stop-chat.json) geçti: bekletilen
+çalma sırasında uyanık kalma, Stop'ta uyumama ve sonraki komutun normal
+yanıt/çalma ardından uyutması doğrulandı. Son Pyright yine 0 hata/uyarı.
+
+## Önceki uygulama — 5.R2 sesli girişin 25 s beklemesi
 
 23 Ekim: kullanıcı `PCM sent 14 / events 2 / before input final` bildirdi;
 yazılı mesaj yanıtlanıyor, sesli mesaj Thinking'de bekleyip idle timeout alıyor.

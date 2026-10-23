@@ -250,7 +250,7 @@ function returnToPersistentSleep(report, connection) {
   // Unknown/aktif görevde uykuyla kilidi aşma; Stop kabulü bitiş değildir.
   if (!automaticSleep || report?.wake_only || sleepPending || textBusy || textOperation.uncertain || !report || report.completed !== true ||
       report.unknown || connection !== connectionRevision || !nativeInitialized || !isBackendAvailable()) return false;
-  enterSleep(null); // Her görev sonrası otomatik dönüşte aynı onayı tekrarlama.
+  enterSleep();
   return true;
 }
 
@@ -427,7 +427,7 @@ function handleWakeFailure(code, revision) {
     (retryable ? ' Automatic recovery limit reached.' : ''), code);
 }
 
-async function listenForWake(confirmation = null) {
+async function listenForWake() {
   if ((!sleeping && !sleepPending) || preparingWake || wakeRetryTimer || textBusy || liveMic.active ||
       textOperation.uncertain || !nativeInitialized || !isBackendAvailable()) return;
   preparingWake = true;
@@ -451,9 +451,6 @@ async function listenForWake(confirmation = null) {
       setConnectionStatus('idle', 'AWAKE · SLEEP REJECTED');
       return;
     }
-    // Onay sesi çalarken yerel wake hazırlığını bekletme; kullanıcı uyanmak
-    // için sesin bitmesini beklemek zorunda kalmasın. Wake/Stop aynı sesi keser.
-    if (confirmation) void playSleepConfirmation(confirmation, connection);
     if (connection !== connectionRevision || !sleeping || textOperation.uncertain) {
       if (status.request_id) void emit('wake_close', status.request_id);
       return;
@@ -524,7 +521,7 @@ function paintSleepControl() {
   button.textContent = textOperation.uncertain ? 'Sleep state unknown' : sleepPending ? 'Preparing sleep…' : sleeping ? 'Wake' : 'Sleep';
 }
 
-function enterSleep(confirmation = 'once') {
+function enterSleep() {
   if (sleepPending || textBusy || textOperation.uncertain || !isBackendAvailable()) return;
   wakeRetryCount = 0;
   if (micBlocked && !['disconnected','unknown'].includes(micBlockReason)) {
@@ -536,23 +533,7 @@ function enterSleep(confirmation = 'once') {
   setState('idle', true);
   document.getElementById('textStatus').textContent = 'Preparing sleep · awaiting host confirmation…';
   setConnectionStatus('idle', 'PREPARING SLEEP');
-  void listenForWake(confirmation);
-}
-
-async function playSleepConfirmation(mode, connection) {
-  // Metin ve paketlenmiş ses yalnız gerçek host durumundan sonra kullanılır.
-  // Sabit kısa onay için model/TTS HTTP çağrısı yapıp gecikme ekleme.
-  if (connection !== connectionRevision || textOperation.uncertain) return;
-  const language = store.prof?.pLang === 'en' ? 'en' : 'tr';
-  const phrases = language === 'en'
-    ? {once:'Sleep mode is on.',persistent:'Stay asleep mode is on.',off:'Stay asleep mode is off.'}
-    : {once:'Uyku moduna geçtim.',persistent:'Kalıcı uyku moduna geçtim.',off:'Kalıcı uyku modunu kapattım.'};
-  if (!Object.hasOwn(phrases, mode)) return;
-  msg('j', phrases[mode]);
-  try {
-    const result = await liveAudio.control(activeTextRequest || uniqueRecordId([], 'sleep'), mode, language, getAudioDeviceId('dOut'));
-    if (connection === connectionRevision && result.error) addLog('Sleep confirmation: ' + sanitizeError(result.error), true);
-  } catch { addLog('Sleep confirmation audio unavailable; confirmed mode is unchanged.', true); }
+  void listenForWake();
 }
 
 /** Sağlayıcı ham hatası yerine host'un güvenli kodlarını ve ölçülen süreyi göster. */
@@ -730,21 +711,10 @@ async function sendText(text = null, audio = null) {
         setConnectionStatus('idle', liveTest ? 'LIVE READY · new session on next message' : 'REST READY');
       addLog('Response stopped. Completed actions were not undone.');
     } else if (result.ok && report?.completed === true && typeof report.text === 'string') {
-      if (!liveTest && report.mode !== 'local_sleep') msg('j', report.text);
+      if (!liveTest) msg('j', report.text);
       label.textContent = 'Answered by ' + report.model + ' · ' + report.model_attempts.length + ' model request(s)' +
         (Number.isFinite(report.elapsed_ms) ? ' · ' + (report.elapsed_ms / 1000).toFixed(1) + ' s' : '');
-      if (report.mode === 'local_sleep') {
-        liveAudio.close();
-        label.textContent = 'Applying sleep control…';
-        if (report.sleep_mode === 'off') {
-          applySleepMode('off');
-          playbackOnly = true;
-          await playSleepConfirmation('off', replyConnectionRevision);
-          playbackOnly = false;
-          if (!textOperation.isCurrent(revision)) return;
-          label.textContent = 'Stay-asleep preference disabled.';
-        }
-      } else if (['live_latency_test', 'live_session_test', 'live_session'].includes(report.mode)) {
+      if (['live_latency_test', 'live_session_test', 'live_session'].includes(report.mode)) {
         label.textContent += ' · first text ' + (report.first_text_ms / 1000).toFixed(1) + ' s · ' +
           (report.session_resumed ? 'session resumed' : report.session_reused ? 'session reused' : 'new session');
         if (report.context_reset_reason) label.textContent += ' · context reset: ' + sanitizeError(report.context_reset_reason);
@@ -812,7 +782,7 @@ async function sendText(text = null, audio = null) {
       setConnectionStatus('offline', liveTest ? 'LIVE TEST FAILED' : 'TEXT REQUEST FAILED');
     }
     // Native tur ve varsa çalma birlikte bitti; eski Stop yeni isteğe taşınmaz.
-    if (liveTest) liveTranscript.finish(activeTextRequest, report?.mode === 'local_sleep' ? {...report, text:''} : report,
+    if (liveTest) liveTranscript.finish(activeTextRequest, report,
       report?.stopped || report?.code === 'live_interrupted' ? 'interrupted' : report?.ok ? 'complete' : 'failed');
     // Not yenilemesi de await içerir. Dinleyiciyi boşta moda geçirmek ve eski
     // kimliği bırakmak bu beklemeden sonra, arada await olmadan yapılır.
@@ -837,9 +807,13 @@ async function sendText(text = null, audio = null) {
     controls.forEach(el => { el.disabled = false; });
     textBusy = false;
     settleMicrophoneFailure(report, replyConnectionRevision);
-    if (report?.ok && replyConnectionRevision === connectionRevision) applySleepMode(report.sleep_mode);
-    if (report?.sleep_requested && replyConnectionRevision === connectionRevision) {
-      enterSleep(report.sleep_mode || 'once');
+    // Kullanıcının komutuna Vex yanıt verdi ve yukarıdaki finish çalmayı bitirdi.
+    // Stop, yeni araya giriş veya ses hatası bekleyen uyku komutunu uygulamaz.
+    const sleepReplyFinished = report?.ok && !cancelBeforeSend && !handoff && !report.audio_error && !playbackProblem &&
+      replyConnectionRevision === connectionRevision;
+    if (sleepReplyFinished) applySleepMode(report.sleep_mode);
+    if (sleepReplyFinished && report.sleep_requested) {
+      enterSleep();
     } else if (returnToPersistentSleep(report, replyConnectionRevision)) {
       // Kaynaklar enterSleep tarafından bırakıldı; normal dinlemeye dönme.
     } else if (canHandoff && handoff.revision === micRevision && handoff.connection === connectionRevision && microphoneEnabled && liveMic.active) {

@@ -1,6 +1,12 @@
 # TaskVex — Mark LVI incelemesi ve core başlangıç planı
 
-## Güncel öncelik — 5.R1 stabilizasyon
+## Güncel öncelik — 5.R3 doğal yanıt ardından uyku
+
+5.R2 ses protokolü kullanıcı tarafından onaylandı. Ayrı yerel onay sesleri
+kullanıcı isteğiyle kaldırıldı; komutla uyku, Vex'in normal yanıtı ve çalması
+tamamlandıktan sonra uygulanır. Güncel kabul [aşamalar.md](aşamalar.md).
+
+## Önceki uygulama — 5.R1 stabilizasyon
 
 F4 önüne uyku/ses incelemesi alındı. EOS ve yanıt sonrası aday eşiği
 yeniden üretimleri düzeltildi; pahalı wake yüklemesi cache'lendi. Gerçek host

@@ -17,7 +17,7 @@ function fixture(){
     nativeInitialized:true,sleeping:false,sleepPending:false,wakeSession:null,micBlocked:false,micBlockReason:null,connectionRevision:0,
     wakeRetryTimer:null,wakeRetryCount:0,automaticSleep:false,autoSleepTimer:null,autoSleepRevision:0,store:{sleepDelay:3},preparingAudio:false,replyMicRequest:null,pendingBargeIn:null,
     liveMic:{active:false,cancel(){this.active=false;},async prepareStream(fail){prepared++;this.fail=fail;this.active=true;return true;},waitForWake(packet,wake){this.packet=packet;this.wake=wake;}},
-    liveAudio:{close(){}},playSleepConfirmation:async()=>{},liveTranscript:{finish(){}},getState:()=> 'sleeping',setState(){},
+    liveAudio:{close(){}},liveTranscript:{finish(){}},getState:()=> 'sleeping',setState(){},
     isBackendAvailable:()=>true,getAudioDeviceId:()=>'',sanitizeError:String,setConnectionStatus(){},addLog:s=>logs.push(s),
     setTimeout(fn,delay){const timer={fn,delay};timers.push(timer);return timer;},clearTimeout(timer){if(timer)timer.cleared=true;},
     emit:async(name,data)=>{events.push({name,data});return {ok:true,response:{completed:true,sleeping:true,request_id:'local-'+events.length,wake_word:'Vex'}};},
@@ -182,21 +182,4 @@ for(const guard of ['unknown','stale','permission','budget']){
  x.ctx.settleMicrophoneFailure(report,0);assert.equal(x.ctx.micBlocked,true,guard);
 }
 
-// Onay yalnız host sleeping=true sonrasında; ret/unknown başarı sesi çalmaz.
-for(const accepted of [true,false]){
- const x=fixture();let acknowledgements=0;
- x.ctx.playSleepConfirmation=async mode=>{assert.equal(x.ctx.sleeping,true);assert.equal(mode,'persistent');acknowledgements++;};
- x.ctx.emit=async()=>({ok:accepted,response:{completed:true,sleeping:accepted}});
- x.ctx.enterSleep('persistent');await settle();assert.equal(acknowledgements,Number(accepted));
-}
-const confirm=fixture(), spoken=[], bubbles=[];
-confirm.ctx.msg=(role,text)=>bubbles.push(text);confirm.ctx.uniqueRecordId=()=> 'fixed-local';
-confirm.ctx.liveAudio.control=async(id,mode,lang)=>{spoken.push({id,mode,lang});return {status:'finished'};};
-vm.runInContext(source.match(/async function playSleepConfirmation\([^]*?\n\}/m)[0],confirm.ctx);
-await confirm.ctx.playSleepConfirmation('once',0);
-assert.equal(bubbles[0],'Uyku moduna geçtim.');assert.equal(spoken[0].lang,'tr');
-confirm.ctx.store.prof={pLang:'en'};await confirm.ctx.playSleepConfirmation('off',0);
-assert.equal(bubbles[1],'Stay asleep mode is off.');assert.equal(spoken[1].lang,'en');
-confirm.ctx.connectionRevision++;await confirm.ctx.playSleepConfirmation('once',0);
-assert.equal(spoken.length,2);
-console.log('PASS wake handoff failure settles without replay, guarded rearm and host-confirmed localized audio');
+console.log('PASS wake handoff failure settles without replay and guarded rearm');

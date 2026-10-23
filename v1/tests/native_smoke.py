@@ -25,10 +25,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 def check_local_sleep(window, api, js, wait_until, live_state, wake_state, outcome):
     """Tek uyku kabul senaryosunu ayrı tut; native kontrol akışını büyütme."""
-    # Uyku trafiği yalnız yerel bridge'e gider. Sıradan ses KWS
-    # hit'i olmadan Live açmaz; aynı kaynak ön tamponuyla uyanır.
-    js("const a=await import('./js/live_audio.js');window.originalControlAudio=a.liveAudio.control;window.controlAudioEvents=[];"
-       "a.liveAudio.control=async function(...args){const result=await originalControlAudio.apply(this,args);controlAudioEvents.push({mode:args[1],status:result.status,error:result.error});return result;};"
+    # Komut yanıtı modeldendir; uyurken sıradan ses KWS hit'i olmadan
+    # Live açmaz. Uyku geçişi gerçek oynatıcı bitişini beklemelidir.
+    js("const a=await import('./js/live_audio.js');window.originalSleepFinish=a.liveAudio.finish;window.sleepPlaybackBlocked=false;"
+       "a.liveAudio.finish=async function(id){const result=await originalSleepFinish.call(this,id);if(window.holdSleepPlayback){window.sleepPlaybackBlocked=true;await new Promise(r=>window.releaseSleepPlayback=r);}return result;};"
        "window.savedAudioContext=AudioContext;window.AudioContext=class extends savedAudioContext{constructor(o){super(o);if(o?.sampleRate===16000)window.capturedMicContext=this;}};"
        "window.wakeContext=new AudioContext();window.wakeOsc=wakeContext.createOscillator();window.wakeDestinations=[];wakeOsc.start();"
        "Object.defineProperty(navigator.mediaDevices,'getUserMedia',{configurable:true,value:async()=>{const d=wakeContext.createMediaStreamDestination();wakeDestinations.push(d);return d.stream;}});"
@@ -48,10 +48,21 @@ def check_local_sleep(window, api, js, wait_until, live_state, wake_state, outco
     assert live_state['opened'] == before_recovery
     js("window.AudioContext=savedAudioContext;return true;")
     outcome['audio_context_suspend_resumed_same_source_or_explicit_on_recovered_without_api'] = True
-    js("document.getElementById('inp').value='Lütfen, uyku moduna gir.';document.getElementById('send').click();return true;")
+    js("window.holdSleepPlayback=true;document.getElementById('inp').value='Lütfen, uyku moduna gir.';document.getElementById('send').click();return true;")
+    wait_until(lambda: js("return sleepPlaybackBlocked;"))
+    assert not api._sleeping
+    assert 'Tamam efendim, geçiyorum.' in window.evaluate_js("document.getElementById('msgs').textContent")
+    js("document.getElementById('stopTask').click();window.holdSleepPlayback=false;releaseSleepPlayback();return true;")
+    wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
+    assert not api._sleeping
+    outcome['stop_during_sleep_reply_did_not_apply_sleep'] = True
+    wait_until(lambda: js("const m=await import('./js/live_mic.js');return m.liveMic.waitingForSpeech;"))
+    js("window.holdSleepPlayback=true;window.sleepPlaybackBlocked=false;document.getElementById('inp').value='Lütfen, uyku moduna gir.';document.getElementById('send').click();return true;")
+    wait_until(lambda: js("return sleepPlaybackBlocked;"))
+    assert not api._sleeping
+    js("window.holdSleepPlayback=false;releaseSleepPlayback();return true;")
     wait_until(lambda: 'Asleep · say' in window.evaluate_js("document.getElementById('textStatus').textContent"))
-    wait_until(lambda: js("return controlAudioEvents.some(e=>e.mode==='once'&&e.status==='finished');"))
-    assert js("return document.getElementById('msgs').textContent.includes('Uyku moduna geçtim.') && controlAudioEvents.some(e=>e.mode==='once'&&e.status==='finished'&&!e.error);")
+    outcome['sleep_waited_for_model_and_playback_drain'] = True
     assert window.evaluate_js("document.getElementById('sLbl').textContent") == 'SLEEPING'
     assert window.evaluate_js("!!document.getElementById('c_sleeping')")
     js("const c=document.getElementById('c_sleeping');c.value='#556677';c.dispatchEvent(new Event('input',{bubbles:true}));document.getElementById('btnSaveSet').click();return true;")
@@ -128,26 +139,25 @@ def check_local_sleep(window, api, js, wait_until, live_state, wake_state, outco
     js("window.pywebview.api.event=sleepOriginalEvent;document.getElementById('sleep').click();return true;")
     wait_until(lambda: not api._sleeping and window.evaluate_js("!document.getElementById('sleep').disabled"))
     outcome['sleep_host_rejection_and_pending_confirmation_not_fake_asleep'] = True
-    # Kalıcı tercih yalnız yerel komutla açılır; Mic Off tercihine dokunmaz.
+    # Kalıcı komut gerçek model yanıtından sonra uygulanır; Mic Off korunur.
     js("const d=document.getElementById('sleepDelay');d.value='2';d.dispatchEvent(new Event('change'));document.getElementById('btnSaveSet').click();return true;")
     wait_until(lambda: api._store.read().get('sleepDelay') == 2)
     opened = live_state['opened']
     js("document.getElementById('inp').value='Vex kalıcı olarak uyku moduna gir';document.getElementById('send').click();return true;")
     wait_until(lambda: api._sleeping and 'Asleep · Microphone Off' in window.evaluate_js("document.getElementById('textStatus').textContent"))
-    wait_until(lambda: js("return controlAudioEvents.some(e=>e.mode==='persistent'&&e.status==='finished');"))
     js("document.getElementById('sleep').click();return true;")
     wait_until(lambda: not api._sleeping and window.evaluate_js("!document.getElementById('send').disabled"))
     time.sleep(2.3)
     assert not api._sleeping  # Stay asleep timer'a değil, gerçek etkileşim bitişine bağlıdır.
     js("document.getElementById('inp').value='Live test';document.getElementById('send').click();return true;")
     wait_until(lambda: api._sleeping and 'Asleep · Microphone Off' in window.evaluate_js("document.getElementById('textStatus').textContent"))
-    assert live_state['opened'] == opened + 1
+    assert live_state['opened'] == opened + 2
     # Kalıcı moddan çıkış, bağımsız normal boşta timer'ını kapatmaz.
     js("document.getElementById('inp').value='Vex uyku modundan kalıcı olarak çık';document.getElementById('send').click();return true;")
-    wait_until(lambda: 'Kalıcı uyku modunu kapattım.' in window.evaluate_js("document.getElementById('msgs').textContent") and not window.evaluate_js("document.getElementById('send').disabled"))
+    wait_until(lambda: 'Tamam efendim, kalıcı uyku modunu kapatıyorum.' in window.evaluate_js("document.getElementById('msgs').textContent") and not window.evaluate_js("document.getElementById('send').disabled"))
     assert not api._sleeping
     wait_until(lambda: api._sleeping and 'Asleep · Microphone Off' in window.evaluate_js("document.getElementById('textStatus').textContent"))
-    assert live_state['opened'] == opened + 1
+    assert live_state['opened'] == opened + 3
     # Bir kez uyandırılır; normal timer bu tercihi kalıcı moda dönüştürmemiştir.
     js("const d=document.getElementById('sleepDelay');d.value='0';d.dispatchEvent(new Event('change'));document.getElementById('sleep').click();return true;")
     wait_until(lambda: not api._sleeping)
@@ -160,9 +170,7 @@ def check_local_sleep(window, api, js, wait_until, live_state, wake_state, outco
     js("const s=await import('./js/sfx.js');window.originalBlip=s.sfx.blip;window.micBlips=0;s.sfx.blip=()=>{micBlips++;};testMicOn();testMicOff();s.sfx.blip=originalBlip;return true;")
     assert window.evaluate_js('window.micBlips') == 2
     outcome['native_microphone_on_off_each_called_camera_blip'] = True
-    assert js("return ['once','persistent','off'].every(mode=>controlAudioEvents.some(e=>e.mode===mode&&e.status==='finished'&&!e.error));")
-    js("const a=await import('./js/live_audio.js');a.liveAudio.control=originalControlAudio;return true;")
-    outcome['localized_sleep_confirmations_real_wav_playback_without_provider_request'] = True
+    js("const a=await import('./js/live_audio.js');a.liveAudio.finish=originalSleepFinish;return true;")
     if os.environ.get('TASKVEX_TEST_REAL_WAKE') == '1':
         check_real_local_wake(window, api, js, wait_until, outcome)
 
@@ -387,6 +395,12 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                             self.media_answered = False
                             return
                         text = message["realtime_input"].get("text", "")
+                        from app.session.sleep_intent import sleep_mode
+                        mode = sleep_mode(text)
+                        if mode:
+                            frames.append(audio_reply('Tamam efendim, kalıcı uyku modunu kapatıyorum.' if mode == 'off'
+                                else 'Tamam efendim, geçiyorum.', 12000))
+                            return
                         if text == 'Native server interruption':
                             frames.append({'serverContent':{'outputTranscription':{'text':'Native interrupted reply'}, 'interrupted':True}})
                             return

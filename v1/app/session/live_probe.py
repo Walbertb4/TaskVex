@@ -7,7 +7,6 @@ kapatır. İzinli araçları ModelTools üzerinden yürütür; otomatik retry ya
 """
 
 import asyncio
-from collections import deque
 from collections.abc import Callable
 from threading import Event
 from time import perf_counter
@@ -69,9 +68,6 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
     sender = None
     streaming = isinstance(audio_input, LiveInput)
     sequence = 0
-    held_output = []
-    held_bytes = 0
-    replay = deque()
 
     async def publish(role: str, value: str):
         """Birikimli metni kimlikli alıcıya ilet; ekran hatası araç sonucunu bozmaz."""
@@ -131,7 +127,7 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
                         idle = asyncio.timeout(LIVE_IDLE_SECONDS)
                         try:
                             async with idle:
-                                message = replay.popleft() if replay else await _next_message(incoming, sender)
+                                message = await _next_message(incoming, sender)
                         except TimeoutError:
                             if not idle.expired():
                                 raise
@@ -169,16 +165,6 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
                         if bound_tools:
                             bound_tools.begin_turn(report["input_text"])
                         await publish('u', report['input_text'])
-                        if ((content.input_transcription.finished is True or content.turn_complete) and not report['tool_results']
-                                and sleep_mode(report['input_text'], (profile or {}).get('pWake', 'Vex'))):
-                            # Uyku host kontrolüdür; bu açık isteği araç/model
-                            # yanıtına çevirme. Socket kapanır, RAM sohbet kalır.
-                            await connection.reset('sleep_requested')
-                            mode = sleep_mode(report['input_text'], (profile or {}).get('pWake', 'Vex'))
-                            report.update(ok=True, sleep_requested=mode != 'off', sleep_mode=mode, mode='local_sleep')
-                            transcript[:] = ['Stay asleep mode disabled.' if mode == 'off' else 'Sleep mode requested.']
-                            plain.clear()
-                            return report
                     # Yalnız ayarlı hitap bir görev değildir. İlk kesin konuşma
                     # bitişinde/araç teklifinde kapat; modelden selam/araç bekleme.
                     # Telaffuz toleransı bu katmanda eklenmez (ayrı wake adımı).
@@ -191,36 +177,6 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
                         transcript.clear(); plain.clear()
                         report.update(ok=True, wake_only=True)
                         return report
-                    # Tam uyku adayı henüz kesinleşmediyse yanıtı kısa süre RAM'de
-                    # tut. Böylece host uyuturken modelin ret sesi oynatılmaz.
-                    # Soruya dönüşürse içerik aynı sırada işlenir; araç replay yoktur.
-                    candidate = audio_input is not None and not report['tool_results'] and sleep_mode(
-                        report.get('input_text', ''), (profile or {}).get('pWake', 'Vex'))
-                    if candidate:
-                        if content and (content.turn_complete or content.input_transcription and content.input_transcription.finished):
-                            await connection.reset('sleep_requested')
-                            mode = sleep_mode(report.get('input_text', ''), (profile or {}).get('pWake', 'Vex'))
-                            report.update(ok=True, sleep_requested=mode != 'off', sleep_mode=mode, mode='local_sleep')
-                            transcript[:] = ['Stay asleep mode disabled.' if mode == 'off' else 'Sleep mode requested.']
-                            plain.clear()
-                            return report
-                        copied = message.model_copy(deep=True)
-                        if copied.server_content:
-                            copied.server_content.input_transcription = None
-                        held_bytes += len(copied.model_dump_json())
-                        if len(held_output) >= 64 or held_bytes > 2_000_000:
-                            raise ContractError('Pending sleep response exceeded limit')
-                        held_output.append(copied)
-                        continue
-                    if held_output:
-                        copied = message.model_copy(deep=True)
-                        if copied.server_content:
-                            copied.server_content.input_transcription = None
-                        replay.extend(held_output)
-                        replay.append(copied)
-                        held_output.clear()
-                        held_bytes = 0
-                        continue
                     if isinstance(audio_input, LiveInput) and (message.tool_call or content and
                             (content.input_transcription and content.input_transcription.finished is True or
                              content.output_transcription and content.output_transcription.text or content.turn_complete or
@@ -242,6 +198,12 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
                             await session.send_realtime_input(activity_end=types.ActivityEnd())
                             audio_input.end_sent_at = perf_counter()
                     if message.tool_call:
+                        # Uyku talebi host kontrolüdür; modelin başka bir araçla
+                        # bunu uygulamaya çalışması yetki vermez. Yanıt hatalıysa
+                        # uyuma, hiçbir yan etki başlatmadan açık ret döndür.
+                        if sleep_mode(report.get('input_text', text), (profile or {}).get('pWake', 'Vex')):
+                            report.update(code='live_protocol', error='Sleep control does not require a tool; no action was started.')
+                            return report
                         calls = message.tool_call.function_calls or []
                         if not bound_tools or not calls or len(report["tool_results"]) + len(calls) > 8:
                             report.update(code="live_protocol", error="Unexpected tool call or tool limit reached.")
@@ -341,17 +303,15 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
                     if report["tool_results"] and "extended-thinking" in model:
                         finished = status == types.InteractionStatus.IDLE
                     if finished and not message.tool_call:
-                        if not report['tool_results'] and sleep_mode(report.get('input_text', ''), (profile or {}).get('pWake', 'Vex')):
-                            await connection.reset('sleep_requested')
-                            mode = sleep_mode(report.get('input_text', ''), (profile or {}).get('pWake', 'Vex'))
-                            report.update(ok=True, sleep_requested=mode != 'off', sleep_mode=mode, mode='local_sleep')
-                            transcript[:] = ['Stay asleep mode disabled.' if mode == 'off' else 'Sleep mode requested.']
-                            plain.clear()
-                            report['text'] = transcript[0]
-                            return report
                         answer = "".join(transcript or plain)
                         if answer.strip():
                             report.update(ok=True, text=answer)
+                            # Gerçek model yanıtı tamamlandı. UI aynı ses kuyruğunu
+                            # boşalttıktan sonra host uyku geçişini isteyebilir;
+                            # transkripti erken kesip yerel onay uydurmayız.
+                            mode = sleep_mode(report.get('input_text', text), (profile or {}).get('pWake', 'Vex'))
+                            if mode and not report['tool_results']:
+                                report.update(sleep_requested=mode != 'off', sleep_mode=mode)
                             return report
                         break
                 report.update(code="live_incomplete", error="Live returned no complete text transcript.")

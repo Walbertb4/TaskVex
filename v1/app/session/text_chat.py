@@ -17,7 +17,6 @@ from app.session.live_session import PersistentLive
 from app.session.live_input import LiveInput
 from app.session.speech import GeminiSpeech
 from app.session.conversation_memory import ConversationMemory
-from app.session.sleep_intent import sleep_mode
 
 
 class TextChat:
@@ -110,13 +109,6 @@ class TextChat:
                 self._speech_reply = None
             if self._closed:
                 return {"ok": False, "error": "Text session is closed; reopen the app"}
-            mode = sleep_mode(text, (profile or {}).get('pWake', 'Vex')) if audio_input is None else None
-            if mode:
-                if not self._live.close():
-                    return {'ok':False, 'unknown':True, 'error':'Live closure could not be confirmed'}
-                return {'ok':True, 'completed':True, 'text':'Stay asleep mode disabled.' if mode == 'off' else 'Sleep mode requested.',
-                        'sleep_requested':mode != 'off', 'sleep_mode':mode,
-                        'model':'local', 'model_attempts':[], 'tool_results':[], 'mode':'local_sleep', 'request_id':request_id}
             allowed = ("apps.catalog", "system.status")
             if notes_ready:
                 allowed += ("notes.add", "notes.list", "notes.update", "notes.delete")

@@ -1,6 +1,15 @@
 # TaskVex — Mimari ve geliştirme rehberi
 
-## Güncel öncelik — 5.R2 sesli tur sınırı
+## Güncel öncelik — 5.R3 Vex yanıtından sonra uyku
+
+5.R2 kullanıcı tarafından başarılı test edildi. Kullanıcı isteğiyle ayrı WAV
+onayları, yerel onay metinleri ve model cevabını kesen local_sleep yolu kaldırıldı.
+Uyku komutu normal Live yanıtından geçer; yalnız başarılı yanıt ve mevcut ses
+kuyruğu bittikten sonra aynı host uyku kontrolü çalışır. Stop/hata/unknown bir
+onay değildir; düğme ve boşta timer doğrudan host kontrolü olarak kalır.
+Yeni oynatıcı, TTS veya bağımlılık yoktur. Güncel kabul [aşamalar.md](aşamalar.md).
+
+## Önceki uygulama — 5.R2 sesli tur sınırı
 
 Yazı çalışırken sesli girişte 25 s bekleme kullanıcı tarafından tekrar bildirildi.
 Tek Live sahibi, ses setup'ında otomatik VAD'yi kapatır; LiveInput sırayla

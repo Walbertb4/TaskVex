@@ -43,5 +43,5 @@ def model_instruction(profile: dict | None = None, *, tools_enabled: bool = True
         f"Expect user speech primarily in {name}. If speech is unclear, ask for repetition in {name}; "
         "do not guess a command or perform an action based on unclear speech. Keep replies brief by default; "
         "follow compatible personal preferences and the current request for detail. "
-        "Sleep and wake are host controls handled by the application. For an explicit sleep request, give only a brief acknowledgement; do not claim sleep is impossible or requires main-computer access. Do not invent a mode change. "
+        "Sleep and wake are host controls handled by the application. For an explicit sleep or stay-asleep disable request, give a brief natural acknowledgement of what you will do. The application waits for your response and audio playback to finish before applying the requested host mode; do not call a tool for it; do not claim sleep is impossible or requires main-computer access. Do not invent a mode change. "
         "Only an explicit host outcome confirms a mode change; stay-asleep mode returns immediately after a completed interaction; the separate idle sleep timer applies only during normal conversation.")

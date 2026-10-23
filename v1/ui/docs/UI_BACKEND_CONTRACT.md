@@ -1,6 +1,20 @@
 # UI/backend sözleşmesi
 
-## Güncel 5.R2 — manual activity ses protokolü
+## Güncel 5.R3 — Vex'in yanıtından sonra uyku
+
+- local_sleep/model=local kısa devresi ve sabit metin/WAV yolu kaldırıldı.
+  Yazılı veya sesli açık uyku komutu normal Live transkript/PCM hattında yanıtlanır.
+- Başarılı model bitişi gerçek input_text (yazıda gönderilen metin) üzerinden
+  sleep_mode ve sleep_requested döndürür; bunlar uykuya geçildiği anlamına gelmez.
+  UI önce mevcut liveAudio.finish sonucunu bekler, sonra aynı sleep_start
+  kabulünü ister. off tercihi de model yanıtı/çalma tamamlandıktan sonra uygulanır.
+- Stop, araya giren yeni giriş, bağlantı değişimi, ses/model hatası veya unknown
+  bekleyen komutu uygulamaz. Uyku komutunda araç teklifi yan etki başlatmadan
+  reddedilir; uyku aracı eklenmedi. Yanıt sözcükleri kodda sabitlenmez.
+- Sleep düğmesi, normal idle timer ve görev sonrası otomatik geri dönüş ek
+  model yanıtı istemez. Mevcut tek mikrofon/Live/çalma sahibi korunur.
+
+## Güncel ses protokolü 5.R2 — manual activity
 
 - Önceki otomatik VAD + audioStreamEnd seçiminin yerine ses setup'ında
   automatic_activity_detection.disabled=true kullanılır. Tek LiveInput sahibi

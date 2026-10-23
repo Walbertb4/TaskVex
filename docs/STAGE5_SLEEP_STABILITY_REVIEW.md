@@ -1,5 +1,13 @@
 # Uyku / gecikme / Stopped incelemesi
 
+## Güncel 5.R3 — ayrı onay sesi kaldırıldı
+
+5.R2 testleri kullanıcı tarafından başarılı bildirildi. Ardından kullanıcının
+isteğiyle altı WAV ve onay oynatma kodu kaldırıldı; komutla uyku artık Vex'in
+kendi yanıtı ve çalması bittikten sonra uygulanır. Aşağıdaki R1 yerel ses
+anlatımı tarihseldir. Güncel sözleşme UI_BACKEND_CONTRACT.md, kabul
+USER_ACCEPTANCE.md ve ilerleme aşamalar.md içindedir.
+
 ## Güncel 5.R2 notu — R1 protokol seçiminin yerine
 
 Kullanıcı sonrasında yazının çalıştığını, sesin 14 PCM / 2 olay / before input

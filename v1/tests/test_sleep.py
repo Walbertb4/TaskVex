@@ -87,23 +87,24 @@ def test_custom_address_and_sleeping_color_contract():
     assert validate_settings({'colors':{'sleeping':'#64748b'}})['colors']['sleeping']=='#64748b'
 
 
-def test_typed_sleep_does_not_call_provider_and_keeps_memory():
+def test_typed_sleep_waits_for_model_response_and_keeps_memory(socket):
+    socket.frames = [{'setupComplete': {}}, frame('Tamam efendim, geçiyorum.', complete=True, audio=True)]
     with create_core() as core:
-        chat=TextChat(core)
-        chat._memory.remember('Fact', {'ok':True,'text':'Understood'})
-        report=chat.run_live('Vex uyku moduna geç', 'future-live')
+        chat = TextChat(core)
+        chat._memory.remember('Fact', {'ok': True, 'text': 'Understood'})
+        report = chat.run_live('Vex uyku moduna geç', 'future-live')
         assert report['sleep_requested'] and report['completed'] and report['ok']
-        assert chat._live._thread is None and chat._memory.snapshot()
-        assert chat.close()
+        assert report['text'] == 'Tamam efendim, geçiyorum.' and socket.opened == 1
+        assert chat._memory.snapshot() and chat.close()
 
 
 @pytest.mark.parametrize('text', ['Vex uyku moduna geç', 'Rex, uykuya dal.', 'Max, uyku moduna geç.', 'Veks, uykuya dal.'])
-def test_voice_sleep_closes_live_without_starting_model_tool(socket, text):
-    socket.frames=[{'setupComplete':{}}, {'serverContent':{'inputTranscription':{'text':text,'finished':True}}}]
+def test_voice_sleep_waits_for_model_without_starting_tool(socket, text):
+    socket.frames=[{'setupComplete':{}}, {'serverContent':{'inputTranscription':{'text':text,'finished':True}}}, frame('Tamam, geçiyorum.', complete=True, audio=True)]
     with create_core() as core:
         chat=TextChat(core)
         report=chat.run_live('', 'future-live', audio_input=bytes(3200))
-        assert report['sleep_requested'] and report['ok'] and socket.closed
+        assert report['sleep_requested'] and report['ok'] and report['text'] == 'Tamam, geçiyorum.'
         assert not report['tool_results'] and chat._memory.snapshot()
         assert chat.close()
 
@@ -116,6 +117,22 @@ def test_partial_sleep_transcript_does_not_consume_a_question(socket):
         chat=TextChat(core)
         report=chat.run_live('', 'future-live', audio_input=bytes(3200))
         assert report['ok'] and not report.get('sleep_requested')
+        assert chat.close()
+
+
+@pytest.mark.parametrize('ending', [
+    {'serverContent': {'interrupted': True}},
+    {'serverContent': {'turnComplete': True}},
+    {'toolCall': {'functionCalls': [{'id': 'wrong-sleep-tool', 'name': 'notes.delete', 'args': {'id': 'not-a-target'}}]}},
+])
+def test_failed_sleep_reply_never_requests_mode_change(socket, ending):
+    """Kesilen/boş/yanlış araç isteyen yanıt, gerçek uyku talebini onaylamaz."""
+    socket.frames = [{'setupComplete': {}}, ending]
+    with create_core() as core:
+        chat = TextChat(core)
+        report = chat.run_live('Uyku moduna geç', 'future-live', notes_ready=True)
+        assert not report['ok'] and not report.get('sleep_requested')
+        assert not report.get('sleep_mode') and not report['tool_results']
         assert chat.close()
 
 
@@ -247,21 +264,25 @@ def test_boundary_verifies_fresh_window_instead_of_trusting_old_segment_time(sta
 @pytest.mark.parametrize('phrase', ['Vex uykuya dal', 'uyku moduna gir',
     'kalıcı olarak uyku moduna gir', 'please switch to sleep mode'])
 @pytest.mark.parametrize('finished_empty', [False, True])
-def test_sleep_candidate_holds_denial_audio_until_host_decision(socket, finished_empty, phrase):
-    """Bitmemiş tam adayın ret sesi oynatılmaz; bitiş host uyku sonucudur."""
+def test_sleep_request_streams_model_reply_before_mode_result(socket, finished_empty, phrase):
+    """Gerçek model sesi/metni korunur; uyku bilgisi yalnız tam yanıtta döner."""
     from app.session.live_probe import probe_live_text
     import asyncio
+    reply = frame('Tamam efendim, ', audio=True)
+    for part in reply['serverContent']['modelTurn']['parts']:
+        part['inlineData']['data'] = 'AAA='  # Geçerli, iki baytlık PCM örneği.
     socket.frames = [{'setupComplete': {}},
         {'serverContent': {'inputTranscription': {'text': phrase}}},
-        frame('Main computer access needed.', audio=True),
-        {'serverContent': {'inputTranscription': {'finished': True}}} if finished_empty else frame(complete=True)]
+        reply,
+        {'serverContent': {'inputTranscription': {'finished': True}}} if finished_empty else frame(),
+        frame('geçiyorum.', complete=True)]
     audio, text = [], []
     report = asyncio.run(probe_live_text('', 'future-live', audio_input=bytes(3200),
         audio_sink=lambda *args: audio.append(args) or True,
         transcript_sink=lambda role, value, seq: text.append((role, value)) or True))
     assert report['ok'] and report['sleep_requested']
-    assert report['text'] == 'Sleep mode requested.' and not audio
-    assert all('Main computer' not in value for _, value in text)
+    assert report['text'] == 'Tamam efendim, geçiyorum.' and audio
+    assert ('j', 'Tamam efendim, ') in text
 
 
 @pytest.mark.parametrize('candidate,suffix', [
@@ -269,8 +290,8 @@ def test_sleep_candidate_holds_denial_audio_until_host_decision(socket, finished
     ('uyku moduna gir', 'me'),
     ('kalıcı olarak uyku moduna gir', ' ne demek?'),
     ('please switch to sleep mode', ' and delete my notes')])
-def test_sleep_candidate_becomes_question_releases_held_output_in_order(socket, candidate, suffix):
-    """Aday soru olursa gerçek cevap kaybolmaz, uykuya geçilmez."""
+def test_sleep_candidate_becomes_question_keeps_response_in_order(socket, candidate, suffix):
+    """Aday soru olursa akan gerçek cevap korunur, uykuya geçilmez."""
     from app.session.live_probe import probe_live_text
     import asyncio
     socket.frames = [{'setupComplete': {}},
@@ -310,11 +331,12 @@ def test_sleep_mode_is_explicit_and_not_a_question(text, expected):
 def test_persistent_sleep_controls_work_typed_and_voice_without_tools(socket, text, mode):
     with create_core() as core:
         chat = TextChat(core)
+        socket.frames = [{'setupComplete': {}}, frame('Model acknowledgement', complete=True)]
         typed = chat.run_live(text, 'future-live', profile={'pWake':'Computer'})
         assert typed['ok'] and typed['sleep_mode'] == mode
-        assert typed['sleep_requested'] == (mode != 'off') and not typed['model_attempts']
+        assert typed['sleep_requested'] == (mode != 'off') and typed['model_attempts'] == ['future-live']
         socket.frames = [{'setupComplete': {}},
-            {'serverContent': {'inputTranscription': {'text': text, 'finished': True}}}]
+            {'serverContent': {'inputTranscription': {'text': text, 'finished': True}}}, frame('Model acknowledgement', complete=True)]
         voice = chat.run_live('', 'future-live', audio_input=bytes(3200), profile={'pWake':'Computer'})
         assert voice['ok'] and voice['sleep_mode'] == mode
         assert voice['sleep_requested'] == (mode != 'off') and not voice['tool_results']
@@ -382,17 +404,6 @@ def test_wake_model_is_reused_but_input_id_and_state_are_fresh(bridge, monkeypat
     assert bridge.event('wake')['ok']
     assert bridge.event('save', {'prof':{'pWake':'Computer'}})['ok']
     assert bridge.event('sleep_start')['ok'] and built == ['Vex', 'Computer']
-
-
-def test_control_audio_assets_are_small_valid_pcm_waves():
-    """Üretimle paketlenen sabit onay sesleri: kullanıcı sesi veya API yok."""
-    import wave
-    directory = Path(__file__).resolve().parents[1] / 'ui' / 'assets' / 'controls'
-    for language in ('tr', 'en'):
-        for mode in ('once', 'persistent', 'off'):
-            with wave.open(str(directory / f'sleep-{mode}-{language}.wav')) as audio:
-                assert (audio.getnchannels(), audio.getsampwidth(), audio.getframerate()) == (1, 2, 24000)
-                assert 0 < audio.getnframes() / 24000 < 8
 
 
 def test_broken_wake_cleanup_cannot_prevent_explicit_wake(bridge):

@@ -1,6 +1,20 @@
 # TaskVex — Kullanıcının katılacağı gerçek kullanım kontrolleri
 
-## Güncel kısa test — 5.R2 sesli tur sınırı
+## Güncel kısa test — 5.R3 doğal yanıt ardından uyku
+
+Uygulamayı yeniden aç; uyku süresini geçici olarak 0 yap.
+
+1. “Uyku moduna geç” de. Vex kendi sesiyle kısa yanıtını tamamlasın; ancak
+   ardından SLEEPING olsun. Ayrı mekanik ses veya ikinci sabit mesaj olmamalı.
+2. Uyandır, “Bundan sonra uyku modunda kal” de. Yanıt bittikten sonra uyusun;
+   uyandırıp görev verince görev/yanıt sonrasında otomatik geri uyusun.
+3. “Kalıcı uyku modunu kapat” de/yaz: kendi yanıtı bitsin, uyanık kalsın.
+4. Uyku yanıtını Stop ile kes: bekleyen uyku komutu uygulanmasın. Sleep
+   düğmesi doğrudan uyutsun; Mic Off yanıt sesini kesmesin.
+
+5.R2 kullanıcı tarafından başarılı bildirildi; aşağıdakiler tarihsel testlerdir.
+
+## Önceki kısa test — 5.R2 sesli tur sınırı
 
 Uygulamayı tamamen kapatıp `v1` içinden yeniden aç:
 `./.venv/Scripts/python.exe -m app.main --debug`.

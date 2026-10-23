@@ -155,11 +155,12 @@ become questions are not treated as sleep commands.
 Sleep first shows **Preparing sleep**. **SLEEPING / Wake** appears only after
 the host confirms sleep. A rejected request stays awake; an unknown result
 locks controls instead of claiming success. Microphone Off remains usable.
-Explicit successful sleep controls also show and speak a short confirmation
-in the selected Turkish/English language. These packaged offline clips use a
-different voice from Gemini, respect Mute and your selected speaker, and need
-no model/TTS request. A rejection/unknown result never plays a success clip.
-Automatic return after each task does not repeat the sleep announcement.
+Spoken or typed sleep controls receive Vex's own model response. The application
+waits for that response and its audio playback to finish before applying sleep
+or disabling stay-asleep mode. No packaged voice clips or replacement assistant
+messages are used. Stop, a failed response or unknown result does not confirm
+the requested change. The Sleep button and idle timer apply sleep directly;
+automatic return after a task does not request an extra acknowledgement.
 
 After backend input setup is ready, 700 ms of local silence ends that input.
 The host sends explicit activityStart/activityEnd markers with provider VAD

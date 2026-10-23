@@ -9,7 +9,6 @@ let current = null, muted = false;
 
 function dispose(state) {
   clearTimeout(state.timer);
-  state.fetcher?.abort();
   state.routeDone?.();
   for (const node of state.nodes) { node.onended = null; try { node.stop(); } catch {} node.disconnect(); }
   state.nodes.clear();
@@ -21,37 +20,6 @@ function dispose(state) {
 
 export const liveAudio = {
   get muted() { return muted; },
-  async control(requestId, mode, language, deviceId = '') {
-    // Sabit onaylar aynı oynatıcıdan geçer; ayrı TTS/ağ modeli veya ikinci
-    // ses kuyruğu yoktur. fetch/decode sonrasında eski kimlik yeniden çalamaz.
-    if (!['once','persistent','off'].includes(mode)) return {status:'error',error:'invalid_control'};
-    await this.begin(requestId, deviceId);
-    const state = current;
-    if (!state || state.id !== requestId) return {status:'stopped'};
-    if (state.error) return this.finish(requestId);
-    if (muted) { await this.finish(requestId); return {status:'muted'}; }
-    state.fetcher = new AbortController();
-    const deadline = setTimeout(() => state.fetcher.abort(), 3000);
-    try {
-      const url = new URL('../assets/controls/sleep-' + mode + '-' + (language === 'en' ? 'en' : 'tr') + '.wav', import.meta.url);
-      const response = await fetch(url, {signal:state.fetcher.signal});
-      if (!response.ok) throw new Error();
-      const data = await response.arrayBuffer();
-      if (data.byteLength > 480000) throw new Error();
-      const buffer = await state.context.decodeAudioData(data);
-      if (current !== state || state.stopped) return {status:'stopped'};
-      if (buffer.numberOfChannels !== 1 || buffer.duration > 8 || buffer.duration <= 0) throw new Error();
-      const node = state.context.createBufferSource();
-      node.buffer = buffer; node.connect(state.gain); state.nodes.add(node);
-      node.onended = () => { state.nodes.delete(node); node.disconnect(); if (state.resolve) dispose(state); };
-      state.bytes = buffer.length * 2;
-      node.start(state.context.currentTime + .02);
-    } catch {
-      if (current !== state || state.stopped) return {status:'stopped'};
-      state.error ||= 'control_audio_unavailable';
-    } finally { clearTimeout(deadline); }
-    return this.finish(requestId);
-  },
   async begin(requestId, deviceId = '') {
     if (current) this.stop(current.id);
     const state = current = { id: requestId, nodes: new Set(), next: 0, bytes: 0, error: null,
