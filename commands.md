@@ -75,6 +75,37 @@ restore them. Unknown readback outcomes are not automatically retried.
 App launch/status tools exist in the core but are not currently exposed to the
 conversation. Do not assume `Open Notepad` is supported by the model yet.
 
+## Timers and stopwatches — available in the native desktop app
+
+| Say or type | What Vex does |
+| --- | --- |
+| `Start a five-minute timer called Tea.` | Creates an independent running timer with its own ID. Existing timers continue. |
+| `Create another ten-minute timer called Pasta.` | Creates a separate timer; does not replace Tea. |
+| `Start a stopwatch called Workout.` | Creates a running stopwatch and automatically selects the Stopwatch tab and record. |
+| `Create another stopwatch.` | Creates another independent record; start or ready follows your request. |
+| `Show my timers and stopwatches with their IDs.` | Reads their actual labels, states, elapsed and remaining times. |
+| `Pause the Tea timer.` / `Stop the Workout stopwatch.` | Pauses the specified unambiguous record without clearing its elapsed time. |
+| `Resume the Workout stopwatch.` | Starts/resumes the same record; does not create a replacement. |
+| `Reset the Tea timer.` | Stops it and restores its original duration in ready state. |
+| `Reset the Workout stopwatch.` | Stops it and returns elapsed time to zero. |
+
+A timer operation selects Timer; a stopwatch operation selects Stopwatch,
+even if the other tab was open. Use the dropdown for existing records or
+**New** for another ready clock. Timer presets create another running timer;
+**Set** updates the selected timer duration and resets it to ready, keeping its ID; if none exists it creates a ready timer. Start/resume/pause/reset buttons
+control the selected actual ID, through the same backend tools as Vex.
+
+Vex must read a fresh `clocks.list` or create the record in this turn before
+control. If the target is unclear or multiple labels match, clarify the ID;
+the displayed tab alone does not choose the model's target. One year's duration
+is the per-timer maximum. Clocks live only while this app process runs; exit
+loses them. Sleep and model disconnect do not reset them. Stop Task stops the
+conversation/task, not an already verified running clock. Unknown mutations
+are not retried. Multiple-clock removal and persistence are not implemented.
+Without the native backend, the existing single timer/stopwatch UI stays local;
+those are not model integrations. Alarm timing depends on the UI being active;
+a late UI refresh reads the correct backend deadline but is not a system alarm.
+
 ## Application shutdown — available
 
 | Say or type | What Vex does |
@@ -240,9 +271,6 @@ The existing Wake sensitivity slider is not yet connected to this detector.
 
 - Persistent user facts and editable/forgettable user memory in Personalization.
 - Model-driven skill/routine/calendar/weather/Google/Telegram/Discord actions.
-- Multiple model-controlled timers/stopwatches: create/list/start/pause/resume/reset.
-  Current timer and stopwatch buttons remain local single-instance controls;
-  their shared backend ownership and model tools are the next step.
 
 Move an item into the available tables only after its implementation and
 relevant verification. A visible UI panel or saved setting alone is not an

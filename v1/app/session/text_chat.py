@@ -109,7 +109,7 @@ class TextChat:
                 self._speech_reply = None
             if self._closed:
                 return {"ok": False, "error": "Text session is closed; reopen the app"}
-            allowed = ("apps.catalog", "system.status", "assistant.request_sleep_mode", "assistant.request_shutdown")
+            allowed = ("apps.catalog", "system.status", "assistant.request_sleep_mode", "assistant.request_shutdown", "clocks.create", "clocks.control", "clocks.list")
             if notes_ready:
                 allowed += ("notes.add", "notes.list", "notes.select", "notes.update", "notes.delete", "notes.delete_many", "notes.complete_many")
             tools = ModelTools(self._core, principal="local-user", session_id=uuid4().hex, allowed_tools=allowed)
@@ -182,7 +182,7 @@ class TextChat:
                 return {"ok": False, "error": "Text session is closed; reopen the app"}
             # Not aktarımı bekliyor diye normal sohbet kapatılmaz. Aynı durum
             # backend'de araç kapsamını da daraltır; yalnız UI kilidine güvenmeyiz.
-            allowed = ("apps.catalog", "system.status", "assistant.request_sleep_mode", "assistant.request_shutdown")
+            allowed = ("apps.catalog", "system.status", "assistant.request_sleep_mode", "assistant.request_shutdown", "clocks.create", "clocks.control", "clocks.list")
             if notes_ready:
                 allowed += ("notes.add", "notes.list", "notes.select", "notes.update", "notes.delete", "notes.delete_many", "notes.complete_many")
             tools = ModelTools(self._core, principal="local-user", session_id=uuid4().hex,

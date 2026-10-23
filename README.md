@@ -8,7 +8,7 @@
 [![Status](https://img.shields.io/badge/Status-Early%20Development-orange?style=for-the-badge)]()
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%20%7C%203.14-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://www.microsoft.com/windows)
-[![Tests](https://img.shields.io/badge/Tests-843%20Passed-2ea44f?style=for-the-badge&logo=pytest&logoColor=white)](v1/tests)
+[![Tests](https://img.shields.io/badge/Tests-980%20Passed-2ea44f?style=for-the-badge&logo=pytest&logoColor=white)](v1/tests)
 [![Memory](https://img.shields.io/badge/RAM%20Footprint-~50--80%20MB%20(Target%20Idle)-blueviolet?style=for-the-badge)]()
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
@@ -97,6 +97,9 @@ In accordance with [`ARCHITECTURE.md`](ARCHITECTURE.md) and [`CORE_START_PLAN.md
 * ✅ **System Telemetry (`telemetry.py`):** Read OS version, architecture, CPU count and platform info.
 * 🗓️ **Terminal Execution (`terminal.py`):** Sandboxed local shell execution with strict allowlist and mandatory confirmation.
 * 🗓️ **Google Workspace (`drive`, `calendar`, `gmail`):** Direct API integrations for calendar, files, and email.
+
+### Timers & Stopwatches
+* 🧪 **Multiple Native Clocks:** Independent timer/stopwatch IDs, shared backend ownership for UI and model, start/pause/resume/reset, automatic tab selection. In-memory only; current manual acceptance is tracked in [aşamalar.md](aşamalar.md).
 
 ### Model & Voice Session
 * ✅ **Gemini 3.8 Live WebSocket Streaming:** Real-time bidirectional voice conversation with provider- and network-dependent latency; see the current audio/sleep findings.

@@ -22,6 +22,11 @@ Tarih: 21 Ekim 2026. Durum: başlangıç kapsamı ve sözleşme sınırları kay
 
 ## UI durum ve yazma sahipliği
 
+Güncel 5.R7.2: native timer/stopwatch kayıtları tek RAM Clocks sahibindedir;
+UI/model aynı araçlara gider. Aşağıdaki yerel sayaç satırı ilk dilimin tarihsel
+kararıdır; tarayıcı-only mod dışında artık native otoriteyi anlatmaz.
+
+
 Güncel ek: Aşama 3'te native not sahipliği backend'e geçti; eski not aktarımı
 açık kullanıcı onayı ve aynı dosyada tek seferlik işaretle uygulanır. Generic
 save notları yazmaz; tarayıcı-only mod yerel kalır. Aşağıdaki ilk dilim tablosu

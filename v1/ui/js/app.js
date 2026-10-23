@@ -45,7 +45,8 @@ import {
   setTimeline,
   renderTL
 } from './panels.js';
-import { initTimers, startTimer, pauseTimer, resumeTimer, resetTimer, startStopwatch, pauseStopwatch, resumeStopwatch, resetStopwatch } from './timers.js';
+import {applyClockSnapshot,canSendClockText,setClocksChatLock} from './clocks.js';
+import { initTimers, connectTimers, startTimer, pauseTimer, resumeTimer, resetTimer, startStopwatch, pauseStopwatch, resumeStopwatch, resetStopwatch } from './timers.js';
 import { initNotes, addNote, setNotes, getNotes, connectNativeNotes, setNotesChatLock, canSendNativeText } from './notes.js';
 import { initSkills, setSkills, addSkill, skillResult, getSkills, runSkill } from './skills.js';
 import { initRoutines, stopRoutineScheduler, setRoutines, routineResult, routineEvent, getRoutines, runRoutine, renderRoutines } from './routines.js';
@@ -660,6 +661,7 @@ async function sendText(text = null, audio = null) {
   if (!v && !audio) return;
   if (isBackendAvailable()) {
     if (textBusy || sleepPending || textOperation.uncertain) return;
+    if(!canSendClockText()){document.getElementById('textStatus').textContent='A clock action is pending or unknown. Wait or reopen before retrying.';return;}
     cancelAutoSleep();
     if (sleeping && !audio) {
       sleeping = false; cancelMic(); document.getElementById('sleep').textContent = 'Sleep';
@@ -684,7 +686,7 @@ async function sendText(text = null, audio = null) {
     }
     if (v.length > 20000) { addLog('Message is too long (maximum 20000 characters).', true); return; }
     textBusy = true;
-    setNotesChatLock(true);
+    setNotesChatLock(true); setClocksChatLock(true);
     const controls = ['inp', 'send', 'stopTask', 'liveLatencyTest', 'newChat', 'sleep'].map(id => document.getElementById(id)).filter(Boolean);
     controls.forEach(el => { el.disabled = true; });
     const liveStop = document.getElementById('stopTask');
@@ -717,6 +719,7 @@ async function sendText(text = null, audio = null) {
     let playbackProblem = null;
     if (audio?.stream && replyMicRequest !== activeTextRequest) { liveMic.cancel(); paintMic(); }
     for (const tool of report?.tool_results || []) {
+      if(tool.name?.startsWith('clocks.')&&tool.result?.verified)applyClockSnapshot(tool.result.data,tool.result.data.clock?.id);
       addLog('Tool ' + sanitizeError(tool.name) + ': ' + sanitizeError(tool.status) +
         (tool.result?.verified ? ' · verified' : ' · not verified'));
     }
@@ -828,7 +831,7 @@ async function sendText(text = null, audio = null) {
     textOperation.finish();
     // Başarısız model yanıtından önce de not kaydedilmiş olabilir. Setter ile
     // yazmak yerine tek backend otoritesinden oku; outbound mutasyon üretme.
-    setNotesChatLock(false);
+    setNotesChatLock(false); setClocksChatLock(false);
     setState('idle');
     controls.forEach(el => { el.disabled = false; });
     textBusy = false;
@@ -1165,7 +1168,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 9. API & Bridge bindings
   initApi({
-    nativeReady: async () => { queryDevices(); await connectNativeNotes(); nativeInitialized = true; void listenAutomatically(); },
+    nativeReady: async () => { queryDevices(); await connectTimers(); await connectNativeNotes(); nativeInitialized = true; void listenAutomatically(); },
     initApp: (s) => applySnapshot(s, { emitSave: false }),
     startupStatus,
     loadStore: (s) => applySnapshot(s, { emitSave: false }),

@@ -1,6 +1,45 @@
 # UI/backend sözleşmesi
 
-## Güncel 5.R7.1 — modelden TaskVex kapatma
+## Güncel 5.R7.2 — çoklu sayaç sahibi ve görünüm protokolü
+
+- main tek Clocks örneğini create_core(clocks=...) ve NativeBridge(...,clocks=...)
+  ile paylaşır. Native UI ve model ayrı sayaç/clock state üretmez. Kayıtlar
+  yalnız süreç RAM'inde; yeniden açılışa taşınmaz. Generic save'e eklenmez.
+- clocks.create: kind=timer/stopwatch, start boolean zorunlu; label isteğe bağlı
+  1–80 karakter. Timer duration_seconds >0 ve <=31536000 ister; stopwatch bu
+  alanı kabul etmez. Her create yeni UUID üretir; aynı isim eskisini ezmez.
+- clocks.list: parametresiz güncel tam görünüm. clocks.control: gerçek id ve
+  action=start/pause/reset. start çalışan saati sıfırlamaz; duraklatılanı devam
+  ettirir. Biten timer yeni generation ile başlar. Reset ready yapar; timer
+  ayarlı duration'a, stopwatch sıfıra döner. Opsiyonel duration_seconds yalnız
+  timer resetinde Set düğmesinin eski süre ayarı anlamını korur; diğer action/tür
+  ile reddedilir. Eksik ID hiçbirini değiştirmez.
+- Model control için bu turdaki başarılı yeni list/create ID'sini kullanır;
+  önceki tur/replay okuması yeni kontrol kanıtı sayılmaz. Etiket belirsizliğinde
+  model açıklama istemeli; UI'da görünen sekme kullanıcı hedefi varsayılmaz.
+- Model araçları clocks.read/write policy'sinde, aynı clocks kaynak kilidinde
+  TaskManager üzerinden yürür. Stop yazıdan önce iptal eder; tamamlanmış saat
+  işlemini/süre akışını geri almaz. Yeni channel yetkisi verilmedi.
+- UI clock_command payload: {version:1,request_id,tool,arguments}; tool yalnız
+  clocks.create/control. Bekleyen model turunda UI mutasyonu açıkça reddedilir; UI mevcut sohbet
+  kilidini de paylaşır ve model unknown sonucunda yeni sayaç mutasyonu açmaz.
+  Başarı completed=true,verified=true,data içerir. Kabul sonrası timeout/unknown
+  yeni mutasyon ve model isteğini yeniden açılışa kadar kilitler; otomatik tekrar yok.
+- query_clocks parametresiz salt görünüm sorgusudur: aynı Clocks.snapshot'ını
+  doğrudan okur, her 500 ms için TaskManager kaydı oluşturmaz. Modelin salt
+  okuması yine kayıtlı clocks.list aracıdır. Snapshot: clocks,revision,sampled_at.
+  Kayıt: id,kind,label,duration_seconds,state,generation,elapsed_seconds,
+  remaining_seconds (stopwatch için null). İç başlangıç anı UI'ya verilmez.
+- UI eski sampled_at verisini uygulamaz; eski araç sonucu yine güncel listedeki
+  ID'yi odaklayabilir. Modelin create/control sonucu doğru sekmeyi ve kaydı
+  otomatik seçer. Dropdown ve New düğmesi aynı kayıtları kullanır; sıra yerine ID.
+- Native UI, backend süresini görüntüler. Mevcut SFX/bitme bildirimi id/generation
+  başına bir kez, son beş saniye tick efekti korunur. İlk açılışın eski finished
+  kaydı tekrar alarm üretmez. Ölçüm alınamıyorsa “— / unavailable” gösterilir.
+- Native sahiplik latch'i köprü kaybında eski yerel interval'i açmaz. Yalnız hiç
+  native başlamamış tarayıcı-only mod önceki tekli timers.js davranışını korur.
+
+## Önceki 5.R7.1 — modelden TaskVex kapatma
 
 - `assistant.request_shutdown({})`, notes transferinden bağımsız mevcut desktop
   assistant.control yetkisindedir. OS shutdown, restart, executable/argüman yoktur.

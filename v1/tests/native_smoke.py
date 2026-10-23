@@ -170,6 +170,45 @@ def check_native_note_batches(api, home, window, js, wait_until, outcome):
     outcome['bulk_delete_no_ui_save_echo'] = True
 
 
+def check_native_clocks(window, api, js, wait_until, outcome):
+    """Gerçek sayaç görünümü: model+UI tek ID sahibi ve otomatik sekme odağı."""
+    js("window.clockEcho=[];window.clockEvent=window.pywebview.api.event;window.pywebview.api.event=(name,data)=>{if(name==='save')clockEcho.push(name);return clockEvent(name,data);};return true;")
+    for mode in ('rest', 'live'):
+        js("document.getElementById('liveLatencyTest').checked="+str(mode=='live').lower()+";return true;")
+        for action in ('watch', 'timer1', 'timer2', 'pause_timer1', 'reset_watch'):
+            # Her model işlemi, diğer sekme açıkken de doğru kayda odaklanmalı.
+            js("document.getElementById('"+('tabTmB' if action in ('watch','reset_watch') else 'tabSwB')+"').click();return true;")
+            prompt='Native CLOCK '+mode+' '+action
+            js("document.getElementById('inp').value="+json.dumps(prompt)+";document.getElementById('send').click();return true;")
+            wait_until(lambda: prompt+' confirmed' in window.evaluate_js("document.getElementById('msgs').textContent") and not window.evaluate_js("document.getElementById('send').disabled"))
+            kind='stopwatch' if action in ('watch','reset_watch') else 'timer'
+            target='timer1' if action=='pause_timer1' else 'watch' if action=='reset_watch' else action
+            items=api._clocks.snapshot()['clocks']
+            clock=next(c for c in items if c['label']==mode+' '+target)
+            assert window.evaluate_js("document.getElementById('clockSelect').value")==clock['id']
+            assert window.evaluate_js("document.getElementById('"+('tabSwB' if kind=='stopwatch' else 'tabTmB')+"').classList.contains('on')")
+            if action=='pause_timer1':assert clock['state']=='paused'
+            if action=='reset_watch':assert clock['state']=='ready' and clock['elapsed_seconds']==0
+        assert len([c for c in api._clocks.snapshot()['clocks'] if c['label'].startswith(mode+' ')])==3
+        # UI Start/Pause/Resume/Reset aynı stopwatch ID'sini değiştirir, yeni kayıt açmaz.
+        watch=next(c for c in api._clocks.snapshot()['clocks'] if c['label']==mode+' watch')
+        for button,state in [('swStartB','running'),('swPauseB','paused'),('swResumeB','running'),('swResetB','ready')]:
+            js("document.getElementById('"+button+"').click();return true;")
+            wait_until(lambda: next(c for c in api._clocks.snapshot()['clocks'] if c['id']==watch['id'])['state']==state)
+            wait_until(lambda: not window.evaluate_js("document.getElementById('"+button+"').disabled"))
+        timer=next(c for c in api._clocks.snapshot()['clocks'] if c['label']==mode+' timer1')
+        js("document.getElementById('tabTmB').click();document.getElementById('clockSelect').value="+json.dumps(timer['id'])+";document.getElementById('clockSelect').dispatchEvent(new Event('change'));document.getElementById('tmMin').value='4';document.getElementById('tmSec').value='5';document.getElementById('tmSetB').click();return true;")
+        wait_until(lambda: next(c for c in api._clocks.snapshot()['clocks'] if c['id']==timer['id'])['duration_seconds']==245)
+        wait_until(lambda: not window.evaluate_js("document.getElementById('tmSetB').disabled"))
+        assert next(c for c in api._clocks.snapshot()['clocks'] if c['id']==timer['id'])['state']=='ready'
+        outcome[mode+'_timer_set_preserved_selected_id']=True
+        outcome[mode+'_multi_clocks_same_ids_ui_controls_and_automatic_tabs']=True
+    assert len(api._clocks.snapshot()['clocks'])==6
+    assert window.evaluate_js('window.clockEcho')==[]
+    js("window.pywebview.api.event=clockEvent;document.getElementById('liveLatencyTest').checked=true;return true;")
+    outcome['clock_mutations_no_settings_save_echo']=True
+
+
 def check_native_shutdown_request(window, api, js, wait_until, outcome):
     """Model isteği/çalma/Stop sınırını gerçek DOM'da, host ret taklidiyle sına.
 
@@ -522,6 +561,17 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 else {'kind':'latest','count':1,'cardinality':'one'})
             return [('notes.select', selector), ('notes.delete' if verb == 'delete' else 'notes.update', args)]
 
+        def clock_plan(text):
+            """Yalnız sentetik sağlayıcı fixture'ı; üretim doğal dil parser'ı değildir."""
+            _, _, mode, action = text.split()
+            if action in ('watch', 'timer1', 'timer2'):
+                args={'kind':'stopwatch' if action=='watch' else 'timer', 'start':True, 'label':mode+' '+action}
+                if action!='watch':args['duration_seconds']=120 if action=='timer1' else 180
+                return [('clocks.create',args)]
+            target='timer1' if action=='pause_timer1' else 'watch'
+            clock=next(c for c in captured['api']._clocks.snapshot()['clocks'] if c['label']==mode+' '+target)
+            return [('clocks.list',{}),('clocks.control',{'id':clock['id'],'action':'pause' if action=='pause_timer1' else 'reset'})]
+
         @asynccontextmanager
         async def live_socket(*args, **kwargs):
             live_state["opened"] += 1
@@ -588,6 +638,11 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                         text = message["realtime_input"].get("text", "")
                         # Yalnız sentetik sağlayıcının önceden belirlenmiş araç
                         # seçimi; üretimde cümle kalıbı veya niyet parser'ı yok.
+                        if text.startswith('Native CLOCK '):
+                            frames.extend({'toolCall':{'functionCalls':[{'id':'clock-'+text+'-'+str(i),'name':name,'args':args}]}}
+                                for i,(name,args) in enumerate(clock_plan(text)))
+                            frames.append({'serverContent':{'outputTranscription':{'text':text+' confirmed'},'turnComplete':True}})
+                            return
                         if text.startswith('Native SHUTDOWN '):
                             live_state['shutdown_calls'] = live_state.get('shutdown_calls', 0) + 1
                             frames.append({'toolCall': {'functionCalls': [{'id': 'shutdown-'+str(live_state['shutdown_calls']),
@@ -657,6 +712,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                     elif "tool_response" in message:
                         response = message["tool_response"]["functionResponses"][0]
                         assert response["response"]["result"]["verified"]
+                        if response['id'].startswith('clock-Native CLOCK '):return
                         if response['name'] == 'assistant.request_shutdown':
                             assert response['response']['result']['data']['applied'] is False
                             frames.append(audio_reply('TaskVex kapanacak.', 12000))
@@ -736,6 +792,11 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
             body = json.loads(request.content)
             text_payloads.append(body)
             prompt = body["contents"][0]["parts"][0].get("text", "")
+            if prompt.startswith('Native CLOCK '):
+                plan=clock_plan(prompt); index=(len(body['contents'])-1)//2
+                parts=([{'functionCall':{'id':'clock-'+str(index),'name':plan[index][0],'args':plan[index][1]}}]
+                    if index<len(plan) else [{'text':prompt+' confirmed'}])
+                return httpx.Response(200,json={'candidates':[{'finishReason':'STOP','content':{'role':'model','parts':parts}}]})
             if prompt.startswith('Native SHUTDOWN '):
                 parts = ([{'functionCall': {'id':'shutdown-rest','name':'assistant.request_shutdown','args':{}}}]
                     if len(body['contents']) == 1 else [{'text':'TaskVex kapanacak.'}])
@@ -762,7 +823,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                         "args": {"text": "Must not be saved after REST Stop"}}}]}}]})
             if len(text_requests) == 1:
                 body = json.loads(request.content)
-                assert {item["name"] for item in body["tools"][0]["functionDeclarations"]} == {"apps.catalog", "system.status", "assistant.request_sleep_mode", "assistant.request_shutdown"}
+                assert {item["name"] for item in body["tools"][0]["functionDeclarations"]} == {"apps.catalog", "system.status", "assistant.request_sleep_mode", "assistant.request_shutdown", "clocks.create", "clocks.control", "clocks.list"}
                 text_started.set()
                 assert release_text.wait(20)
             assert responses, "Unexpected model retry"
@@ -1427,6 +1488,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 check_local_sleep(window, api, js, wait_until, live_state, wake_state, outcome)
                 check_native_note_batches(api, home, window, js, wait_until, outcome)
                 check_native_shutdown_request(window, api, js, wait_until, outcome)
+                check_native_clocks(window, api, js, wait_until, outcome)
                 js("const a=await import('./js/api.js');for(let i=0;i<250;i++)a.addLog('Native bounded entry '+i);return true;")
                 assert window.evaluate_js("document.getElementById('log').childElementCount") == 200
                 outcome['engine_log_bounded_to_200_entries'] = True

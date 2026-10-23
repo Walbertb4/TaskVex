@@ -26,6 +26,7 @@ from app.session.text_chat import TextChat
 from app.session.live_input import LiveInput
 from app.session.catalog import load_live_catalog
 from app.session.wake_word import WakeWord, WakeAlignmentError
+from app.tools.local.clocks import Clocks
 
 
 class NativeBridge:
@@ -36,8 +37,10 @@ class NativeBridge:
     deposunun konumunu güvenilir host seçer.
     """
 
-    def __init__(self, core, store) -> None:
+    def __init__(self, core, store, *, clocks: Clocks | None = None) -> None:
         self._core, self._store = core, store
+        self._clocks = clocks
+        self._clock_uncertain = False
         self._credentials = GeminiCredentials(store.path.parent)
         self._window: Window | None = None
         self._ready = False
@@ -309,6 +312,37 @@ class NativeBridge:
             return {'ok':True, 'completed':True}
         return {"ok":False, "error":"Unsupported sleep control"}
 
+    def _clock_command(self, data) -> dict:
+        """UI mutasyonunu aynı araçlara taşı; snapshot poll görev kaydı tüketmez.
+
+        Kabul sonrası timeout/unknown, işlemin yapılmadığı demek değildir.
+        Yeni mutasyon/model isteği yeniden açılışa kadar engellenir; snapshot
+        hâlâ okunabilir ama doğrulanmamış işlem otomatik tekrarlanmaz.
+        """
+        if (not self._ready or self._clocks is None or self._clock_uncertain):
+            return {'ok': False, 'unknown': self._clock_uncertain, 'error': 'Clocks unavailable or result unknown; reopen the app'}
+        if self._chat.busy:
+            return {'ok': False, 'error': 'Wait for the model reply before changing a clock from its buttons'}
+        if (type(data) is not dict or set(data) != {'version', 'request_id', 'tool', 'arguments'}
+                or type(data['version']) is not int or data['version'] != 1
+                or data['tool'] not in ('clocks.create', 'clocks.control')):
+            return {'ok': False, 'error': 'Expected a version 1 clock command'}
+        submitted = False
+        try:
+            task = self._core.submit(ToolRequest(request_id=data['request_id'], source='desktop',
+                principal='local-user', tool=data['tool'], arguments=data['arguments']))
+            submitted = True
+            finished = self._core.wait(task.task_id, timeout=8)
+            result = finished.result
+            if finished.status == TaskStatus.SUCCEEDED and result and result.verified:
+                return {'ok': True, 'completed': True, 'verified': True, 'data': result.data}
+            self._clock_uncertain = finished.status == TaskStatus.UNKNOWN
+            return {'ok': False, 'unknown': self._clock_uncertain,
+                'error': result.error.message if result and result.error else 'Clock action not confirmed'}
+        except Exception:
+            self._clock_uncertain = submitted
+            return {'ok': False, 'unknown': submitted, 'error': 'Clock action could not be confirmed; no automatic retry'}
+
     def event(self, name: str, data=None) -> dict:
         """UI isteğine kesin sonuç ver; gizli payload/hata ayrıntısını döndürme.
 
@@ -316,6 +350,15 @@ class NativeBridge:
         tekrar uygulamaz. save yalnız ayarları kaydeder ve geri okur. Desteksiz
         olay tamamlanmış gibi gösterilmez. Hata, UI emit tarafından görünür olur.
         """
+        if name == 'query_clocks':
+            if data is not None or not self._ready or self._clocks is None:
+                return {'ok': False, 'error': 'Clock view unavailable'}
+            # Sadece görünüm okuması: kayıtlı modele list aracı, mutasyona
+            # TaskManager gerekir; 500 ms UI poll kuyruğu doldurmamalıdır.
+            return {'ok': True, 'completed': True, 'verified': True, 'data': self._clocks.snapshot()}
+        if name == 'clock_command':
+            with self._lock:
+                return self._clock_command(data)
         if name == "query_catalog":
             # Anahtar yazımıyla katalog başlangıcı aynı kısa kilidi paylaşır;
             # eski hesaptan gelen liste yeni anahtarın listesi diye uygulanmaz.
@@ -367,6 +410,8 @@ class NativeBridge:
             # Ağ beklerken ayarlar, pencere ve diğer kısa API istekleri aynı
             # RLock arkasında beklememeli. TextChat kendi tek-tur kilidini tutar.
             with self._lock:
+                if self._clock_uncertain:
+                    return {"ok": False, "unknown": True, "error": "A clock result is unknown; reopen before a new message"}
                 if not self._ready:
                     return {"ok": False, "error": "Native startup is incomplete. Retry startup or reopen the app."}
                 if self._sleeping and name in {'live_audio', 'live_audio_start'}:

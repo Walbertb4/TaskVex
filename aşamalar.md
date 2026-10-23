@@ -5,7 +5,14 @@ okumadan neyin çalıştığını, neyin açık olduğunu ve sırada ne bulundu�
 Son güncelleme: 23 Ekim 2026. Mevcut aşama: **Aşama 5, uyku/ses kararlılığı**.
 Aşama 5 kapanmadı; Aşama 6 uygulamasına geçilmedi.
 
-**Güncel 5.R7.1:** Kullanıcının UI kontrol kapsamı shutdown ve çoklu timer/stopwatch.
+**Güncel 5.R7.2:** Çoklu timer/stopwatch tek backend sahibine bağlandı; model
+sonucu doğru sekme ve gerçek kayda odaklanıyor. 980 tam pytest + son 40 sayaç/profil,
+9 JS, app/hedefli Pyright 0 ve [native 10/10](docs/stage5-clocks-native.json) geçti.
+Önceki wake/shutdown kullanıcı kabulüyle `20c755c` commit'inde. Yeni sayaç dilimi
+23 Ekim kullanıcı kabulü başarılı; commit’e alınıyor. Son tweak'ler ardından debloat/kapanış
+bakımı yapılacak; **Aşama 5 şu an kapanmadı.**
+
+**Önceki 5.R7.1:** Kullanıcının UI kontrol kapsamı shutdown ve çoklu timer/stopwatch.
 Bu tur shutdown ortak araç/host hattına bağlandı; 957 pytest, 8 JS ve app/araç/native
 Pyright 0. [Tam native](docs/stage5-shutdown-native.json) 10/10 geçti. 5.R7.2 çoklu timer/stopwatch sonraki
 ayrı dilimdir. Kullanıcı önceki wake/shutdown dilimi için çalıştığını bildirdi;
@@ -134,11 +141,11 @@ Bu liste önceki parçalı uyku planlarının güncel karşılığıdır. Somut 
 | 5.R4 | Uyku kararını ortak araç hattına taşı; mimari sapmaları denetle | Yapılandırılmış araç + registry/policy/TaskManager, yanıt/çalma sonrası uygulama; regex niyet yolu yok; eski çağrı yeni geçiş üretmez; diğer sapmalar kanıtıyla kaydedilir | **Kullanıcı testleri başarılı; 5fb30d3 commit'i alındı, push yok** |
 | 5.R5 | Not seçimini yapılandırılmış araca taşı ve toplu silme ekle | Tekli/çoklu gerçek hedef, taze seçim, veri değişiminde ret, tek atomik yazı/geri okuma; belirsiz hedefe işlem yok; REST/Live aynı hat | **Uygulandı; 885 pytest + son 62 seçim/batch kontrolü, 7 JS, Pyright 0, [native 10/10](docs/stage5-note-selection-batch-native.json). Kullanıcı kabulü başarılı; commit `2120113`** |
 | 5.R6 | Seçilen notları toplu tamamla | Son N, tümü veya içerik grubunda yalnız done değişir; taze seçim, tam ID kümesi, snapshot, tek yazı ve geri okuma; REST/Live ortak hat | **Uygulandı; 929 pytest, 7 JS, app/not hattında Pyright 0; [native 10/10](docs/stage5-note-completion-native.json). Kullanıcı testleri tamamen başarılı; commit onayı alındı. Eski policy testlerinin 6 tip hatası STAGE5_MODEL.md’de kayıtlı** |
-| 5.F4 | Wake telaffuzu ve yanlış uyanma | Vex/Veks/Rex tek yerel tanımda; KWS ve Live aynı aileyi kullanır; özel isim korunur; X/ex/eks tek başına eklenmez | **Uygulandı; 947 pytest, 7 JS, app/wake Pyright 0; [native chat](docs/stage5-wake-variants-native-chat.json) ve 15/15 gerçek KWS/yapay ses. Fiziksel kullanıcı kabulü ve commit açık** |
+| 5.F4 | Wake telaffuzu ve yanlış uyanma | Vex/Veks/Rex tek yerel tanımda; KWS ve Live aynı aileyi kullanır; özel isim korunur; X/ex/eks tek başına eklenmez | **Uygulandı; 947 pytest, 7 JS, app/wake Pyright 0; [native chat](docs/stage5-wake-variants-native-chat.json) ve 15/15 gerçek KWS/yapay ses. Kullanıcı çalıştığını bildirdi; `20c755c` commit’inde** |
 | 5.F5 | Birleşik uzun kullanım ve fiziksel kabul | Kullanıcı bu kontrolü zaten yaptığını bildirdi; ayrı uygulama/test adımı istenmiyor | **Kullanıcı isteğiyle ayrı plandan çıkarıldı; genel regresyon gereksinimi sürer** |
-| 5.R7 | Mevcut UI uygulama kontrollerini Vex araçlarına bağla | Kapatma gibi istenen düğmelerin kapsamı/sahibi/izinleri belirlenir; yapılandırılmış araç ve mevcut host sahibi kullanılır, başarı ile istek kabulü ayrılır | **5.R7.1 shutdown bu tur; 5.R7.2 çoklu sayaç sonraki adım. Aşama 5 kapanmıyor** |
-| 5.R7.1 | Vex üzerinden uygulamayı kapatma | Kayıtlı araç yalnız istek kabul eder; başarılı yanıt/çalma sonrası mevcut Shutdown host yolu; Stop/eski tur/unknown kapatmaz; Windows kapanmaz | **Uygulandı; 957 pytest, 8 JS, app/araç/native Pyright 0, native 10/10. Kullanıcı çalıştığını bildirdi; commit onayı alındı** |
-| 5.R7.2 | Çoklu timer ve stopwatch | Gerçek kayıt ID'leriyle oluştur/listele/başlat/durdur/devam/sıfırla; UI/model tek durum sahibi; farklı sayaçlar birbirini ezmez | **Planlandı; mevcut UI tek timer/stopwatch, sahiplik devri sonraki adımda yapılacak** |
+| 5.R7 | Mevcut UI uygulama kontrollerini Vex araçlarına bağla | Kapatma gibi istenen düğmelerin kapsamı/sahibi/izinleri belirlenir; yapılandırılmış araç ve mevcut host sahibi kullanılır, başarı ile istek kabulü ayrılır | **5.R7.1 kabul edildi/20c755c; 5.R7.2 uygulandı, manuel kabul bekler. Son kullanıcı tweak’leri ardından debloat. Aşama 5 henüz kapanmıyor** |
+| 5.R7.1 | Vex üzerinden uygulamayı kapatma | Kayıtlı araç yalnız istek kabul eder; başarılı yanıt/çalma sonrası mevcut Shutdown host yolu; Stop/eski tur/unknown kapatmaz; Windows kapanmaz | **Uygulandı; 957 pytest, 8 JS, app/araç/native Pyright 0, native 10/10. Kullanıcı çalıştığını bildirdi; `20c755c` commit’inde** |
+| 5.R7.2 | Çoklu timer ve stopwatch | Gerçek kayıt ID'leriyle oluştur/listele/başlat/durdur/devam/sıfırla; UI/model tek durum sahibi; farklı sayaçlar birbirini ezmez | **Uygulandı; 980 tam pytest + son 40 sayaç/profil, 9 JS, app/hedefli Pyright 0 ve [native 10/10](docs/stage5-clocks-native.json). Gerçek hesap/manuel kabul ve yeni commit açık** |
 | 5.F6 | Kapanış bakımı ve belgeler | UI temizliği/debloat ölçülü; eski planlar güncel gibi görünmez; 256 görev sınırı ve restart replay sınırı için karar; README kapsamı doğru | Başladı; kapanmadı |
 
 5.R3 varyant takibi: “kalıcı uyku moduna geç” için “olarak” zorunluluğu
@@ -244,7 +251,7 @@ Tamamı planlıdır; alt adımlar uygulanırken yeniden daraltılacaktır.
 
 - 6.1 Kullanıcının çıkardığı bilgileri görme/düzeltme/unutma ve açık hafıza
   tercihi, Personalization altında. Şu anki pMem alanı çalışan hafıza değildir.
-- 6.2 Telemetri, sayaç, uygulama ve medya işlemlerini tek tek modele bağlama.
+- 6.2 Telemetri, uygulama ve medya işlemlerini tek tek modele bağlama. Timer/stopwatch 5.R7.2’de ele alındı.
 - 6.3 Dosya okuma; sonra kontrollü değiştirme ve doğrulama.
 - 6.4 Hava durumu/konum izni ve web arama.
 - 6.5 Google Drive, Calendar ve mail: OAuth, kapsam, yenileme ve tek işlemle kabul.

@@ -105,6 +105,8 @@ class ModelTools:
             raise ContractError("Model tool is not registered")
         self._core, self._principal, self._session_id = core, principal, session_id
         self._calls: dict[str, str] = {}
+        self._clock_ids: set[str] = set()
+        self._clock_reads: set[str] = set()
         self._selection: dict | None = None
         self._selection_blocked = False
         self._fresh_selections: set[str] = set()
@@ -119,6 +121,8 @@ class ModelTools:
         self._selection = None
         self._selection_blocked = False
         self._fresh_selections.clear()
+        self._clock_ids.clear()
+        self._clock_reads.clear()
 
     def _check_note_target(self, name: str, arguments: object) -> None:
         """Mutasyonu yalnız taze, belirsiz olmayan gerçek seçimle eşleştir.
@@ -169,6 +173,9 @@ class ModelTools:
         # Replay seçim kontrolünden önce tanınır: silinmiş notun eski başarılı
         # çağrısı yeniden listede bulunmayabilir. İçerik çakışmasını manager denetler.
         replay = call_id in self._calls.values()
+        if not replay and name == 'clocks.control' and (not isinstance(call['arguments'], dict)
+                or call['arguments'].get('id') not in self._clock_ids):
+            raise ContractError('Read clocks.list or create the clock in this turn; use an actual ID and clarify ambiguous targets')
         if not replay and name in {"notes.update", "notes.delete", "notes.delete_many", "notes.complete_many"}:
             self._check_note_target(name, call["arguments"])
         # Çiftin JSON kodlaması ('ab','c') ile ('a','bc') karışmasını önler.
@@ -180,6 +187,8 @@ class ModelTools:
         ))
         self._calls[task.task_id] = call_id
         if not replay:
+            if name in ('clocks.list', 'clocks.create'):
+                self._clock_reads.add(task.task_id)
             if name == 'notes.select':
                 self._selection = None
                 self._fresh_selections.clear()
@@ -208,6 +217,12 @@ class ModelTools:
             task = self._core.wait(task_id, timeout)
         except TimeoutError:
             task = self._core.get(task_id)
+        if task_id in self._clock_reads and task.status.terminal:
+            self._clock_reads.discard(task_id)
+            if task.result is not None and task.result.verified and task.status.value == 'succeeded' and task.request.tool == 'clocks.list':
+                self._clock_ids.update(c['id'] for c in task.result.to_dict()['data']['clocks'])
+            elif task.result is not None and task.result.verified and task.status.value == 'succeeded' and task.request.tool == 'clocks.create':
+                self._clock_ids.add(task.result.to_dict()['data']['clock']['id'])
         if task_id in self._fresh_selections and task.status.terminal:
             self._fresh_selections.discard(task_id)
             if task.result is not None and task.result.verified and task.status.value == 'succeeded':

@@ -1,6 +1,33 @@
 # TaskVex — Kullanıcının katılacağı gerçek kullanım kontrolleri
 
-## Güncel kısa test — 5.R7.1 Shutdown
+
+23 Ekim 2026: kullanıcı çoklu timer/stopwatch testlerini başarılı bildirdi.
+Bu onay önceki sayaç kapsamına aittir; sonraki görsel/ses tweak’lerini kapsamaz.
+
+## Güncel kısa test — 5.R7.2 çoklu timer/stopwatch
+
+Uygulamayı yeniden aç. Otomatik sesli komutların yanında düğmeleri de dene.
+
+1. “Çay için iki dakikalık timer başlat”, sonra “Makarna için üç dakikalık
+   başka timer başlat” de. Dropdown'da iki ayrı kayıt olsun, ikisi de ilerlesin.
+2. Timer sekmesi açıkken “Spor adında stopwatch başlat” de. Otomatik Stopwatch
+   sekmesi ve Spor kaydı seçilsin. Bir tane daha açtır; ilk kayıt korunmalı.
+3. “Çay timer'ını durdur”, “Spor stopwatch'ını durdur”, “Spor'a devam et”,
+   “Spor stopwatch'ını sıfırla” de. Her işlem doğru sekme/ID'ye odaklansın;
+   durdur/devam süreyi korusun, reset stopwatch'ı durdurup sıfıra getirsin.
+4. Dropdown'dan diğer kaydı seç; UI pause/resume/reset düğmelerini dene.
+   Vex'e listelettir: aynı kayıtların durumu doğru gelsin; ikincisi etkilenmesin.
+5. 3–5 saniyelik bir timer başlatıp tek bitme alarmını dene. Sleep/Wake veya
+   Disconnect süreleri sıfırlamamalı. Uygulamayı kapat/aç ise liste boş başlamalı.
+
+Native New, yeni hazır kayıt üretir. Timer Set seçili timer süresini değiştirip
+hazır duruma sıfırlar; ID korunur. Hiç timer yoksa ilk hazır timer oluşturulur.
+Diğer kayıtları etkilemez. Sayaç silme veya kalıcılık bu adımın kapsamı değildir;
+özellikle sayaç silme henüz yoktur. Belirsiz hedefte gerçek ID ile açıklama ver.
+Bu dilimden sonra kullanıcının belirteceği son küçük tweak'ler ve debloat var;
+Aşama 5 şu an kapatılmadı. Gerçek API/donanım kabulü bu kısa testtedir.
+
+## Önceki kısa test — 5.R7.1 Shutdown
 
 1. Uygulamayı yeniden aç. “Vex, kendini kapat” de veya “Close TaskVex” yaz.
    Kısa yanıtı/sesi bittikten sonra pencere kapansın; Windows açık kalsın.

@@ -3,6 +3,7 @@
  */
 
 import { sfx } from './sfx.js';
+import {nativeClocksActive,renderNativeClocks,setClockMode,initNativeClocks,connectNativeClocks,createNativeClock,controlNativeClock,hasNativeClock} from './clocks.js';
 
 let tmr = null;
 let rem = 0;
@@ -33,6 +34,7 @@ const formatTime = (s) =>
   String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
 
 function tmRender() {
+  if(nativeClocksActive()){renderNativeClocks();return;}
   const b = document.getElementById('tmBlk') || document.getElementById('w_timer');
   if (!b) return;
 
@@ -66,6 +68,7 @@ function tmRender() {
 
 export function showTimerTab(isTimer) {
   tmMode = isTimer ? 'timer' : 'stopwatch';
+  if(nativeClocksActive())setClockMode(isTimer);
 
   const tabTmB = document.getElementById('tabTmB');
   const tabSwB = document.getElementById('tabSwB');
@@ -107,6 +110,11 @@ function tmStep() {
 }
 
 export function startTimer(s) {
+  if(nativeClocksActive()){
+    if(s===0)return controlNativeClock('timer','reset');
+    if(s!=null)return createNativeClock('timer',s,true);
+    return hasNativeClock('timer')?controlNativeClock('timer','start'):createNativeClock('timer',tmReadInputs(),true);
+  }
   if (s != null && (typeof s !== 'number' || !Number.isFinite(s) || s < 0)) return false;
   if (s === 0) { resetTimer(); return true; }
   clearInterval(tmr);
@@ -125,6 +133,7 @@ export function startTimer(s) {
 }
 
 export function pauseTimer() {
+  if(nativeClocksActive())return controlNativeClock('timer','pause');
   sfx.blip();
   if (tmState === 'run') {
     tmRunning = false;
@@ -135,11 +144,13 @@ export function pauseTimer() {
 }
 
 export function resumeTimer() {
+  if(nativeClocksActive())return controlNativeClock('timer','start');
   sfx.start();
   if (rem > 0) startTimer();
 }
 
 export function resetTimer() {
+  if(nativeClocksActive())return controlNativeClock('timer','reset');
   sfx.del();
   clearInterval(tmr);
   tmRunning = false;
@@ -158,6 +169,7 @@ function swStep() {
 }
 
 export function startStopwatch() {
+  if(nativeClocksActive())return hasNativeClock('stopwatch')?controlNativeClock('stopwatch','start'):createNativeClock('stopwatch',null,true);
   showTimerTab(false);
   if (swRunning) return;
   sfx.start();
@@ -170,6 +182,7 @@ export function startStopwatch() {
 }
 
 export function pauseStopwatch() {
+  if(nativeClocksActive())return controlNativeClock('stopwatch','pause');
   sfx.blip();
   if (swRunning) {
     swAcc += Date.now() - swT0;
@@ -181,11 +194,13 @@ export function pauseStopwatch() {
 }
 
 export function resumeStopwatch() {
+  if(nativeClocksActive())return controlNativeClock('stopwatch','start');
   if (swRunning) return;
   startStopwatch();
 }
 
 export function resetStopwatch() {
+  if(nativeClocksActive())return controlNativeClock('stopwatch','reset');
   sfx.del();
   swRunning = false;
   clearInterval(swTimer);
@@ -197,6 +212,7 @@ export function resetStopwatch() {
 
 export function initTimers(options = {}) {
   onTimerFinishedCb = options.onTimerFinished || null;
+  initNativeClocks({showTab:showTimerTab,onTimerFinished:onTimerFinishedCb});
 
   const tabTmB = document.getElementById('tabTmB');
   const tabSwB = document.getElementById('tabSwB');
@@ -213,6 +229,7 @@ export function initTimers(options = {}) {
   const tmSetB = document.getElementById('tmSetB');
   if (tmSetB) {
     tmSetB.addEventListener('click', () => {
+      if(nativeClocksActive()){void (hasNativeClock('timer')?controlNativeClock('timer','reset',tmReadInputs()):createNativeClock('timer',tmReadInputs(),false));return;}
       sfx.add();
       clearInterval(tmr);
       tmRunning = false;
@@ -229,6 +246,7 @@ export function initTimers(options = {}) {
   const tmStartB = document.getElementById('tmStartB');
   if (tmStartB) {
     tmStartB.addEventListener('click', () => {
+      if(nativeClocksActive()){void startTimer();return;}
       if (rem <= 0) rem = total = tmReadInputs();
       if (rem <= 0) { sfx.bad(); return; }
       sfx.start();
@@ -269,4 +287,10 @@ export function initTimers(options = {}) {
   window.resetStopwatch = resetStopwatch;
 
   showTimerTab(true);
+}
+
+/** Native sahipliğine geçerken tarayıcı-only eski sayaç motorunu durdur. */
+export async function connectTimers(){
+  clearInterval(tmr);clearInterval(swTimer);tmRunning=swRunning=false;
+  await connectNativeClocks();
 }

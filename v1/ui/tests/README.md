@@ -6,7 +6,14 @@ Live ses/mikrofon modülleri için cihaz ve hesap açmayan kontroller (v1 içind
 node ui/tests/live-audio.mjs
 node ui/tests/live-mic.mjs
 node ui/tests/note-timestamps.mjs
+node ui/tests/shutdown.mjs
+node ui/tests/clocks.mjs
 ```
+
+clocks.mjs; model sonucu ile otomatik sekme/ID seçimi, eski snapshot, UI mutasyonu,
+alarm tekrar önleme, unknown, native sahiplik latch'i ve ayrı tarayıcı fallback'ini
+sınar. Gerçek Python saat/araç hattı tests/test_clocks.py, WebView2 entegrasyonu
+ise tests/native_smoke.py içindedir. Hiçbiri gerçek API hesabı gerektirmez.
 
 Mikrofon testi izin reddi/geç izin, iptal, 15 saniye/boyut sınırı, PCM
 dönüşümü ve kaynak kapanışını kapsar. Gerçek MediaRecorder/WebM decoder ve

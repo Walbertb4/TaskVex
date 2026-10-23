@@ -51,6 +51,10 @@
         <button class="chip on" id="tabTmB" title="Countdown timer">Timer</button>
         <button class="chip" id="tabSwB" title="Stopwatch">Stopwatch</button>
       </div>
+      <div id="clockControls" hidden>
+        <div class="tmin"><select id="clockSelect" aria-label="Select timer or stopwatch" style="min-width:0;max-width:170px"></select><button class="chip" id="clockNew" title="Create another clock">New</button></div>
+        <div class="sub" id="clockStatus" role="status"></div>
+      </div>
       <div class="tmd">
         <div class="tmring">
           <svg viewBox="0 0 64 64"><circle class="orb" cx="32" cy="32" r="30"/><circle class="trk" cx="32" cy="32" r="26"/><circle class="arc" id="tmArc" cx="32" cy="32" r="26"/></svg>

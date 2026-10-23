@@ -1,6 +1,31 @@
 # TaskVex — Mimari ve geliştirme rehberi
 
-## Güncel uygulama — 5.R7.1 Vex üzerinden Shutdown
+
+23 Ekim 2026: kullanıcı çoklu timer/stopwatch testlerini başarılı bildirdi.
+Bu onay önceki sayaç kapsamına aittir; sonraki görsel/ses tweak’lerini kapsamaz.
+
+## Güncel uygulama — 5.R7.2 çoklu timer/stopwatch
+
+`app/tools/local/clocks.py::Clocks` native sayaçların tek RAM sahibidir. main
+aynı örneği bootstrap'a (kayıtlı araçlar) ve bridge'e (görünüm) enjekte eder.
+clocks.create/list/control; ModelTools → registry/policy → TaskManager hattında,
+clocks.read/write yetkileriyle çalışır. UI mutasyonları da aynı araçlara gider.
+Monoton saatten elapsed/remaining hesaplanır; ikinci scheduler/worker yoktur.
+
+500 ms native görünüm sorgusu aynı nesnenin snapshot'ını okur, görev kaydı
+açmaz. Böylece mevcut 256 görev kapasitesi poll yüzünden dolmaz. UI model
+sonucundaki gerçek clock ID'sine odaklanır; timer/stopwatch sekmesini otomatik
+seçer. Geç snapshot süreyi geri alamaz. Native sahipliği başladıktan sonra
+köprü kaybı yerel motoru tekrar açmaz. Hiç backend olmayan tarayıcı modunda
+önceki tekli UI sayaçları korunur; native ve yerel motor birlikte çalışmaz.
+
+Kayıtlar uygulama kapanınca biter; kalıcılık/scheduler devri bu adımda yoktur.
+Pause zamanı korur, start devam ettirir, reset durdurur ve timer ayarlı süresine,
+stopwatch sıfıra döner. Doğrulanmış işlem Stop ile geri alınmaz; unknown'da
+tekrar yoktur. Önceki wake/shutdown kullanıcı onayıyla `20c755c` commit'inde.
+Yeni dilim manuel kabul bekler; Aşama 5 kapanmıyor. [İlerleme](aşamalar.md).
+
+## Önceki uygulama — 5.R7.1 Vex üzerinden Shutdown
 
 `assistant.request_shutdown` yalnız TaskVex kapatma isteğidir; Windows kapanışı
 ve restart değildir. ModelTools → registry/policy → TaskManager sonucu yalnız

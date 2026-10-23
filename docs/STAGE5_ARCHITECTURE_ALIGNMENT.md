@@ -11,17 +11,26 @@ diğer bulguların uygulaması bu adımda açılmadı.
 | 5.R5'te taşındı — kullanıcı kabul etti | `model_tools.py::_check_note_target` içindeki son not ve içerik filtresi cümle kalıpları kaldırıldı | Kayıtlı `notes.select` gerçek ID/cardinality/snapshot üretir; tekli mutasyon ve atomik `notes.delete_many` aynı core hattını kullanır. 5.R6 `notes.complete_many` ile aynı tam-grup tamamlamayı ekler; metin/ID/tarih korunur. Belirsizlik, taze seçim, tarih, Stop/unknown/replay koruması sürer. |
 | Açık — rutin/skill yürütme entegrasyonu | `ui/js/routines.js::runRoutine` ve `skills.js::runSkill` desteklenmeyen `run_routine/run_skill` olaylarını gönderiyor; bridge bunları not_implemented olarak reddediyor | Registry/policy/TaskManager yürütücüsü eklenmeden çalışır özellik sayma. Timeline'daki “Routine started” / “Skill run” kayıtları gerçek kabulden önce üretiliyor; kabul ile başlama ayrılmalı. |
 | Açık — rutin sahiplik devri | `routines.js::initRoutines` içinde UI'a ait 15 s aralıklı zaman denetimi ve app/Wi-Fi tetikleme girişi var | Backend scheduler eklendiğinde aynı anda iki tetikleyici bırakma; UI scheduler'ı kapat ve tek yürütme sahibine geçir. Şu an ikinci backend scheduler yok. |
-| Planlı eksik kapsam | Rutin/skill tanımları UI store/localStorage'da saklanıyor; native `validate_settings` bunları settings.json'a yazmıyor. Sayaç/kronometre UI'da çalışıyor; bunlar henüz model araç kataloğunda yok | Modele açıldıklarında yapılandırılmış araç/tek veri sahibi kullan. Generic save'e ikinci mutasyon bağlama. Yerel UI işlevini bugün bozma. |
+| Planlı eksik kapsam | Rutin/skill tanımları UI store/localStorage'da saklanıyor; native `validate_settings` bunları settings.json'a yazmıyor. Sayaç/kronometre 5.R7.2’de tek backend Clocks sahibine ve clocks.create/list/control araçlarına taşındı; tarayıcı-only tekli görünüm ayrı ortamda korunur | Modele açıldıklarında yapılandırılmış araç/tek veri sahibi kullan. Generic save'e ikinci mutasyon bağlama. Yerel UI işlevini bugün bozma. |
 | Planlı eksik bağlantılar | `settings.py` profil pMem/pSys/pGreet/pBr ve conn.voice alanlarını saklayabiliyor; `model_instruction.py` yalnız pLang/pIns'i model talimatına bağlıyor. pWake yerel motorda, pSc UI kısayollarında kullanılıyor. Live setup ses seçimi geçmiyor; REST TTS Kore kullanıyor | Kaydedilebilir alanı çalışır özellik sayma. Kullanıcı hafızası ve ses/persona tercihleri aşamaları geldiğinde mevcut sahiplerine bağlanmalı; gizli veya bütün profil alanları kendiliğinden modele aktarılmamalı. |
 | Planlı eksik kapsam | Hava durumu, Google, Telegram, Discord vb. için çalışan core aracı henüz yok | Bunlar dil değiştirerek çalışmaz. Aşamaları geldiğinde sağlayıcı adaptörü ve ortak araç/izin hattı eklenmeli. |
+
+## 5.R7.2 eklemesi — çoklu timer/stopwatch
+
+Native tek Clocks örneği bootstrap ve bridge tarafından paylaşılır. Model ve
+UI mutasyonları kayıtlı clocks araçları/policy/TaskManager hattındadır. Salt
+host görünüm okuması bu nesnenin snapshot'ıdır; her UI tiki görev açmaz.
+Yerel fallback motoru native başladığında durur; köprü kaybıyla tekrar açılmaz.
+UI id ile kayıt seçer, model işlemi doğru sekmeye geçer. Yeni framework,
+servis worker veya kalıcı veri otoritesi yoktur. Uygulama kapanışı saatleri bitirir.
 
 ## 5.R7.1 eklemesi — uygulama kapanışı
 
 assistant.request_shutdown aynı ModelTools/registry/policy/TaskManager hattındadır.
 Core pencere kapatmaz; yanıt/çalma sonrası uygulama mevcut Shutdown host sahibini
 çağırır. Düğmeyle ikinci kapanış yolu kurulmadı. Stop/eski tur/unknown/replay
-korunur; OS shutdown yetkisi yoktur. Çoklu timer/stopwatch sonraki 5.R7.2'de
-tek durum sahibiyle bağlanacak; bugün UI'ın yerel tekli sayaçları çalışır.
+korunur; OS shutdown yetkisi yoktur. 5.R7.1 sırasında sayaçlar sonraki dilimdi; 5.R7.2’de yukarıda açıklanan
+tek Clocks sahibine taşındı.
 
 ## Korunan doğru sınırlar
 

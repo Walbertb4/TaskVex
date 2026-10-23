@@ -1,6 +1,72 @@
 # Aşama 5 — Model, araç çağrıları ve ses
 
-## Güncel 5.R7.1 — modelden TaskVex kapatma
+
+23 Ekim 2026: kullanıcı çoklu timer/stopwatch testlerini başarılı bildirdi.
+Bu onay önceki sayaç kapsamına aittir; sonraki görsel/ses tweak’lerini kapsamaz.
+
+## Güncel 5.R7.2 — çoklu timer/stopwatch ve otomatik sekme
+
+Önceki wake/shutdown dilimi kullanıcı onayıyla `20c755c` commit'ine alındı.
+Bu dilimde native sayaç otoritesi tek RAM Clocks nesnesine devredildi. main aynı
+nesneyi bootstrap ve NativeBridge'e enjekte eder. UI ve model create/control
+mutasyonları aynı registry/policy/TaskManager hattına girer. Yeni framework,
+worker/scheduler, disk dosyası veya bağımlılık eklenmedi.
+
+Kayıtlı araçlar clocks.create/list/control'dür; ayrı clocks.read/write izinleri
+vardır. Gerçek UUID, kind, etiket, ayarlı süre, durum ve generation korunur.
+Birden çok timer ve stopwatch birbirini ezmez. Pause zamanı tutar; start devam
+ettirir; reset durdurur ve timer ayarlı süreye, stopwatch sıfıra döner. Model
+mevcut kontrol için bu turdaki yeni list/create sonucunun ID'sini kullanır;
+eski okuma/replay yeni hedef kanıtı üretmez. Hedef belirsizse modelden açıklama
+istenmesi talimatı vardır; kullanıcı cümlesini eşleyen özel niyet kodu yoktur.
+
+Monoton saat tek sahibi tarafından hesaplanır. Native UI 500 ms salt snapshot
+sorgular; her tik TaskManager kaydı açmaz, mevcut 256 kayıt kapasitesini poll ile
+doldurmaz. UI sonucu sampled_at ile sıralar; eski sonuç daha yeni zamanı ezmez.
+Modelin doğrulanmış create/control sonucu gerçek ID'ye ve ilgili sekmeye odaklar.
+Timer açıkken stopwatch açtırma ve tersi, REST/Live native testinde doğrulandı.
+Dropdown/New ve mevcut düğmeler aynı kayıtlara gider. Native başladıktan sonra
+bridge kaybı ikinci yerel motor açmaz; hiç native başlamamış browser-only modun
+eski tekli motoru korunur. Bu nedenle eski timers.js fallback'i bu tur silinmedi.
+
+Başarı RAM durumundan geri okunur. Stop öncesi iptal, geç Stop'ta gerçek sonucun
+korunması, çağrı tekrarı, eksik ID ve unknown kuralları korunur. UI'da unknown
+mutasyonlar yeniden açılışa kadar kilitlidir; salt okuma mutasyon yetkisi değildir. Model turu ve belirsizlik boyunca mevcut sohbet kilidi UI
+sayaç mutasyonlarını da engeller; süreler/okuma doğal olarak devam eder.
+SFX tick/alarm ve bitme bildirimi id/generation ile tekrar etmez; ilk açılışta eski
+finished kayda alarm yoktur. Alarmlar UI çalışmasına bağlıdır; OS alarmı değildir.
+Set düğmesi reset ile opsiyonel duration_seconds kullanarak seçili timer’ın
+süresini değiştirir; ID ve diğer kayıtlar korunur. New ise yeni kayıt oluşturur.
+Kayıtlar uygulama kapanınca biter. Kalıcılık ve sayaç silme bu dilimde yoktur.
+
+Doğrulama:
+
+- Son tam regresyon **980 pytest** geçti; pause/deadline yarışı, Set ile aynı
+  ID’de süre ayarı ve 20 sayaç testi buna dahildir. Son **40 sayaç/profil testi**
+  ayrıca doğrulandı. Sahiplik, bağımsız kayıtlar,
+  monoton süre, reset/resume, replay/Stop ve UI unknown sınırları denetlendi.
+- **9 JS süiti** geçti; yeni clocks testi otomatik sekme/ID, geç snapshot, gerçek
+  UI komut payload'ı, alarm, unknown, native latch ve ayrı browser fallback içerir.
+- app, yeni saat testleri ve native runner için **Pyright 0 hata/uyarı**.
+- [Tam native kontrol](stage5-clocks-native.json) **10/10 geçti**. Her REST/Live
+  modunda iki timer + bir stopwatch, diğer sekmeden otomatik doğru ID/sekme,
+  model pause/reset, UI start/pause/resume/reset, Set ile aynı timer ID’sinde
+  süre ayarı ve toplam altı kaydın korunması
+  doğrulandı; outbound settings save yankısı yoktu. Önceki shutdown, uyku,
+  mikrofon, not, bilinmeyen sonuç ve kaynak temizliği regresyonları da geçti.
+- İlk tam koşuda maksimum 16000 karakter kişisel talimatla toplam sistem metni
+  20000 sınırını aştı (4 profil kontrolü). Yeni tekrar eden saat açıklaması
+  kısaltıldı; sınır yükseltilmedi veya kullanıcı metni kırpılmadı. Tekrar tam koşu
+  geçti. İlk yeni tip kontrolünde duration daraltması ve testte isim çakışması;
+  JS fake DOM'da log stub'ı eksikti; bunlar düzeltilip tekrar doğrulandı.
+
+Gerçek hesap, ücretli API, kullanıcı notu veya fiziksel mikrofon kullanılmadı.
+Gerçek modelin yeni şemayı ve kullanıcı ifadelerini seçmesi USER_ACCEPTANCE.md
+kısa testini bekler. Yeni commit manuel onaydan sonra; Aşama 5 kapanmadı.
+Son 1–2 kullanıcı tweak'i ve kapsamlı olmayan hedefli debloat/kapanış bakımı
+önümüzdeki adımlar. Kalıcı kullanıcı hafızası/dış entegrasyon başlatılmadı.
+
+## Önceki 5.R7.1 — modelden TaskVex kapatma
 
 Kullanıcının verdiği kapsam iki dilime ayrıldı: bu tur shutdown, sonraki 5.R7.2
 çoklu timer/stopwatch. Mevcut timer UI'ı yalnız birer yerel örnek tuttuğu için,

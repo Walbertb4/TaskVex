@@ -11,6 +11,11 @@ yerel not aktarımını onaylayın; iptalde eski notlar değişmez. Sonraki aç�
 backend kayıtları okunur. Tarayıcı-only yerel mod korunur. [Not devri ve güncel
 kabul sonuçları](../../docs/STAGE3_NOTES.md) aktarım, yedek ve hata sınırlarını açıklar.
 
+Native timer/stopwatch artık çokludur: backend Clocks tek durum sahibidir;
+UI dropdown/New ve Vex aynı kayıtlı araçları kullanır. Model işlemi doğru sekmeyi
+otomatik seçer. Kayıtlar yalnız uygulama açıkken RAM'dedir. Native başladıktan
+sonra köprü kaybı ikinci yerel sayaç motoru açmaz. Tarayıcı-only tekli mod korunur.
+
 ## Açılış
 
 Test edilen yöntem: klasörü yerel HTTP üzerinden sunmak ve Edge/Chromium ile açmak. Testler Node HTTP sunucusu ve Playwright ile çalıştırıldı. ES modülleri için HTML dosyasını doğrudan file:// ile açmak yerine HTTP kullanın. Harici font isteği başarısız olursa sistem fontu kullanılır; testlerde dış ağ istekleri engellendi.
@@ -29,7 +34,7 @@ Test edilen yöntem: klasörü yerel HTTP üzerinden sunmak ve Edge/Chromium ile
 | connections.js | Kataloglar, telemetri/ağ/medya/takvim görünümü ve konum isteği |
 | panels.js | Modallar, komut paleti, drawer ve timeline |
 | reactor.js | Görsel durum ve animasyon |
-| timers.js / sfx.js | Yerel sayaç/kronometre ve ses efektleri |
+| timers.js / clocks.js / sfx.js | Native backend sayaç görünümü/komutları; yalnız tarayıcıda tekli yerel motor; ses efektleri |
 
 Backend setter'ları UI'a veri uygular; kullanıcı komutu üretmez. Koleksiyonlar elle `settings.store` üzerinden değiştirilmemelidir.
 
