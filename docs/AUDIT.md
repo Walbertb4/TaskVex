@@ -2,7 +2,7 @@
 
 Bu rapor mevcut kodun sınırlarını ve yapılan temizliği açıklar. “Gereksiz hiçbir
 satır kalmadı” veya “artık bug yok” garantisi değildir. Güncel işler
-[PLAN](../PLAN.md), değişiklik kaydı [CHANGELOG](../CHANGELOG.md) içindedir.
+[PLAN](PLAN.md), değişiklik kaydı [CHANGELOG](CHANGELOG.md) içindedir.
 
 ## Kapsam ve yöntem
 
@@ -60,7 +60,7 @@ doğal dil router'ı değildir. Kaldırılan shortcut/scheduler yolları bu ayr�
 |---|---|---|
 | P1 | app/tasks/manager.py: capacity=256, terminal kayıtlar da tutulur. Yeni kimlikler dolunca reddedilir. | Uzun açık kullanım için gerçek ürün sınırı. Sessiz silmek replay korumasını bozar; kalıcı dedup/retention tasarımı ayrı kapanış işi. |
 | P1 | TaskManager ve model çağrı replay kayıtları RAM'de. | Restart sonrası kalıcı exactly-once yok. Gelecekte dış yan etkili entegrasyondan önce journal/recovery gerekir. Otomatik eski task replay eklenmedi. |
-| P1 | json_store.py atomik replace kullanır; main.py ikinci instance'ı engellemez. | Aynı veri kökünde iki süreç lost-update oluşturabilir. Dağıtımdan önce tek instance veya süreçler arası kilit gerekir. |
+| P1 | json_store.py atomik replace kullanır; native main artık veri kökü OS kilidini tutar. | 5.F7.1 native aynı-profil çakışmasını kapatır. Host dışı scriptler için JsonStore tek başına kilit sağlamaz. |
 | P2 | main.py kapanışta bridge._chat._live.close gibi private sınırları bilir. | İkinci socket sahibi yok, fakat host/bridge bağlaşımı var. Sonraki lifecycle değişiminde mevcut sahibin public kapanış noktası kullanılmalı; yeni manager kurulmamalı. |
 | P2 | Skill/rutin tanımları localStorage; core yürütme ve backend scheduler yok. | Bugün editör kapsamı. İleri entegrasyon tek backend sahipliğinde yapılmalı. Yerel zamanlayıcı ile geçici yürütme kurulmadı. |
 | P2 | Google/Telegram/Discord/GUI henüz yok; harici veri taint/kanal principal/risk onay sistemi tamam değil. | Bunlar bugünkü sınırlı yerel araçlara varmış gibi yazılmıyor. Dış içerik ve riskli eylemler açılmadan önce zorunlu. |

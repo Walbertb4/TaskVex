@@ -1,7 +1,7 @@
 # TaskVex v1 geliştirme ve çalıştırma
 
 Bu rehber mevcut uygulamanın açılışını anlatır; ilerleme günlüğü değildir.
-[Mimari](../ARCHITECTURE.md), [plan](../PLAN.md), [sözleşme](../docs/UI_BACKEND_CONTRACT.md).
+[Mimari](../docs/ARCHITECTURE.md), [plan](../docs/PLAN.md), [sözleşme](../docs/UI_BACKEND_CONTRACT.md).
 
 ## Ortam
 
@@ -38,14 +38,14 @@ Git'e girmez. Referans projenin requirements dosyasını buraya kurmayın.
 Bu komut upstream'den sabit/hash doğrulanan modeli indirir; açılış sessiz indirme
 yapmaz. Ağ ve indirme gerektirir. Model cache'i TaskVex veri kökünde, repo dışındadır.
 Vex/Veks/Rex ailesi ve desteklenen İngilizce sözlük sözcükleri kullanılır. Ağırlıkların
-paketleme/lisans sınırı [üçüncü taraf notlarında](../THIRD_PARTY_NOTES.md) açıktır.
+paketleme/lisans sınırı [üçüncü taraf notlarında](../docs/THIRD_PARTY_NOTES.md) açıktır.
 
 ## Veri
 
 Varsayılan `%LOCALAPPDATA%\TaskVex`; izole ortam için TASKVEX_HOME. settings.json
 izinli tercihleri, notes.json notları saklar. Sırlar Windows Credentials'dadır.
-Skill/rutin tanımları localStorage; sayaç ve sohbet hafızası RAM'dir. Birden fazla
-TaskVex örneğiyle aynı veri kökünü eşzamanlı kullanmayın; süreçler arası kilit yoktur.
+Skill/rutin tanımları localStorage; sayaç ve sohbet hafızası RAM'dir. Aynı veri kökünde ikinci native TaskVex örneği OS kilidiyle engellenir.
+Ayrı veri profilleri açılabilir; doğrudan core/script yazıcıları host kilidini atlamamalıdır.
 
 ## Doğrulama
 

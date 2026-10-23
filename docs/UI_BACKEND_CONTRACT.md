@@ -1,7 +1,7 @@
 # UI / backend sözleşmesi
 
 Bu belge çalışan masaüstü sınırını tarif eder; planlı API taslakları sözleşme değildir.
-Kod sahipleri [mimaride](../ARCHITECTURE.md), açık işler [planda](../PLAN.md) bulunur.
+Kod sahipleri [mimaride](ARCHITECTURE.md), açık işler [planda](PLAN.md) bulunur.
 
 ## Taşıma ve hazır olma
 

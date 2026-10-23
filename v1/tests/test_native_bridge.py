@@ -566,6 +566,9 @@ def test_main_restart_launches_trusted_command_after_cleanup(monkeypatch, debug)
 
     def launch(command, **kwargs):
         assert not captured["api"]._core._worker.is_alive()
+        from app.storage.instance_lock import SingleInstance
+        with SingleInstance(entry.get_data_home()):
+            pass  # Restart, eski kilit bırakılmadan yeni süreç açamaz.
         launched.append((command, kwargs))
 
     monkeypatch.setattr(webview, "create_window", create)

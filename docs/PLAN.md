@@ -3,7 +3,9 @@
 ## Şimdi: 5.F6 bakım ve Aşama 5 kapanış incelemesi
 
 Önceki 5.R8.6 kullanıcı kabulü başarılı, 526bfed commit’inde (push yok).
-Bu dilim uygulandı ve otomatik doğrulandı; manuel kabul ve yeni commit henüz yok.
+5.F6 bakımı kullanıcı tarafından kabul edildi; ea8aa15 commit’inde (push yok).
+5.F7.1 tek-instance dilimi uygulandı ve otomatik doğrulandı. Kullanıcı devam ve
+GitHub’a push onayı verdi; ayrı fiziksel test sonucu bildirilmedi.
 
 - [x] İlk envanter ve onaylanan önceki adımın commit’i.
 - [x] Tarihsel belgeleri docs/eski altına özgün yollarıyla taşı.
@@ -13,7 +15,7 @@ Bu dilim uygulandı ve otomatik doğrulandı; manuel kabul ve yeni commit henüz
 - [x] Güncel mimari/plan/changelog/sözleşme/README’ler; arşiv hash kaydı.
 - [x] 996 pytest, 9 JS suite, 4 browser grubu, 10 native aşama ve hedefli Pyright 0.
 - [x] Arşiv hash, güncel belge linkleri ve açık sınır raporu: docs/AUDIT.md.
-- [ ] Kullanıcı kabulü → commit; Aşama 5 kapanış kararı.
+- [x] Bakım kullanıcı kabulü → ea8aa15 commit. Aşama 5 kapanışı aşağıdaki açık işleri bekler.
 
 Debloat güvenlik/doğrulama/Stop korumalarını kaldırmaz. REST ve bağımsız tarayıcı
 UI modu korunur. Bekleyen skill/rutin tanımları silinmez. Gelecekteki özellikler
@@ -49,7 +51,8 @@ adım numaraları docs/eski/aşamalar.md içinde tarihsel olarak korunur.
   retention'ını replay garantisiyle birlikte tasarlamak; sessiz evict yasak.
 - Restart sonrası idempotency/journal, dış yan etkili entegrasyonlardan önce
   zorunlu. Bugünkü süreç içi koruma kalıcı garanti olarak sunulamaz.
-- Çoklu instance kilidi ve üçüncü taraf/varlık paketleme lisansları dağıtım öncesi.
+- Native tek-instance kilidi 5.F7.1’de uygulandı; doğrudan script yazıcıları aynı
+  host kilidi sözleşmesini kullanmalı. Üçüncü taraf/varlık paketleme lisansları dağıtım öncesi.
 - 5.F6 için kısa kullanıcı kabulü → commit; bu koşullar çözülmüş sayılmadan
   Aşama 5 için sınırsız/üretime hazır iddiası yok. Açık sınırla geliştirmeye
   devam kararı ve sonraki tek adım kullanıcıyla belirlenir.
@@ -76,4 +79,38 @@ Henüz uygulanmadılar; her promptta istenen tek dilim ayrıca daraltılır.
 | 8.2 | Rutin CRUD/tetik ID'si; çift çalışma ile bildirim ayrımı |
 | 8.3 | Kullanıcının açtığı arka plan servisleri ve sınırlı/maskeli log |
 | 8.4 | Şema geçişi, çökme kurtarma ve güvenli güncelleme |
-| 8.5 | Paketleme, tek instance, lisans/SBOM ve temiz kurulum kabulü |
+| 8.5 | Paketleme, tek-instance entegrasyon kabulü, lisans/SBOM ve temiz kurulum |
+
+
+## 5.F7 — İlk üç denetim bulgusunun kapatılması
+
+Sıra bağımlılığa göre seçildi; kapsam her promptta bir dilimdir.
+
+| Adım | Kapsam | Durum |
+|---|---|---|
+| 5.F7.1 | Aynı veri kökü için OS tek-instance kilidi; crash/exception/restart/ayrı profil | Uygulandı: 1000 pytest, 10 native aşama, Pyright 0; [kanıt](reports/instance-checks.json). Kullanıcı devam/commit/push onayı verdi; ayrı fiziksel test raporu yok |
+| 5.F7.2 | Kalıcı görev/istek günlüğü; restart sonrası eski tamamlanmış veya belirsiz işlem tekrar yürütülmez | Sonraki adım; henüz uygulanmadı |
+| 5.F7.3 | Kalıcı dedup korunarak terminal kayıt retention; 256 sınırı ömür boyu toplam değil aktif işler için | 5.F7.2 sonrası; henüz uygulanmadı |
+| 5.F8 | Ses/kişiselleştirme sabitleri ve Settings altında Vex yanıt ses seviyesi | Kullanıcı istedi; ilk üç bulgudan sonra daraltılacak, henüz uygulanmadı |
+
+5.F7.1 kilidi native host içindir; bağımsız script/core yazıcıları henüz genel
+bir süreçler arası transaction garantisi kazanmaz. Yeni kalıcı günlük bu sahipliği
+kullanmalı; lock dosyasını silerek “temizleme” yapılmamalıdır.
+
+
+### Bir sonraki oturum: 5.F7.2 → 5.F7.3
+
+- **5.F7.2 — kalıcı görev günlüğü:** aynı veri kökünün tek sahipliği altında
+  request kimliği/parmak izi ve yürütme durumunu kalıcı tut. Tamamlanan aynı
+  istek tekrar çalışmasın; kimlik/içerik çakışması reddedilsin. Crash sırasında
+  başlamış ama sonucu bilinmeyen iş unknown kalsın, otomatik tekrar yapılmasın.
+  Günlük yazılamaz/bozulursa yan etkiyi güvenli biçimde engelle; geçici veriyle
+  ayrı süreç/restart/crash testleri ve mevcut Stop regresyonları zorunlu.
+- **5.F7.3 — kapasite/retention:** yalnız 5.F7.2 doğrulandıktan sonra. 256'yı
+  süreç boyunca toplam iş sınırı olmaktan çıkar; RAM/aktif kuyruk yine sınırlı
+  kalsın. Eski terminal kayıtları taşımak/saklamak replay bilgisini silmesin.
+  256'dan fazla ardışık iş, dolu aktif kuyruk, eski isteğin tekrarı ve restart
+  testleriyle doğrula. Sınırı sadece büyütmek çözüm sayılmaz.
+
+İkisi de henüz uygulanmadı. Ardından 5.F8: ses/kişiselleştirme boşlukları ve
+Settings altında efektlerden ayrı Vex yanıt ses seviyesi. Bugün yeni özellik yok.

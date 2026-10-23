@@ -2,8 +2,8 @@
 
 Bu belge mevcut tasarımın rehberidir; günlük veya değişiklik kaydı değildir.
 İlerleme [PLAN.md](PLAN.md), değişiklikler [CHANGELOG.md](CHANGELOG.md), çalışan
-komutlar [docs/COMMANDS.md](docs/COMMANDS.md), köprü sözleşmesi
-[docs/UI_BACKEND_CONTRACT.md](docs/UI_BACKEND_CONTRACT.md) içindedir.
+komutlar [docs/COMMANDS.md](COMMANDS.md), köprü sözleşmesi
+[docs/UI_BACKEND_CONTRACT.md](UI_BACKEND_CONTRACT.md) içindedir.
 Eski tasarım/kabul notları docs/eski altındadır ve güncel talimat sayılmaz.
 
 ## Ürün ve sınır
@@ -127,9 +127,12 @@ bunların generic save ile backend’e yazıldığı varsayılmaz. İçe aktarma
 kaydı doğrular; hatalı veri canlı/kalıcı durumu zehirlemez. Eski jarvis_ui yalnız
 geçişte okunur, yeni yazımlar taskvex_ui anahtarına gider.
 
-JSON atomik replace tek süreçte bozulmayı önler; iki eşzamanlı uygulama örneği
-arasında işlem kilidi sağlamaz. Çoklu instance ve disk journal ürünleştirme öncesi
-açık sınırdır. Testler geçici veri kökü ve sentetik taşıma kullanır.
+JSON atomik replace tek süreçte bozulmayı önler. Native main, veri kökü için
+SingleInstance OS dosya kilidini core/pencere ömrü boyunca tutar; aynı kökte ikinci
+uygulama açılmaz. Crash handle kilidini bırakır; restart kilit bırakıldıktan sonra
+başlatılır. Ayrı veri profilleri bağımsızdır. Doğrudan core/script kullananlar bu
+host kilidini atlamamalıdır; JsonStore kendi başına süreç kilidi sağlamaz.
+Disk journal ürünleştirme öncesi açık sınırdır. Testler geçici veri kökü ve sentetik taşıma kullanır.
 
 ## Hedef L0 ve dört GUI katmanı — henüz uygulanmadı
 

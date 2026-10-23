@@ -4,9 +4,9 @@ Bu dizin güncel kullanım/sözleşme/denetim belgelerini ve test kanıtlarını
 
 | Belge | Amacı |
 |---|---|
-| [ARCHITECTURE](../ARCHITECTURE.md) | Bugünkü mimari, sorumluluklar ve hedef tasarım sınırı |
-| [PLAN](../PLAN.md) | Tek güncel aşama ve açık iş kaydı |
-| [CHANGELOG](../CHANGELOG.md) | Yapılan değişiklikler; her yeni değişiklik burada |
+| [ARCHITECTURE](ARCHITECTURE.md) | Bugünkü mimari, sorumluluklar ve hedef tasarım sınırı |
+| [PLAN](PLAN.md) | Tek güncel aşama ve açık iş kaydı |
+| [CHANGELOG](CHANGELOG.md) | Yapılan değişiklikler; her yeni değişiklik burada |
 | [COMMANDS](COMMANDS.md) | İngilizce kullanıcı komut rehberi |
 | [UI/backend sözleşmesi](UI_BACKEND_CONTRACT.md) | Taşıma, veri sahipliği ve tamamlanma kuralları |
 | [Denetim](AUDIT.md) | Bakım sonuçları, kalan riskler ve özelleştirme boşlukları |

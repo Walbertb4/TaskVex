@@ -1,7 +1,7 @@
 # TaskVex command guide
 
 This file describes what you can currently ask Vex to do.
-See [architecture](../ARCHITECTURE.md), [plan](../PLAN.md) and
+See [architecture](ARCHITECTURE.md), [plan](PLAN.md) and
 [UI/backend contract](UI_BACKEND_CONTRACT.md) for ownership and limits. It is a user guide,
 not an executable command file or a source of permissions for the model.
 Update it whenever an implemented command or its behavior changes.
@@ -316,3 +316,9 @@ The record picker supports Enter/Space, Tab, arrow keys, Home/End and Escape.
 A click outside closes it. Delete is disabled during a model turn or an uncertain
 clock operation. Removing a clock also discards its pending spoken completion
 notice when the current snapshot is read. No automatic retry follows failure.
+
+## Starting the desktop app
+
+A second native instance using the same data profile is rejected before starting
+its worker/window. Close the existing app first. Separate TASKVEX_HOME profiles
+are independent. A crash releases the OS lock; do not delete the lock file.

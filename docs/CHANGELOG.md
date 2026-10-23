@@ -5,6 +5,31 @@ hali ARCHITECTURE.md, yapılacak işler PLAN.md içindedir. Henüz sürüm yayı
 
 ## Unreleased
 
+### README ve oturum kapanışı
+
+- GitHub README, uygulanan özellikler/planlı kapsam/veri akışı/açık sınırlar ve
+  test kanıtını ayıracak şekilde İngilizce yeniden yazıldı. Ölçülmemiş hız/RAM,
+  sınırsız otonomi veya üretime hazır güvenlik iddiası yok.
+- 5.F7.2 kalıcı günlük ve 5.F7.3 güvenli kapasite/retention işleri kabul koşullarıyla
+  PLAN.md'ye kaydedildi. Ses tercihleri ve ayrı yanıt seviyesi 5.F8'de bekliyor.
+- Kullanıcı 5.F7.1 için devam, commit ve GitHub push onayı verdi; bu, ayrı bir
+  fiziksel test sonucunun bildirildiği anlamına gelmez.
+
+
+### Tek-instance güvenliği (5.F7.1)
+
+- Aynı veri kökü için OS dosya kilidi worker/pencere açılmadan alınır; ikinci
+  native instance açık hata ile reddedilir. Başka veri profili engellenmez.
+- Kapanış/exception/crash kilidi bırakır; restart yeni süreci ancak bırakıldıktan
+  sonra başlatır. PID/stale dosya silme, yeni bağımlılık veya ikinci state sahibi yok.
+- Kullanıcının docs altına taşıdığı ana belgeler korundu; aktif linkler ve AGENTS
+  yeni belge konumlarına uyarlandı. Tarihsel arşiv değiştirilmedi.
+- 1000 pytest, hedefli Pyright 0 ve 10/10 sentetik native aşama geçti;
+  gerçek alt süreç/crash ve native giriş/restart testleri de dahil.
+  Sonuç: reports/instance-checks.json. Gerçek hesap/ücretli API kullanılmadı.
+- 256 kayıt ve kalıcı replay günlüğü bu dilimde değişmedi. 5.F7.2/3 açık.
+
+
 ### Bakım ve belge düzeni
 
 - 133 eski belge/kanıt dosyası özgün göreli yolları ve SHA256 manifestiyle
@@ -31,7 +56,7 @@ Doğrulama: 996 pytest, 9 JS suite, 4 browser grubu, 10 native aşama; hedefli
 Pyright 0 hata/uyarı, pip check temiz. Runtime Python+JS net 706 satır azaldı.
 İlk konum/link testi hataları ve çözümü cleanup-checks.json içinde açıkça kayıtlıdır.
 
-Bu bakım diliminin kullanıcı kabulü ve commit'i bekleniyor. Gerçek hesap/ücretli
+Bakım kullanıcı tarafından kabul edildi, ea8aa15 commit’inde. Gerçek hesap/ücretli
 API testi yapılmadı; otomatik kanıtlar docs/reports altında tutulur.
 
 ### Önceki kabul edilen temel

@@ -2,7 +2,7 @@
 
 Bu testler UI sözleşmesini gerçek hesap ve fiziksel cihaz açmadan doğrular.
 Komutlar v1 içinde çalıştırılır. Test değişiklikleri ilerleme günlüğüne değil
-kök CHANGELOG.md'ye yazılır.
+docs/CHANGELOG.md'ye yazılır.
 
 ```powershell
 node ui/tests/live-audio.mjs

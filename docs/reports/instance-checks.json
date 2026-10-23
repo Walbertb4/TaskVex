@@ -1,0 +1,47 @@
+{
+  "step": "5.F7.1",
+  "scope": "OS single-instance lock per native data profile",
+  "python": {
+    "passed": 1000,
+    "seconds": 43.83
+  },
+  "targeted": {
+    "instance_and_native_bridge": 85,
+    "final_instance_and_doc_links": 6
+  },
+  "typecheck": {
+    "scope": [
+      "app",
+      "tests/test_instance_lock.py"
+    ],
+    "errors": 0,
+    "warnings": 0
+  },
+  "verified": [
+    "second OS process blocked",
+    "same resolved path alias blocked",
+    "separate profiles allowed",
+    "normal exit releases",
+    "exception releases",
+    "killed child releases without deleting lock file",
+    "native refusal before core construction",
+    "restart callback can reacquire lock after worker closes"
+  ],
+  "native": {
+    "status": "passed",
+    "phases": 10,
+    "report": "instance-native.json",
+    "transport": "synthetic"
+  },
+  "remaining": [
+    "persistent task/request journal across restart",
+    "terminal retention without losing dedup guarantees"
+  ],
+  "not_tested": [
+    "real account API",
+    "physical audio"
+  ],
+  "manual_acceptance": "user approved continuation, commit and push; separate physical test not reported",
+  "commit": "approved by user; see git history",
+  "previous_step_commit": "ea8aa15"
+}

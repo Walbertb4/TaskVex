@@ -1,50 +1,97 @@
 # TaskVex
 
-Windows için Python/PyWebView2 ve vanilla JavaScript ile geliştirilen masaüstü
-asistanı. Ana konuşma yolu Gemini Live'dır. Model araç önerir; registry, policy
-ve tek TaskManager doğrulanan işlemi yürütür. Proje geliştirme aşamasındadır.
+TaskVex is an early-stage Windows desktop assistant built with Python,
+PyWebView/WebView2 and a vanilla JavaScript interface. It uses Google's Gemini
+API for conversation; the main desktop path is Gemini Live.
 
-## Çalışan kapsam
+The project focuses on connecting natural-language requests to a small set of
+validated local tools. The model selects tools, while the application validates
+arguments, checks permissions, queues execution and reports verified results.
+It is a development project, not a production-ready general computer-use agent.
 
-- Yazı/ses sohbeti, akış halinde transkript/ses, Stop, Mute ve mikrofon kontrolü.
-- Yerel wake-word, tek seferlik/persistent uyku ve bağımsız idle sleep ayarı.
-- Onaylı backend not aktarımı; ID/tarih/filtre ile CRUD ve atomik toplu silme/tamamlama.
-- Çoklu timer/stopwatch; UI ve model aynı backend durumunu kullanır.
-- Tema/profil/düzen kaydı, Windows Credentials'da API anahtarı, API Live model kataloğu.
-- Allowlist uygulama araçları core'da; model yalnız kataloğu görebilir.
+## Implemented
 
-Google, Telegram/Discord, kalıcı kullanıcı hafızası, skill/rutin yürütme ve dört GUI
-katmanı henüz uygulanmadı. Yerel skill/rutin editörleri tanımları saklar. REST adaptörü
-korunur; ana masaüstü deneyimi Live'dır. Bu bir sınırsız bilgisayar kontrol ajanı değildir.
+- Live voice and text conversation, streamed transcripts and audio replies.
+- Microphone input control, playback mute, Stop and interruption handling.
+- Local wake-word detection, one-time sleep, return-to-sleep mode and an idle timer.
+- Temporary conversation context held in memory.
+- Backend notes with stable IDs and timestamps: add, list, edit, complete and
+  delete, including structured selection and atomic batch deletion/completion.
+- Multiple timers and stopwatches shared between the UI and model tools.
+- Saved interface preferences and a limited set of active personalization fields.
+- Gemini API key storage in Windows Credential Manager and automatic Live model
+  catalog loading. The saved selection is restored when returned by the API.
+- A per-data-profile OS lock prevents a second native app instance from opening.
 
-## Başlatma
+A small allowlisted application plugin exists in the core. The conversational
+model currently sees its catalog, not unrestricted app-launch or desktop control.
+Skill and routine editors store definitions locally; they do not execute them yet.
+A separate REST adapter remains available for development and future channels.
 
-PowerShell, mevcut geliştirme ortamında:
+## Not implemented yet
+
+Google Drive/Calendar/mail access, Telegram/Discord integration, persistent user
+memory, general GUI automation, and backend skill/routine scheduling are planned.
+Camera, screen inspection, location and media controls are not connected.
+Some saved legacy profile fields have no backend effect and are marked as planned.
+Voice selection and a separate assistant-reply volume slider are also pending.
+
+## Run from source
+
+Windows, Python 3.11+ and the Microsoft Edge WebView2 Runtime are required.
+The tested development interpreter is Python 3.14. From the repository root:
 
 ```powershell
-cd C:\Users\batue\OneDrive\Desktop\TaskVex\v1
+cd v1
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.lock.txt
 .\.venv\Scripts\python.exe -m app.main
 ```
 
-Debug için `--debug` ekleyin. Yeni ortam, yerel wake modeli ve testler için
-[v1 rehberini](v1/README.md) okuyun. Tarayıcı görünümü için [UI rehberi](v1/ui/README.md).
-Anahtar Settings üzerinden açıkça kaydedilir; key/token'ı kaynak koda koymayın.
+For an existing environment, skip its creation and dependency installation.
+Add `--debug` for development tools. Set the Gemini API key in Settings; access
+requires an eligible account, available quota and network connectivity. API usage
+may incur charges. No credentials are included in this repository.
 
-## Belgeler
+Local wake detection requires a separate, explicit model download. Setup, data
+locations and test commands are in [the development guide](v1/README.md).
+The dependency snapshot reproduces the tested development environment; it is
+not a cross-platform, hash-locked release installer.
 
-- [Mimari](ARCHITECTURE.md): bugünkü sahiplikler ve hedef tasarım.
-- [Plan](PLAN.md): aşamalar, açık işler ve kabul durumu.
-- [Changelog](CHANGELOG.md): değişikliklerin tek kaydı.
-- [Komutlar](docs/COMMANDS.md): çalışan kullanıcı yetenekleri.
-- [Sözleşme](docs/UI_BACKEND_CONTRACT.md) ve [denetim](docs/AUDIT.md).
-- [Arşiv](docs/README.md): eski belgeler özgün yollar/hash ile korunur.
+## Data and current limits
 
-## Sınırlar ve lisans
+Active conversation input and model tool results are sent to Google. During
+sleep, wake detection processes microphone audio locally. This is not a fully
+offline assistant. API keys use Windows Credential Manager; notes and settings
+are local files. Skill/routine definitions use browser storage. Timers and
+conversation context do not survive application exit.
 
-Aktif ses/model işlemleri Google'a gider; uyku sırasında wake algılama yereldir.
-Kullanıcı verisi repo dışında tutulur. Tek süreç/yerel kullanıcı hedeflenir; görev
-kayıt kapasitesi, restart sonrası replay ve çoklu instance sınırları denetimde açıktır.
-RAM/latency için genel performans garantisi verilmez; ağ, model ve cihaz etkiler.
+Two important core tasks remain open: durable request history across restarts,
+and replacing the current 256-record lifetime task limit with safe retention.
+Process-local replay protection is not a durable exactly-once guarantee. The
+native instance lock protects normal app launches sharing a data profile;
+standalone scripts must not bypass that ownership rule.
 
-Özgün katkılar [MIT](LICENSE). Bağımlılık/varlık/model hakları ayrı değerlendirilir:
-[THIRD_PARTY_NOTES](THIRD_PARTY_NOTES.md). Referans repo TaskVex runtime'ının parçası değildir.
+There are no general latency, memory-footprint or acoustic-accuracy guarantees.
+Model availability, network conditions and hardware affect behavior.
+
+## Verification and documentation
+
+The latest core change passed 1,000 Python tests, targeted type checking and
+10 native regression phases using synthetic providers and temporary data.
+These checks do not establish real-account availability, physical microphone
+accuracy or production readiness. See [test evidence](docs/reports/instance-checks.json).
+
+- [Architecture](docs/ARCHITECTURE.md): current ownership and planned boundaries.
+- [Plan](docs/PLAN.md): remaining work and acceptance status.
+- [Changelog](docs/CHANGELOG.md): recorded changes.
+- [Commands](docs/COMMANDS.md): implemented user-facing requests and limits.
+- [UI/backend contract](docs/UI_BACKEND_CONTRACT.md) and [audit](docs/AUDIT.md).
+- [UI preview and modules](v1/ui/README.md).
+
+## License
+
+Original TaskVex contributions are [MIT licensed](LICENSE). This does not
+relicense dependencies, existing UI assets or downloaded model weights.
+See [third-party notes](docs/THIRD_PARTY_NOTES.md); asset provenance and release
+packaging review remain open.

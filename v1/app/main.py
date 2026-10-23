@@ -14,6 +14,7 @@ from uuid import uuid4
 
 from app.config import get_data_home
 from app.core.contracts import ContractError
+from app.storage.instance_lock import AlreadyRunningError, SingleInstance
 
 
 def _ui_app(ui: Path):
@@ -65,28 +66,31 @@ def main() -> None:
     webview.settings["ALLOW_DOWNLOADS"] = True
 
     home = get_data_home()
-    ui = Path(__file__).resolve().parents[1] / "ui" / "index.html"
-    if not ui.is_file():
-        raise FileNotFoundError("TaskVex UI index.html is missing")
-    clocks = Clocks()
-    with create_core(clocks=clocks) as core:
-        bridge = NativeBridge(core, JsonStore(home / "settings.json"), clocks=clocks)
-        window = webview.create_window("TaskVex", _ui_app(ui), js_api=bridge,
-                                       http_port=webview.settings["DEFAULT_HTTP_PORT"],
-                                       width=1280, height=800, min_size=(900, 600),
-                                       background_color="#080b10")
-        if window is None:
-            raise RuntimeError("Native window could not be created")
-        bridge._window = window
-        # X düğmesi ağ turu sürerken core'u kapatmamalı. Live turu Stop ile
-        # bitirildikten sonra kapanabilir; REST'te tur bitişi hâlâ beklenir.
-        window.events.closing += bridge._chat.close
-        try:
-            # WSGI app kendi SDK sunucusunu açar; ikinci global sunucu açma.
-            webview.start(gui="edgechromium", debug=args.debug, http_server=False,
-                          private_mode=False, storage_path=str(home / "webview"))
-        finally:
-            bridge._chat._live.close()  # GUI döngüsü beklenmedik biçimde biterse de I/O kaynağını bırak.
+    # Aynı veri kökü için bütün native/core yaşam döngüsünün tek sahibi.
+    # Restart yeni süreci ancak bu kilit bırakıldıktan sonra açar.
+    with SingleInstance(home):
+        ui = Path(__file__).resolve().parents[1] / "ui" / "index.html"
+        if not ui.is_file():
+            raise FileNotFoundError("TaskVex UI index.html is missing")
+        clocks = Clocks()
+        with create_core(clocks=clocks) as core:
+            bridge = NativeBridge(core, JsonStore(home / "settings.json"), clocks=clocks)
+            window = webview.create_window("TaskVex", _ui_app(ui), js_api=bridge,
+                                           http_port=webview.settings["DEFAULT_HTTP_PORT"],
+                                           width=1280, height=800, min_size=(900, 600),
+                                           background_color="#080b10")
+            if window is None:
+                raise RuntimeError("Native window could not be created")
+            bridge._window = window
+            # X düğmesi ağ turu sürerken core'u kapatmamalı. Live turu Stop ile
+            # bitirildikten sonra kapanabilir; REST'te tur bitişi hâlâ beklenir.
+            window.events.closing += bridge._chat.close
+            try:
+                # WSGI app kendi SDK sunucusunu açar; ikinci global sunucu açma.
+                webview.start(gui="edgechromium", debug=args.debug, http_server=False,
+                              private_mode=False, storage_path=str(home / "webview"))
+            finally:
+                bridge._chat._live.close()  # GUI döngüsü beklenmedik biçimde biterse de I/O kaynağını bırak.
     if bridge._restart_requested:
         # Aynı güvenilir Python/entrypoint ve veri ortamıyla yeniden aç. Shell
         # kullanılmaz; core kapanmadan ikinci worker veya pencere başlatılmaz.
@@ -102,7 +106,9 @@ def _show_startup_error(error: Exception) -> None:
     Ham exception mesajı dosya yolu veya özel içerik taşıyabilir; varsayılan
     mesajlar sabittir. Kutunun kendisi açılamazsa terminal bildirimi korunur.
     """
-    if isinstance(error, ModuleNotFoundError):
+    if isinstance(error, AlreadyRunningError):
+        message = "TaskVex is already running for this data profile. Close the existing window before opening another instance."
+    elif isinstance(error, ModuleNotFoundError):
         message = "Required app components are missing. Install requirements-dev.lock.txt using the project's .venv Python, then retry."
     elif isinstance(error, ContractError):
         message = "The data location is invalid. Set TASKVEX_HOME to an absolute directory, or remove it to use the default location."
