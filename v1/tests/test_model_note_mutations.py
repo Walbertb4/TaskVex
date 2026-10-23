@@ -208,7 +208,7 @@ def test_all_note_tools_hidden_until_native_transfer_confirmed(mode, transport, 
             report = execute(chat, mode, "Hello", [], transport, socket, ready=False)
             assert report["ok"]
             setup = transport.requests[0] if mode == "rest" else socket.sent[0]["setup"]
-            assert {item["name"] for item in setup["tools"][0]["functionDeclarations"]} == {"apps.catalog", "system.status", "assistant.request_sleep_mode"}
+            assert {item["name"] for item in setup["tools"][0]["functionDeclarations"]} == {"apps.catalog", "system.status", "assistant.request_sleep_mode", "assistant.request_shutdown"}
         finally:
             assert chat.close()
 

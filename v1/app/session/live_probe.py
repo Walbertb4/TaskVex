@@ -15,8 +15,9 @@ from google.genai import errors, types
 
 from app.session.live_session import LiveConnection
 from app.session.live_input import LiveInput
+from app.session.wake_word import is_wake_only
 from app.core.contracts import ContractError, TaskStatus
-from app.session.model_tools import ModelTools, NoteTargetError, sleep_request
+from app.session.model_tools import ModelTools, NoteTargetError, assistant_control_request
 from app.storage.credentials import CredentialError, load_gemini_key
 
 # Parçaları gelmeye devam eden uzun yanıt eski 25 s toplam sürede kesilmesin.
@@ -165,10 +166,9 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
                         await publish('u', report['input_text'])
                     # Yalnız ayarlı hitap bir görev değildir. İlk kesin konuşma
                     # bitişinde/araç teklifinde kapat; modelden selam/araç bekleme.
-                    # Telaffuz toleransı bu katmanda eklenmez (ayrı wake adımı).
+                    # KWS ile aynı hitap tanımı; görev cümlesi veya niyeti yorumlanmaz.
                     wake_only = (audio_input is not None and not report['tool_results'] and
-                        report.get('input_text', '').casefold().strip(' \t\r\n.!?,:') ==
-                        (profile or {}).get('pWake', 'Vex').casefold())
+                        is_wake_only(report.get('input_text', ''), (profile or {}).get('pWake', 'Vex')))
                     if wake_only and (message.tool_call or content and (content.turn_complete or
                             content.input_transcription and content.input_transcription.finished)):
                         await connection.reset('wake_only')
@@ -301,7 +301,7 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
                             # Gerçek model yanıtı tamamlandı. UI aynı ses kuyruğunu
                             # boşalttıktan sonra host uyku geçişini isteyebilir;
                             # transkripti erken kesip yerel onay uydurmayız.
-                            report.update(sleep_request(report, previous_tasks))
+                            report.update(assistant_control_request(report, previous_tasks))
                             return report
                         break
                 report.update(code="live_incomplete", error="Live returned no complete text transcript.")

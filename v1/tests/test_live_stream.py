@@ -244,7 +244,7 @@ def test_final_transcript_closes_old_ingress_before_model_thinks(socket, final_t
     asyncio.run(scenario())
 
 
-@pytest.mark.parametrize('text', ['Vex', 'Vex.', 'Computer'])
+@pytest.mark.parametrize('text', ['Vex', 'Vex.', 'Veks', 'Rex!', 'Computer'])
 def test_wake_only_turn_finishes_without_tool_or_model_answer(socket, text):
     socket.frames = [{'setupComplete': {}},
         {'serverContent': {'inputTranscription': {'text': text, 'finished': True}}}]
@@ -356,3 +356,13 @@ def test_fourteen_packets_and_two_interim_transcripts_end_without_final_flag(soc
         assert report['input_boundary'] == 'manual_activity' and report['input_sent_packets'] == 14
         assert report['input_end_sent_ms'] is not None and socket.opened == 1
     asyncio.run(scenario())
+
+
+@pytest.mark.parametrize('text,word', [('Rex list my notes', 'Vex'), ('Veks merhaba', 'Vex'), ('Rex', 'Computer')])
+def test_wake_variation_with_task_or_custom_profile_keeps_reply(socket, text, word):
+    """Yalnız-hitap optimizasyonu gerçek isteği ya da özel profili yutamaz."""
+    socket.frames = [{'setupComplete': {}},
+        {'serverContent': {'inputTranscription': {'text': text, 'finished': True}}},
+        frame('Real reply', complete=True)]
+    result = asyncio.run(probe_live_text('', 'future-live', audio_input=bytes(3200), profile={'pWake': word}))
+    assert result['ok'] and not result.get('wake_only') and result['text'] == 'Real reply'

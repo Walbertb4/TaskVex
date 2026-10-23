@@ -528,7 +528,8 @@ class NativeBridge:
                         # Kapanamayan pencere daha sonra X ile kapatılırsa eski,
                         # başarısız restart isteği beklenmedik süreç açmamalı.
                         self._restart_requested = False
-                        raise
+                        return {"ok": False, "unknown": True,
+                                "error": "Window closure could not be confirmed; do not retry automatically"}
                     return {"ok": True, "completed": True}
                 return {"ok": False, "error": "not_implemented: this native operation is not available yet"}
             except CredentialError:

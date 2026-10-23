@@ -170,6 +170,37 @@ def check_native_note_batches(api, home, window, js, wait_until, outcome):
     outcome['bulk_delete_no_ui_save_echo'] = True
 
 
+def check_native_shutdown_request(window, api, js, wait_until, outcome):
+    """Model isteği/çalma/Stop sınırını gerçek DOM'da, host ret taklidiyle sına.
+
+    Model ve core aracı gerçektir; sağlayıcı sentetiktir. Pencereyi testin
+    ortasında kapatmamak için yalnız son shutdown olayı reddedilir. Gerçek
+    worker/pencere kapanışı ayrı native shutdown senaryosunda doğrulanır.
+    """
+    js("window.shutdownErrors=[];window.addEventListener('unhandledrejection',e=>shutdownErrors.push(String(e.reason?.stack||e.reason)));window.shutdownModels=Array.from(document.getElementById('mSel').options).filter(o=>o.value).map(o=>({id:o.value,name:o.textContent}));window.shutdownModel=document.getElementById('mSel').value;window.shutdownCalls=0;window.shutdownEvent=window.pywebview.api.event;window.pywebview.api.event=(name,data)=>{if(name==='shutdown'){shutdownCalls++;return Promise.resolve({ok:false,error:'Synthetic host refusal'});}return shutdownEvent(name,data);};"
+       "const a=await import('./js/live_audio.js');window.shutdownFinish=a.liveAudio.finish;a.liveAudio.finish=async function(id){const r=await shutdownFinish.call(this,id);window.shutdownPlaybackWaiting=true;await new Promise(resolve=>window.releaseShutdownPlayback=resolve);return r;};return true;")
+    for mode in ('rest','live'):
+        for guard in ('stop','connection','finish'):
+            before = window.evaluate_js('window.shutdownCalls')
+            prompt = 'Native SHUTDOWN '+mode+' '+guard
+            js("window.shutdownPlaybackWaiting=false;document.getElementById('liveLatencyTest').checked="+str(mode=='live').lower()+";document.getElementById('inp').value="+json.dumps(prompt)+";document.getElementById('send').click();return true;")
+            wait_until(lambda: window.evaluate_js('window.shutdownPlaybackWaiting'))
+            assert window.evaluate_js('window.shutdownCalls') == before
+            assert api._core._worker.is_alive()
+            if guard == 'stop':
+                js("document.getElementById('stopTask').click();return true;")
+            elif guard == 'connection':
+                js("window.dispatchEvent(new Event('taskvex-key-saved'));return true;")
+            js('releaseShutdownPlayback();return true;')
+            wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
+            expected = before + (1 if guard == 'finish' else 0)
+            wait_until(lambda: window.evaluate_js('window.shutdownCalls') == expected)
+            if guard == 'finish':
+                assert 'shutdown was not confirmed' in window.evaluate_js("document.getElementById('textStatus').textContent")
+            outcome[mode+'_shutdown_'+guard+'_guard'] = True
+    js("window.pywebview.api.event=shutdownEvent;const a=await import('./js/live_audio.js');a.liveAudio.finish=shutdownFinish;document.getElementById('liveLatencyTest').checked=true;const c=await import('./js/connections.js');c.setCatalog({models:shutdownModels,currentModel:shutdownModel});return true;")
+
+
 def check_local_sleep(window, api, js, wait_until, live_state, wake_state, outcome):
     """Tek uyku kabul senaryosunu ayrı tut; native kontrol akışını büyütme."""
     # Komut yanıtı modeldendir; uyurken sıradan ses KWS hit'i olmadan
@@ -557,6 +588,11 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                         text = message["realtime_input"].get("text", "")
                         # Yalnız sentetik sağlayıcının önceden belirlenmiş araç
                         # seçimi; üretimde cümle kalıbı veya niyet parser'ı yok.
+                        if text.startswith('Native SHUTDOWN '):
+                            live_state['shutdown_calls'] = live_state.get('shutdown_calls', 0) + 1
+                            frames.append({'toolCall': {'functionCalls': [{'id': 'shutdown-'+str(live_state['shutdown_calls']),
+                                'name': 'assistant.request_shutdown', 'args': {}}]}})
+                            return
                         mode = {'Lütfen, uyku moduna gir.': 'once',
                             'Uyku moduna kalıcı olarak gir': 'persistent',
                             'Disable persistent sleep mode': 'off'}.get(text)
@@ -621,6 +657,10 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                     elif "tool_response" in message:
                         response = message["tool_response"]["functionResponses"][0]
                         assert response["response"]["result"]["verified"]
+                        if response['name'] == 'assistant.request_shutdown':
+                            assert response['response']['result']['data']['applied'] is False
+                            frames.append(audio_reply('TaskVex kapanacak.', 12000))
+                            return
                         if response['name'] == 'assistant.request_sleep_mode':
                             data = response['response']['result']['data']
                             assert data['applied'] is False
@@ -696,6 +736,10 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
             body = json.loads(request.content)
             text_payloads.append(body)
             prompt = body["contents"][0]["parts"][0].get("text", "")
+            if prompt.startswith('Native SHUTDOWN '):
+                parts = ([{'functionCall': {'id':'shutdown-rest','name':'assistant.request_shutdown','args':{}}}]
+                    if len(body['contents']) == 1 else [{'text':'TaskVex kapanacak.'}])
+                return httpx.Response(200, json={'candidates': [{'finishReason':'STOP','content':{'role':'model','parts':parts}}]})
             if prompt == 'Native profile probe':
                 return httpx.Response(200, json={'candidates': [{'finishReason': 'STOP', 'content': {
                     'role': 'model', 'parts': [{'text': 'Native profile probe REST'}]}}]})
@@ -718,7 +762,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                         "args": {"text": "Must not be saved after REST Stop"}}}]}}]})
             if len(text_requests) == 1:
                 body = json.loads(request.content)
-                assert {item["name"] for item in body["tools"][0]["functionDeclarations"]} == {"apps.catalog", "system.status", "assistant.request_sleep_mode"}
+                assert {item["name"] for item in body["tools"][0]["functionDeclarations"]} == {"apps.catalog", "system.status", "assistant.request_sleep_mode", "assistant.request_shutdown"}
                 text_started.set()
                 assert release_text.wait(20)
             assert responses, "Unexpected model retry"
@@ -1382,6 +1426,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 outcome['temporary_memory_after_stop_new_chat_confirmation_and_notes_preserved'] = True
                 check_local_sleep(window, api, js, wait_until, live_state, wake_state, outcome)
                 check_native_note_batches(api, home, window, js, wait_until, outcome)
+                check_native_shutdown_request(window, api, js, wait_until, outcome)
                 js("const a=await import('./js/api.js');for(let i=0;i<250;i++)a.addLog('Native bounded entry '+i);return true;")
                 assert window.evaluate_js("document.getElementById('log').childElementCount") == 200
                 outcome['engine_log_bounded_to_200_entries'] = True
@@ -1695,7 +1740,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
             outcome.update(ok=False, phase=phase, error=repr(error), trace=traceback.format_exc())
             outcome['wake_state'] = {'sleeping':api._sleeping, 'pending_hit':api._wake_detected,
                                      'sequence':getattr(api._wake,'_sequence',None)}
-            outcome["diagnostic"] = window.evaluate_js("({text:document.getElementById('textStatus')?.textContent,notes:document.getElementById('notesStatus')?.textContent,log:document.getElementById('log')?.textContent,ready:!!window.vex,bridge:typeof window.pywebview?.api?.event})")
+            outcome["diagnostic"] = window.evaluate_js("({shutdownErrors:window.shutdownErrors,model:document.getElementById('mSel')?.value,live:document.getElementById('liveLatencyTest')?.checked,mic:document.getElementById('micB')?.getAttribute('aria-pressed'),sendDisabled:document.getElementById('send')?.disabled,text:document.getElementById('textStatus')?.textContent,notes:document.getElementById('notesStatus')?.textContent,log:document.getElementById('log')?.textContent,ready:!!window.vex,bridge:typeof window.pywebview?.api?.event})")
             outcome["notes_file"] = (home / "notes.json").read_text("utf-8") if (home / "notes.json").exists() else None
         finally:
             (home / f"report-{phase}.json").write_text(json.dumps(outcome, ensure_ascii=False, indent=2), encoding="utf-8")

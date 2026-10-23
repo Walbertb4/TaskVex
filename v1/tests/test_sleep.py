@@ -152,14 +152,14 @@ def test_bad_word_and_missing_model_fail_before_native_kernel(monkeypatch,tmp_pa
 def test_pcm_sequence_endian_and_keyword_boundary(monkeypatch,tmp_path):
     import sherpa_onnx
     from hashlib import sha256
-    files={'tokens.txt':b'V 0\nEH1 1\nK 2\nS 3','en.phone':b'VEX V EH1 K S'}
+    files={'tokens.txt':b'V 0\nEH1 1\nK 2\nS 3\nR 4','en.phone':b'VEX V EH1 K S\nREX R EH1 K S'}
     for name,data in files.items():(tmp_path/name).write_bytes(data)
     monkeypatch.setattr(wake_word,'model_home',lambda:tmp_path)
     monkeypatch.setattr(wake_word,'FILES',{n:sha256(v).hexdigest() for n,v in files.items()})
     state=SimpleNamespace(ready=False,samples=[],hit=False)
     class Kernel:
         def __init__(self,**kwargs):
-            assert 'V EH1 K S' in Path(kwargs['keywords_file']).read_text()
+            assert Path(kwargs['keywords_file']).read_text().splitlines() == ['V EH1 K S @WAKE', 'R EH1 K S @WAKE']
             self.keyword_spotter=self
         def create_stream(self):return self
         def accept_waveform(self,rate,samples):
@@ -347,3 +347,24 @@ def test_broken_wake_cleanup_cannot_prevent_explicit_wake(bridge):
     bridge._wake_cached = ('Vex', detector)
     assert bridge.event('wake')['completed']
     assert not bridge._sleeping and bridge._wake is None and bridge._wake_cached is None
+
+
+@pytest.mark.parametrize('word', ['Vex', 'vEkS', 'REX'])
+def test_wake_variants_share_one_definition(word):
+    """Profilde aileden bir ad seçilse de tek sınırlı varyasyon kümesi kullan."""
+    assert wake_word.wake_spellings(word) == ('Vex', 'Veks', 'Rex')
+    for text in ('Vex', 'Veks.', ' REX! '):
+        assert wake_word.is_wake_only(text, word)
+
+
+@pytest.mark.parametrize('text', ['X', 'ex', 'eks', 'next', 'Rex list my notes',
+    'Vex merhaba', 'Vexnot', 'please vex', ''])
+def test_wake_only_never_swallows_a_task_or_short_unrelated_sound(text):
+    assert not wake_word.is_wake_only(text, 'Vex')
+
+
+def test_custom_wake_word_excludes_default_variants():
+    assert wake_word.wake_spellings('Computer') == ('Computer',)
+    assert wake_word.is_wake_only('Computer!', 'Computer')
+    assert not wake_word.is_wake_only('Vex', 'Computer')
+    assert not wake_word.is_wake_only('Rex', 'Computer')

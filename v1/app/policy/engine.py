@@ -18,6 +18,7 @@ from app.core.contracts import ContractError, ToolRequest, ToolSpec
 # yetki türetemez; boş veya farklı required_capabilities bildirimi de reddedilir.
 _TOOL_CAPABILITIES = MappingProxyType({
     "assistant.request_sleep_mode": frozenset({"assistant.control"}),
+    "assistant.request_shutdown": frozenset({"assistant.control"}),
     "apps.catalog": frozenset({"apps.read"}),
     "apps.status": frozenset({"apps.read"}),
     "apps.open": frozenset({"apps.read", "apps.launch"}),

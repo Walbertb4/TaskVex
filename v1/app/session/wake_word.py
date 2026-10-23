@@ -26,6 +26,25 @@ FILES = {
 }
 
 
+# Bu liste komut niyeti çözmez: yalnız aynı hitabın yerel ses/yazım
+# karşılıklarıdır. Tek başına X/EX, sıradan konuşmayı uyandırmamak için yoktur.
+VEX_SPELLINGS = ('Vex', 'Veks', 'Rex')
+
+
+def wake_spellings(word: str) -> tuple[str, ...]:
+    """Seçili hitabın sınırlı varyasyonları; özel isimde yalnız o isim geçerli.
+
+    Yerel KWS ve Live'ın yalnız-hitap ayrımı aynı tanımı kullanır. Benzerlik
+    tahmini veya uygulama komutu yorumlaması yapmaz; profil değerini değiştirmez.
+    """
+    return VEX_SPELLINGS if word.casefold() in {s.casefold() for s in VEX_SPELLINGS} else (word,)
+
+
+def is_wake_only(text: str, word: str) -> bool:
+    """Tam transkript yalnız hitapsa True; hitap ardından gelen görev korunur."""
+    return text.casefold().strip(' \t\r\n.!?,:') in {s.casefold() for s in wake_spellings(word)}
+
+
 class WakeAlignmentError(ValueError):
     """Algı var fakat güvenli ses sınırı yok; paket/cihaz hatasından ayrılır."""
 
@@ -77,7 +96,10 @@ class WakeWord:
             path = directory/name
             if not 0 < path.stat().st_size <= 10_000_000 or sha256(path.read_bytes()).hexdigest() != digest:
                 raise ValueError('Wake model integrity check failed; run wake setup')
-        requested = word.upper().split()
+        # Veks aynı VEX fonemleridir; REX ayrı telaffuzdur. Aynı akustik
+        # diziyi iki kez eklemeyiz; bütün adaylar tek mevcut motoru kullanır.
+        phrases = [['VEX' if part == 'VEKS' else part for part in s.upper().split()] for s in wake_spellings(word)]
+        requested = {part for phrase in phrases for part in phrase}
         lexicon = {}
         for line in (directory / 'en.phone').read_text(encoding='utf-8').splitlines():
             parts = line.split()
@@ -85,14 +107,14 @@ class WakeWord:
                 lexicon.setdefault(parts[0], parts[1:])
         if any(item not in lexicon for item in requested):
             raise ValueError('Wake word is not in the local English pronunciation dictionary')
-        phones = ' '.join(phone for item in requested for phone in lexicon[item])
+        pronunciations = list(dict.fromkeys(' '.join(phone for item in phrase for phone in lexicon[item]) for phrase in phrases))
         tokens = {line.split()[0] for line in (directory/'tokens.txt').read_text(encoding='utf-8').splitlines() if line.split()}
-        if any(phone not in tokens for phone in phones.split()):
+        if any(phone not in tokens for phones in pronunciations for phone in phones.split()):
             raise ValueError('Wake pronunciation has unsupported tokens')
         # C++ motoru boş keyword dosyasında process'i sonlandırır; önce
         # doğrulanmış fonemleri bu örneğe özgü config dosyasına yaz.
         keyword_file = directory/f'keyword-{uuid4().hex}.txt'
-        keyword_file.write_text(phones + ' @WAKE\n', encoding='utf-8')
+        keyword_file.write_text(''.join(phones + ' @WAKE\n' for phones in pronunciations), encoding='utf-8')
         try:
             self._spotter = sherpa_onnx.KeywordSpotter(tokens=str(directory/'tokens.txt'),
                 encoder=str(directory/'encoder-epoch-13-avg-2-chunk-8-left-64.int8.onnx'),

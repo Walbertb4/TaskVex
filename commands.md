@@ -75,6 +75,19 @@ restore them. Unknown readback outcomes are not automatically retried.
 App launch/status tools exist in the core but are not currently exposed to the
 conversation. Do not assume `Open Notepad` is supported by the model yet.
 
+## Application shutdown — available
+
+| Say or type | What Vex does |
+| --- | --- |
+| `Close TaskVex.` / `Shut yourself down.` | Requests closing this assistant app. Vex finishes its reply/playback, then uses the same native cleanup and closure as the Shutdown button. Windows is not shut down. |
+
+The registered tool accepts a pending request; it does not prove that the
+window has closed. Stop, interruption, stale connection, failed playback or an
+unknown turn prevents the pending closure. Old tool-call replay cannot close
+a new turn. Sleep and shutdown together require clarification. A request to
+shut down the computer is outside this tool's scope; ambiguous targets should
+be clarified. No phrase list is used to interpret application actions.
+
 ## Conversation and desktop controls — available
 
 | Request or control | What happens |
@@ -145,6 +158,15 @@ No speaker identification separates simultaneous background speakers.
 **Source: Mic** is a separate audio-source selector placeholder. The UI has
 PC/app audio labels, but only microphone capture is currently implemented in
 the desktop backend. Those other sources are not working integrations yet.
+
+With the default Vex wake word, **Vex**, **Veks** (the same pronunciation)
+and **Rex** are accepted by the same local detector. These variants also share
+the Live wake-only check: saying only the name wakes/listens without inventing
+a task; `Rex, show my notes` keeps the following request. A custom wake word
+such as `Computer` uses only that word, without the Vex family. Bare `X`, `ex`
+or `eks` are not supported wake words for the Vex family. This is a bounded
+pronunciation list, not fuzzy matching or a command-phrase parser. Synthetic
+local voice tests passed; physical microphone/accent acceptance is separate.
 
 While asleep, microphone PCM is processed locally rather than streamed to
 Gemini. Mic Off also disables local wake detection; turning it On resumes
@@ -218,6 +240,9 @@ The existing Wake sensitivity slider is not yet connected to this detector.
 
 - Persistent user facts and editable/forgettable user memory in Personalization.
 - Model-driven skill/routine/calendar/weather/Google/Telegram/Discord actions.
+- Multiple model-controlled timers/stopwatches: create/list/start/pause/resume/reset.
+  Current timer and stopwatch buttons remain local single-instance controls;
+  their shared backend ownership and model tools are the next step.
 
 Move an item into the available tables only after its implementation and
 relevant verification. A visible UI panel or saved setting alone is not an

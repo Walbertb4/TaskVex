@@ -1,6 +1,89 @@
 # Aşama 5 — Model, araç çağrıları ve ses
 
-## Güncel 5.R6 — toplu not tamamlama
+## Güncel 5.R7.1 — modelden TaskVex kapatma
+
+Kullanıcının verdiği kapsam iki dilime ayrıldı: bu tur shutdown, sonraki 5.R7.2
+çoklu timer/stopwatch. Mevcut timer UI'ı yalnız birer yerel örnek tuttuğu için,
+çoklu kullanım aynı anda ikinci yürütme yolu eklenerek çözülmeyecek; ayrı ID'li
+tek backend sahipliği ve UI görünümü birlikte ele alınacak. Bu tur sayaçlar
+modele açılmadı. 5.F4 wake manuel kabulü bildirilmedi; commit yapılmadı.
+
+Model assistant.request_shutdown({}) aracını ModelTools/registry/policy/TaskManager
+üzerinden çağırır; scope=taskvex, applied=false kabulüdür. Uyku ile aynı
+assistant_control_request çıkarımı, yalnız başarılı yeni turda shutdown_requested
+üretir. Eski call replay'i, başarısız araç, Stop, unknown veya sleep+shutdown
+çelişkisi kapanışı başlatmaz. Yanıt/çalma sonrası UI request_id ve connectionRevision
+kontrol eder; mevcut Shutdown düğmesiyle ortak shutdownApplication fonksiyonu
+aynı native shutdown olayını kullanır. Windows kapanışı, restart veya serbest
+shell yürütmesi eklenmedi. Yeni executor/zamanlayıcı/model bağlantısı yoktur.
+
+Host chat/model/kaynak/core temizliği yapmadan pencereyi kapatmaz. Pencere
+destroy doğrulanamazsa unknown döner; UI otomatik tekrar etmez ve belirsizlik
+kilidini korur. Model cevabındaki başarı metni gerçek kapanış kanıtı değildir.
+
+Personalization wake-word karşılığı: prof.pWake settings.json'a doğrulanarak
+kaydedilir. Bridge sleep_start sırasında bu değeri WakeWord'a verir; profil
+adı değişirse cache yeni isim için yeniden kurulur. Live wake-only sınıflaması
+aynı profile bağlıdır. Vex değeri backend'de gerçek davranışı etkiler.
+
+Otomatik kontroller: 957 pytest; 8 JS süiti (yeni shutdown dahil); app, assistant
+araç testleri ve native runner'da Pyright 0 hata/uyarı. İlk tam pytest'te iki eski
+not-onayı katalog beklentisi yeni shutdown aracını içermedi; beklentiler güncellendi,
+not araçlarının onaya kadar gizliliği korundu ve tam koşu 957/957 geçti.
+
+Native kontrolün ilk tam koşusu chat için 60 s test sınırında durdu. Ayrı chat
+kontrolü altı REST/Live shutdown testini geçti fakat sonraki mikrofon aşaması
+başarısızdı: sentetik anahtar değişimi model kataloğunu doğru biçimde temizlemiş,
+test cleanup'ı kataloğu geri yüklememişti. [Başarısız kayıt](stage5-shutdown-native-chat-failure.json)
+korundu; üretim güvenlik kontrolü gevşetilmeden fixture kataloğu geri yükleyecek
+şekilde düzeltildi. İlk native komut da yanlış kök cwd nedeniyle dosyayı bulamadı;
+v1 cwd ile tekrar başlatıldı. Son [tam native kontrol](stage5-shutdown-native.json) **10/10 geçti**; altı REST/Live
+shutdown çalma/Stop/bağlantı kontrolü, gerçek pencere/core kapanışı ve önceki
+uyku/mikrofon/not regresyonları başarılı. [Ek teşhis kaydı](stage5-shutdown-native-chat-diagnostic.json)
+model listesinin boş ve JS rejection listesinin boş olduğunu gösterir.
+Gerçek kullanıcı notu/sesi, hesap veya ücretli API kullanılmadı. Gerçek dil ve
+fiziksel kapanış kabulü USER_ACCEPTANCE.md'deki kısa kullanıcı testini bekler.
+
+## Önceki 5.F4 — tek yerel wake tanımında Vex/Veks/Rex
+
+5.R6 kullanıcı kabulü sonrası `cf9179c` commit'ine alındı. Kullanıcının isteğiyle
+birleşik uzun kullanım ayrı adımı plandan çıkarıldı. Aşama 5 kapanmıyor; sonraki
+5.R7, kapatma gibi mevcut UI kontrollerini yapılandırılmış Vex araçlarına bağlar.
+Bu tur o kontroller uygulanmadı.
+
+Yerel KWS ve Live yalnız-hitap kontrolü aynı wake_spellings tanımını kullanır.
+Vex/Veks aynı VEX fonem dizisine, Rex ayrı REX dizisine çevrilir; tekrar eden
+fonemler tek satıra iner. Özel Computer gibi isimler Vex ailesini açmaz. X/ex/eks
+tek başına eklenmedi. Bu, AGENTS.md'de izin verilen yerel akustik hitap kontrolüdür;
+doğal dil eylem yönlendiricisi değildir. İkinci mikrofon/model/executor yoktur.
+
+Mevcut sleep_start → yerel PCM → KWS hit/sınır doğrulaması → aynı request_id
+ile host wake kabulü → sınırlı Live devri korunur. Yalnız hitap bitince boş görev
+üretilmez; hitapla gelen gerçek istek normal model araç hattında kalır. Eski
+wake_feed, Mic Off, profil/cache değişimi ve unknown sınırları değişmedi.
+
+Doğrulama:
+
+- **947 pytest**, **7 JS süiti**, app + wake/ses testleri ve yeni smoke betiğinde
+  **Pyright 0 hata/uyarı**.
+- [Yerel motor testi](stage5-wake-variants-local.json): gerçek hash doğrulamalı
+  sherpa-onnx 1.13.8, yapay Windows SAPI sesleri; Vex/Rex olumlu, ex/next/normal
+  konuşma olumsuz örnekleri üç restart döngüsünde **15/15** geçti. Olumlu hitlerde
+  yerel ses sınırı da doğrulandı. Veks ayrı akustik iddia değildir; Vex fonemlerini
+  paylaşır. Sınırlı örnekler bütün aksan/gürültülerde doğruluk kanıtı değildir.
+- [Native chat kontrolü](stage5-wake-variants-native-chat.json): gerçek WebView2,
+  worklet, host/core; sentetik sağlayıcı ve ayrıca gerçek KWS + mevcut SAPI WAV
+  Web Audio'dan geçirildi. Uyku/uyanma devri, Stop/Mic Off ve not regresyonu geçti.
+- Yeni `tests/wake_variants_smoke.py` yalnız test aracıdır; uygulamaya TTS veya
+  sesli onay eklemez. İlk doğrudan çalıştırma app import yolu eksikliğiyle durdu;
+  mevcut native test düzenindeki repo yolu eklenince tekrar geçti.
+- Ajan kullanıcı sesi/notu, gerçek hesap veya ücretli API kullanmadı. Fiziksel
+  mikrofon kabulü açık; otomatik commit yok. Kullanıcı kısa testi USER_ACCEPTANCE.md.
+
+KWS çoklu fonem satırları mevcut resmi keyword dosyası sözleşmesine uygundur:
+[sherpa-onnx keyword spotting](https://k2-fsa.github.io/sherpa/onnx/kws/index.html).
+
+## Önceki 5.R6 — toplu not tamamlama
 
 5.R5 kullanıcı tarafından başarılı doğrulandı, `2120113` commit'ine alındı.
 Bu ek adım notes.complete_many(ids, expected_snapshot, done) aracını mevcut

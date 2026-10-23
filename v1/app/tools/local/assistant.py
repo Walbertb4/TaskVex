@@ -1,6 +1,6 @@
 """Asistanın sohbet kontrollerini ortak araç hattından isteyen yerel araç.
 
-Bu araç uykuya geçirmez, mikrofon açmaz veya Live bağlantısını kapatmaz.
+Bu araçlar uykuya geçirmez, pencere kapatmaz, mikrofon veya Live yönetmez.
 Yalnız doğrulanmış bir geçiş isteği üretir. Gerçek uygulama, başarılı yanıt
 ve ses bitişinden sonra mevcut UI/host yaşam döngüsü sahibindedir.
 """
@@ -29,4 +29,24 @@ def request_sleep_mode(arguments: dict, context: ToolContext) -> ToolResult:
         return ToolResult(task_id=context.task_id, status=TaskStatus.CANCELLED)
     return ToolResult(task_id=context.task_id, status=TaskStatus.SUCCEEDED, verified=True,
         data={"mode": arguments["mode"], "apply_after": "reply_playback", "applied": False},
+        evidence={"validated_request": True})
+
+
+SHUTDOWN_SCHEMA = {"type": "object", "additionalProperties": False}
+
+
+def request_shutdown(arguments: dict, context: ToolContext) -> ToolResult:
+    """Yalnız TaskVex'i kapatma isteğini kabul et; worker pencereyi kapatmaz.
+
+    Ana uygulama mevcut yanıt/çalma döngüsünden sonra Shutdown host yolunu
+    kullanır. İşletim sistemini kapatma, restart veya serbest komut yoktur.
+    Bu sonuç gerçek pencere kapanışı değil, doğrulanmış bekleyen istektir.
+    """
+    if arguments:
+        return ToolResult(task_id=context.task_id, status=TaskStatus.FAILED,
+            error=ToolError(code="invalid_arguments", message="TaskVex shutdown accepts no arguments"))
+    if context.cancel_event.is_set():
+        return ToolResult(task_id=context.task_id, status=TaskStatus.CANCELLED)
+    return ToolResult(task_id=context.task_id, status=TaskStatus.SUCCEEDED, verified=True,
+        data={"action": "shutdown", "scope": "taskvex", "apply_after": "reply_playback", "applied": False},
         evidence={"validated_request": True})

@@ -295,7 +295,7 @@ def test_native_chat_uses_host_allowlist_and_releases_client(transport, taskvex_
         assert chat.close() and not chat.run("Merhaba", gemini.DEFAULT_MODEL)["ok"]
     assert len(stored_notes(taskvex_home)) == 1
     declarations = transport.requests[0]["tools"][0]["functionDeclarations"]
-    assert {item["name"] for item in declarations} == {"apps.catalog", "system.status", "assistant.request_sleep_mode", "notes.add", "notes.list", "notes.select", "notes.update", "notes.delete", "notes.delete_many", "notes.complete_many"}
+    assert {item["name"] for item in declarations} == {"apps.catalog", "system.status", "assistant.request_sleep_mode", "assistant.request_shutdown", "notes.add", "notes.list", "notes.select", "notes.update", "notes.delete", "notes.delete_many", "notes.complete_many"}
     assert transport.clients[0]._api_client._httpx_client.is_closed
 
 
@@ -326,7 +326,7 @@ def test_chat_without_notes_confirmation_still_answers_with_restricted_tools(tra
     with create_core() as core:
         report = TextChat(core).run("Merhaba", gemini.DEFAULT_MODEL, notes_ready=False)
     assert report["ok"]
-    assert {d["name"] for d in transport.requests[0]["tools"][0]["functionDeclarations"]} == {"apps.catalog", "system.status", "assistant.request_sleep_mode"}
+    assert {d["name"] for d in transport.requests[0]["tools"][0]["functionDeclarations"]} == {"apps.catalog", "system.status", "assistant.request_sleep_mode", "assistant.request_shutdown"}
 
 
 def test_unconfirmed_notes_cannot_be_written_by_model(transport, taskvex_home):

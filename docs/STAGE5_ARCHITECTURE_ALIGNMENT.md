@@ -15,12 +15,22 @@ diğer bulguların uygulaması bu adımda açılmadı.
 | Planlı eksik bağlantılar | `settings.py` profil pMem/pSys/pGreet/pBr ve conn.voice alanlarını saklayabiliyor; `model_instruction.py` yalnız pLang/pIns'i model talimatına bağlıyor. pWake yerel motorda, pSc UI kısayollarında kullanılıyor. Live setup ses seçimi geçmiyor; REST TTS Kore kullanıyor | Kaydedilebilir alanı çalışır özellik sayma. Kullanıcı hafızası ve ses/persona tercihleri aşamaları geldiğinde mevcut sahiplerine bağlanmalı; gizli veya bütün profil alanları kendiliğinden modele aktarılmamalı. |
 | Planlı eksik kapsam | Hava durumu, Google, Telegram, Discord vb. için çalışan core aracı henüz yok | Bunlar dil değiştirerek çalışmaz. Aşamaları geldiğinde sağlayıcı adaptörü ve ortak araç/izin hattı eklenmeli. |
 
+## 5.R7.1 eklemesi — uygulama kapanışı
+
+assistant.request_shutdown aynı ModelTools/registry/policy/TaskManager hattındadır.
+Core pencere kapatmaz; yanıt/çalma sonrası uygulama mevcut Shutdown host sahibini
+çağırır. Düğmeyle ikinci kapanış yolu kurulmadı. Stop/eski tur/unknown/replay
+korunur; OS shutdown yetkisi yoktur. Çoklu timer/stopwatch sonraki 5.R7.2'de
+tek durum sahibiyle bağlanacak; bugün UI'ın yerel tekli sayaçları çalışır.
+
 ## Korunan doğru sınırlar
 
 - Not CRUD'u ve uygulama araçları bootstrap'ta kayıtlı, policy denetimli ve
   TaskManager üzerinden yürütülüyor. Native not UI olayları da bu core'a gider.
 - Modelin not aktarım onayı olmadan not yetkisi yok; yeni uyku aracı not
   yetkisini genişletmez. Desktop dışındaki kaynaklara yeni yetki verilmedi.
+- 5.F4 wake varyasyonları tek yerel wake_spellings tanımında KWS/Live hitap
+  kontrolünü paylaşır. Bu doğal dil eylem parser’ı veya yeni araç yürütücüsü değildir.
 - Mikrofon, wake-word, Live socket, ses oynatma ve pencere/ayar/anahtar yaşam
   döngüleri mevcut sahiplerinde kalır. Bunların doğrudan host kontrolü olması
   tek başına mimari ihlal değildir; doğal dil komutu çözümleyicisi değildirler.

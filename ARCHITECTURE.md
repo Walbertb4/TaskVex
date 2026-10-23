@@ -1,6 +1,37 @@
 # TaskVex — Mimari ve geliştirme rehberi
 
-## Güncel uygulama — 5.R6 toplu not tamamlama
+## Güncel uygulama — 5.R7.1 Vex üzerinden Shutdown
+
+`assistant.request_shutdown` yalnız TaskVex kapatma isteğidir; Windows kapanışı
+ve restart değildir. ModelTools → registry/policy → TaskManager sonucu yalnız
+applied=false bekleyen isteği doğrular. Uyku ile aynı başarılı-tur çıkarımı,
+mevcut yanıt/çalma bitişi ve request_id/bağlantı/Stop korumaları kullanılır.
+Düğme ve model aynı shutdownApplication → native shutdown yolunu çağırır;
+worker kendi kendini kapatmaz. Host model/kaynak/core temizliği ardından mevcut
+pencereyi kapatır. Pencere kapanışı doğrulanamazsa unknown gösterilir; tekrar yoktur.
+
+5.R7.2 çoklu timer/stopwatch sonraki dilimdir: mevcut UI tekli sayaç otoritesi
+tek backend durum sahibine devredilecek; UI/model ayrı sayaç yürütmeyecek.
+Bu tur timer/stopwatch bağlanmadı. pWake, backend profil ayarından mevcut yerel
+wake motoruna ve Live yalnız-hitap kontrolüne bağlıdır; yalnız etiket değildir.
+Wake adımının kullanıcı kabulü henüz bildirilmedi, yeni commit yapılmadı.
+Aşama 5 kapanmıyor; ilerleme [aşamalar.md](aşamalar.md).
+
+## Önceki uygulama — 5.F4 ortak yerel wake varyasyonları
+
+Varsayılan Vex ailesi Vex/Veks/Rex'tir. `wake_word.py::wake_spellings` hem tek
+sherpa KWS motorunun fonem listesini hem Live'da yalnız-hitap ayrımını besler.
+Veks aynı Vex fonemlerini kullanır; Rex ayrı fonem dizisidir. Özel bir wake-word
+seçilirse yalnız o isim kullanılır. Tek başına X/ex/eks eklenmedi; kısa sıradan
+sesleri wake sayan benzerlik veya regex niyet yolu yoktur. Ses sınırı, eski
+request ID, Mic Off, unknown kilidi ve mevcut host kabulü aynen korunur.
+Wake yerel yaşam döngüsü kontrolüdür; ModelTools'a veya ağa zorla bağlanmaz.
+Uyku ve sonraki doğal dil uygulama eylemleri kayıtlı model araçlarından geçer.
+Kullanıcı ayrı uzun kullanım adımını plandan çıkardı; Aşama 5 kapanmıyor.
+Sıradaki 5.R7, kapatma gibi mevcut UI kontrollerini Vex'e bağlama adımıdır;
+bu tur uygulanmadı. Güncel durum [aşamalar.md](aşamalar.md).
+
+## Önceki uygulama — 5.R6 toplu not tamamlama
 
 5.R5 kullanıcı kabulüyle `2120113` commit'ine alındı. `notes.complete_many`
 aynı `notes.select` sonucundaki tam ID kümesini ve snapshot'ı kullanır;

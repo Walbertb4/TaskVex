@@ -629,6 +629,31 @@ async function streamMicrophone(requestId) {
   }
 }
 
+/** Tek Shutdown yolu: düğme ve model aynı host kaynak temizliğini kullanır.
+ * Araç sonucunun kabulü pencereyi kapatmaz. Native ret/unknown görünür kalır;
+ * otomatik tekrar veya işletim sistemini kapatma komutu yoktur.
+ */
+async function shutdownApplication() {
+  cancelAutoSleep();
+  cancelMic();
+  const shut = document.getElementById('shut');
+  if (isBackendAvailable()) {
+    if (shut) shut.disabled = true;
+    const result = await emit('shutdown');
+    if (!result.ok || result.response?.completed !== true) {
+      if (!result.response || result.response.unknown || result.ok) textOperation.markUnknown();
+      if (shut) shut.disabled = textOperation.uncertain;
+      document.getElementById('textStatus').textContent = 'TaskVex shutdown was not confirmed: ' +
+        sanitizeError(result.error || result.response?.error || 'Check the app before retrying.');
+      return false;
+    }
+    return true;
+  }
+  emit('shutdown');
+  shutdown();
+  return true;
+}
+
 async function sendText(text = null, audio = null) {
   const inp = document.getElementById('inp');
   const v = text != null ? text.trim() : (inp && inp.value.trim());
@@ -675,6 +700,7 @@ async function sendText(text = null, audio = null) {
     // aşımı gerçek iptal veya güvenli yeniden deneme anlamına gelmez.
     let revision = textOperation.begin(liveTest ? 210000 : 240000);
     const replyConnectionRevision = connectionRevision;
+    const replyRequestId = activeTextRequest;
     cancelBeforeSend = false;
     if (!outputProblem) {
       preparingAudio = true;
@@ -809,8 +835,19 @@ async function sendText(text = null, audio = null) {
     settleMicrophoneFailure(report, replyConnectionRevision);
     // Kullanıcının komutuna Vex yanıt verdi ve yukarıdaki finish çalmayı bitirdi.
     // Stop, yeni araya giriş veya ses hatası bekleyen uyku komutunu uygulamaz.
-    const sleepReplyFinished = report?.ok && !cancelBeforeSend && !handoff && !report.audio_error && !playbackProblem &&
+    const sleepReplyFinished = result.ok && report?.ok && report.completed === true && !cancelBeforeSend && !handoff && !report.audio_error && !playbackProblem &&
       replyConnectionRevision === connectionRevision;
+    if (sleepReplyFinished && report.shutdown_requested && report.request_id === replyRequestId) {
+      // Güncel turun gerçek yanıt/çalma bitişi; Stop, yeni ses veya bağlantı
+      // değişimi eski kapanış isteğini geçersiz kılar. Yeni mesaj yarışmasın.
+      textBusy = true;
+      controls.forEach(el => { el.disabled = true; });
+      const closed = await shutdownApplication();
+      if (!textOperation.uncertain) controls.forEach(el => { el.disabled = false; });
+      textBusy = false;
+      if (!closed && !textOperation.uncertain) void listenAutomatically(null, true);
+      return;
+    }
     if (sleepReplyFinished) applySleepMode(report.sleep_mode);
     if (sleepReplyFinished && report.sleep_requested) {
       enterSleep();
@@ -1576,17 +1613,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const shut = document.getElementById('shut');
   if (shut) {
-    shut.addEventListener('click', async () => {
-      // Native host gerçek pencereyi kapatır; eski Restart katmanını açmayız.
-      if (isBackendAvailable()) {
-        shut.disabled = true;
-        await emit('shutdown');
-        shut.disabled = false;
-        return;
-      }
-      emit('shutdown');
-      shutdown();
-    });
+    shut.addEventListener('click', shutdownApplication);
   }
 
   // Global key bindings

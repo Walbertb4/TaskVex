@@ -1,6 +1,43 @@
 # UI/backend sözleşmesi
 
-## Güncel 5.R6 — toplu not tamamlama
+## Güncel 5.R7.1 — modelden TaskVex kapatma
+
+- `assistant.request_shutdown({})`, notes transferinden bağımsız mevcut desktop
+  assistant.control yetkisindedir. OS shutdown, restart, executable/argüman yoktur.
+- Core sonucu action=shutdown, scope=taskvex, apply_after=reply_playback,
+  applied=false: kabul pencere kapanışı değildir. Model yalnız planı onaylar.
+- REST/Live aynı assistant_control_request çıkarımını kullanır. Başarısız/Stop/
+  unknown tur, başarısız başka araç veya eski çağrı replay'i yeni kapanış üretmez.
+  Sleep+shutdown birlikte gelirse conflicting_assistant_requests ile uygulanmaz.
+- UI yalnız başarılı completed tur ve gerçek playback bitişi ardından, aynı
+  request_id ve connectionRevision hâlâ geçerliyse mevcut shutdownApplication
+  yoluna girer. Stop, yeni araya giriş, bağlantı/anahtar/model değişimi veya ses
+  hatası pending kapanışı düşürür. Yeni mesaj kapanış beklenirken başlatılmaz.
+- Shutdown düğmesi de aynı fonksiyonu kullanır; native shutdown payload kabul
+  etmez. Host chat/kaynak/core'u kapatmadan pencereyi yok etmez. Açık ret görünür;
+  kayıp yanıt veya pencere destroy hatası unknown, otomatik tekrar yoktur.
+- Personalization pWake, settings.json profiline kaydedilir. Yeni uyku girişinde
+  bridge bu değeri yerel KWS'ye verir; özel isim değişimi eski motor cache'ini
+  yeniden kurar. Live yalnız-hitap ayrımı da aynı profil değerini alır.
+- Çoklu timer/stopwatch 5.R7.2'de; bugünkü yerel tekli UI davranışı korunur.
+
+## Önceki 5.F4 — yerel wake varyasyonları
+
+- Personalization pWake, seçili hitap olmaya devam eder; yeni ayar veya payload
+  yoktur. Vex/Veks/Rex ailesi tek wake_spellings tanımıyla KWS ve Live yalnız-hitap
+  kontrolüne bağlanır. Veks fonemleri Vex ile aynıdır; özel isimler genişletilmez.
+- Tek yerel KWS motoru Vex ve Rex fonem satırlarını yükler; hepsi aynı WAKE
+  sonucunu, mevcut ses sınırı doğrulamasını ve request_id kabulünü kullanır.
+  Yeni mikrofon, model oturumu, araç yürütücüsü veya ağda uyku dinlemesi yoktur.
+- Kesin transkript yalnız ailedeki hitapsa wake_only'dir. “Rex notlarımı göster”
+  gibi devamı olan cümle normal modele gider; görev yutulmaz. Özel Computer
+  profilinde yalnız Rex söylenmesi boş hitap sayılmaz.
+- X/ex/eks tek başına desteklenmez. Bu sınırlı akustik varyasyon listesidir;
+  uygulama komutlarını cümle kalıplarıyla yorumlayan bir yönlendirici değildir.
+- Mevcut Mic Off, Stop/unknown, eski wake_feed ID, profil değişiminde cache
+  yenileme, wake sınırı ve host onayı kuralları değiştirilmedi.
+
+## Önceki 5.R6 — toplu not tamamlama
 
 - Not aktarımı onaylanınca REST/Live kataloğuna `notes.complete_many` eklenir;
   notes.write ve aynı notes kaynak kilidi zorunludur. Yeni kanal yetkisi yoktur.

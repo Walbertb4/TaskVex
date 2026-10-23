@@ -1,6 +1,35 @@
 # TaskVex — Kullanıcının katılacağı gerçek kullanım kontrolleri
 
-## Güncel kısa test — 5.R6 toplu not tamamlama
+## Güncel kısa test — 5.R7.1 Shutdown
+
+1. Uygulamayı yeniden aç. “Vex, kendini kapat” de veya “Close TaskVex” yaz.
+   Kısa yanıtı/sesi bittikten sonra pencere kapansın; Windows açık kalsın.
+2. Yeniden aç; aynı istekte yanıt çalarken Stop'a bas. Pencere açık kalmalı;
+   eski cevap daha sonra kapanış başlatmamalı. Normal yeni mesaj çalışmalı.
+3. “Kendini kapatma, burada kal” gibi olumsuz bir istek uygulamayı kapatmamalı.
+   “Bilgisayarı kapat” bu araca dönüşmemeli; belirsiz hedefte açıklama istemeli.
+
+Gerçek dil seçimi kullanıcı kabulüdür; sentetik testler bunun garantisi değildir.
+Wake varyasyonlarının önceki kısa kabulü hâlâ bekleniyor. Timer/stopwatch çoklu
+kontrolü bu tur eklenmedi; sonraki adım 5.R7.2. Aşama 5 kapanmıyor.
+
+## Önceki kısa test — 5.F4 wake varyasyonları
+
+Uygulamayı yeniden aç; wake-word Vex, mikrofon On olsun.
+
+1. Sleep'e basıp “Vex” de; sonra tekrar Sleep ve “Rex” de. Her seferinde uyanıp
+   sonraki komutunu almalı. “Veks” söyleyişi Vex ile aynı ailede.
+2. Yeniden uyutup “Rex, notlarımı göster” de; kalan istek kaybolmamalı.
+3. “next”, “ex” veya sıradan konuşmayı dene; bunlar amaçlanan wake değildir.
+   Yanlış uyanma olursa hangi sesle olduğunu bildir; kısa hitapta olasılık sıfır değildir.
+4. Wake-word'ü Computer yapınca Vex/Rex tetiklememeli, Computer tetiklemeli.
+   Mikrofon Off iken hiçbiri dinlenmemeli. Ardından tercihini geri alabilirsin.
+
+Bu yalnız yeni wake değişikliğinin kısa kabulüdür. Kullanıcı isteğiyle ayrı
+uzun kullanım adımı kaldırıldı; Aşama 5 kapanmıyor. Kapatma gibi uygulama
+kontrollerini Vex'e bağlama 5.R7'de ele alınacak, bu tur eklenmedi.
+
+## Önceki kısa test — 5.R6 toplu not tamamlama
 
 Uygulamayı yeniden aç; yalnız deneme notları olan test profilinde dene.
 

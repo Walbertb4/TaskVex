@@ -30,10 +30,10 @@ NOTE_TARGET_INSTRUCTION = (
 )
 
 
-def sleep_request(report: dict, previous_tasks: frozenset[str] = frozenset()) -> dict:
+def assistant_control_request(report: dict, previous_tasks: frozenset[str] = frozenset()) -> dict:
     """Yalnız bu başarılı turun doğrulanmış, yeni araç isteğini UI'a çıkar.
 
-    Araç sonucu uyku değil, bekleyen istek üretir. Eski çağrının replay sonucu
+    Araç sonucu uyku/kapanış değil, bekleyen istek üretir. Eski çağrının replay sonucu
     modele tekrar verilebilir fakat yeni geçiş oluşturamaz. Çelişkili kiplerde
     tahmin yapılmaz; Stop/hata/unknown veya başarısız araç varsa uygulanmaz.
     REST ve Live aynı çıkarımı kullanır; doğal dil metni burada yorumlanmaz.
@@ -44,14 +44,24 @@ def sleep_request(report: dict, previous_tasks: frozenset[str] = frozenset()) ->
     if any(item.get('status') != 'succeeded' for item in outcomes):
         return {}
     modes = set()
+    shutdown = False
     for item in outcomes:
-        if item.get('name') != 'assistant.request_sleep_mode' or item.get('task_id') in previous_tasks:
+        if item.get('task_id') in previous_tasks:
             continue
         result = item.get('result') or {}
         data = result.get('data') or {}
-        if (result.get('verified') is True and data.get('applied') is False
-                and data.get('apply_after') == 'reply_playback' and data.get('mode') in ('once', 'persistent', 'off')):
+        if (result.get('verified') is not True or data.get('applied') is not False
+                or data.get('apply_after') != 'reply_playback'):
+            continue
+        if item.get('name') == 'assistant.request_sleep_mode' and data.get('mode') in ('once', 'persistent', 'off'):
             modes.add(data['mode'])
+        if item.get('name') == 'assistant.request_shutdown' and data.get('action') == 'shutdown' and data.get('scope') == 'taskvex':
+            shutdown = True
+    if shutdown and modes:
+        return {'ok': False, 'code': 'conflicting_assistant_requests',
+                'error': 'Sleep and shutdown conflict; no application control was applied.'}
+    if shutdown:
+        return {'shutdown_requested': True}
     if len(modes) > 1:
         return {'ok': False, 'code': 'conflicting_sleep_requests',
                 'error': 'Conflicting sleep requests; no mode change was applied.'}
