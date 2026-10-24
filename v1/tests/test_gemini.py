@@ -520,3 +520,53 @@ def test_rest_final_generation_usage_only(transport, count):
         report = model.run('Hello')
     assert report['ok']
     assert report.get('usage_tokens') == (count if type(count) is int and count >= 0 else None)
+
+
+@pytest.mark.parametrize('invalid',[None,-1,True,1.5,9007199254740992])
+def test_session_usage_invalid_data_is_partial_not_zero(invalid):
+    usage=gemini.GeminiUsage()
+    usage.add(0)
+    usage.add(12)
+    usage.add(invalid)
+    expected={'usage_tokens':12,'usage_scope':'session','usage_partial':True}
+    assert usage.report({})==expected
+    assert usage.report({})==expected  # Okumak yeniden eklemez.
+
+
+def test_session_rest_sums_tool_rounds_messages_and_preserves_missing(transport):
+    from app.session.text_chat import TextChat
+    def counted(parts,n):
+        response=reply(parts)
+        response['usageMetadata']={'totalTokenCount':n}
+        return response
+    transport.responses=[counted([call('apps.catalog',{},'catalog')],10),
+        counted([{'text':'Catalog'}],20),counted([{'text':'Second'}],7),reply([{'text':'Missing'}])]
+    with create_core() as core:
+        chat=TextChat(core)
+        try:
+            first=chat.run('Catalog',gemini.DEFAULT_MODEL)
+            assert first['usage_tokens']==30 and not first['usage_partial']
+            assert chat.run('Again',gemini.DEFAULT_MODEL)['usage_tokens']==37
+            assert chat.reset_live(clear_memory=True)
+            third=chat.run('Other',gemini.DEFAULT_MODEL)
+            assert third['usage_tokens']==37 and third['usage_partial']
+        finally:
+            assert chat.close()
+    assert len(transport.requests)==4
+
+
+def test_rest_usage_received_before_stop_is_not_removed(transport):
+    from app.session.text_chat import TextChat
+    def stop_response(request):
+        chat.stop('current')
+        response=reply([{'text':'Late'}])
+        response['usageMetadata']={'totalTokenCount':42}
+        return httpx.Response(200,json=response)
+    transport.responses=[stop_response]
+    with create_core() as core:
+        chat=TextChat(core)
+        try:
+            result=chat.run('Hi',gemini.DEFAULT_MODEL,request_id='current')
+            assert result['stopped'] and result['usage_tokens']==42
+        finally:
+            assert chat.close()

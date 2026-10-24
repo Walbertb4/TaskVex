@@ -87,7 +87,8 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
             from base64 import b64encode
             return {"serverContent": {"modelTurn": {"role": "model", "parts": [{"inlineData": {
                 "data": b64encode(b'\x00\x00' * samples).decode(), "mimeType": "audio/pcm;rate=24000"}}]},
-                "outputTranscription": {"text": text}, "turnComplete": True}}
+                "outputTranscription": {"text": text}, "turnComplete": True},
+                "usageMetadata":{"totalTokenCount":10}}
 
         def crud_plan(text):
             """Yalnız sentetik kullanıcı komutundan gerçek depodaki ID'yi seç.
@@ -569,7 +570,10 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                          "online:document.getElementById('netP').textContent,"
                          "system:document.getElementById('win').textContent};")
             assert initial["alias"] and initial["api"] == ["event"], initial
-            assert "OFFLINE" in initial["online"] and initial["system"] != "—", initial
+            assert "OFFLINE" in initial["online"], initial
+            wait_until(lambda: "Local sample" in window.evaluate_js("document.getElementById('systemStatus').textContent"))
+            assert '%' in window.evaluate_js("document.getElementById('ram').textContent")
+            outcome['native_local_memory_and_system_sample']=True
             if phase == "chat":
                 # Yeni otomatik başlangıç fiziksel mikrofona hiç ulaşmasın.
                 # Her izin çağrısı taze, sessiz bir sentetik track alır.
@@ -702,12 +706,16 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 wait_until(lambda: "first text" in window.evaluate_js("document.getElementById('textStatus').textContent"))
                 wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
                 assert "Live synthetic reply" in window.evaluate_js("document.getElementById('msgs').textContent")
+                assert window.evaluate_js("document.getElementById('tokTxt').textContent")== '≥ 10'
+                assert 'Session total: 10' in window.evaluate_js("document.getElementById('tokSub').textContent")
                 assert "LAST LIVE TEST" in window.evaluate_js("document.getElementById('netP').textContent")
                 assert live_state["opened"] == 1 and not live_state["closed"] and len(text_requests) == rest_requests
                 js("document.getElementById('inp').value='Second Live message';document.getElementById('send').click();return true;")
                 wait_until(lambda: "session reused" in window.evaluate_js("document.getElementById('textStatus').textContent"))
                 wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
                 assert "Live reused reply" in window.evaluate_js("document.getElementById('msgs').textContent")
+                assert window.evaluate_js("document.getElementById('tokTxt').textContent")== '≥ 20'
+                outcome['application_session_tokens_accumulate_native_replies']=True
                 assert live_state["opened"] == 1 and len(text_requests) == rest_requests
                 assert (home / "notes.json").read_bytes() == document
                 for turn in [3, 4]:
@@ -1162,11 +1170,15 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 js("const a=await import('./js/api.js');for(let i=0;i<250;i++)a.addLog('Native bounded entry '+i);return true;")
                 assert window.evaluate_js("document.getElementById('log').childElementCount") == 200
                 outcome['engine_log_bounded_to_200_entries'] = True
+                tokens_before_disconnect=window.evaluate_js("document.getElementById('tokTxt').textContent")
                 js("document.getElementById('disc').click();return true;")
                 # Socket, loop/thread temizliğinden önce kapanır. Ara durumu
                 # bitiş sanma; host tüm kaynakları bırakana kadar bekle.
                 wait_until(lambda: live_state["closed"] and api._chat._live._thread is None)
                 assert api._chat._live._thread is None
+                assert window.evaluate_js("document.getElementById('tokTxt').textContent")==tokens_before_disconnect
+                assert '%' in window.evaluate_js("document.getElementById('ram').textContent")
+                outcome['offline_preserves_local_metrics_and_session_tokens']=True
                 original_run_live = api._chat.run_live
                 api._chat.run_live = lambda text, model, **kwargs: {
                     **original_run_live(text, model, **kwargs), 'ok':False, 'unknown':True}

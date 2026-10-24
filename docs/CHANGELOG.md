@@ -5,6 +5,30 @@ hali ARCHITECTURE.md, yapılacak işler PLAN.md içindedir. Henüz sürüm yayı
 
 ## Unreleased
 
+### Ortak yerel telemetri — CPU/RAM/disk/pil/aktif uygulama
+
+- Tek Telemetry örneği model ve UI için gerçek Win32 ölçümlerini sağlar.
+  UI mevcut tick üzerinden snapshot okur; poll görev günlüğünü büyütmez.
+- İlk CPU örneği/bozuk sayaç/kayıp ölçüm —; gerçek sıfır korunur.
+  Aktif uygulama yalnız exe adıyla gösterilir; kullanıcı belge başlığı okunmaz.
+- Bağlantı kesilince yerel ölçümler ve oturum token toplamı silinmez.
+  Yeni bağımlılık/servis/thread yoktur. GPU/sıcaklık/ağ/media sonraki dilimlerdir.
+- Kullanıcı token testini kabul etti ve commit'i erteledi; bu tur commit/push yok.
+- 1109 pytest, 96 hedefli test, 12 browser, 9 JS ve Pyright 0. İlk native
+  chat süre aşımından sonra izole tekrar 10/10 geçti; [kanıt](reports/local-telemetry-checks.json).
+
+### Gemini oturum token toplamı
+
+- Python token ayrıştırma/toplama mevcut gemini.py içinde tekleştirildi.
+  UI artık son yanıt yerine uygulama ömründeki toplamı gösterir.
+- REST araç turları, Live üretimleri ve ayrı TTS yanıtları sayılır;
+  ara Live snapshot'ları gelişigüzel toplanmaz. Stop ve Disconnect toplamı korur.
+- Eksik kullanım kesin sıfır sayılmaz; bilinen toplam ≥/Incomplete gösterilir.
+  Yeni API çağrısı/depo/bağımlılık yoktur; restart sayacı sıfırlar.
+- Gerçek API/fatura doğrulaması yapılmadı; bu dilimin kullanıcı kabulü bekleniyor.
+- 1101 pytest, 138 hedefli test, 11 browser, 9 JS, 10 native ve Pyright 0;
+  [kanıt](reports/session-token-checks.json).
+
 - GitHub README güncel hafıza onayı/otomatik kayıt, son token bildirimi ve
   1091 testlik doğrulamaya göre düzeltildi. Telemetri/hava/ağ eksikleri ve
   görev günlüğünde öneri/kaynak verisi kalabilmesi açıkça belirtildi.

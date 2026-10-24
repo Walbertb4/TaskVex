@@ -314,3 +314,21 @@ def test_idle_control_flood_is_bounded_and_starts_fresh(wire):
         assert wire.opened == 2 and "handle" not in setups(wire)[1]["sessionResumption"]
     finally:
         assert host.close()
+
+
+
+def test_application_usage_survives_reused_live_and_disconnect(wire):
+    from app.session.text_chat import TextChat
+    def counted(n):
+        return {**frame('Hello',complete=True),'usageMetadata':{'totalTokenCount':n}}
+    wire.plans=[{'turns':[[counted(10)],[counted(10)]]},{'turns':[[counted(5)]]}]
+    with create_core() as core:
+        chat=TextChat(core)
+        try:
+            assert chat.run_live('First','future-live')['usage_tokens']==10
+            assert chat.run_live('Second','future-live')['usage_tokens']==20
+            assert chat.reset_live()
+            assert chat.run_live('Third','future-live')['usage_tokens']==25
+            assert wire.opened==2
+        finally:
+            assert chat.close()

@@ -11,7 +11,7 @@ from uuid import uuid4
 from hashlib import sha256
 
 from app.core.contracts import ContractError
-from app.session.gemini import DEFAULT_MODEL, FALLBACK_MODEL, GeminiText
+from app.session.gemini import DEFAULT_MODEL, FALLBACK_MODEL, GeminiText, GeminiUsage
 from app.session.model_tools import ModelTools, assistant_control_request
 from app.storage.credentials import CredentialError
 from app.session.live_session import PersistentLive
@@ -35,6 +35,7 @@ class TextChat:
     def __init__(self, core, *, audio_sink: Callable[[str, bytes, str], bool] | None = None,
                  transcript_sink: Callable[[str, str, str, int], bool] | None = None) -> None:
         self._core = core
+        self._usage = GeminiUsage()
         self._lock = Lock()
         self._closed = False
         self._live = PersistentLive()
@@ -160,7 +161,8 @@ class TextChat:
                                     **({'transcript_sink': text_sink} if text_sink else {}),
                                     **({"audio_input": audio_input} if audio_input is not None else {}))
             self._memory.remember(report.get('input_text', '') if audio_input is not None else text, report)
-            return {**report, "request_id": request_id}
+            self._usage.add(report.get('usage_tokens'), partial=report.get('usage_partial', False))
+            return self._usage.report({**report, "request_id": request_id})
         except Exception:
             return {"ok": False, "unknown": True, "code": "live_session_error",
                     "error": "Live session could not be confirmed. Reopen and check notes before retrying."}
@@ -185,11 +187,11 @@ class TextChat:
                 if self._closed or not pending or pending[0] != request_id or not self._audio_sink:
                     return {'ok': False, 'completed': True, 'request_id': request_id, 'audio_error': 'speech_not_pending'}
                 self._speech_reply = None
-                speech = GeminiSpeech()
+                speech = GeminiSpeech(usage=self._usage)
                 self._rest = (request_id, speech)
             output = self._audio_sink
             result = speech.run(pending[1], lambda data, mime: output(request_id, data, mime))
-            return {**result, 'request_id': request_id}
+            return self._usage.report({**result, 'request_id': request_id})
         finally:
             with self._rest_guard:
                 self._rest = None
@@ -231,7 +233,7 @@ class TextChat:
             tools = ModelTools(self._core, principal="local-user", session_id=uuid4().hex,
                                allowed_tools=allowed)
             try:
-                client = GeminiText(tools, model=model, profile=profile)
+                client = GeminiText(tools, model=model, profile=profile, usage=self._usage)
             except CredentialError:
                 return {"ok": False, "error": "Gemini key is missing or unavailable. Save it in Settings."}
             except ContractError:
@@ -247,7 +249,7 @@ class TextChat:
                 if result.get('ok') and request_id and self._audio_sink:
                     with self._rest_guard:
                         self._speech_reply = (request_id, result['text'])
-            return {**result, "completed": True, "request_id": request_id}
+            return self._usage.report({**result, "completed": True, "request_id": request_id})
         except Exception:
             return {"ok": False, "unknown": True,
                     "error": "Text result could not be confirmed. Do not resend; reopen and check notes."}

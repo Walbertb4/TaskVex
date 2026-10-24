@@ -24,13 +24,18 @@ It is a development project, not a production-ready general computer-use agent.
 - Backend notes with stable IDs and timestamps: add, list, edit, complete and
   delete, including structured selection and atomic batch deletion/completion.
 - Multiple timers and stopwatches shared between the UI and model tools.
+- Periodic local CPU/RAM, runtime-volume disk usage, battery and foreground
+  executable readings shared by the UI and system.status tool. Initial or
+  unavailable readings are not replaced with invented numbers.
 - Saved interface preferences, Live voice selection and separate reply volume,
   plus a limited set of active personalization fields.
 - Gemini API key storage in Windows Credential Manager and automatic Live model
   catalog loading. The saved selection is restored when returned by the API.
 - A per-data-profile OS lock prevents a second native app instance from opening.
-- A token display using the latest Live/REST provider usage report, when available.
-  It is not an account quota, session total or a total of tool/retry/speech requests.
+- An application-session token total from reported Live/REST usage, including
+  REST tool rounds and separately requested speech synthesis. It survives Stop,
+  Disconnect and model changes; restarting the app resets it. Missing usage
+  marks the total incomplete. It is not account quota or a billing guarantee.
 
 A small allowlisted application plugin exists in the core. The conversational
 model currently sees its catalog, not unrestricted app-launch or desktop control.
@@ -43,8 +48,9 @@ Google Drive/Calendar/mail access, Telegram/Discord integration,
 general GUI automation and
 backend skill/routine scheduling are planned.
 Camera, screen inspection, location, weather and media controls are not connected.
-Continuous CPU/RAM/GPU/temperature and Wi-Fi/network monitoring are not implemented;
-existing system information is a limited foundation, not a completed monitoring service.
+GPU/temperature and Wi-Fi/network monitoring are not implemented. CPU sampling
+currently supports Windows processor groups with at most 64 logical processors;
+unsupported readings remain unavailable.
 Some saved legacy profile fields have no backend effect and are marked as planned.
 
 ## Run from source
@@ -93,13 +99,15 @@ Model availability, network conditions and hardware affect behavior.
 
 ## Verification and documentation
 
-The latest change passed 1,091 Python tests, 9 JavaScript suites, 10 browser
+The latest change passed 1,109 Python tests, 9 JavaScript suites, 12 browser
 acceptance groups, targeted type checking and 10 native regression phases using
 synthetic providers and temporary data. Memory review/automatic saving and
 button/conversation decisions were also reported working by the developer;
-the latest token display still awaits a real-provider manual check.
+the session counter was also reported working. The new local-system dashboard
+still awaits manual acceptance. An initial native chat run hit its 60-second
+deadline; an isolated repeat passed all 10 phases without extending the deadline.
 These checks do not establish real-account availability, physical microphone
-accuracy or production readiness. See [test evidence](docs/reports/token-counter-checks.json).
+accuracy or production readiness. See [test evidence](docs/reports/local-telemetry-checks.json).
 
 - [Architecture](docs/ARCHITECTURE.md): current ownership and planned boundaries.
 - [Plan](docs/PLAN.md): remaining work and acceptance status.

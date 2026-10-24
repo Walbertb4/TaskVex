@@ -1,6 +1,6 @@
 # TaskVex — Güncel plan
 
-## Şimdi: hafif 6.2.4 token göstergesi öne alındı; ardından 6.2.1 telemetri
+## Şimdi: 6.2.1 yerel sistem ölçümleri; GPU/ağ/media sonraki dilimler
 
 Önceki 5.R8.6 kullanıcı kabulü başarılı, 526bfed commit’inde.
 5.F6 bakımı kullanıcı tarafından kabul edildi; ea8aa15 commit’inde.
@@ -309,7 +309,7 @@ Bu tur yeni özellik kodlanmadı; aşağıdaki dilimler henüz başlamadı.
 
 | Sıra | Kapsam / kabul koşulu |
 |---|---|
-| 6.2.1 — sıradaki | CPU/RAM, disk, pil ve aktif pencere için gerçek yerel kaynak; tek telemetri sahibi, periyodik UI yenileme, modelden aynı kaynağı sorgulama; yok/sıfır/eski veri ayrımı |
+| 6.2.1 | CPU/RAM/disk/pil/aktif exe ortak sahibi ve periyodik UI/model bağlantısı uygulandı; bu turun otomatik/native ve kullanıcı kabulü aşağıda |
 | 6.2.2 | GPU kullanım/bellek ve CPU/GPU sıcaklığı; donanıma göre kaynak doğrulama; desteklenmeyene uydurma değer yerine kullanılamaz durumu |
 | 6.2.3 | Network/Wi-Fi, anlık gönderme/alma hızı, bağlantı ve gecikme; transfer hızı ile internet hız testi ayrımı; offline yerel CPU ölçümünü silmez |
 | 6.2.4 | Sağlayıcının gerçek kullanım verisinden token sayacı; tur/oturum ve context sınırı ayrı; bilinmeyen hesap kotası veya tahmini kullanım kesin değer gibi gösterilmez |
@@ -347,3 +347,58 @@ kullanıcının bu tur verdiği açık commit izni manuel kabul olarak sunulmaz.
 
 **10/10 native aşama** da geçti: [native regresyon](reports/token-counter-native.json).
 Token sayısı için SDK sentetik taşıma + tarayıcı görünüm testi; gerçek hesap yok.
+
+
+### 6.2.4 — Gemini içinde hesaplama ve uygulama oturumu toplamı
+
+Kullanıcı bu tur son bildirim yerine tüm oturumu istedi. Python token
+hesaplaması mevcut gemini.py içinde toplandı; Live ve speech adaptörleri
+kendi metadata'larını iletir. TextChat ömründeki tek RAM toplamı Stop,
+Disconnect/model/anahtar/bağlam değişiminde korunur; uygulama restart'ında sıfırlanır.
+REST araç turları ve ayrı ses isteği dahil edilir. Live ara snapshot'ları aynı
+üretimde bir kez sayılır; metadata eksikse bilinen toplam ≥/Incomplete gösterilir.
+Bu değişiklik önceki son-bildirim diliminin yerini alır; kota/context/fatura
+kesinliği iddiası yoktur. Idle'da geç gelen metadata ve sağlayıcının göndermediği
+kullanım geri sorgulanmaz. Gerçek/ücretli API kullanılmaz.
+
+Hedefli SDK ve uygulama testleri eklendi; genel/native doğrulama sürüyor.
+Bu tur commit/push istenmedi: yeni dilim manuel kullanıcı kabulünü bekler.
+Sıradaki özellik 6.2.1 olarak kalır; genel sağlayıcı framework'ü eklenmedi.
+
+
+Oturum toplamı son doğrulama: **1101 pytest** (102.68 s), **138 hedefli SDK/
+oturum testi**, **11 browser grubu**, **9 JS suite**, app Pyright **0**,
+**10/10 native aşama**. Native UI iki yanıtta 10 → 20 toplamını doğruladı.
+[Özet](reports/session-token-checks.json), [native](reports/session-token-native.json).
+Gerçek API/fatura denetimi yapılmadı; uygulama yeniden açılarak kullanıcı testi
+beklenir. Commit ve push yapılmadı. Önceki son-bildirim raporu tarihsel kanıttır.
+
+
+### 6.2.1 — birlikte tamamlanan yerel ölçümler
+
+Kullanıcı token oturum testini başarılı bildirdi; açık talimatıyla commit sonraya
+bırakıldı. Kullanıcı 6.2'de beraber yapılabilenleri istedi. Bu tur CPU/RAM, disk,
+pil ve aktif uygulama bağlantıları aynı Telemetry örneğinde birleştirildi.
+Win32 + standart Python kullanıldı; bağımlılık kurulmadı. CPU iki örneğin farkı,
+RAM/disk GiB, pil yok/bilinmiyor ve ilk/eksik/sıfır ölçüm ayrımı korunur.
+UI sorgusu görev günlüğünü poll ile büyütmez; model mevcut ortak araç hattını
+kullanır. Aktif uygulamanın yalnız exe adı alınır; belge başlığı ve tam yol yoktur.
+Model offline olduğunda yerel metrik ve oturum token toplamının silinmesi de düzeltildi.
+
+Kapsamı sonraya ayrılanlar: 6.2.2 GPU/sıcaklık için uygun donanım/sensör kaynağı;
+6.2.3 Wi-Fi/ağ arabirimi ve trafik/gecikme; 6.2.5 Windows medya oturumu/denetimleri.
+Bunlar bu dilimde çalışıyor sayılmaz. Sıradaki kapsam 6.2.2 kaynak seçimi ve
+ilk destekli donanım adaptörüdür; gerekiyorsa okunamayan donanım açıkça raporlanır.
+Hava/Google/skill/rutin kapsamına geçilmedi. Kullanıcı talimatıyla commit/push yok.
+
+
+6.2.1 son otomatik doğrulama: **1109 pytest** (160.19 s), **96 hedefli test**,
+**12 browser grubu**, **9 JS suite**, app + telemetri testi Pyright **0**.
+İlk native tur chat aşamasında 60 s süre sınırına takıldı; eşzamanlı pytest
+bitince aynı süre sınırıyla tek başına tekrar edilen bütün native süit
+**10/10 geçti**. Kesin neden kanıtlanmadı, başarısız tur gizlenmedi.
+[Özet](reports/local-telemetry-checks.json), [native](reports/local-telemetry-native.json),
+[ilk süre aşımı](reports/local-telemetry-native-first-run.json).
+Gerçek Windows CPU ikinci örnek/RAM/disk/pil salt okunur ölçüm kontrolü de geçti.
+Gerçek API ve modelin bu yeni soruları yorumlaması kullanıcı kabulünü bekler.
+Önceki token adımı kullanıcı kabul edildi; iki dilimin commit'i talimatla ertelendi.

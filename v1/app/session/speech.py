@@ -11,6 +11,7 @@ from google import genai
 from google.genai import types
 
 from app.storage.credentials import load_gemini_key
+from app.session.gemini import GeminiUsage, gemini_token_count
 
 SPEECH_MODEL = 'gemini-3.8-flash-lite-tts'
 
@@ -18,7 +19,8 @@ SPEECH_MODEL = 'gemini-3.8-flash-lite-tts'
 class GeminiSpeech:
     """Bir HTTP sentezi ve en çok 60 s PCM; Stop kabulü gerçek bitiş değildir."""
 
-    def __init__(self):
+    def __init__(self, *, usage: GeminiUsage | None = None):
+        self._usage = usage
         self._stop = Event()
         self._gate = Lock()
         self._finished = self._http_active = False
@@ -60,6 +62,12 @@ class GeminiSpeech:
                         input=[{'type': 'user_input', 'content': [{'type': 'text', 'text': text}]}],
                         response_format={'type': 'audio', 'mime_type': 'audio/l16', 'sample_rate': 24000},
                         generation_config={'speech_config': [{'voice': 'Kore'}]}, store=False, timeout=20)
+                    if self._usage is not None:
+                        self._usage.add(gemini_token_count(response.usage, interaction=True))
+                except Exception:
+                    if self._usage is not None:
+                        self._usage.add(None)
+                    raise
                 finally:
                     with self._gate:
                         self._http_active = False

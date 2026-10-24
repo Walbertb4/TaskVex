@@ -15,6 +15,7 @@ from google.genai import errors, types
 
 from app.session.live_session import LiveConnection
 from app.session.live_input import LiveInput
+from app.session.gemini import GeminiUsage
 from app.session.wake_word import is_wake_only
 from app.core.contracts import ContractError, TaskStatus
 from app.session.model_tools import ModelTools, NoteTargetError, assistant_control_request
@@ -68,6 +69,7 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
     sender = None
     streaming = isinstance(audio_input, LiveInput)
     sequence = 0
+    usage = GeminiUsage()
 
     async def publish(role: str, value: str):
         """Birikimli metni kimlikli alıcıya ilet; ekran hatası araç sonucunu bozmaz."""
@@ -141,8 +143,7 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
                         break
                     # Son sağlayıcı bildirimi: toplamayız; kota/oturum toplamı değildir.
                     if message.usage_metadata is not None:
-                        count = message.usage_metadata.total_token_count
-                        report['usage_tokens'] = count if type(count) is int and 0 <= count <= 9007199254740991 else None
+                        usage.observe_live(message.usage_metadata)
                     messages += 1
                     report['received_events'] = messages
                     report['last_received_ms'] = round((perf_counter() - started) * 1000)
@@ -202,6 +203,7 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
                             await session.send_realtime_input(activity_end=types.ActivityEnd())
                             audio_input.end_sent_at = perf_counter()
                     if message.tool_call:
+                        usage.live_boundary()
                         calls = message.tool_call.function_calls or []
                         if not bound_tools or not calls or len(report["tool_results"]) + len(calls) > 8:
                             report.update(code="live_protocol", error="Unexpected tool call or tool limit reached.")
@@ -355,6 +357,7 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
         if connection.draining:
             report.update(code="live_go_away", error="Live disconnected before the turn completed; this message was not retried.")
     finally:
+        usage.finish_live(report)
         # Başarısız/kesilen turun alınmış metni de kalır; başarıya çevrilmez.
         report['text'] = ''.join(transcript or plain)[:32000]
         if isinstance(audio_input, LiveInput):

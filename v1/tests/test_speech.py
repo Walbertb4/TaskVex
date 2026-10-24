@@ -113,3 +113,20 @@ def test_speech_stop_before_http_and_during_delivery(transport):
         return True
     result = speech.run('Hi', sink)
     assert result['stopped'] and len(delivered) == 1 and len(transport.requests) == 1
+
+
+
+def test_speech_usage_joins_same_application_total_once(transport):
+    message=reply([{'text':'Hello'}]);message['usageMetadata']={'totalTokenCount':12}
+    spoken=audio();spoken['usage']={'total_tokens':8}
+    transport.responses=[message,spoken]
+    with create_core() as core:
+        chat=TextChat(core,audio_sink=lambda *args:True)
+        try:
+            assert chat.run('Hi',DEFAULT_MODEL,request_id='tts')['usage_tokens']==12
+            report=chat.read_reply('tts')
+            assert report['ok'] and report['usage_tokens']==20 and not report['usage_partial']
+            assert not chat.read_reply('tts')['ok']
+            assert chat._usage.report({})['usage_tokens']==20
+        finally:
+            assert chat.close()

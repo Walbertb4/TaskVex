@@ -28,6 +28,68 @@ MAX_TOOL_CALLS = 8
 TOOL_WAIT_SECONDS = 5
 
 
+def gemini_token_count(metadata, *, interaction: bool = False) -> int | None:
+    """SDK metadata'sını güvenli tam sayıya çevir; eksik veri sıfır değildir.
+
+    GenerateContent/Live total_token_count, Interactions TTS total_tokens kullanır.
+    Bunlar toplam alanlarıdır; alt kalemleri yeniden ekleyip çift saymayız.
+    """
+    value = getattr(metadata, 'total_tokens' if interaction else 'total_token_count', None)
+    return value if type(value) is int and 0 <= value <= 9007199254740991 else None
+
+
+class GeminiUsage:
+    """Tek uygulama oturumunun Gemini kullanım sahibi; yalnız RAM, sır/metin tutmaz.
+
+    REST'te her gerçek HTTP yanıtı (araç turları dahil) bir kez eklenir. Live'da
+    aynı üretimdeki ara usage bildirimleri ayrı istek değildir: son snapshot
+    araç çağrısı veya tur bitiş sınırında bir kez eklenir. Stop/model/transport değişimi
+    bu nesneyi yenilemez. Eksik/başarısız isteğin maliyetini tahmin etmeyiz;
+    bilinen toplam korunur ve eksik ölçüm işareti oturum boyunca kalır.
+    """
+    def __init__(self) -> None:
+        self._lock = Lock()
+        self._total = 0
+        self._seen = False
+        self._partial = False
+        self._live_pending: int | None = None
+        self._live_seen = False
+
+    def observe_live(self, metadata) -> None:
+        """Aynı Live üretiminin son snapshot'ını tut; güncellemeleri toplama."""
+        self._live_pending = gemini_token_count(metadata)
+        self._live_seen = True
+
+    def live_boundary(self) -> None:
+        """Araç çağrısı/final yanıt bir üretimi kapatır; sonraki üretim ayrı sayılır."""
+        self.add(self._live_pending)
+        self._live_pending = None
+
+    def finish_live(self, result: dict) -> None:
+        """Tur özeti çıkar; aynı yanıtı UI'da tekrar göstermek yeniden toplamaz."""
+        self.live_boundary()
+        snapshot = self.report({})
+        if self._live_seen:
+            result['usage_tokens'] = snapshot['usage_tokens']
+        result['usage_partial'] = snapshot['usage_partial']
+
+    def add(self, count: int | None, *, partial: bool = False) -> None:
+        """Ayrı sağlayıcı isteğini ekle; negatif/bool/taşma toplamı bozamaz."""
+        with self._lock:
+            self._partial = self._partial or partial
+            if type(count) is not int or count < 0 or self._total + count > 9007199254740991:
+                self._partial = True
+            else:
+                self._total += count
+                self._seen = True
+
+    def report(self, result: dict) -> dict:
+        """UI'a aynı toplamı verir; sonucu okumak kullanım eklemez."""
+        with self._lock:
+            return {**result, 'usage_tokens':self._total if self._seen else None,
+                'usage_scope':'session', 'usage_partial':self._partial}
+
+
 class _Stopped(Exception):
     """Yalnız adaptör içi akış kesmesi; sağlayıcı hatası veya başarı değildir."""
 
@@ -79,12 +141,13 @@ class GeminiText:
     """
 
     def __init__(self, tools: ModelTools, *, model: str = DEFAULT_MODEL,
-                 api_key: str | None = None, profile: dict | None = None) -> None:
+                 api_key: str | None = None, profile: dict | None = None, usage: GeminiUsage | None = None) -> None:
         key = load_gemini_key() if api_key is None else api_key
         if not isinstance(key, str) or not key.strip():
             raise ContractError("GEMINI_API_KEY is missing")
         if not isinstance(model, str) or not model.strip():
             raise ContractError("Expected a model name")
+        self._usage = usage
         self._tools, self._model = tools, model
         self._stop = Event()
         self._gate = Lock()
@@ -217,9 +280,13 @@ class GeminiText:
                 response = self._client.models.generate_content(
                     model=model, contents=contents, config=self._config,
                 )
+                if self._usage is not None:
+                    self._usage.add(gemini_token_count(response.usage_metadata))
                 detail["outcome"] = "response"
                 return response
             except (errors.APIError, httpx.TransportError, OSError) as error:
+                if self._usage is not None:
+                    self._usage.add(None)  # Sağlayıcı maliyet kanıtı vermedi; retry sıfır maliyet demek değildir.
                 # Yalnız sınırlı teşhis alanları: payload, anahtar, yanıt metni
                 # ve ham exception kaydedilmez. Süre gerçek HTTP denemesine aittir;
                 # retry beklemesi ve araç süresi yalnız toplam elapsed_ms'dedir.
@@ -273,8 +340,8 @@ class GeminiText:
                 if not answer.strip():
                     return _failure("empty_response", "Gemini returned no answer", results)
                 # Araç döngüsünün toplamını uydurma: yalnız son generation bildirimi.
-                count = reply.usage_metadata.total_token_count if reply.usage_metadata else None
-                usage = {'usage_tokens':count} if type(count) is int and 0 <= count <= 9007199254740991 else {}
+                count = gemini_token_count(reply.usage_metadata)
+                usage = {'usage_tokens':count} if count is not None else {}
                 return {"ok": True, "text": answer, "tool_results": results, **usage}
             if round_index == MAX_REQUESTS - 1 or len(results) + len(calls) > MAX_TOOL_CALLS:
                 return _failure("turn_limit", "Model/tool turn limit reached", results)

@@ -10,7 +10,7 @@ import { liveMic } from './live_mic.js';
 import { liveTranscript } from './live_transcript.js';
 import { setState, getState, setMicLevel } from './reactor.js';
 import { store, queryDevices, getAudioDeviceId, applyMemoryProfile, resolveMemoryProposal, showMemoryProposal } from './settings.js';
-import { setTokens } from './connections.js';
+import { setSessionTokens } from './connections.js';
 import { applyClockSnapshot, canSendClockText, setClocksChatLock } from './clocks.js';
 import { connectNativeNotes, setNotesChatLock, canSendNativeText } from './notes.js';
 
@@ -552,7 +552,6 @@ export async function sendText(text = null, audio = null, notification = null) {
     // Live: 120 s tur + araç temizliği/çalma payı. Bu UI bekleme sınırıdır;
     // aşımı gerçek iptal veya güvenli yeniden deneme anlamına gelmez.
     let revision = textOperation.begin(liveTest ? 210000 : 240000);
-    setTokens(null, null);
     const replyConnectionRevision = connectionRevision;
     const replyRequestId = activeTextRequest;
     cancelBeforeSend = false;
@@ -569,7 +568,7 @@ export async function sendText(text = null, audio = null, notification = null) {
         audio ? {...audio, request_id:activeTextRequest} : { text: v, request_id: activeTextRequest });
     if (!textOperation.isCurrent(revision)) return;
     const report = result.response;
-    setTokens(report?.usage_tokens ?? null, null);
+    setSessionTokens(report);
     if (report?.memory_profile && !applyMemoryProfile(report.memory_profile)) {
       textOperation.markUnknown();
       return;
@@ -643,6 +642,7 @@ export async function sendText(text = null, audio = null, notification = null) {
           label.textContent += ' · Preparing speech…';
           const spoken = await emit('read_reply', {request_id:activeTextRequest});
           if (!textOperation.isCurrent(revision)) return;
+          setSessionTokens(spoken.response);
           if (spoken.response?.completed !== true || spoken.response?.unknown) {
             textOperation.markUnknown(); return;
           }

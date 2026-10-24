@@ -1,0 +1,46 @@
+{
+  "step": "6.2.4 application-session token sum with Gemini-only Python accounting",
+  "python_owner": "v1/app/session/gemini.py: gemini_token_count and GeminiUsage; one session instance held for TextChat lifetime",
+  "scope": "application startup to shutdown; in RAM only",
+  "semantics": [
+    "REST counts each actual received response once, including tool rounds",
+    "Live replaces snapshots within a generation and closes a generation at tool/final boundaries; known generations summed once per host turn",
+    "Interactions speech total_tokens joins the same session sum",
+    "Stop/disconnect/model/key/chat-context changes preserve sum; application restart resets it",
+    "Missing/invalid/overflow/failed transport is incomplete, not a zero-cost assumption",
+    "UI displays backend snapshots without adding them a second time"
+  ],
+  "provider_references": [
+    "https://ai.google.dev/api/live#UsageMetadata",
+    "https://ai.google.dev/gemini-api/docs/live-api/capabilities#token-count"
+  ],
+  "python_general": {
+    "passed": 1101,
+    "seconds": 102.68
+  },
+  "targeted_python": 138,
+  "browser_groups": 11,
+  "javascript_suites": 9,
+  "typecheck": {
+    "scope": "app",
+    "errors": 0,
+    "warnings": 0
+  },
+  "native": {
+    "phases_passed": 10,
+    "transport": "synthetic",
+    "report": "session-token-native.json",
+    "real_ui_sum_10_then_20": true
+  },
+  "not_tested": [
+    "real/paid provider API",
+    "provider billing reconciliation",
+    "physical microphone/speaker acceptance"
+  ],
+  "limits": [
+    "Late metadata consumed by idle transport controls is not added; unavailable usage is not reconstructed",
+    "Provider metadata may be incomplete; >= labels a reported lower bound, not exact invoice or quota",
+    "No persistent cross-restart usage history"
+  ],
+  "manual_acceptance": "user reported working; explicitly requested deferring commit; billing reconciliation not tested"
+}

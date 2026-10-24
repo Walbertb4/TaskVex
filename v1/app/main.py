@@ -50,6 +50,7 @@ def main() -> None:
     # Bağımlılık hataları da run() tarafından anlaşılır başlangıç hatasına
     # dönüştürülebilsin; --help çalıştırmak native kütüphane gerektirmesin.
     from app.tools.local.clocks import Clocks
+    from app.tools.local.telemetry import Telemetry
     from app.bootstrap import create_core
     from app.bridge.webview_bridge import NativeBridge
     from app.storage.json_store import JsonStore
@@ -73,9 +74,10 @@ def main() -> None:
         if not ui.is_file():
             raise FileNotFoundError("TaskVex UI index.html is missing")
         clocks = Clocks()
+        telemetry = Telemetry()
         settings_store = JsonStore(home / "settings.json")
-        with create_core(clocks=clocks, settings_store=settings_store) as core:
-            bridge = NativeBridge(core, settings_store, clocks=clocks)
+        with create_core(clocks=clocks, settings_store=settings_store, telemetry=telemetry) as core:
+            bridge = NativeBridge(core, settings_store, clocks=clocks, telemetry=telemetry)
             window = webview.create_window("TaskVex", _ui_app(ui), js_api=bridge,
                                            http_port=webview.settings["DEFAULT_HTTP_PORT"],
                                            width=1280, height=800, min_size=(900, 600),

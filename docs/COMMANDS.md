@@ -427,8 +427,27 @@ consent invalidates an old approval. No automatic retry or merge is performed.
 
 ## Token display
 
-- Send a Live or REST message → The header shows the latest token count the
-  provider reports. Hover the number or open System settings for its scope.
-- Missing metadata → The counter shows unknown, not the previous turn's count.
-- This is not an account quota, remaining credit, session total or a sum of
-  tool/retry/speech requests. No extra token-counting API request is made.
+- Send Live or REST messages → The header shows the application session's
+  reported token total, including REST tool rounds and separately requested
+  speech synthesis. Open System settings for the scope and completeness label.
+- Stop, Disconnect or changing models → The application total remains.
+- Restart the application → A new session counter starts; usage is not persisted.
+- Missing usage metadata → The known total remains with ≥ and an Incomplete
+  label. If no usage has been reported yet, the display is unknown.
+- The counter is not account quota, remaining credit, context fullness or a
+  billing guarantee. No extra token-counting API request is made.
+
+
+## Local system readings
+
+| Say or type → | What Vex does |
+|---|---|
+| “What is my CPU and RAM usage?” | Calls system.status to read the same locally sampled values shown in the UI. CPU averages a sampling interval; the initial sample can be unavailable. |
+| “How much disk space am I using?” | Reads used/total space on the application's runtime volume; this is not disk transfer speed. |
+| “What is my battery level?” | Reads the OS battery report; no battery and unknown data are distinct. |
+| “Which application is active?” | Reads the foreground executable name. It does not read document/window titles or window contents. |
+
+The UI refreshes local readings without requiring a model connection. Missing
+values remain unavailable, never invented zeroes. GPU/temperature, network and
+media integration are still pending. System readings use the existing shared
+registry/policy/TaskManager model path; UI polling reads the same local owner.

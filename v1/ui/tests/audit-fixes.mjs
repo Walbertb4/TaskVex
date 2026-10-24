@@ -236,5 +236,59 @@ try {
     await p.evaluate(()=>window.vex.tokens(10,100,false));
     assert.equal(await p.locator('#tokTxt').innerText(),'10 / 100');
   });
+  await test('session counter renders backend totals once and labels incomplete measurement',async()=>{
+    const p=await setup();
+    await p.evaluate(async()=>{
+      const {setSessionTokens}=await import('/js/connections.js');
+      setSessionTokens({usage_scope:'session',usage_tokens:123,usage_partial:false});
+      setSessionTokens({usage_scope:'session',usage_tokens:123,usage_partial:false});
+    });
+    assert.equal(await p.locator('#tokTxt').innerText(),'123');
+    assert.match(await p.locator('#tokSub').innerText(),/Session total: 123/);
+    await p.evaluate(async()=>{
+      const {setSessionTokens}=await import('/js/connections.js');
+      setSessionTokens({usage_scope:'session',usage_tokens:123,usage_partial:true});
+      setSessionTokens({ok:false});
+    });
+    assert.equal(await p.locator('#tokTxt').innerText(),'≥ 123');
+    assert.match(await p.locator('#tokSub').innerText(),/Incomplete/);
+    await p.evaluate(async()=>{
+      const {setSessionTokens}=await import('/js/connections.js');
+      setSessionTokens({usage_scope:'session',usage_tokens:0,usage_partial:false});
+    });
+    assert.equal(await p.locator('#tokTxt').innerText(),'0');
+  });
+  await test('native system sample is shared, zero-safe, no overlapping polls and stale clears locally',async()=>{
+    const p=await setup();
+    const result=await p.evaluate(async()=>{
+      const view=await import('/js/system_view.js');
+      const sample={sampled_at:10,cpu_percent:0,memory_percent:0,memory_used:0,memory_total:1073741824,
+        disk_used:0,disk_total:2147483648,disk_volume:'C:',battery_present:true,battery_percent:0,
+        ac_connected:false,active_process:'<synthetic>.exe'};
+      const accepted=view.applySystemSample(sample);
+      const before={cpu:document.getElementById('cpu').textContent,ram:document.getElementById('ramT').textContent,
+        battery:document.getElementById('bat').textContent,win:document.getElementById('win').textContent};
+      const staleAccepted=view.applySystemSample({...sample,sampled_at:9,cpu_percent:100});
+      const invalidAccepted=view.applySystemSample({...sample,sampled_at:11,cpu_percent:101});
+      let time=100,resolve,calls=0;
+      Object.defineProperty(performance,'now',{value:()=>time,configurable:true});
+      window.pywebview={api:{event:()=>{calls++;return new Promise(done=>{resolve=done;});}}};
+      view.startSystemView();
+      await view.refreshSystem();
+      time=13000;await view.refreshSystem();
+      const staleLabel=document.getElementById('cpu').textContent;
+      resolve({ok:true,completed:true,data:{...sample,sampled_at:12,cpu_percent:25}});
+      await new Promise(done=>setTimeout(done,0));
+      const recovered=document.getElementById('cpu').textContent;
+      window.vex.online(false,'MODEL OFFLINE');
+      return {accepted,before,staleAccepted,invalidAccepted,calls,staleLabel,recovered,
+        afterOffline:document.getElementById('cpu').textContent};
+    });
+    assert.equal(result.accepted,true);assert.equal(result.staleAccepted,false);assert.equal(result.invalidAccepted,false);
+    assert.equal(result.before.cpu,'0%');assert.match(result.before.ram,/0.0.*1.0/);
+    assert.equal(result.before.battery,'0%');assert.equal(result.before.win,'<synthetic>.exe');
+    assert.equal(result.calls,1);assert.equal(result.staleLabel,'—');
+    assert.equal(result.recovered,'25%');assert.equal(result.afterOffline,'25%');
+  });
   console.log(`${results.length} browser cleanup groups passed`);
 } finally { await browser.close(); await new Promise(resolve=>server.close(resolve)); }

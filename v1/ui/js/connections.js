@@ -218,6 +218,21 @@ export function setTelemetry(data) {
   }
 }
 
+/** Toplamın sahibi Python'dur; JS her yanıtı yeniden toplamaz ve eski turu kabul etmez. */
+export function setSessionTokens(report) {
+  if (report?.usage_scope !== 'session') return;
+  const count = report.usage_tokens;
+  setTokens(count, null, false);
+  const text = document.getElementById('tokTxt'), sub = document.getElementById('tokSub');
+  const known = Number.isSafeInteger(count) && count >= 0;
+  if (text) {
+    text.title = 'Application session token total; resets when the app restarts. Not account quota.';
+    if (known && report.usage_partial) text.textContent = '≥ ' + count.toLocaleString('en-US');
+  }
+  if (sub) sub.textContent = `Session total: ${known ? count.toLocaleString('en-US') : '—'} tokens` +
+    (report.usage_partial ? ' · Incomplete: some requests had no usage report' : '') + ' · Limit/quota: unknown';
+}
+
 export function setTokens(u, m, isEst) {
   const tokTxt = document.getElementById('tokTxt');
   const tokSub = document.getElementById('tokSub');

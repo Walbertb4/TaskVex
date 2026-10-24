@@ -27,6 +27,7 @@ from app.session.live_input import LiveInput
 from app.session.catalog import load_live_catalog, live_voice_catalog, selected_live_voice
 from app.session.wake_word import WakeWord, WakeAlignmentError
 from app.tools.local.clocks import Clocks
+from app.tools.local.telemetry import Telemetry
 from app.tools.local.personal_memory import memory_base
 
 
@@ -38,9 +39,10 @@ class NativeBridge:
     deposunun konumunu güvenilir host seçer.
     """
 
-    def __init__(self, core, store, *, clocks: Clocks | None = None) -> None:
+    def __init__(self, core, store, *, clocks: Clocks | None = None, telemetry: Telemetry | None = None) -> None:
         self._core, self._store = core, store
         self._clocks = clocks
+        self._telemetry = telemetry
         self._clock_uncertain = False
         self._memory_uncertain = False
         self._credentials = GeminiCredentials(store.path.parent)
@@ -143,10 +145,6 @@ class NativeBridge:
         if finished.status != TaskStatus.SUCCEEDED:
             raise RuntimeError("System status could not be confirmed")
         data = finished.result.data
-        self._push("telemetry", {"cpu": data["cpu_percent"], "ram": data["memory_percent"],
-                   "gpu": None, "cpuT": None, "gpuT": None, "ramTxt": None,
-                   "bat": None, "disk": None,
-                   "win": " · ".join(str(data[k]) for k in ["os", "os_release", "architecture"] if data[k])})
         return data
 
     def _initialize(self) -> dict:
@@ -389,6 +387,14 @@ class NativeBridge:
         tekrar uygulamaz. save yalnız ayarları kaydeder ve geri okur. Desteksiz
         olay tamamlanmış gibi gösterilmez. Hata, UI emit tarafından görünür olur.
         """
+        if name == 'query_system':
+            # Clocks gibi salt snapshot: aynı sahip, yeni görev/yazma veya worker yok.
+            if data is not None or not self._ready or self._telemetry is None:
+                return {'ok':False,'completed':True,'error':'System sampling is not ready'}
+            try:
+                return {'ok':True,'completed':True,'data':self._telemetry.snapshot()}
+            except OSError:
+                return {'ok':False,'completed':True,'error':'System sample unavailable'}
         if name == 'query_clocks':
             if data is not None or not self._ready or self._clocks is None:
                 return {'ok': False, 'error': 'Clock view unavailable'}

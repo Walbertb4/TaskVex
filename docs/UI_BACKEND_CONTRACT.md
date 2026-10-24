@@ -35,7 +35,8 @@ Native host hazır değilse mutasyonlar korunur; bozuk ayarlar açık kurtarma i
 | memory_decision | UI onay/ret: request_id + arguments{id,approve}; memory.decide ortak core hattı; model sonraki kullanıcı yanıtında aynı aracı kullanır |
 | query_clocks, clock_command | Aynı Clocks durumunu okuma / core üzerinden mutasyon; delete yalnız UI |
 | clock_finished | Gerçek id/generation doğrulandıktan sonra araçsız bildirim; tekrar yok |
-| system_status | Core üzerinden temel OS bilgisi; sahte CPU/GPU kullanım yüzdesi yok |
+| system_status | Core üzerinden ortak yerel CPU/RAM/disk/pil/aktif süreç örneği |
+| query_system | Hazır native UI için aynı Telemetry sahibinden salt snapshot; payload yok, poll task/journal oluşturmaz |
 | fullscreen, shutdown, restart | Pencere işlemleri; kapanış aktif işi sahipsiz bırakmaz |
 
 Kamera/konum/Google/skill_run/routine_run/inspect/screen_share/media komutları native
@@ -229,19 +230,58 @@ sormadan kayda açık tercihi, önceki sürümün her aday için Save zorunlulu�
 isteğe bağlı alternatifi olmuştur. Anlamsal çıkarım doğruluğu garanti edilmez.
 
 
-## Token kullanımı — son sağlayıcı bildirimi
+## Token kullanımı — uygulama oturumu toplamı
 
-Sohbet raporu isteğe bağlı usage_tokens alanı taşır: 0..9007199254740991
-arasında tam sayı, bilinmiyorsa eksik/null. Live, bu turda alınan en son
-usage_metadata.total_token_count değerini aktarır; olaylar toplanmaz. REST
-başarılı son generation yanıtının aynı alanını verir; önceki araç turlarının,
-retry/fallback veya ayrı ses üretiminin toplamı değildir.
+Python tarafındaki ayrıştırma, güvenli sayı denetimi ve toplama yalnız
+app/session/gemini.py içindedir: gemini_token_count ve GeminiUsage.
+TextChat tek uygulama ömrü için bir sayaç tutar; adaptörler veriyi bu sahibine
+iletir. Yeni token.py, kalıcı kullanım dosyası veya genel sağlayıcı framework'ü yoktur.
 
-UI yeni tur başında sayacı temizler, yalnız güncel request sonucunu gösterir.
-Metadata yoksa önceki tur güncelmiş gibi kalmaz; gerçek sıfır korunur.
-Limit bilinmediğinde sayı tek başına Latest provider report etiketiyle gösterilir;
-kalan hesap kotası/context yüzdesi/bütçe uydurulmaz. Mevcut tokens(used,max,isEst)
-setter'ının açık limit verilen uyumluluk yolu korunur. Ek countTokens API çağrısı,
-kalıcı kullanım deposu veya yeni yürütücü yoktur.
+REST her gerçek HTTP yanıtının usage_metadata.total_token_count değerini
+(araç döngüleri dahil) bir kez ekler. Live aynı üretimin ara bildirimlerini
+birbirine eklemez; son snapshot'ı araç çağrısı/üretim bitiş sınırında bir kez
+sayar. Tur özeti uygulama toplamına bir kez katılır. Interactions TTS ayrı
+isteğinin usage.total_tokens değeri de aynı toplama eklenir; ses oynatılmasa
+veya Stop gelmiş olsa da alınmış kullanım kanıtı silinmez.
+
+Sohbet/ses raporu usage_tokens (güvenli tam sayı veya null),
+usage_scope='session', usage_partial boolean alanlarını taşır. Gösterge
+uygulama açılışından kapanışına kadardır; Stop, Disconnect, model/anahtar veya
+sohbet bağlamı değişimi sıfırlamaz. Yeniden başlatma yeni sayaç oluşturur.
+Sayaç JavaScript'te tekrar toplanmaz; istek kimliği denetiminden sonra gösterilir.
+Yeni mesaj sırasında önceki oturum toplamı görünmeye devam eder.
+
+Eksik/geçersiz metadata veya belirsiz ağ denemesi sıfır sayılmaz: bilinen toplam
+korunur, usage_partial=true kalır; UI ≥ değeri ve Incomplete açıklamasını gösterir.
+Hiç geçerli bildirim yoksa — gösterilir. Gerçek 0 geçerlidir. Bu, sağlayıcının
+raporladığı kullanımların toplamıdır; hesap kotası, ücret/fatura veya mevcut
+context doluluğu değildir. Sağlayıcı kayıp/geç bildirimi geri sorgulanmaz.
+Transport'un idle kontrolünde tüketilen geç metadata ayrıca hesaba katılmaz;
+usage eksik gelen tur bu yüzden kesin toplam olarak işaretlenmez.
+Mevcut tokens(used,max,isEst) uyumluluk setter'ı korunur; uygulama sohbeti
+setSessionTokens ile backend toplamını gösterir. Ek countTokens API çağrısı yoktur.
 
 Sağlayıcı sözleşmesi: https://ai.google.dev/api/live#UsageMetadata
+
+
+## Yerel telemetri — 6.2.1
+
+main, tek Telemetry örneğini create_core ve NativeBridge'e enjekte eder.
+query_system → {ok,completed,data}; hazır olmayan bridge veya payload reddedilir.
+data: sampled_at (monoton saniye), os/os_release/architecture/logical_cpu_count,
+cpu_percent, memory_percent, memory_total/memory_used (bayt), disk_total/disk_used
+(bayt), disk_volume (yalnız sürücü harfi), battery_percent/battery_present,
+ac_connected, active_process (exe adı), gpu_percent/cpu_temperature/gpu_temperature
+ve unavailable alan adları. Son üç ölçüm bu dilimde None'dır. CPU ilk ölçümde
+veya desteklenmeyen kapsamda None'dır; pil yok ve pil bilinmiyor farklıdır.
+
+system_view.js güvenli sayı ve alan tiplerini denetler; geçmiş sampled_at kabul
+etmez, RAM/disk değerlerini GiB'ye dönüştürür. Başlık için güvenli textContent
+kullanır. Query başarısız veya on iki saniyedir yeni sonuç yoksa metrikler — olur;
+geç cevap yeni örneği geriye götüremez. pagehide sonuç teslimini durdurur.
+Native başlangıcı/kurtarma sonrası açılır; bağımsız tarayıcı sahte CPU üretmez.
+GPU/sıcaklık/ağ/media bu dilimde bağlanmış sayılmaz. Modelin offline durumu
+yerel ölçümü ve oturum token toplamını silmez.
+
+Win32 kaynakları: https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getsystemtimes
+ve https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getforegroundwindow

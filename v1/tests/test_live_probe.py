@@ -217,3 +217,16 @@ def test_live_missing_usage_stays_unknown(socket):
     socket.frames = [{'setupComplete':{}},frame('Hello',complete=True)]
     report = asyncio.run(live_probe.probe_live_text('Hello','future-live'))
     assert 'usage_tokens' not in report
+
+
+
+def test_live_usage_snapshots_replace_within_generation_and_sum_tool_rounds(socket):
+    from app.bootstrap import create_core
+    from test_live_tools import tools,call
+    socket.frames=[{'setupComplete':{}},{'usageMetadata':{'totalTokenCount':5}},
+        {**call('apps.catalog',{},'catalog'),'usageMetadata':{'totalTokenCount':10}},
+        {'usageMetadata':{'totalTokenCount':3}},
+        {**frame('Done',complete=True),'usageMetadata':{'totalTokenCount':7}}]
+    with create_core() as core:
+        result=asyncio.run(live_probe.probe_live_text('Catalog','future-live',tools=tools(core,notes=False)))
+    assert result['ok'] and result['usage_tokens']==17 and not result['usage_partial']

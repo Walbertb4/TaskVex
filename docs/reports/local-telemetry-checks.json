@@ -1,0 +1,64 @@
+{
+  "step": "6.2.1 shared local system telemetry",
+  "implemented": [
+    "CPU interval usage with explicit warm-up/reset/processor-group bounds",
+    "RAM percent and used/total bytes",
+    "Runtime-volume disk used/total space; not disk throughput",
+    "Battery percent/no-battery/unknown and AC status",
+    "Active foreground executable name only; no document/window title or full path",
+    "Same Telemetry instance injected into core/model tool and native UI snapshot query",
+    "UI polling uses existing app tick, no overlap, invalid/stale sample handling, no polling journal writes",
+    "Model offline leaves local readings and application-session token total intact"
+  ],
+  "dependencies_added": [],
+  "python_general": {
+    "passed": 1109,
+    "seconds": 160.19
+  },
+  "targeted_python_latest": 96,
+  "browser_groups": 12,
+  "javascript_suites": 9,
+  "typecheck": {
+    "scope": [
+      "app",
+      "tests/test_telemetry.py"
+    ],
+    "errors": 0,
+    "warnings": 0
+  },
+  "native": {
+    "passed": 10,
+    "report": "local-telemetry-native.json",
+    "transport": "synthetic model; real WebView2 and local OS metrics",
+    "initial_run": "chat phase timed out at 60 seconds while full pytest was also running",
+    "initial_failure_report": "local-telemetry-native-first-run.json",
+    "retry": "isolated whole suite passed with same deadline; cause not proven"
+  },
+  "intermediate_checks": [
+    "Initial typecheck found 3 test-only optional/unbound diagnostics; explicit assertions/initialization fixed them, final check clean"
+  ],
+  "local_read_only_hardware_smoke": {
+    "cpu_first_unknown": true,
+    "cpu_second_sample_valid": true,
+    "ram_valid": true,
+    "disk_available": true,
+    "battery_available": true,
+    "private_window_titles_logged": false
+  },
+  "remaining": [
+    "6.2.2 GPU/temperatures and supported sensor adapter",
+    "6.2.3 network/Wi-Fi/traffic/latency",
+    "6.2.5 media session and playback control"
+  ],
+  "limits": [
+    "Windows-only measurement adapter",
+    "CPU percentage not reported above 64 logical CPUs because GetSystemTimes processor-group scope is not a whole-machine guarantee",
+    "Active executable unavailable for protected/vanished windows",
+    "No real/paid API or physical microphone/speaker test; model natural-language quality not accepted by these tests"
+  ],
+  "acceptance": {
+    "session_tokens": "user reported working; requested deferring commit",
+    "local_telemetry": "awaiting user UI/model test"
+  },
+  "git": "no commit or push per explicit user instruction"
+}

@@ -285,7 +285,9 @@ def test_credential_error_and_bad_status_payload_do_not_expose_key(bridge, monke
 def test_system_status_passes_real_core_and_safe_js_boundary(bridge):
     assert ready(bridge)["ok"]
     result = bridge.event("system_status")
-    assert result["ok"] and result["data"]["cpu_percent"] is None
+    assert result["ok"]
+    value=result["data"]["cpu_percent"]
+    assert value is None or 0<=value<=100
     with pytest.raises(ValueError):
         bridge._push("eval", "malicious")
 

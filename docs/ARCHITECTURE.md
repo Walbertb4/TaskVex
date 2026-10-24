@@ -47,6 +47,7 @@ yaşam döngüsü sahibinde kalır.
 | Tercih nesnesi | ui/js/preferences.js; settings.js doğrular/kaydeder; layout.js ve devices.js aynı nesneyi kullanır |
 | Native API sınırı | app/bridge/webview_bridge.py; sürümlü veri, hazır durumu ve kısa kilit |
 | Model turu/bellek | app/session/text_chat.py; tek tur kilidi, ConversationMemory |
+| Gemini token kullanımı | app/session/gemini.py; tek uygulama sayacı TextChat ömründe, adaptörler kullanım verisi iletir; UI toplamaz |
 | Live bağlantısı | app/session/live_session.py; tek I/O loop/socket sahibi; scope, resume ve GoAway |
 | Araç kataloğu/parametre | app/session/tool_registry.py; açık kayıt, JSON schema; otomatik plugin import yok |
 | Yetki | app/policy/engine.py; yerel kullanıcı ve desktop kaynağı için açık izin |
@@ -54,6 +55,7 @@ yaşam döngüsü sahibinde kalır.
 | Kullanıcı hafızası | app/tools/local/personal_memory.py; aynı settings.json profili, taze snapshot ve paylaşılan kısa depo kilidi |
 | Not | app/tools/local/notes.py; ID/tarih/seçim/snapshot ve tek dosya yazımı |
 | Timer/stopwatch | app/tools/local/clocks.py; süreç RAM’i, monoton saat; UI/model aynı nesne |
+| Sistem ölçümleri | app/tools/local/telemetry.py: Telemetry; main aynı örneği core ve bridge’e verir, UI system_view.js yalnız görünümü yeniler |
 | Sır | app/storage/credentials.py; Windows Credentials; UI store/JSON/yedekte anahtar yok |
 | Dosya kayıt | app/storage/json_store.py; schema envelope, atomik replace ve bozuk kaydı koruma |
 
@@ -261,7 +263,7 @@ uygulanmalıdır; bugün bunların tamamı varmış gibi davranılmaz.
 
 ## Bugün uygulanmayanlar
 
-Google/konum/hava/media/kamera/sistem sesi/dosya ekleme; onaysız otomatik kalıcı kullanıcı öğrenimi,
+Google/konum/hava/media/kamera/sistem sesi/dosya ekleme;
 base instruction override/greeting; skill/rutin backend yürütme ve
 scheduler; GUI L1–L4 ve dış mesaj kanalları. Yerel tanımlar ve mevcut kullanıcı
 metni korunur; yürütücüsü olmayan kontroller açıkça planlı/disabled görünür.
@@ -272,3 +274,21 @@ TaskVex özgün katkıları MIT. Referans repo otomatik import edilmez; üçünc
 hakları THIRD_PARTY_NOTES.md içinde korunur. Değişiklikler CHANGELOG.md’ye yazılır.
 Güvenlik/iptal/doğrulama kontrolleri debloat gerekçesiyle çıkarılmaz. Yeni modül
 sorumluluk sınırı için açılır; satır sayısı tek başına bölme sebebi değildir.
+
+
+## Yerel sistem örnekleri
+
+Telemetry, iki saniyelik cache ve CPU sayaç referansının tek sahibidir.
+Windows GetSystemTimes, GlobalMemoryStatusEx, GetSystemPowerStatus ve foreground
+process sorgusu; disk için standart shutil.disk_usage kullanılır. Disk uygulamanın
+Python çalışma biriminin doluluğudur, disk I/O hızı değildir. GPU ve sıcaklıklar
+henüz ölçülmez. CPU ilk örnekte, sayaç resetinde veya 64 üstü mantıksal işlemci
+kapsamında None döner; desteklenmeyen veri uydurulmaz.
+
+Model system.status aracı registry/policy/TaskManager'dan aynı snapshot'ı okur.
+Native query_system yalnız aynı sahibin salt snapshot sorgusudur; clock görünümü
+gibi polling için görev günlüğü yazmaz. UI mevcut bir saniyelik app tick'iyle
+istekleri en az üç saniye aralıklı başlatır, üst üste istek açmaz; ayrı sampler
+thread/timer veya ikinci veri sahibi yoktur. Başarısız/12 saniye eski görünüm
+silinir; model offline olması yerel CPU/RAM'ı geçersizleştirmez.
+Aktif süreç yalnız exe adıyla çıkar: belge/pencere başlığı ve tam dosya yolu okunmaz.

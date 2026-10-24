@@ -4,6 +4,7 @@ import { initApi, emit, addLog, isBackendAvailable, sanitizeError } from './api.
 import { startupStatus, streamReset, streamMsg, msg, say, user, task, taskDone, start, tick } from './shell.js';
 import { initCredentials } from './credentials.js';
 import { liveMic } from './live_mic.js';
+import { refreshSystem, startSystemView } from './system_view.js';
 import { liveTranscript } from './live_transcript.js';
 import { initReactor, setState, setLevel, setMicLevel, attachAudio, detachAudio, wakeAnimation } from './reactor.js';
 import { initSettings, store, saveAll, saveSettingsConfirmed, setDevices, queryDevices, loadStore, validateAndNormalizeSnapshot, registerCollectionGetters, setBackupImportHandler } from './settings.js';
@@ -177,7 +178,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!result.ok) {
           const message = document.getElementById('nativeIssueText');
           if (message) message.textContent = sanitizeError(result.error);
-        } else if (result.response?.completed === true) await connectNativeNotes();
+        } else if (result.response?.completed === true) {startSystemView(); await connectNativeNotes();}
       } finally { buttons.forEach(button => { button.disabled = false; }); }
     });
   }
@@ -186,7 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 9. API & Bridge bindings
   initApi({
-    nativeReady: async () => { queryDevices(); await connectTimers(); await connectNativeNotes(); assistantReady(); void loadLiveModels(); },
+    nativeReady: async () => { startSystemView(); queryDevices(); await connectTimers(); await connectNativeNotes(); assistantReady(); void loadLiveModels(); },
     initApp: (s) => applySnapshot(s, { emitSave: false }),
     startupStatus,
     loadStore: (s) => applySnapshot(s, { emitSave: false }),
@@ -225,7 +226,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setReminders,
     setDevices,
     setCatalog,
-    online: ok => { if (!ok) { setNetwork({ api: null }); setTokens(null, null); } },
+    online: ok => { if (!ok) setNetwork({ api: null }); },
     googleStatus: setGoogleStatus,
     screen: setScreen,
     task,
@@ -318,6 +319,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Start clock and start app
   tick();
-  setInterval(tick, 1000);
+  setInterval(() => {tick(); void refreshSystem();}, 1000);
   start();
 });

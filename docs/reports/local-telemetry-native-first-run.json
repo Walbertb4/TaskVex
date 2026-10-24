@@ -1,0 +1,11 @@
+{
+  "ok": false,
+  "status": "timeout",
+  "phase": "chat",
+  "deadline_seconds": 60,
+  "observed_stack": "native_scenarios.check_wake_recovery waiting for Asleep status",
+  "concurrent_run": "full pytest regression also running; 1109 passed in 160.19s",
+  "interpretation": "cause not proven; repeat isolated without changing deadline",
+  "earlier_phases": "parent progressed to chat; complete report not produced",
+  "sensitive_data": "no real notes, credentials or window titles recorded"
+}

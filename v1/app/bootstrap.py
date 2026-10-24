@@ -12,14 +12,15 @@ from app.session.tool_registry import ToolRegistry
 from app.storage.json_store import JsonStore
 from app.tasks.manager import TaskManager
 from app.tools.local.notes import ADD_SCHEMA, DELETE_SCHEMA, DELETE_MANY_SCHEMA, COMPLETE_MANY_SCHEMA, SELECT_SCHEMA, INITIALIZE_SCHEMA, REPLACE_SCHEMA, UPDATE_SCHEMA, NotesTools
-from app.tools.local.telemetry import system_status
+from app.tools.local.telemetry import system_status, Telemetry
+from functools import partial
 from app.tools.local.personal_memory import PersonalMemory, READ_SCHEMA as MEMORY_READ_SCHEMA, PATCH_SCHEMA as MEMORY_PATCH_SCHEMA, PROPOSE_SCHEMA as MEMORY_PROPOSE_SCHEMA, DECIDE_SCHEMA as MEMORY_DECIDE_SCHEMA
 from app.tools.local.clocks import Clocks, DELETE_SCHEMA as CLOCK_DELETE_SCHEMA, CREATE_SCHEMA as CLOCK_CREATE_SCHEMA, CONTROL_SCHEMA as CLOCK_CONTROL_SCHEMA, LIST_SCHEMA as CLOCK_LIST_SCHEMA
 from app.tools.local.apps import STATUS_SCHEMA, app_catalog, app_open, app_status
 from app.tools.local.assistant import SLEEP_SCHEMA, request_sleep_mode, SHUTDOWN_SCHEMA, request_shutdown
 
 
-def create_core(*, principal: str = "local-user", clocks: Clocks | None = None, settings_store: JsonStore | None = None) -> TaskManager:
+def create_core(*, principal: str = "local-user", clocks: Clocks | None = None, settings_store: JsonStore | None = None, telemetry: Telemetry | None = None) -> TaskManager:
     """Tek yerel kullanıcı için registry + policy + worker'ı birleştir.
 
     Notlar get_data_home()/notes.json'a, yürütme günlüğü tasks/tasks.sqlite3'e gider.
@@ -30,6 +31,7 @@ def create_core(*, principal: str = "local-user", clocks: Clocks | None = None, 
     notes = NotesTools(JsonStore(get_data_home() / "notes.json"))
     clocks = clocks if clocks is not None else Clocks()
     memory = PersonalMemory(settings_store if settings_store is not None else JsonStore(get_data_home() / "settings.json"))
+    telemetry = telemetry if telemetry is not None else Telemetry()
     registry = ToolRegistry()
     for name, schema, handler, description, capability in (
         ("memory.propose", MEMORY_PROPOSE_SCHEMA, memory.propose, "Suggest at most one durable, unambiguous self-reported USER fact from this turn according to the saved review preference. First memory.read, then supply its expected_snapshot and the proposed fact text. The host attaches the actual current user message/transcript; do not supply or rewrite a source quote. Only when learning enabled. Never propose third-party facts, quotations, jokes, hypotheticals, transient states, secrets, sensitive health/financial facts or personality guesses. Do not call memory.patch to save an inferred fact. If approval_required is true, naturally ASK whether to save this specific fact in your normal spoken/text reply; wait for the user, never claim saved. Only persisted/read_back verified results confirm automatic saving. Never choose or override the saved review preference.", "memory.write"),
@@ -124,8 +126,8 @@ def create_core(*, principal: str = "local-user", clocks: Clocks | None = None, 
         required_capabilities=("notes.read",), exclusive_resources=("notes",),
     ))
     registry.register(ToolSpec(
-        name="system.status", description="Salt okunur sistem bilgilerini sorgula",
-        input_schema={"type": "object", "additionalProperties": False}, handler=system_status,
+        name="system.status", description="Read current CPU/RAM, application-volume disk usage, battery and active process from the shared local sample. Missing metrics in unavailable are not zero. CPU is a sampled interval, not instantaneous; GPU/temperatures may be unsupported. Active process excludes window/document titles.",
+        input_schema={"type": "object", "additionalProperties": False}, handler=partial(system_status, monitor=telemetry),
         required_capabilities=("system.read",),
     ))
     policy = PolicyEngine(principal=principal,

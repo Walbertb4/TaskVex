@@ -439,7 +439,8 @@ def test_system_status_uses_real_read_only_system_calls():
         assert result.result.data["os"] == telemetry.platform.system()
         assert result.result.data["logical_cpu_count"] == telemetry.os.cpu_count()
         assert result.result.data["cpu_percent"] is None
-        assert result.result.data["memory_percent"] is None
+        value=result.result.data["memory_percent"]
+        assert value is None or 0<=value<=100
     # Core başlangıcı artık yalnız kalıcı görev günlüğünü oluşturur.
     assert {p.name for p in get_data_home().iterdir()} == {'tasks'}
 

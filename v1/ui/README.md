@@ -32,6 +32,7 @@ ve yerel KWS entegrasyonu kazanmaz. Harici font erişilemezse sistem fontu kulla
 | notes.js | Yerel veya onaylı native not görünümü; çift mutasyon yok |
 | skills.js / routines.js | Yerel tanım editörleri; backend yürütme yok |
 | connections.js | API Live katalog ve salt okunur widget setter'ları |
+| system_view.js | Native ortak sistem örneğini mevcut UI tick'iyle yeniler; model offline yerel ölçümü silmez |
 | panels.js | Modal, palet, drawer, yerel timeline |
 | reactor.js / sfx.js | Görsel durum/animasyon ve yerel efektler |
 | live_mic.js / mic_worklet.js | Tek AudioWorklet PCM girişi, VAD/seviye |
@@ -39,7 +40,7 @@ ve yerel KWS entegrasyonu kazanmaz. Harici font erişilemezse sistem fontu kulla
 | clocks.js / timers.js | Native çoklu sayaç görünümü / tarayıcı tekli fallback |
 
 Native başladıktan sonra köprü kaybı ikinci sayaç/not otoritesi açmaz. Setters
-backend'e ikinci save/komut göndermez. Google/konum/voice/kamera/ekran/media ve
+backend'e ikinci save/komut göndermez. Google/konum/kamera/ekran/media ve
 uygulanmamış profil alanları açıkça planlı/disabled; kayıtlı metinler korunur.
 
 [Sözleşme](../../docs/UI_BACKEND_CONTRACT.md), [komutlar](../../docs/COMMANDS.md),
