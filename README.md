@@ -17,7 +17,10 @@ It is a development project, not a production-ready general computer-use agent.
 - Temporary conversation context held in memory.
 - Personal memory edited in Personalization or through explicit model commands, with opt-in before
   sending it to the model; correction and deletion drop the old chat context.
-- Optional conversation-derived memory, with a saved choice between review and automatic verified saving.
+- Optional conversation-derived memory, with a saved choice between asking first
+  and automatic verified saving. Pending facts can be saved/dismissed beside the
+  conversation controls or through a later spoken/typed decision; proposals are
+  not treated as saved facts before approval.
 - Backend notes with stable IDs and timestamps: add, list, edit, complete and
   delete, including structured selection and atomic batch deletion/completion.
 - Multiple timers and stopwatches shared between the UI and model tools.
@@ -26,6 +29,8 @@ It is a development project, not a production-ready general computer-use agent.
 - Gemini API key storage in Windows Credential Manager and automatic Live model
   catalog loading. The saved selection is restored when returned by the API.
 - A per-data-profile OS lock prevents a second native app instance from opening.
+- A token display using the latest Live/REST provider usage report, when available.
+  It is not an account quota, session total or a total of tool/retry/speech requests.
 
 A small allowlisted application plugin exists in the core. The conversational
 model currently sees its catalog, not unrestricted app-launch or desktop control.
@@ -37,7 +42,9 @@ A separate REST adapter remains available for development and future channels.
 Google Drive/Calendar/mail access, Telegram/Discord integration,
 general GUI automation and
 backend skill/routine scheduling are planned.
-Camera, screen inspection, location and media controls are not connected.
+Camera, screen inspection, location, weather and media controls are not connected.
+Continuous CPU/RAM/GPU/temperature and Wi-Fi/network monitoring are not implemented;
+existing system information is a limited foundation, not a completed monitoring service.
 Some saved legacy profile fields have no backend effect and are marked as planned.
 
 ## Run from source
@@ -76,7 +83,8 @@ the same request ID does not run the action again, including after restart.
 The 256-record limit bounds active work and RAM records, rather than lifetime
 usage; historical records stay on disk. Unknown outcomes block new tools and
 currently require manual investigation; there is no reconciliation UI yet.
-The journal is not encrypted, can retain deleted note content, and grows with
+The journal is not encrypted, can retain deleted note content and proposed
+personal facts/source messages even after profile memory is cleared, and grows with
 usage. It is not an exactly-once guarantee for external services. Native and
 core ownership locks reject a second worker sharing the same data profile.
 
@@ -85,10 +93,13 @@ Model availability, network conditions and hardware affect behavior.
 
 ## Verification and documentation
 
-The latest core change passed 1,074 Python tests, targeted type checking and
-10 native regression phases using synthetic providers and temporary data.
+The latest change passed 1,091 Python tests, 9 JavaScript suites, 10 browser
+acceptance groups, targeted type checking and 10 native regression phases using
+synthetic providers and temporary data. Memory review/automatic saving and
+button/conversation decisions were also reported working by the developer;
+the latest token display still awaits a real-provider manual check.
 These checks do not establish real-account availability, physical microphone
-accuracy or production readiness. See [test evidence](docs/reports/memory-review-checks.json).
+accuracy or production readiness. See [test evidence](docs/reports/token-counter-checks.json).
 
 - [Architecture](docs/ARCHITECTURE.md): current ownership and planned boundaries.
 - [Plan](docs/PLAN.md): remaining work and acceptance status.

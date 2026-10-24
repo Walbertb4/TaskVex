@@ -5,6 +5,10 @@ hali ARCHITECTURE.md, yapılacak işler PLAN.md içindedir. Henüz sürüm yayı
 
 ## Unreleased
 
+- GitHub README güncel hafıza onayı/otomatik kayıt, son token bildirimi ve
+  1091 testlik doğrulamaya göre düzeltildi. Telemetri/hava/ağ eksikleri ve
+  görev günlüğünde öneri/kaynak verisi kalabilmesi açıkça belirtildi.
+
 ### Son sağlayıcı token göstergesi
 
 - Live/REST gerçek usage metadata mevcut sohbet raporuna ve UI'a bağlandı.
