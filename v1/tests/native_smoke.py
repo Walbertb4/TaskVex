@@ -232,7 +232,10 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                             remembered_name = 'Ada'
                             frames.append(audio_reply('Native temporary name acknowledged'))
                             return
-                        if text in ('Native self report Ada','Native self report Beta','Native self report Gamma'):
+                        if text == 'Native approve memory':
+                            frames.append({'toolCall':{'functionCalls':[{'id':'native-review-read','name':'memory.read','args':{}}]}})
+                            return
+                        if text in ('Native self report Ada','Native self report Beta','Native self report Gamma','Native self report Delta'):
                             from app.tools.local.personal_memory import memory_snapshot
                             from app.storage.json_store import JsonStore
                             profile = (JsonStore(home / 'settings.json').read() or {}).get('prof', {})
@@ -305,6 +308,16 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                     elif "tool_response" in message:
                         response = message["tool_response"]["functionResponses"][0]
                         assert response["response"]["result"]["verified"]
+                        if response['id'] == 'native-review-read':
+                            proposal = response['response']['result']['data']['proposal']
+                            assert proposal
+                            frames.append({'toolCall':{'functionCalls':[{'id':'native-review-decision','name':'memory.decide',
+                                'args':{'id':proposal['id'],'approve':True}}]}})
+                            return
+                        if response['id'] == 'native-review-decision':
+                            assert response['response']['result']['evidence']['read_back']
+                            frames.append(audio_reply('The suggested fact was saved.'))
+                            return
                         if response['id'].startswith('clock-Native CLOCK '):return
                         if response['name'] == 'assistant.request_shutdown':
                             assert response['response']['result']['data']['applied'] is False
@@ -1102,31 +1115,38 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 js("document.getElementById('inp').value='Native self report Ada';document.getElementById('send').click();return true;")
                 wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
                 assert api._store.read()['prof']['pMem']==memory_before
-                wait_until(lambda: window.evaluate_js("document.getElementById('mProf').classList.contains('o')"))
-                assert window.evaluate_js("!document.getElementById('memoryReviewNotice').hidden")
+                wait_until(lambda: window.evaluate_js("!document.getElementById('memoryProposal').hidden"))
+                assert not window.evaluate_js("document.getElementById('mProf').classList.contains('o')")
                 assert 'Native self report Ada' in window.evaluate_js("document.getElementById('memoryProposalSource').textContent")
                 assert 'Paraphrased source' not in window.evaluate_js("document.getElementById('memoryProposalSource').textContent")
-                js("document.getElementById('memoryReviewNotice').click();return true;")
                 js("document.getElementById('memoryAccept').click();return true;")
                 wait_until(lambda: api._store.read()['prof']['pMem']==memory_before+'\nUser name Ada')
                 wait_until(lambda: window.evaluate_js("document.getElementById('memoryProposal').hidden"))
                 assert window.evaluate_js("document.getElementById('pMem').value")==memory_before+'\nUser name Ada'
                 js("const p=await import('./js/panels.js');p.closeM('mProf');document.getElementById('inp').value='Native self report Beta';document.getElementById('send').click();return true;")
                 wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
-                js("document.getElementById('memoryReviewNotice').click();document.getElementById('memoryDismiss').click();return true;")
+                js("document.getElementById('memoryDismiss').click();return true;")
                 wait_until(lambda: window.evaluate_js("document.getElementById('memoryProposal').hidden"))
                 assert api._store.read()['prof']['pMem']==memory_before+'\nUser name Ada'
                 outcome['memory_suggestion_requires_actual_ui_approval_and_dismiss_preserves_profile']=True
-                js("document.getElementById('pMemoryConfirm').checked=false;document.getElementById('btnSaveProf').click();return true;")
+                js("document.getElementById('inp').value='Native self report Delta';document.getElementById('send').click();return true;")
+                wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
+                assert not window.evaluate_js("document.getElementById('memoryProposal').hidden")
+                js("document.getElementById('inp').value='Native approve memory';document.getElementById('send').click();return true;")
+                wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
+                assert api._store.read()['prof']['pMem']==memory_before+'\nUser name Ada\nUser name Delta'
+                wait_until(lambda: window.evaluate_js("document.getElementById('memoryProposal').hidden"))
+                outcome['model_answer_and_ui_use_same_memory_decision']=True
+                js("const p=await import('./js/panels.js');p.openM('mProf');document.getElementById('pMemoryConfirm').checked=false;document.getElementById('btnSaveProf').click();return true;")
                 wait_until(lambda: api._store.read()['prof'].get('pMemoryConfirm') is False)
                 wait_until(lambda: not window.evaluate_js("document.getElementById('mProf').classList.contains('o')"))
                 js("document.getElementById('inp').value='Native self report Gamma';document.getElementById('send').click();return true;")
                 wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
-                assert api._store.read()['prof']['pMem']==memory_before+'\nUser name Ada\nUser name Gamma'
-                assert window.evaluate_js("document.getElementById('pMem').value")==memory_before+'\nUser name Ada\nUser name Gamma'
+                assert api._store.read()['prof']['pMem']==memory_before+'\nUser name Ada\nUser name Delta\nUser name Gamma'
+                assert window.evaluate_js("document.getElementById('pMem').value")==memory_before+'\nUser name Ada\nUser name Delta\nUser name Gamma'
                 assert not window.evaluate_js("document.getElementById('mProf').classList.contains('o')")
                 assert window.evaluate_js("document.getElementById('memoryProposal').hidden")
-                outcome['memory_ask_choice_opens_dialog_or_saves_directly']=True
+                outcome['memory_ask_choice_shows_inline_review_or_saves_directly']=True
 
 
                 js("const p=await import('./js/panels.js');p.openM('mProf');"

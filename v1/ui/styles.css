@@ -1580,3 +1580,11 @@ input[type=color] {
 .sleep-stepper .mi::-webkit-inner-spin-button,
 .sleep-stepper .mi::-webkit-outer-spin-button { appearance: none; margin: 0; }
 .sleep-stepper .chip { flex: none; width: 30px; padding: 6px; }
+
+/* Onay grubu sohbet kontrollerinden ayrıdır; mod rengi yerine temayı kullanır. */
+.sessionControls {display:flex; gap:8px; flex-wrap:wrap; justify-content:center; align-items:center;}
+.memoryReview {border-inline-start:1px solid var(--gold); padding-inline-start:14px; max-width:290px; text-align:left;}
+.memoryReview[hidden] {display:none;}
+.memoryReview label {color:var(--gold); font-size:10px;}
+.memoryReview .sub {white-space:normal; overflow-wrap:anywhere; max-height:48px; overflow:auto; margin:4px 0;}
+.ctl {align-items:center; flex-wrap:wrap;}

@@ -101,13 +101,13 @@ class ModelTools:
             raise ContractError("Expected a tuple of allowed tool names")
         declarations = core.describe_tools()
         self._allowed = frozenset(allowed_tools)
-        if "memory.decide" in self._allowed:
-            raise ContractError("Memory approval belongs to the native user interface, never the model")
         if not self._allowed <= {item["name"] for item in declarations}:
             raise ContractError("Model tool is not registered")
         self._core, self._principal, self._session_id = core, principal, session_id
         self._calls: dict[str, str] = {}
         self._user_text = ""
+        self._memory_decision_id: str | None = None
+        self._proposed_this_turn = False
         self._memory_snapshot: str | None = None
         self._memory_reads: set[str] = set()
         self._clock_ids: set[str] = set()
@@ -124,6 +124,8 @@ class ModelTools:
         yazma kanıtı olamaz. Sesin ara transkriptleri bu turu yeniden başlatmaz.
         """
         self._user_text = text
+        self._memory_decision_id = None
+        self._proposed_this_turn = False
         self._memory_snapshot = None
         self._memory_reads.clear()
         self._selection = None
@@ -204,7 +206,12 @@ class ModelTools:
             raise ContractError('Read memory.read in this turn before changing personal memory; do not guess a snapshot')
         if (not replay and name == 'memory.patch' and 'memory.propose' in self._allowed
                 and call['arguments'].get('action') == 'append'):
-            raise ContractError('With suggestions enabled, new facts require memory.propose and native user approval')
+            raise ContractError('With suggestions enabled, new facts require memory.propose and the saved user review preference')
+        if not replay and name == 'memory.decide' and (
+                not isinstance(call['arguments'], dict) or not self._user_text.strip()
+                or self._proposed_this_turn or self._memory_decision_id is None
+                or call['arguments'].get('id') != self._memory_decision_id):
+            raise ContractError('Read the pending suggestion in this user turn; only a later explicit user answer can decide it')
         arguments = call['arguments']
         if name == 'memory.propose':
             if not isinstance(arguments, dict) or 'source_verified' in arguments:
@@ -228,6 +235,12 @@ class ModelTools:
         ))
         self._calls[task.task_id] = call_id
         if not replay:
+            if name == 'memory.propose':
+                # Aynı turdaki yeni öneri modelin kendi onayıyla kaydedilemez.
+                self._proposed_this_turn = True
+                self._memory_decision_id = None
+            if name in ('memory.read', 'memory.decide'):
+                self._memory_decision_id = None
             if name == 'memory.read':
                 self._memory_snapshot = None
                 self._memory_reads.clear()
@@ -268,7 +281,10 @@ class ModelTools:
         if task_id in self._memory_reads and task.status.terminal:
             self._memory_reads.discard(task_id)
             if task.result is not None and task.result.verified and task.status.value == 'succeeded':
-                self._memory_snapshot = task.result.to_dict()['data']['snapshot']
+                data = task.result.to_dict()['data']
+                self._memory_snapshot = data['snapshot']
+                proposal = data.get('proposal')
+                self._memory_decision_id = proposal['id'] if proposal and not self._proposed_this_turn else None
         if task_id in self._clock_reads and task.status.terminal:
             self._clock_reads.discard(task_id)
             if task.result is not None and task.result.verified and task.status.value == 'succeeded' and task.request.tool == 'clocks.list':

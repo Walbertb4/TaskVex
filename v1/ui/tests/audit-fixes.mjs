@@ -131,8 +131,9 @@ try {
   });
   await test('memory suggestions are opt-in, safe text and need an explicit native decision', async()=>{
     const p=await setup();
+    await p.setViewportSize({width:1920,height:1080});
     assert.equal(await p.locator('#pLearn').isChecked(),false);
-    assert.equal(await p.locator('#memoryReviewNotice').isVisible(),false);
+    assert.equal(await p.locator('#memoryProposal').isVisible(),false);
     await p.evaluate(async()=>{
       window.vex.loadStore({prof:{pMemory:true,pLearn:true,pMem:'Original'}});
       const s=await import('/js/settings.js');
@@ -145,9 +146,18 @@ try {
     });
     assert.equal(await p.locator('#pMem').inputValue(),'Original');
     assert.equal(await p.locator('#memoryProposalText img').count(),0);
-    // Onay isteği artık bildirimin arkasına saklanmaz; modal kendisi açılır.
-    await p.locator('#mProf').waitFor({state:'visible'});
-    assert.equal(await p.locator('#mProf').isVisible(),true);
+    assert.equal(await p.locator('#mProf').isVisible(),false);
+    assert.equal(await p.locator('#mProf #memoryProposal').count(),0);
+    assert.equal(await p.locator('.ctl #memoryProposal').isVisible(),true);
+    const bounds=await p.evaluate(()=>({controls:document.querySelector('.sessionControls').getBoundingClientRect().toJSON(),review:document.getElementById('memoryProposal').getBoundingClientRect().toJSON()}));
+    assert.ok(bounds.review.x>=bounds.controls.right);
+    await p.setViewportSize({width:1280,height:800});
+    const narrow=await p.locator('#memoryProposal').boundingBox();
+    assert.ok(narrow.x>=0 && narrow.x+narrow.width<=1280);
+    assert.notEqual(await p.locator('#memoryProposal').evaluate(el=>getComputedStyle(el).borderInlineStartStyle),'none');
+    await p.setViewportSize({width:1920,height:1080});
+    await p.evaluate(async()=>{const s=await import('/js/settings.js');s.resolveMemoryProposal('old-id');});
+    assert.equal(await p.locator('#memoryProposal').isVisible(),true);
     await p.locator('#memoryAccept').click();
     await p.waitForFunction(()=>document.getElementById('memoryProposal').hidden);
     assert.equal(await p.locator('#pMem').inputValue(),'Original\nName: Ada');

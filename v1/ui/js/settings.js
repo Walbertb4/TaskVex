@@ -328,19 +328,18 @@ let memoryDecisionBusy = false;
 /** Aday yalnız gösterilir; serbest model metni hiçbir zaman kalıcı kayıt değildir. */
 export function showMemoryProposal(proposal) {
   memoryProposal = proposal;
-  const panel = document.getElementById('memoryProposal'), notice = document.getElementById('memoryReviewNotice');
-  panel.hidden = notice.hidden = !proposal;
+  const panel = document.getElementById('memoryProposal');
+  panel.hidden = !proposal;
   if (!proposal) return;
   document.getElementById('memoryProposalText').textContent = proposal.text;
   document.getElementById('memoryProposalSource').textContent = 'From this message: ' + proposal.source_quote;
   document.getElementById('memoryProposalStatus').textContent = 'Not saved. Review the fact before accepting.';
   for (const id of ['memoryAccept','memoryDismiss']) document.getElementById(id).disabled = false;
-  openMemoryReview(proposal.id);
 }
 
-async function openMemoryReview(id) {
-  const {openM} = await import('./panels.js');
-  if (memoryProposal?.id === id && !document.getElementById('mProf').classList.contains('o')) openM('mProf');
+/** Gecikmiş/eski karar daha yeni bir adayı gizleyemez. */
+export function resolveMemoryProposal(id) {
+  if (memoryProposal?.id === id) showMemoryProposal(null);
 }
 
 async function decideMemory(approve) {
@@ -788,9 +787,6 @@ export function initSettings(options = {}) {
 
   document.getElementById('memoryAccept').addEventListener('click', () => {sfx.blip();decideMemory(true);});
   document.getElementById('memoryDismiss').addEventListener('click', () => {sfx.blip();decideMemory(false);});
-  document.getElementById('memoryReviewNotice').addEventListener('click', () => {
-    sfx.blip();if (memoryProposal) openMemoryReview(memoryProposal.id);
-  });
   // Load profile values into inputs
   const P = store.prof || {};
   const review = document.getElementById('pMemoryConfirm');

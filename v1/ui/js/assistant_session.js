@@ -9,7 +9,7 @@ import { liveAudio } from './live_audio.js';
 import { liveMic } from './live_mic.js';
 import { liveTranscript } from './live_transcript.js';
 import { setState, getState, setMicLevel } from './reactor.js';
-import { store, queryDevices, getAudioDeviceId, applyMemoryProfile, showMemoryProposal } from './settings.js';
+import { store, queryDevices, getAudioDeviceId, applyMemoryProfile, resolveMemoryProposal, showMemoryProposal } from './settings.js';
 import { applyClockSnapshot, canSendClockText, setClocksChatLock } from './clocks.js';
 import { connectNativeNotes, setNotesChatLock, canSendNativeText } from './notes.js';
 
@@ -570,6 +570,10 @@ export async function sendText(text = null, audio = null, notification = null) {
     if (report?.memory_profile && !applyMemoryProfile(report.memory_profile)) {
       textOperation.markUnknown();
       return;
+    }
+    for (const tool of report?.tool_results || []) {
+      if (tool.name === 'memory.decide' && tool.status === 'succeeded' && tool.result?.verified)
+        resolveMemoryProposal(tool.result.data.decided_id);
     }
     if (report?.ok && !report.stopped && !report.unknown) {
       for (const tool of report.tool_results || []) {

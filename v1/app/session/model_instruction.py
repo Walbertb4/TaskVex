@@ -56,7 +56,7 @@ def model_instruction(profile: dict | None = None, *, tools_enabled: bool = True
         if tools_enabled else
         "No tools are available. Never claim to save, change or read notes or other current data. "
     )
-    review = ("The user must click Save or Dismiss in Personalization; do not approve proposals yourself. "
+    review = ("When approval_required is true, ask naturally whether to save the specific fact, in the selected language and personal style. Wait for the user's next reply or the separate Save/Dismiss buttons. On a later explicit unambiguous user decision call memory.read then memory.decide with its actual pending ID and approve true/false. Never approve your own proposal in the same turn; unrelated or ambiguous replies are not consent. Pending suggestions are not saved facts. "
         if profile.get('pMemoryConfirm', True) is not False else
         "The user enabled automatic saving: memory.propose may persist the fact. Claim saved only after verified persisted/read_back evidence. ")
     learning = ("\nMemory suggestions enabled: extract clear durable self-reported user facts in this turn via "

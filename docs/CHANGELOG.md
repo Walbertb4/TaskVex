@@ -5,6 +5,21 @@ hali ARCHITECTURE.md, yapılacak işler PLAN.md içindedir. Henüz sürüm yayı
 
 ## Unreleased
 
+### Hafıza önerisine sohbet yanında veya konuşarak karar
+
+- Save/Dismiss kişiselleştirmeden sohbetin altındaki dört kontrolün sağına,
+  ayrı ve temaya bağlı gruba taşındı; otomatik modal/Review ara düğmesi kaldırıldı.
+- Vex mevcut normal ses/metin yanıtında izin ister. Sonraki açık kullanıcı
+  kararı aynı memory.decide aracına gider; UI/model iki ayrı kayıt yolu değildir.
+- Model kendi oluşturduğu adayı aynı turda onaylayamaz. Sonraki turda taze
+  pending ID gerekir; eski ID ve geç karar yeni adaya uygulanmaz.
+- Karar sonrası gerçek backend profili yenilenir; ikinci save yoktur.
+  Önceki 6.1.3 kullanıcı kabulü c5d086c commit'inde, push yapılmadı.
+- 1081 pytest, 40 hedefli hafıza testi, 9 JS, 9 browser, 10 native ve Pyright 0;
+  [kanıt](reports/memory-voice-review-checks.json). Gerçek API/mikrofon denenmedi;
+  bu değişikliğin kullanıcı kabulü ve commit'i beklenir.
+
+
 ### Hafıza için sor/sorma tercihi ve doğrudan inceleme
 
 - Personalization'a Ask before saving learned information checkbox'ı eklendi;

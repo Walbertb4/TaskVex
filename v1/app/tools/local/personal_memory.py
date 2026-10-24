@@ -56,7 +56,15 @@ class PersonalMemory:
         """İzin kapalıysa yerel metni modele sızdırmadan reddet."""
         if arguments:
             return _failure(context, "invalid_arguments", "Memory read accepts no arguments")
-        return self._apply(None, context)
+        with self._store.lock:
+            result = self._apply(None, context)
+            if not result.verified:
+                return result
+            proposal = self._proposal
+            if proposal and proposal['snapshot'] != result.data['snapshot']:
+                self._proposal = proposal = None
+            return ToolResult(task_id=context.task_id, status=result.status, verified=True,
+                data={**result.to_dict()['data'], 'proposal':proposal}, evidence=result.to_dict()['evidence'])
 
     def patch(self, arguments: dict, context: ToolContext) -> ToolResult:
         """Dar değişikliği uygula; hedef eksik/çokluysa bütün belgeyi koru."""
@@ -107,7 +115,7 @@ class PersonalMemory:
                               data={'proposal':self._proposal}, evidence={'persisted':False, 'approval_required':True})
 
     def decide(self, arguments: dict, context: ToolContext) -> ToolResult:
-        """Yalnız native kullanıcı düğmesinden onay/ret; modele açılmaz.
+        """Düğme veya sonraki kullanıcı yanıtından aynı adayı onayla/reddet.
 
         Onaylanan metin UI payload'ından değil bu alan sahibindeki adaydan alınır.
         Aynı append iş mantığı kullanılır. Değişmiş izin/belge ve eski ID ret verir.
@@ -121,11 +129,14 @@ class PersonalMemory:
             if not arguments['approve']:
                 self._proposal = None
                 return ToolResult(task_id=context.task_id, status=TaskStatus.SUCCEEDED, verified=True,
-                                  data={'dismissed':True}, evidence={'persisted':False})
+                                  data={'dismissed':True, 'decided_id':proposal['id']}, evidence={'persisted':False})
             result = self._apply({'action':'append', 'text':proposal['text'],
                                   'expected_snapshot':proposal['snapshot']}, context)
             if result.status.terminal:
                 self._proposal = None
+            if result.verified:
+                return ToolResult(task_id=context.task_id, status=result.status, verified=True,
+                    data={**result.to_dict()['data'], 'decided_id':proposal['id']}, evidence=result.to_dict()['evidence'])
             return result
 
     def _apply(self, change: dict | None, context: ToolContext) -> ToolResult:

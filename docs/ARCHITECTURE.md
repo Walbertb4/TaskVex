@@ -176,22 +176,29 @@ komut akışını korur; öneri modu kapalıyken önceki araç sözleşmesi sür
 İnceleme kipinde PersonalMemory en fazla bir aday RAM'de tutar (1000 karakter; kaynak alıntısı
 20.000; aynı kullanıcı mesajı sınırı). Yeni aday eski ID'yi geçersiz kılar. Aday profil/yedek değildir;
 yürütme günlüğü öneri isteğini/sonucunu yine saklayabilir. Restart aday onayı
-sayılmaz; aday RAM'den kaybolur. memory.decide modeli kabul eden hiçbir
-ModelTools kataloğuna açılamaz. Kullanıcının Save/Dismiss düğmesi aynı
+sayılmaz; aday RAM'den kaybolur. memory.decide öğrenme açıkken model kataloğundadır;
+yalnız sonraki kullanıcı turunda taze memory.read ile alınan gerçek bekleyen ID
+kullanılabilir. Aynı turda öneri oluşturulmuşsa yeniden read bile onay açmaz;
+boş kaynak girdi ve eski ID reddedilir. Kullanıcının Save/Dismiss düğmesi aynı
 registry/policy/TaskManager hattına gider. Onay metni UI'dan alınmaz; alan
 sahibindeki gerçek aday ve güncel izin/snapshot kontrol edilir. Save mevcut
 append/readback iş mantığını kullanır; ret profil dosyasını değiştirmez.
 prof.pMemoryConfirm eksik/eski kayıtta true'dur: onay gerekiyorsa öneri
-Personalization penceresini kendiliğinden açar; Review düğmesi yedek erişimdir.
+sohbetin altındaki dört kontrolün sağında ayrı Save/Dismiss grubunda görünür;
+Personalization açılmaz. Vex mevcut yanıt/ses hattında doğal bir soru sorar.
+Sonraki açık kullanıcı kararı memory.read → memory.decide ile aynı adaya gider.
+Belirsiz veya ilgisiz yanıt onay sayılmamalıdır; anlamsal ayrım model sorumluluğudur.
 Kullanıcı checkbox'ı false olarak kaydederse memory.propose yeni bilgiyi aynı
 _apply append/readback üzerinden doğrudan tek profile yazar. Model auto-save
-parametresi veya onay gönderemez. Onay tercihi snapshot'ın parçasıdır; tur
+tercihini değiştiremez veya kendi önerisini aynı turda onaylayamaz. Onay tercihi snapshot'ın parçasıdır; tur
 ortasında değişen tercih eski okumayı geçersiz kılar. memory.propose bu nedenle
 memory.write yetkisi ister. Doğrudan kayıtta yeni öneri penceresi açılmaz ve
 backend profili aynı mevcut snapshot yoluyla editöre yansır.
 Sonuç doğrulanmazsa otomatik tekrar/merge yoktur; belirsiz kararda yeni model
 isteği ve karar kontrolleri engellenir. Onaylanan bilgi tek profilden UI'a
-yansır; taslak korunur ve ikinci save üretilmez. Tek tek kararlar sesle değil UI'da alınır; sormadan kayıt tercihi de yalnız UI'dan seçilir.
+yansır; taslak korunur ve ikinci save üretilmez. Sesli/metinli karar ve düğmeler
+aynı alan sahibini kullanır; sormadan kayıt tercihi yalnız UI'dan seçilir.
+Doğrulanmış karar sonucu decided_id taşır; geç sonuç yeni adayı gizleyemez.
 
 Ortak model_instruction yalnız opt-in metnini JSON veri olarak talimata ekler;
 REST/Live/timer aynı profil snapshot'ını kullanır. TextChat değişen etkin hafıza

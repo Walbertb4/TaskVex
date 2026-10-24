@@ -1,0 +1,63 @@
+{
+  "step": "6.1.3 inline memory review and spoken decision",
+  "previous_step": {
+    "manual_acceptance": "user reported everything working",
+    "commit": "c5d086c",
+    "pushed": false
+  },
+  "scope": [
+    "Save/Dismiss moved outside Personalization to separate group right of four conversation controls; responsive wrap",
+    "Normal model reply asks permission in selected language/style; no second TTS or fixed nickname",
+    "Later spoken/text response uses memory.read then memory.decide through existing registry/policy/TaskManager and same PersonalMemory owner"
+  ],
+  "guards": [
+    "No same-turn proposal self-approval even after reread",
+    "Fresh actual pending ID and nonempty actual user input required",
+    "Replaced/expired ID rejected; changed snapshot clears pending on read",
+    "Replay writes once; late UI approval after voice decision fails safely",
+    "Verified decided_id clears only matching UI candidate, including completed decision before Stop",
+    "Unknown/readback/Stop rules preserved; no new save feedback loop"
+  ],
+  "python_general": {
+    "passed": 1081,
+    "seconds": 106.65
+  },
+  "targeted_memory_tests": 40,
+  "javascript_suites": 9,
+  "browser_groups": 9,
+  "browser_layout": [
+    "1920x1080 right-side placement verified",
+    "1280x800 review group in viewport, visible separator"
+  ],
+  "typecheck": {
+    "scope": [
+      "app",
+      "tests/test_memory_suggestions.py"
+    ],
+    "errors": 0,
+    "warnings": 0
+  },
+  "native": {
+    "passed": 10,
+    "renderer": "edgechromium",
+    "transport": "synthetic",
+    "report": "memory-voice-review-native.json",
+    "actual_button_save_and_dismiss": true,
+    "model_decision_refreshes_profile_and_hides_inline_candidate": true
+  },
+  "test_adjustments": [
+    "Old browser assertion failed at 1280px because narrow layout intentionally wraps; right-side desktop assertion moved to 1920px and 1280px bounds/separator asserted separately. No application behavior was weakened."
+  ],
+  "not_tested": [
+    "real/paid provider API",
+    "physical microphone/acoustic recognition",
+    "real-model interpretation of ambiguous approval, unrelated speech or extracting facts"
+  ],
+  "limits": [
+    "Natural-language consent remains a model semantic decision; structural gates cannot prove every ambiguous utterance is consent",
+    "One pending candidate in RAM; replacement invalidates prior ID and restart drops candidate",
+    "Task journal may retain proposed facts/source even after profile memory deletion"
+  ],
+  "manual_acceptance": "awaiting user test of inline buttons, spoken approval/rejection and unrelated answer",
+  "commit": "new change uncommitted pending user acceptance; no push"
+}

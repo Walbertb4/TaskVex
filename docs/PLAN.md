@@ -1,6 +1,6 @@
 # TaskVex — Güncel plan
 
-## Şimdi: 6.1.1 — elle yönetilen kalıcı kullanıcı hafızası
+## Şimdi: 6.1.3 — hafıza önerisine düğme veya konuşmayla karar
 
 Önceki 5.R8.6 kullanıcı kabulü başarılı, 526bfed commit’inde.
 5.F6 bakımı kullanıcı tarafından kabul edildi; ea8aa15 commit’inde.
@@ -272,3 +272,29 @@ suite**, **9 browser grubu**, **10 native aşama**, app + öneri testi Pyright *
 [Rapor](reports/memory-review-checks.json), [native](reports/memory-review-native.json).
 Gerçek API/çıkarım doğruluğu denenmedi; her iki kip için kullanıcı testi ve
 commit beklenir. Yeni adıma geçilmedi.
+
+
+### 6.1.3 — ayrı onay grubu ve doğal konuşmayla karar
+
+Önceki sor/sorma dilimi kullanıcı tarafından başarılı bildirildi; c5d086c
+commit'ine alındı, push yapılmadı. Bu tur yalnız onay sunumu/kararı değişir.
+
+- Save/Dismiss, sohbet altındaki dört kontrolün sağında ayrı tema uyumlu grup;
+  Personalization içinde aday/onay yok, otomatik modal açılmaz.
+- Vex normal yanıt/ses hattında izin sorar; sonraki kullanıcı yanıtını
+  memory.read → memory.decide → registry/policy/TaskManager hattına taşır.
+- Aynı turda öneri ve kendi kendini onay engeli, taze gerçek ID, snapshot,
+  eski UI/model kararı, replay ve Stop öncesi doğrulanmış sonuç korunur.
+- Ayrı TTS, cümle listesi, ikinci kayıt sahibi veya API isteği eklenmedi.
+- Kabul: düğme ve sesli evet/hayır aynı adayı bir kez kaydeder/reddeder;
+  ilgisiz/kararsız yanıt onay olmamalı. Anlamsal karar gerçek modelle ayrıca
+  kullanıcı testinde değerlendirilecek. Otomatik doğrulama sürüyor.
+- Bu yeni değişiklik için kullanıcı kabulü/commit bekleniyor; sonraki aşamaya geçilmedi.
+
+
+Bu onay sunumu dilimi doğrulaması: **1081 pytest** (106.65 s), **40 hedefli
+hafıza testi**, **9 JS suite**, **9 browser grubu**, **10 native aşama**,
+app + öneri testi Pyright **0**. [Rapor](reports/memory-voice-review-checks.json),
+[native](reports/memory-voice-review-native.json). 1920px'de sağda ayrı grup,
+1280px'de taşmayan görünüm doğrulandı. Gerçek API, fiziksel mikrofon ve modelin
+anlamsal onay doğruluğu denenmedi. Kullanıcı kabulü ve bu dilimin commit'i bekler.

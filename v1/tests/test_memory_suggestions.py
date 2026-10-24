@@ -96,7 +96,8 @@ def test_quote_must_be_from_this_turn_and_model_cannot_approve(bridge):
     rejected=suggest(bridge._core,bridge._store,quote='My name is Ada',turn='')
     assert rejected['result']['error']['code']=='source_unavailable'
     with pytest.raises(ContractError):
-        ModelTools(bridge._core,principal='local-user',session_id='not-allowed',allowed_tools=('memory.decide',))
+        ModelTools(bridge._core,principal='local-user',session_id='not-allowed',allowed_tools=('memory.decide',)).submit(
+            {'id':'no-read','name':'memory.decide','arguments':{'id':'a'*32,'approve':True}})
     tools = ModelTools(bridge._core,principal='local-user',session_id='voice',allowed_tools=('memory.propose',))
     tools.begin_turn('')
     tools.observe_input('My name is Ada')
@@ -136,7 +137,7 @@ def test_rest_self_report_suggests_without_save_then_native_approval(bridge,tran
     proposal = report['tool_results'][1]['result']['data']['proposal']
     assert bridge.event('memory_decision',{'request_id':'approve-rest','arguments':{'id':proposal['id'],'approve':True}})['verified']
     assert stored(bridge._store)['prof']['pMem'].endswith('Name: Ada')
-    assert 'memory.decide' not in json.dumps(transport.requests[0]['tools'])
+    assert 'memory.decide' in json.dumps(transport.requests[0]['tools'])
 
 
 @pytest.mark.parametrize('source_available,model_quote',[(True,None),(True,'I am called Ada'),(False,'Invented statement')])
@@ -171,7 +172,7 @@ def test_suggestion_instruction_is_opt_in_and_distinguishes_third_parties():
     assert 'Memory suggestions enabled' not in model_instruction({'pMemory':True})
     assert 'Memory suggestions enabled' not in model_instruction({'pLearn':True})
     instruction=model_instruction({'pMemory':True,'pLearn':True})
-    assert 'third parties' in instruction and 'quotations' in instruction and 'user must click' in instruction.lower()
+    assert 'third parties' in instruction and 'quotations' in instruction and 'ask naturally' in instruction.lower() and 'later explicit' in instruction.lower()
 
 
 def test_learning_mode_model_cannot_append_around_approval(bridge):
@@ -288,3 +289,93 @@ def test_auto_save_failure_never_claims_persisted_success(bridge,monkeypatch):
     result=suggest(bridge._core,bridge._store)
     assert result['status']=='failed' and not result['result']['verified']
     assert stored(bridge._store)==data
+
+
+@pytest.mark.parametrize('approve', [True, False])
+@pytest.mark.parametrize('live', [True, False])
+def test_later_spoken_or_text_answer_uses_shared_decision(socket, transport, taskvex_home, approve, live):
+    """Gerçek SDK/core hattında ASR ve REST aynı bekleyen ID'yi karara bağlar."""
+    store = JsonStore(taskvex_home/'settings.json')
+    setup(store)
+    with create_core(settings_store=store) as core:
+        proposal = suggest(core, store, name='Name: Ada')['result']['data']['proposal']
+        chat = TextChat(core)
+        args = {'id':proposal['id'], 'approve':approve}
+        try:
+            if live:
+                socket.frames = [{'setupComplete':{}}, {'serverContent':{'inputTranscription':{
+                    'text':'Yes, save that fact' if approve else 'No, do not save that', 'finished':True}}},
+                    live_call('memory.read',{},'decision-read'), live_call('memory.decide',args,'decision'),
+                    frame('Saved' if approve else 'Dismissed',complete=True)]
+                report = chat.run_live('', 'future-live', profile=stored(store)['prof'], audio_input=b'\0\0'*1600)
+            else:
+                transport.responses = [reply([call('memory.read',{},'decision-read')]),
+                    reply([call('memory.decide',args,'decision')]),reply([{'text':'Saved' if approve else 'Dismissed'}])]
+                report = chat.run('Yes, save that fact' if approve else 'No, do not save that', DEFAULT_MODEL,
+                    profile=stored(store)['prof'])
+            assert report['ok'], report
+            outcome = report['tool_results'][-1]['result']
+            assert outcome['verified'] and outcome['data']['decided_id'] == proposal['id']
+            assert stored(store)['prof']['pMem'] == ('User-approved original\nName: Ada' if approve else 'User-approved original')
+            assert outcome['evidence']['persisted'] is approve
+        finally:
+            assert chat.close()
+
+
+def test_model_cannot_self_approve_even_after_reread_but_later_answer_can(bridge):
+    setup(bridge._store)
+    tools = ModelTools(bridge._core, principal='local-user',session_id='review-turns',
+        allowed_tools=('memory.read','memory.propose','memory.decide'))
+    tools.begin_turn('My name is Ada')
+    read = tools.submit({'id':'initial-read','name':'memory.read','arguments':{}})
+    snapshot = tools.result(read.task_id, timeout=3)['result']['data']['snapshot']
+    task = tools.submit({'id':'suggestion','name':'memory.propose','arguments':{
+        'text':'Name: Ada','expected_snapshot':snapshot}})
+    proposal = tools.result(task.task_id,timeout=3)['result']['data']['proposal']
+    read = tools.submit({'id':'reread','name':'memory.read','arguments':{}})
+    tools.result(read.task_id,timeout=3)
+    decision = {'id':'decision','name':'memory.decide','arguments':{'id':proposal['id'],'approve':True}}
+    with pytest.raises(ContractError):
+        tools.submit(decision)
+    tools.begin_turn('Yes, save that')
+    with pytest.raises(ContractError):
+        tools.submit(decision)  # Önceki turun ID bilgisi yeterli değildir.
+    read = tools.submit({'id':'new-read','name':'memory.read','arguments':{}})
+    tools.result(read.task_id,timeout=3)
+    task = tools.submit(decision)
+    assert tools.result(task.task_id,timeout=3)['result']['verified']
+    tools.begin_turn('Other message')
+    assert tools.submit(decision).task_id == task.task_id
+    assert stored(bridge._store)['prof']['pMem'].count('Name: Ada') == 1
+    assert decide(bridge._core, proposal).status.value == 'failed'  # Geç UI onayı ikinci kez yazmaz.
+
+
+def test_fresh_read_cannot_authorize_replaced_or_expired_pending_id(bridge):
+    setup(bridge._store)
+    old = suggest(bridge._core,bridge._store)['result']['data']['proposal']
+    tools = ModelTools(bridge._core,principal='local-user',session_id='stale-decision',allowed_tools=('memory.read','memory.decide'))
+    tools.begin_turn('Save that')
+    read = tools.submit({'id':'read','name':'memory.read','arguments':{}})
+    tools.result(read.task_id,timeout=3)
+    current = suggest(bridge._core,bridge._store,name='New candidate')['result']['data']['proposal']
+    task = tools.submit({'id':'decision','name':'memory.decide','arguments':{'id':old['id'],'approve':True}})
+    assert tools.result(task.task_id,timeout=3)['result']['error']['code'] == 'proposal_expired'
+    assert stored(bridge._store)['prof']['pMem'] == 'User-approved original'
+    assert decide(bridge._core,current,False).result.verified
+
+
+def test_decision_requires_actual_input_and_read_drops_changed_candidate(bridge):
+    setup(bridge._store)
+    proposal = suggest(bridge._core,bridge._store)['result']['data']['proposal']
+    tools = ModelTools(bridge._core,principal='local-user',session_id='empty-decision',allowed_tools=('memory.read','memory.decide'))
+    tools.begin_turn('')
+    read = tools.submit({'id':'read','name':'memory.read','arguments':{}})
+    tools.result(read.task_id,timeout=3)
+    with pytest.raises(ContractError):
+        tools.submit({'id':'decision','name':'memory.decide','arguments':{'id':proposal['id'],'approve':True}})
+    data = stored(bridge._store)
+    data['prof']['pMem'] = 'Manual change'
+    bridge._store.write(data)
+    read = tools.submit({'id':'changed-read','name':'memory.read','arguments':{}})
+    assert tools.result(read.task_id,timeout=3)['result']['data']['proposal'] is None
+    assert decide(bridge._core,proposal).status.value == 'failed'

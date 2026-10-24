@@ -32,7 +32,7 @@ Native host hazır değilse mutasyonlar korunur; bozuk ayarlar açık kurtarma i
 | new_chat (internal/test) | RAM reset uyumluluk endpoint'i; UI düğmesi kaldırıldı |
 | sleep_start, wake_feed, wake_close, wake | Yerel KWS oturumu ve doğrulanmış ses sınırı; sıradan uyku sesi ağa gitmez |
 | notes_init, note_add, note_done, note_del, notes_replace | Onaylı backend not sahipliği; ID/snapshot ve readback doğrulaması |
-| memory_decision | UI onay/ret: request_id + arguments{id,approve}; memory.decide ortak core hattı, model erişimi yok |
+| memory_decision | UI onay/ret: request_id + arguments{id,approve}; memory.decide ortak core hattı; model sonraki kullanıcı yanıtında aynı aracı kullanır |
 | query_clocks, clock_command | Aynı Clocks durumunu okuma / core üzerinden mutasyon; delete yalnız UI |
 | clock_finished | Gerçek id/generation doğrulandıktan sonra araçsız bildirim; tekrar yok |
 | system_status | Core üzerinden temel OS bilgisi; sahte CPU/GPU kullanım yüzdesi yok |
@@ -178,18 +178,22 @@ eskisinin ID'sini geçersiz kılar; RAM'de tek aday ve restart'ta kayıp. Stop/h
 unknown raporundaki aday UI'da otomatik gösterilmez; profil değişmez. TaskManager
 tekrar kaydı tutulur; eski öneri sonucu yeni bir kalıcı kayıt yetkisi değildir.
 
-Onay gereken öneride UI Personalization'ı kendisi açar; Review düğmesi tekrar erişim sağlar; metin ve kaynak güvenli
+Onay gereken öneri sohbet altındaki dört kontrolün sağında ayrı Save/Dismiss
+grubunda görünür; Personalization açılmaz. Metin ve kaynak güvenli
 textContent ile gösterilir. Save/Dismiss memory_decision({request_id,
 arguments:{id,approve}}) gönderir. Kimlik ve metin tahmin edilmez; approve gerçek
-boolean olmalıdır. Model memory.decide kullanamaz; kaynak kanıtını veya onayı
-üretemez. Öğrenme açıkken tüm model eklemeleri (açık hatırla dahil) memory.propose
+boolean olmalıdır. Model yalnız sonraki gerçek kullanıcı turunda taze memory.read
+sonucundaki bekleyen ID için memory.decide({id,approve}) kullanabilir. Aynı
+turda propose çağrısı yapılmışsa onay kapalıdır; tekrar read bu kilidi aşmaz.
+Model kendiliğinden onay üretmemeli, belirsiz yanıtta açıklama istemelidir. Öğrenme açıkken tüm model eklemeleri (açık hatırla dahil) memory.propose
 hattına gider; inceleme veya doğrudan kaydı depodaki tercih belirler; memory.patch enum'undan append çıkarılır ve submit'te de engellenir.
 
 Karar sonrası completed+verified ve güncel memory_profile gelmeden başarı
 sunulmaz. Eski ID/değişmiş belge/izin/ret/restart otomatik ekleme yapmaz.
 Bilinmeyen sonuç tekrar edilmez; native yeni model mesajını engeller. Bilinen
 terminal ret/eski aday görünümden kaldırılır; meşgul ret daha sonra kullanıcı
-tekrar deneyebilir. Karar sesle onaylanmaz. Yeni sağlayıcı bağlantısı/ücretli
+tekrar deneyebilir. Doğrulanmış karar decided_id taşır; UI yalnız aynı adayı
+gizler. Stop'tan önce tamamlanmış karar geri alınmaz. Yeni sağlayıcı bağlantısı/ücretli
 çıkarım servisi yoktur; öneri mevcut konuşmanın araç adımlarıdır.
 
 
@@ -205,9 +209,11 @@ snapshot/yedek ve native şema aynı tercihi taşır; legacy profil eski false
 seçimini miras almaz. pMemory/pLearn kapalıysa bu checkbox tek başına kayıt açmaz.
 
 true: memory.propose persisted=false/approval_required=true adayı döndürür ve
-UI Personalization review penceresini otomatik açar. Zaten açıksa tekrar
-çağrı onu kapatmaz; geç açılış eski adayı göstermez. Save/Dismiss aynı native
-memory_decision hattıdır, dışarıdaki Review düğmesi zorunlu bir ara adım değildir.
+UI alt kontrol grubunun sağında adayın metnini/kaynağını ve Save/Dismiss
+düğmelerini gösterir. Vex normal metin/ses yanıtında doğal olarak izin ister;
+sabit TTS veya ikinci ses hattı yoktur. Sonraki kullanıcı yanıtı aynı karar
+aracını kullanır. memory.read saved text/snapshot yanında ayrı proposal alanı
+döndürür; bekleyen aday onaylı hafıza değildir. Değişmiş snapshot adayı düşürür.
 
 false: memory.propose mevcut _apply append/readback ile diske yazar;
 data.proposal=null, saved_automatically=true ve verified/persisted/read_back

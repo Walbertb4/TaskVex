@@ -156,3 +156,12 @@ otomatik açılır hale getirildi; pMemoryConfirm false seçilirse aynı core
 hattında doğrudan doğrulanmış kayıt eklenir. 1074 pytest, 9 JS, 9 browser,
 10 native ve Pyright 0; [kanıt](reports/memory-review-checks.json).
 Çıkarım hatası otomatik kipte kayda geçebilir; gerçek model kabulü bekler.
+
+
+6.1.3 güncel onay akışı: kullanıcı önceki sor/sorma dilimini kabul etti;
+c5d086c commit'i alındı. Yeni dilimde modal yerine sohbet yanında ayrı
+Save/Dismiss, sonraki kullanıcı yanıtıyla aynı memory.decide, taze ID ve
+aynı-tur kendi kendini onay engeli var. 1081 pytest, 9 JS, 9 browser,
+10 native ve Pyright 0; [kanıt](reports/memory-voice-review-checks.json).
+Gerçek modelin anlamsal onay/ret ayrımı kullanıcı testini bekler; yapısal
+kimlik/tur koruması bu ayrımın kusursuz olduğunu iddia etmez.

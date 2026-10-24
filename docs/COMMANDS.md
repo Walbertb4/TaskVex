@@ -292,7 +292,7 @@ Idle sleep +/- buttons adjust the same saved 0–300 second timer setting.
 
 ## Planned — not available yet
 
-- Silent, unapproved personal-memory learning. Optional suggestions with UI approval are available below.
+- Silent, unapproved personal-memory learning. Optional suggestions with button or spoken approval are available below.
 - Model-driven skill/routine/calendar/weather/Google/Telegram/Discord actions.
 
 Move an item into the available tables only after its implementation and
@@ -397,17 +397,22 @@ backups or the persistent local task journal. Automatic learning is not enabled.
   Both choices are saved; learning is off by default.
 - “By the way, my name is Ada.” → Vex may propose this durable self-reported
   fact without a “remember” command. With review enabled, a proposal is not saved personal memory.
-- **Review memory suggestion → Save** → Reviews the exact fact and its source
+- **Save** in the separate group to the right of the four conversation controls → Reviews the exact fact and its source
   message, then saves the current candidate through the existing memory tool.
 - **Dismiss** → Drops the candidate without changing saved memory.
 
 With learning enabled, all model additions, including explicit “remember”
 requests, follow **Ask before saving learned information**. When checked
-(default), the review dialog opens automatically and **Save** is required.
+(default), Vex asks naturally whether to save the specific fact. Say or type
+“Yes, save that” or “No, dismiss it”, or use **Save/Dismiss** beside the conversation
+controls. Personalization does not open. These examples are not fixed phrases;
+ambiguous replies require clarification.
 When unchecked and saved, Vex writes verified new facts directly into the
 Personal memory field without asking. Corrections and forgetting keep their
 explicit-command flow. With suggestions off, existing explicit remember commands
-still work. Spoken “yes” does not approve a suggestion in this version.
+still work. Spoken/text decisions use the same current candidate and verified
+core action as the buttons. The model cannot approve its own proposal in the
+same turn and must freshly read the actual pending ID in a later user turn.
 
 The model is instructed to exclude third-party facts, quotations, jokes,
 hypotheticals, transient states, sensitive details and personality guesses.
