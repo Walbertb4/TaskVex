@@ -9,7 +9,7 @@ import { liveAudio } from './live_audio.js';
 import { liveMic } from './live_mic.js';
 import { liveTranscript } from './live_transcript.js';
 import { setState, getState, setMicLevel } from './reactor.js';
-import { store, queryDevices, getAudioDeviceId } from './settings.js';
+import { store, queryDevices, getAudioDeviceId, applyMemoryProfile } from './settings.js';
 import { applyClockSnapshot, canSendClockText, setClocksChatLock } from './clocks.js';
 import { connectNativeNotes, setNotesChatLock, canSendNativeText } from './notes.js';
 
@@ -567,6 +567,10 @@ export async function sendText(text = null, audio = null, notification = null) {
         audio ? {...audio, request_id:activeTextRequest} : { text: v, request_id: activeTextRequest });
     if (!textOperation.isCurrent(revision)) return;
     const report = result.response;
+    if (report?.memory_profile && !applyMemoryProfile(report.memory_profile)) {
+      textOperation.markUnknown();
+      return;
+    }
     let playbackProblem = null;
     if (audio?.stream && replyMicRequest !== activeTextRequest) { liveMic.cancel(); paintMic(); }
     for (const tool of report?.tool_results || []) {

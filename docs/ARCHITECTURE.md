@@ -51,6 +51,7 @@ yaşam döngüsü sahibinde kalır.
 | Araç kataloğu/parametre | app/session/tool_registry.py; açık kayıt, JSON schema; otomatik plugin import yok |
 | Yetki | app/policy/engine.py; yerel kullanıcı ve desktop kaynağı için açık izin |
 | Yürütme/replay/iptal | app/tasks/manager.py; tek worker ve request_id kaydı; storage/task_journal.py kalıcı SQLite deposu |
+| Kullanıcı hafızası | app/tools/local/personal_memory.py; aynı settings.json profili, taze snapshot ve paylaşılan kısa depo kilidi |
 | Not | app/tools/local/notes.py; ID/tarih/seçim/snapshot ve tek dosya yazımı |
 | Timer/stopwatch | app/tools/local/clocks.py; süreç RAM’i, monoton saat; UI/model aynı nesne |
 | Sır | app/storage/credentials.py; Windows Credentials; UI store/JSON/yedekte anahtar yok |
@@ -133,12 +134,28 @@ Geçici hafıza TextChat RAM’indedir: 12 tur / 16.000 JSON karakteri / taraf b
 belleği korur; kapanış/anahtar değişimi temizler. New Chat UI düğmesi yoktur;
 internal new_chat reset endpoint'i test/gelecek kanal uyumluluğunda korunur.
 
-Elle yönetilen kalıcı kullanıcı bağlamı settings.json/prof.pMem metnidir; tek
+Kalıcı kullanıcı bağlamı settings.json/prof.pMem metnidir; tek
 tercih sahibi/depo korunur. prof.pMemory varsayılan false açık gönderim tercihidir;
 eski pMem metni kendiliğinden modele gitmez. Kullanıcı Personalization'da
-metni görür/düzeltir/temizler ve mevcut Save profile yoluyla kaydeder. Ayrı DB,
-öğrenme servisi veya model mutasyon aracı bu dilimde yoktur. Model çıkarımı
+metni görür/düzeltir/temizler ve mevcut Save profile yoluyla kaydeder. Ayrı DB veya öğrenme servisi yoktur. Model çıkarımı
 kullanıcı gerçeği olarak kaydedilmez; profil araç yetkisi vermez.
+
+memory.read ve memory.patch yalnız açık gönderim tercihi etkinse REST/Live
+kataloğundadır; timer bildirimleri araçsız kalır. Açık kullanıcı isteği model
+üzerinden aynı ModelTools → registry/policy → TaskManager hattına gider.
+Her mutasyondan önce aynı turda taze memory.read gerekir. append ekler;
+replace/forget tam ve tekil metni hedefler; clear açık tümünü unut isteğidir.
+Snapshot aradaki metin/izin değişimini reddeder; belirsiz hedefte tahmin yoktur.
+Ortak ayar şeması app/storage/settings.py içindedir; alan aracı UI köprüsüne
+bağımlı değildir. Native main aynı JsonStore örneğini core ve bridge'e verir;
+UI save/reset ve hafıza read/modify/write bu örneğin RLock kilidini paylaşır.
+Kilit ağ turu veya core beklemesi boyunca tutulmaz. Eski UI memoryBase'i
+hafızayı ezemez; çakışma görünür ret verir, otomatik merge/retry yoktur.
+Model turu bittikten sonra bridge güncel profili diskten yanıt zarfına ekler;
+UI aynı loadStore yoluyla, outbound save üretmeden güncellenir. Eski replay
+sonucu güncel profilin yerine yazılmaz. Başarılı işlem Stop ile geri alınmaz;
+yazma sonrası readback hatası unknown olur. Görev günlüğü hafıza metnini
+saklayabilir; forget bu geçmişi temizlemez.
 
 Ortak model_instruction yalnız opt-in metnini JSON veri olarak talimata ekler;
 REST/Live/timer aynı profil snapshot'ını kullanır. TextChat değişen etkin hafıza
@@ -201,7 +218,7 @@ uygulanmalıdır; bugün bunların tamamı varmış gibi davranılmaz.
 
 ## Bugün uygulanmayanlar
 
-Google/konum/hava/media/kamera/sistem sesi/dosya ekleme; otomatik kullanıcı hafızası çıkarımı ve modelden hafıza mutasyonu,
+Google/konum/hava/media/kamera/sistem sesi/dosya ekleme; otomatik kullanıcı hafızası çıkarımı,
 base instruction override/greeting; skill/rutin backend yürütme ve
 scheduler; GUI L1–L4 ve dış mesaj kanalları. Yerel tanımlar ve mevcut kullanıcı
 metni korunur; yürütücüsü olmayan kontroller açıkça planlı/disabled görünür.

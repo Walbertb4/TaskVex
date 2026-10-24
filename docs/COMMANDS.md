@@ -292,7 +292,7 @@ Idle sleep +/- buttons adjust the same saved 0–300 second timer setting.
 
 ## Planned — not available yet
 
-- Model-driven personal-memory add/update/forget and user-approved inference proposals. Manual Personalization memory is available below.
+- Automatic inference and user-approved inference proposals; explicit personal-memory commands are available below.
 - Model-driven skill/routine/calendar/weather/Google/Telegram/Discord actions.
 
 Move an item into the available tables only after its implementation and
@@ -364,5 +364,27 @@ journal to bypass a lock. Manual unknown reconciliation is not available yet.
   erase past provider requests, existing messages, backups or task history.
 - Restart keeps the saved document and opt-in choice; temporary chat memory
   remains RAM-only. The New Chat button has been removed.
-- Spoken `remember this` / `forget this fact` mutations are not connected yet;
-  use the Personalization editor in this first slice.
+- Explicit spoken or typed memory changes use the model tools described below.
+
+
+## Personal memory — explicit model commands
+
+Enable **Use saved personal memory in replies** in Personalization first.
+REST and Live use the same local profile document; these are examples of intent,
+not fixed phrases or a separate language parser.
+
+| Say or type | What Vex does |
+|---|---|
+| “Remember that I study engineering.” | Reads the current memory, then appends the fact explicitly requested. |
+| “What have you saved about me?” | Reads the saved personal-memory document, rather than guessing from chat. |
+| “Correct my saved school from Alpha to Beta.” | Replaces one unambiguous exact passage while keeping unrelated facts. |
+| “Forget my saved school.” | Reads and removes the uniquely identified saved passage; asks if unclear. |
+| “Forget all saved personal information about me.” | Clears the profile memory document; keeps the opt-in preference unchanged. |
+
+The editor refreshes from the backend after tool results without sending another
+mutation. Conflicting edits or changed snapshots do not overwrite data or retry
+automatically. A stale-form save can require restarting the app before editing
+again. Memory changes apply to the next turn and drop old Live/temporary chat
+context. Completed changes survive Stop and restart; an uncertain result must
+not be retried. Forgetting does not erase existing replies, provider history,
+backups or the persistent local task journal. Automatic learning is not enabled.

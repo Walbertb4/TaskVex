@@ -5,6 +5,23 @@ hali ARCHITECTURE.md, yapılacak işler PLAN.md içindedir. Henüz sürüm yayı
 
 ## Unreleased
 
+### Açık model hafıza işlemleri (6.1.2)
+
+- memory.read/patch, REST ve Live'da mevcut registry/policy/TaskManager hattına
+  eklendi; yalnız etkin pMemory ile, açık kaydet/düzelt/unut isteği için.
+- Taze tur/snapshot ve tekil hedef denetimi; readback, tekrar/iptal/unknown
+  kuralları. Aynı profil dosyası kullanılır, yeni hafıza DB'si yoktur.
+- Native core/bridge aynı JsonStore kilidini paylaşır. Ortak ayar şeması
+  bridge/settings.py'den storage/settings.py'ye taşındı; tüm çağıranlar güncel.
+- UI hafızayı backend'den yeniler; eski form overwrite ve geç kayıt ack'i
+  korunur. Çakışmada otomatik merge/retry yoktur; gerekirse uygulama yeniden açılır.
+- 6.1.1 kullanıcı tarafından kabul edildi, e7f3ce4 commit'inde; push yok.
+- 1050 pytest, 9 JS suite, 7 browser grubu, 10/10 native aşama ve Pyright 0.
+  [Kanıt ve başarısız ara denemeler](reports/model-memory-checks.json),
+  [native](reports/model-memory-native.json). Açık form taslağı korunur;
+  gerçek hesap/ücretli API yok. Kullanıcı kabulü ve commit bekliyor.
+
+
 ### Elle yönetilen kullanıcı hafızası ve New Chat kaldırılması (6.1.1)
 
 - New Chat düğmesi ve kullanılmayan UI handler/kontrol referansları kaldırıldı.
@@ -21,7 +38,7 @@ hali ARCHITECTURE.md, yapılacak işler PLAN.md içindedir. Henüz sürüm yayı
   geçti. Checkbox restore hatası düzeltildi; iki native eski varsayım daha
   kesin kontrolle güncellendi. Başarısız ara turlar [raporda](reports/personal-memory-checks.json),
   son native kabul [burada](reports/personal-memory-native.json). Gerçek hesap/
-  ücretli API ve fiziksel ses yok; kullanıcı kabulü/commit bekliyor.
+  ücretli API ve fiziksel ses yok; kullanıcı kabul etti, e7f3ce4 commit’inde.
 
 
 ### Live ses seçimi ve anahtar durum ibaresi (5.F8.2)

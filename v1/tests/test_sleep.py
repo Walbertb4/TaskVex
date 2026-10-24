@@ -23,7 +23,7 @@ def sleep_call(mode, call_id='sleep-request'):
 
 
 def test_sleeping_color_contract():
-    from app.bridge.settings import validate_settings
+    from app.storage.settings import validate_settings
     assert validate_settings({'colors': {'sleeping': '#64748b'}})['colors']['sleeping'] == '#64748b'
 
 
@@ -282,7 +282,7 @@ def test_sleep_controls_use_registered_tool_for_typed_and_voice(socket, text, mo
 
 @pytest.mark.parametrize('value', [-1, 301, 1.5, '5', True])
 def test_sleep_delay_rejects_invalid_persisted_values(value):
-    from app.bridge.settings import validate_settings
+    from app.storage.settings import validate_settings
     from app.core.contracts import ContractError
     with pytest.raises(ContractError):
         validate_settings({'sleepDelay': value})

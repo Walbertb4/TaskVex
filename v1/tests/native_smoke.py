@@ -232,6 +232,18 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                             remembered_name = 'Ada'
                             frames.append(audio_reply('Native temporary name acknowledged'))
                             return
+                        if text == 'Native remember job':
+                            from app.tools.local.personal_memory import memory_snapshot
+                            from app.storage.json_store import JsonStore
+                            profile = (JsonStore(home / 'settings.json').read() or {}).get('prof', {})
+                            for name, args, call_id in (
+                                ('memory.read', {}, 'native-memory-read'),
+                                ('memory.patch', {'action':'append', 'text':'Native saved job',
+                                    'expected_snapshot':memory_snapshot(profile)}, 'native-memory-patch'),
+                            ):
+                                frames.append({'toolCall':{'functionCalls':[{'id':call_id, 'name':name, 'args':args}]}})
+                            frames.append(audio_reply('Native job remembered'))
+                            return
                         if text == 'Native memory ask':
                             frames.append(audio_reply('Native remembered name: ' + (remembered_name or 'unknown')))
                             return
@@ -1063,6 +1075,12 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 assert 'Native remembered name: unknown' in window.evaluate_js("document.getElementById('msgs').textContent")
                 memory_setup = [m['setup'] for m in live_state['sent'] if 'setup' in m][-1]
                 assert 'Native saved school' in json.dumps(memory_setup['systemInstruction'])
+                js("document.getElementById('inp').value='Native remember job';document.getElementById('send').click();return true;")
+                wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
+                assert api._store.read()['prof']['pMem'] == 'Native saved school\nNative saved job'
+                assert window.evaluate_js("document.getElementById('pMem').value") == 'Native saved school\nNative saved job'
+                assert window.evaluate_js("JSON.parse(localStorage.getItem('taskvex_ui')).prof.pMem") == 'Native saved school\nNative saved job'
+                outcome['model_memory_verified_and_ui_refreshed'] = True
                 js("const p=await import('./js/panels.js');p.openM('mProf');"
                    "document.getElementById('pMem').value='';document.getElementById('pMemory').checked=false;"
                    "document.getElementById('btnSaveProf').click();return true;")

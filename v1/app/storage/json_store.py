@@ -13,6 +13,7 @@ import json
 import os
 from pathlib import Path
 import tempfile
+from threading import RLock
 from typing import Any, Callable
 from uuid import uuid4
 
@@ -49,9 +50,10 @@ class JsonStore:
     read eksik dosyada None, geçerli boş kayıtta {} döndürür. Böylece 'henüz
     oluşturulmadı' ile 'kullanıcı veriyi temizledi' birbirine karışmaz.
 
-    shortcut: tek host/yazıcı varsayılır; çok süreç veya paralel read-modify-write
-    gerekirse transaction/kilit desteği olan depoya geç. Atomik replace tek
-    başına iki yazarın birbirinin değişikliğini ezmesini önlemez.
+    Aynı örneği paylaşan yazıcılar read-modify-write boyunca lock tutabilir.
+    Atomik replace tek başına iki yazarı sıralamaz.
+    shortcut: lock süreçler arasında veya ayrı JsonStore örnekleri arasında
+    koruma sağlamaz; çok süreç yazımında transaction destekli depoya geç.
     """
 
     def __init__(self, path: Path) -> None:
@@ -59,6 +61,8 @@ class JsonStore:
         if not isinstance(path, Path) or not path.is_absolute() or not path.name:
             raise ContractError("Store path must be an absolute file path")
         self.path = path
+        # Aynı örneği paylaşan alan sahipleri read/modify/write boyunca bu kilidi tutar.
+        self.lock = RLock()
 
     def read(self) -> dict[str, Any] | None:
         """Kaydı doğrulayarak oku; bozuk/asıl dosyayı değiştirmeden hata bildir.

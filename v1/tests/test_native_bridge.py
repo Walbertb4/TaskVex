@@ -42,8 +42,9 @@ class FakeWindow:
 
 @pytest.fixture
 def bridge(monkeypatch):
-    with create_core() as core:
-        api = NativeBridge(core, JsonStore(get_data_home() / "settings.json"))
+    store = JsonStore(get_data_home() / "settings.json")
+    with create_core(settings_store=store) as core:
+        api = NativeBridge(core, store)
         # Test nesnesini açıkça enjekte et; üretimdeki Window tipini gevşetme.
         monkeypatch.setattr(api, "_window", FakeWindow())
         yield api
@@ -199,7 +200,7 @@ def test_save_projects_settings_and_reloads_in_fresh_bridge(bridge, monkeypatch)
                "prof": {"pIns": "Türkçe </script> ' \\ 📝"},
                "notes": [{"t": "LOCAL ONLY"}], "skills": [], "routines": [], "apikey": "never-persist"}
     result = bridge.event("save", payload)
-    assert result == {"ok": True, "completed": True, "saved": True}
+    assert result == {"ok": True, "completed": True, "saved": True, "memory_base": {"pMem":"", "pMemory":False}}
     saved = bridge._store.read()
     assert saved["vol"] == 0 and saved["sfx"] is False
     assert saved['replyVolume'] == 0

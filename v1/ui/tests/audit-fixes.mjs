@@ -98,6 +98,37 @@ try {
     await p.reload();await p.waitForFunction(()=>!!window.vex);
     assert.equal(await p.locator('#pMem').inputValue(),'');
   });
+  await test('memory refresh produces no outbound save and form saves carry their original memory base', async()=>{
+    const p=await setup();
+    const result=await p.evaluate(async()=>{
+      const settings=await import('/js/settings.js');
+      window.vex.loadStore({prof:{pMem:'Original school',pMemory:true}});
+      const calls=[];
+      window.pywebview={api:{event:async(name,data)=>{
+        if(name==='save')calls.push(structuredClone(data));
+        return {ok:true,completed:true,saved:true,memory_base:{pMem:data?.prof?.pMem??'',pMemory:data?.prof?.pMemory===true}};
+      }}};
+      document.getElementById('pMem').value='Manual correction';
+      const first=await settings.saveSettingsConfirmed();
+      settings.applyMemoryProfile({pMem:'Model correction',pMemory:true});
+      const refreshSaves=calls.length;
+      const shown=document.getElementById('pMem').value;
+      const second=await settings.saveSettingsConfirmed();
+      return {first,second,refreshSaves,shown,bases:calls.map(call=>call.memoryBase)};
+    });
+    assert.equal(result.first,true);assert.equal(result.second,true);
+    assert.equal(result.refreshSaves,1);assert.equal(result.shown,'Model correction');
+    assert.deepEqual(result.bases,[{pMem:'Original school',pMemory:true},{pMem:'Model correction',pMemory:true}]);
+    const draft=await p.evaluate(async()=>{
+      const settings=await import('/js/settings.js');
+      document.getElementById('pMem').value='Unsaved draft';
+      document.getElementById('pIns').value='Unsaved style';
+      settings.applyMemoryProfile({pMem:'New saved fact',pMemory:true});
+      return {draft:document.getElementById('pMem').value,style:document.getElementById('pIns').value,
+        saved:JSON.parse(localStorage.getItem('taskvex_ui')).prof.pMem};
+    });
+    assert.deepEqual(draft,{draft:'Unsaved draft',style:'Unsaved style',saved:'New saved fact'});
+  });
   await test('single preference object across form, layout and devices; no lost legacy text',async()=>{
     const p=await setup();
     await p.evaluate(()=>{localStorage.setItem('taskvex_ui',JSON.stringify({prof:{pSys:'KEEP BASE',pMem:'KEEP MEMORY'},notes:[{t:'legacy note',d:0}]}));});

@@ -65,7 +65,7 @@ doğal dil router'ı değildir. Kaldırılan shortcut/scheduler yolları bu ayr�
 | P2 | main.py kapanışta bridge._chat._live.close gibi private sınırları bilir. | İkinci socket sahibi yok, fakat host/bridge bağlaşımı var. Sonraki lifecycle değişiminde mevcut sahibin public kapanış noktası kullanılmalı; yeni manager kurulmamalı. |
 | P2 | Skill/rutin tanımları localStorage; core yürütme ve backend scheduler yok. | Bugün editör kapsamı. İleri entegrasyon tek backend sahipliğinde yapılmalı. Yerel zamanlayıcı ile geçici yürütme kurulmadı. |
 | P2 | Google/Telegram/Discord/GUI henüz yok; harici veri taint/kanal principal/risk onay sistemi tamam değil. | Bunlar bugünkü sınırlı yerel araçlara varmış gibi yazılmıyor. Dış içerik ve riskli eylemler açılmadan önce zorunlu. |
-| P2 | UI'da base instruction/greeting/memory/browser tercihlerinin backend karşılığı yok. | Önceden sessizce işe yarıyor görünüyordu; şimdi planlı/disabled, mevcut metin korunur. |
+| P2 | UI'da base instruction/greeting/browser tercihlerinin backend karşılığı yok. | Önceden sessizce işe yarıyor görünüyordu; şimdi planlı/disabled, mevcut metin korunur. |
 | P3 | NativeBridge 613 satır ve assistant_session 942 satır; yaşam döngüsü dalları yoğun. | Şimdilik tek sahip korunuyor. Yeni özellik aynı dosyaya yığılmadan gerçek sözleşme sınırıyla çıkarılmalı; sadece satır eşiğiyle bölünmemeli. |
 
 P1'ler yeni bulunmuş her şeyin bu turda yeniden mimarileştirilmesi anlamına gelmez.
@@ -81,7 +81,7 @@ açık sınırları kabul etmeden “üretime hazır” ilan edilemez.
 | REST varsayılan/fallback ve TTS modeli | gemini.py DEFAULT_MODEL/FALLBACK_MODEL, speech.py SPEECH_MODEL sabit | Ana masaüstü Live modeli API'den seçilip kaydoluyor; REST kanalı ürünleştirilirken ayrı sağlayıcı tercihine taşı |
 | Kullanıcı talimatı/dil | pIns/pLang gerçekten ortak model instruction'a gider | Çalışıyor; güvenlik/araç izni kişisel prompt ile değiştirilemez |
 | Base override / greeting | pSys/pGreet yalnız saklı metin | Henüz bağlı değil |
-| Kullanıcı hafızası | pMem + açık pMemory; elle kaydet/düzelt/unut ve ortak REST/Live bağlamı | 6.1.1; model mutasyonu/otomatik çıkarım henüz yok, eski bağlam sonraki turda bırakılır |
+| Kullanıcı hafızası | pMem + açık pMemory; elle ve modelle kaydet/düzelt/unut, ortak REST/Live bağlamı | 6.1.1/2; tek ayar deposu, snapshot/tekil hedef/paylaşılan kilit; otomatik çıkarım henüz yok, eski bağlam sonraki turda bırakılır |
 | Browser / yeni sekme / app önceliği / shortcut | pBr/pTab/pApp/pSc yalnız legacy tercih | İlgili plugin/resolver gelince tek servise bağla; şimdilik disabled |
 | Wake word | pWake backend'e bağlı; Vex/Veks/Rex ailesi, özel kelimede İngilizce sözlük sınırı | Serbest tüm diller iddiası yok; başka dil model/lexicon kalibrasyonu ayrı iş |
 | Wake sensitivity, konuşma eşiği, idle sleep | Mevcut ayarlar gerçek backend/worklet'e bağlı | Sabit değillerdir; wake değişimi sonraki uykuya uygulanır |
@@ -126,3 +126,10 @@ kullanıcı kabulü bu bakım değişikliğinin manuel kabulü yerine geçmez.
 ve 10 native aşama. [Sonuç](reports/reply-volume-checks.json),
 [native](reports/reply-volume-native.json). Ses seviyesi fiziksel duyum/API
 kabulü değildir; kullanıcı çalıştığını doğruladı.
+
+
+6.1.2 açık model hafızası: mevcut profile memory.read/patch eklendi; ikinci
+otorite yok. Snapshot/tekil hedef, UI base/ortak depo kilidi, readback,
+Stop/replay ve taslak koruması doğrulandı. 1050 pytest, 9 JS, 7 browser,
+10 native ve Pyright 0; [kanıt](reports/model-memory-checks.json).
+Gerçek model ve otomatik çıkarım kabulü yoktur; kullanıcı testi bekler.

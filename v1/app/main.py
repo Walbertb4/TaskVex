@@ -73,8 +73,9 @@ def main() -> None:
         if not ui.is_file():
             raise FileNotFoundError("TaskVex UI index.html is missing")
         clocks = Clocks()
-        with create_core(clocks=clocks) as core:
-            bridge = NativeBridge(core, JsonStore(home / "settings.json"), clocks=clocks)
+        settings_store = JsonStore(home / "settings.json")
+        with create_core(clocks=clocks, settings_store=settings_store) as core:
+            bridge = NativeBridge(core, settings_store, clocks=clocks)
             window = webview.create_window("TaskVex", _ui_app(ui), js_api=bridge,
                                            http_port=webview.settings["DEFAULT_HTTP_PORT"],
                                            width=1280, height=800, min_size=(900, 600),

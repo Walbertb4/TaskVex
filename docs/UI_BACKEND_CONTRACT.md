@@ -114,15 +114,40 @@ Sentetik provider ile WebView2, Python ve JS regresyonları gerçek dış işlem
 bakımda yeniden test edilmedi. Sonuçlar [AUDIT](AUDIT.md) ve reports/ içindedir.
 
 
-## Kullanıcı hafızası — 6.1.1
+## Kullanıcı hafızası — 6.1.1/2
 
 prof.pMemory boolean ve prof.pMem en çok 16.000 karakter metindir. Genel
 save/profil snapshot'ı, doğrulama, yedek ve native tercih deposu kullanılır;
-bu bir notes/save yan kanalı veya model aracı değildir. Checkbox varsayılan
+not deposu veya ikinci hafıza otoritesi değildir. Checkbox varsayılan
 false; pMem mevcut olsa bile açık onay olmadan sağlayıcıya gitmez.
 
 Düzeltme/boş metin/kapatma sonraki turda eski Live ve RAM bağlamını temizler.
 Devam eden yanıtın eski snapshot'ı sonradan değiştirilmez; UI geçmişinin veya
 sağlayıcıya daha önce gitmiş verinin silindiği söylenmez. Başarısız profil kaydı
-unutma başarısı değildir. Yeni model hafıza araçları sonraki dilimde aynı
-registry/policy/TaskManager ve tek kayıt otoritesiyle tasarlanacaktır.
+unutma başarısı değildir. memory.read/patch mevcut registry/policy/TaskManager üzerinden aynı belgeyi
+kullanır. Model çıkarımı otomatik kaydedilmez.
+
+Model kataloğu: pMemory=true ise memory.read({}) ve memory.patch açılır.
+patch.action append/replace/forget/clear; expected_snapshot zorunludur.
+append text, replace text+replacement, forget text alır; clear başka metin almaz.
+ModelTools aynı turda okunan snapshot'ı ister, alan aracı diskte tekrar kontrol
+eder. Hedef tam metinle tek eşleşme olmalıdır; sıfır/çoklu eşleşme ret verir.
+Başarı persisted/read_back ve gerçek belge snapshot'ıyla doğrulanır; mevcut
+TaskManager tekrar/iptal/unknown kuralları aynen geçerlidir.
+
+Generic save payload'ına UI'ın son onaylı {pMem,pMemory} değeri memoryBase
+olarak eklenir; bu alan settings.json'a veya yedeğe yazılmaz. Dolu/etkin mevcut
+hafızayı değiştiren profilde base eşleşmezse memory_changed ve güncel
+memory_profile döner; dosyaya yazılmaz. İlk boş/kapalı profil legacy kayıtla
+kurulabilir; aynı hafızayla yapılan diğer ayar kayıtları bundan etkilenmez.
+Başarılı save memory_base döndürür. UI geç gelen eski ack ile daha yeni
+snapshot'ın base'ini ezmez. Çakışmada otomatik retry/merge yapılmaz; uygulamayı
+yeniden açıp güncel profilden düzenlemek gerekir.
+
+Hafıza araçları kullanılan sohbet yanıtına bridge güncel memory_profile ekler;
+UI, unknown/Stop kontrolünden önce aynı loadStore({prof}) yoluyla uygular.
+Yerel görünüm kaydı yapılır, backend'e ikinci save yollanmaz. Açık formdaki
+kaydedilmemiş profil taslağı korunur; eski hafıza base'iyle sessiz overwrite
+yetkisi kazanmaz. Eski sağlayıcı
+bağlamı sonraki turda bırakılır; mevcut yanıt bitene kadar profil snapshot'ı
+sabittir. pMemory=false metni yerelde tutar, modelden okuyup değiştirmez.

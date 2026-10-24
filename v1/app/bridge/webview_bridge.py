@@ -20,13 +20,14 @@ from app.core.contracts import ContractError, TaskStatus, ToolRequest, copy_json
 from app.storage.json_store import StoreError
 from app.storage.credentials import CredentialError, GeminiCredentials
 from app.tasks.manager import TaskManagerError
-from app.bridge.settings import INTERFACE_DEFAULTS, validate_settings
+from app.storage.settings import INTERFACE_DEFAULTS, validate_settings
 from app.session.gemini import DEFAULT_MODEL
 from app.session.text_chat import TextChat
 from app.session.live_input import LiveInput
 from app.session.catalog import load_live_catalog, live_voice_catalog, selected_live_voice
 from app.session.wake_word import WakeWord, WakeAlignmentError
 from app.tools.local.clocks import Clocks
+from app.tools.local.personal_memory import memory_base
 
 
 class NativeBridge:
@@ -81,6 +82,15 @@ class NativeBridge:
         """Eksik dosyayı boş snapshot yap; bozuk dosyayı otomatik sıfırlama."""
         data = self._store.read()
         return {} if data is None else validate_settings(data)
+
+    def _memory_reply(self, report: dict) -> dict:
+        """Replay sonucu yerine güncel profil döndür; UI ikinci save üretmez."""
+        if any(item.get('name', '').startswith('memory.') for item in report.get('tool_results', [])):
+            try:
+                report['memory_profile'] = self._load_settings().get('prof', {})
+            except (StoreError, ContractError):
+                return {**report, 'ok': False, 'unknown': True, 'error': 'Memory refresh could not be verified'}
+        return report
 
     def _set_on_top(self, value: bool) -> None:
         """Windows pencere özelliğini GUI thread'inde değiştir.
@@ -462,8 +472,8 @@ class NativeBridge:
                 if (type(data) is not dict or set(data) != {'request_id'}
                         or not isinstance(data['request_id'], str) or not 1 <= len(data['request_id']) <= 128):
                     return {'ok': False, 'error': 'Invalid microphone stream request'}
-                return self._chat.run_live('', live_model, notes_ready=notes_ready,
-                                           request_id=data['request_id'], audio_input=LiveInput(), profile=profile, voice=voice)
+                return self._memory_reply(self._chat.run_live('', live_model, notes_ready=notes_ready,
+                                           request_id=data['request_id'], audio_input=LiveInput(), profile=profile, voice=voice))
             if name == "live_audio":
                 if (type(data) is not dict or set(data) != {"request_id", "mime_type", "data"}
                         or not isinstance(data["request_id"], str) or not 1 <= len(data["request_id"]) <= 128
@@ -474,8 +484,8 @@ class NativeBridge:
                     audio = b64decode(data["data"], validate=True)
                 except (Base64Error, ValueError):
                     return {"ok": False, "error": "Invalid microphone encoding"}
-                return self._chat.run_live("", live_model, notes_ready=notes_ready,
-                                           request_id=data["request_id"], audio_input=audio, profile=profile, voice=voice)
+                return self._memory_reply(self._chat.run_live("", live_model, notes_ready=notes_ready,
+                                           request_id=data["request_id"], audio_input=audio, profile=profile, voice=voice))
             if isinstance(data, dict):
                 if (set(data) != {"request_id", "text"} or not isinstance(data["request_id"], str)
                         or not 1 <= len(data["request_id"]) <= 128):
@@ -487,8 +497,8 @@ class NativeBridge:
                         self._wake = None
                         self._wake_detected = False
                         self._sleeping = False  # Açık yazılı UI isteği uyandırır.
-                return self._chat.run_live(data, live_model, notes_ready=notes_ready, request_id=request_id, profile=profile, voice=voice)
-            return self._chat.run(data, model, notes_ready=notes_ready, request_id=request_id, profile=profile)
+                return self._memory_reply(self._chat.run_live(data, live_model, notes_ready=notes_ready, request_id=request_id, profile=profile, voice=voice))
+            return self._memory_reply(self._chat.run(data, model, notes_ready=notes_ready, request_id=request_id, profile=profile))
         with self._lock:
             try:
                 if name in {'sleep_start', 'wake_feed', 'wake_close', 'wake'}:
@@ -554,13 +564,23 @@ class NativeBridge:
                         return {"ok": False, "error": "Native initialization is incomplete"}
                     if type(data) is not dict:
                         raise ContractError("Expected settings object")
-                    candidate = {**self._load_settings(), **validate_settings(data, from_ui=True)}
-                    self._store.write(candidate)
-                    if self._store.read() != candidate:
-                        return {"ok": False, "error": "Settings save could not be verified"}
+                    with self._store.lock:
+                        current = self._load_settings()
+                        candidate = {**current, **validate_settings(data, from_ui=True)}
+                        before = memory_base(current.get('prof', {}))
+                        after = memory_base(candidate.get('prof', {}))
+                        # Eski form, modelin yeni hafızasını geri yazamaz. İlk boş
+                        # profil legacy çağıranlar için açık kalır; mevcut veri korunur.
+                        if before != after and before != memory_base({}) and data.get('memoryBase') != before:
+                            return {'ok': False, 'code': 'memory_changed',
+                                    'error': 'Personal memory changed. Restart the app before editing again.',
+                                    'memory_profile': current.get('prof', {})}
+                        self._store.write(candidate)
+                        if self._store.read() != candidate:
+                            return {"ok": False, "error": "Settings save could not be verified"}
                     if "onTop" in candidate:
                         self._set_on_top(candidate["onTop"])
-                    return {"ok": True, "completed": True, "saved": True}
+                    return {"ok": True, "completed": True, "saved": True, "memory_base": memory_base(candidate.get("prof", {}))}
                 if name == "ontop":
                     if type(data) is not bool or not self._ready:
                         return {"ok": False, "error": "Expected a boolean and a ready native window"}
@@ -569,10 +589,11 @@ class NativeBridge:
                 if name == "reset":
                     if data is not None or not self._ready:
                         return {"ok": False, "error": "Interface reset requires a ready window and no payload"}
-                    candidate = {**self._load_settings(), **copy_json(INTERFACE_DEFAULTS)}
-                    self._store.write(candidate)
-                    if self._store.read() != candidate:
-                        return {"ok": False, "error": "Interface reset could not be verified"}
+                    with self._store.lock:
+                        candidate = {**self._load_settings(), **copy_json(INTERFACE_DEFAULTS)}
+                        self._store.write(candidate)
+                        if self._store.read() != candidate:
+                            return {"ok": False, "error": "Interface reset could not be verified"}
                     self._set_on_top(False)
                     return {"ok": True, "completed": True, "saved": True, "snapshot": candidate}
                 if name == "system_status":

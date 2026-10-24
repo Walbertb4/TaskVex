@@ -35,7 +35,7 @@ sanki bugün çalışıyormuş gibi gösterilmez.
 | 3 | Tamam/kabul edildi | Backend not CRUD/aktarımı/yedek ve gerçek ID’ler |
 | 4 | İlk plugin tamam | Allowlist Notepad katalog/status/açma; genel GUI otomasyonu değil |
 | 5 | İşlevsel temel kabul; kalan sınırlar kayıtlı, kullanıcı aşama 6'ya geçiş istedi | Gemini REST/Live, ses, Stop/interrupt, resume, geçici hafıza, uyku, not/sayaç/kapatma |
-| 6 | 6.1.1 uygulanıyor | Kalıcı kullanıcı hafızası, L0 yetenekleri, Google/Telegram/Discord ve profil alanları |
+| 6 | 6.1.2 uygulandı; kullanıcı kabulü bekliyor | Kalıcı kullanıcı hafızası, L0 yetenekleri, Google/Telegram/Discord ve profil alanları |
 | 7 | Başlamadı | GUI resolver, L1 reçete, L2 DOM, L3 UIA, L4 vision ve skill yürütme |
 | 8 | Başlamadı | Tek backend rutin/scheduler, servisler, dağıtım/paketleme |
 
@@ -68,7 +68,7 @@ Henüz uygulanmadılar; her promptta istenen tek dilim ayrıca daraltılır.
 
 | Kimlik | Amaç ve kabul sınırı |
 |---|---|
-| 6.1 | İlk elle yönetilen dilim 6.1.1 uygulandı; model mutasyonları ve çıkarım önerileri 6.1.2/3 olarak bekliyor |
+| 6.1 | 6.1.1 kabul edildi; 6.1.2 model mutasyonları uygulandı/otomatik doğrulandı; çıkarım önerileri 6.1.3 bekliyor |
 | 6.2 | Telemetri/app/media araçları; her ölçüm/işlem gerçek kaynak ve doğrulama ile |
 | 6.3 | Dosya okuma, sonra kontrollü değişiklik; hedef/izin ve readback |
 | 6.4 | Hava/konum izni ve web arama; onay ve harici içerik sınırı |
@@ -171,8 +171,8 @@ unknown uzlaştırma, lisans ve kalan profil alanları kapanmış sayılmaz.
 
 | Adım | Kapsam | Durum |
 |---|---|---|
-| 6.1.1 | Personalization'da açık gönderim tercihi; kaydet/gör/düzelt/temizle, REST/Live bağlamı, eski sohbet bağlamını bırakma; New Chat düğmesini kaldır | Uygulandı: 1035 pytest, 9 JS, 6 browser, 10 native, Pyright 0; [kanıt](reports/personal-memory-checks.json). Kullanıcı testleri başarılı bildirdi; commit onaylı |
-| 6.1.2 | Model üzerinden hafıza gör/ekle/düzelt/unut; tek kayıt otoritesi ve snapshot doğrulamasıyla ModelTools → registry/policy/TaskManager | Henüz uygulanmadı; bu promptun sonraki dilimi değildir |
+| 6.1.1 | Personalization'da açık gönderim tercihi; kaydet/gör/düzelt/temizle, REST/Live bağlamı, eski sohbet bağlamını bırakma; New Chat düğmesini kaldır | Uygulandı: 1035 pytest, 9 JS, 6 browser, 10 native, Pyright 0; [kanıt](reports/personal-memory-checks.json). Kullanıcı kabul etti; e7f3ce4 commit’inde |
+| 6.1.2 | Model üzerinden hafıza gör/ekle/düzelt/unut; tek kayıt otoritesi ve snapshot doğrulamasıyla ModelTools → registry/policy/TaskManager | Uygulandı: 1050 pytest, 9 JS, 7 browser, 10 native, Pyright 0; [kanıt](reports/model-memory-checks.json). Kullanıcı testleri başarılı bildirdi; commit onaylı |
 | 6.1.3 | Model çıkarımlarını öneri olarak sunma; kullanıcı onayı öncesinde gerçek/kalıcı kullanıcı bilgisi saymama | Henüz uygulanmadı; ayrı onay/inceleme kapsamı |
 
 6.1.1 otomatik öğrenmez; eski legacy pMem metni varsayılan kapalıdır. Kalıcılık
@@ -188,3 +188,24 @@ checkbox hatası düzeltildi; native geçmiş-metin beklemesi ve profil kurtarma
 beklentisi yeni sözleşmeye göre netleştirildi. [Rapor](reports/personal-memory-checks.json),
 [native](reports/personal-memory-native.json). Gerçek hesap/ücretli API ve fiziksel
 hatırlama/ses testi yok. Kullanıcı testleri başarılı bildirdi; commit onaylı.
+
+
+### 6.1.2 — açık model hafıza işlemleri
+
+- Önceki dilim kullanıcı test onayıyla e7f3ce4 commit'ine alındı; push yok.
+- Tek settings.json/prof.pMem üzerinde memory.read/patch; açık pMemory tercihi,
+  taze tur/snapshot, tekil metin hedefi ve doğrulanmış readback.
+- UI save/reset ile paylaşılan kısa depo kilidi; eski formun hafızayı geri
+  yazmasını engelleyen memoryBase karşılaştırması. Ortak şema storage'a taşındı.
+- REST/Live aynı katalog/ModelTools hattında; timer bildirimleri araçsız.
+  Sonuçta güncel profil UI'a döner, ikinci mutasyon yok. Sonraki tur eski
+  socket/RAM bağlamını bırakır; geç Stop gerçekleşmiş kaydı geri almaz.
+- Otomatik çıkarım/öneri 6.1.3 bekler. Gerçek hesap/ücretli API yok;
+  otomatik doğrulama kullanıcı kabulünün yerine geçmez.
+
+6.1.2 son doğrulama: **1050 pytest**, **9 JS suite**, **7 browser grubu**,
+**10/10 native aşama**, app + yeni model hafıza testi Pyright **0**.
+[Özet](reports/model-memory-checks.json), [native](reports/model-memory-native.json).
+Başarısız ara denemeler raporda korunur; ücretli API/gerçek model ve fiziksel
+ses kabulü yapılmadı. Açık form taslağı korunur; çakışmada uygulamayı yeniden
+açmak gerekebilir. Kullanıcı testleri başarılı bildirdi; commit onaylı.

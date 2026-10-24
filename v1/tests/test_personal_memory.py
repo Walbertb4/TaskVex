@@ -86,7 +86,7 @@ def test_memory_profile_save_edit_forget_and_invalid_write_preserves_disk(bridge
     before=bridge._store.path.read_bytes()
     assert not bridge.event('save',{'prof':{'pMemory':'yes','pMem':'BAD'}})['ok']
     assert bridge._store.path.read_bytes()==before
-    assert bridge.event('save',{'prof':{'pMemory':True,'pMem':'Corrected school'}})['saved']
+    assert bridge.event('save',{'prof':{'pMemory':True,'pMem':'Corrected school'}, 'memoryBase':{'pMemory':True,'pMem':'Saved school'}})['saved']
     assert bridge._store.read()['prof']['pMem']=='Corrected school'
-    assert bridge.event('save',{'prof':{'pMemory':False,'pMem':''}})['saved']
+    assert bridge.event('save',{'prof':{'pMemory':False,'pMem':''}, 'memoryBase':{'pMemory':True,'pMem':'Corrected school'}})['saved']
     assert bridge._store.read()['prof']['pMem']==''

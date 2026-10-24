@@ -35,6 +35,7 @@ let pendingBackendSave = null;
 let saveQueue = Promise.resolve();
 let saveRevision = 0;
 let importingBackup = false;
+let memoryBase = {pMem: "", pMemory: false};
 export function setBackupImportHandler(handler) {
   backupImportHandler = handler;
 }
@@ -44,7 +45,7 @@ function saveStatus(message) {
 }
 
 function queueSettingsSave(value) {
-  const payload = JSON.parse(JSON.stringify(value));
+  const payload = JSON.parse(JSON.stringify({...value, memoryBase}));
   const native = isBackendAvailable(), revision = ++saveRevision;
   const observer = window.vex?.onSave || window.jarvis?.onSave;
   if (typeof observer === 'function') {
@@ -65,10 +66,14 @@ function queueSettingsSave(value) {
           error: new Error('Settings save was not confirmed in time. State is unknown; no automatic retry was made.') }), 12000);
       });
       const result = await Promise.race([operation, timeout]);
+      if (result.response?.memory_base && JSON.stringify(memoryBase) === JSON.stringify(payload.memoryBase))
+        memoryBase = result.response.memory_base;
       const confirmed = !native || (result.ok && result.response?.saved === true && result.response?.completed === true);
       if (native && result.ok && !confirmed) logBridgeError('save', new Error('Native settings save was not confirmed'));
       if (native && result.unknown) logBridgeError('save', result.error);
-      if (revision === saveRevision) saveStatus(confirmed ? (native ? 'Settings saved' : 'Saved in this browser') : 'Settings save not confirmed');
+      if (revision === saveRevision) saveStatus(result.response?.code === 'memory_changed'
+        ? 'Personal memory changed; restart the app before editing again'
+        : confirmed ? (native ? 'Settings saved' : 'Saved in this browser') : 'Settings save not confirmed');
       return { ...result, confirmed };
     } finally { clearTimeout(timer); }
   })();
@@ -313,7 +318,26 @@ export function switchTab(t) {
   store.tab = t;
 }
 
+/** Model sonucu aynı snapshot yolunu kullanır; açık formdaki taslağı silmez. */
+export function applyMemoryProfile(profile) {
+  const previous = store.prof || {}, base = memoryBase, drafts = [];
+  for (const key of ['pLang','pWake','pBr','pIns','pMem','pSc','pSys','pGreet','pTab','pApp','pMemory']) {
+    const el = document.getElementById(key);
+    if (!el) continue;
+    const prop = el.type === 'checkbox' ? 'checked' : 'value';
+    const before = previous[key] ?? (prop === 'checked' ? false : '');
+    if (el[prop] !== before) drafts.push([el, prop, el[prop]]);
+  }
+  if (window.vex.loadStore({prof: profile}) !== true) return false;
+  for (const [el, prop, value] of drafts) el[prop] = value;
+  // Taslak eski belgeye dayanıyorsa yeni metni sessizce ezme hakkı kazanmaz.
+  if (drafts.some(([el]) => ['pMem','pMemory'].includes(el.id))) memoryBase = base;
+  if (drafts.length) saveStatus('Saved memory refreshed; unsaved profile draft kept. Conflicts require restarting the app.');
+  return true;
+}
+
 export function loadStore(o, options = {}) {
+  if (o?.prof) memoryBase = {pMem: o.prof.pMem ?? "", pMemory: o.prof.pMemory === true};
   if (!o || typeof o !== 'object') return;
   const { emitSave = false, skipPersist = false } = options;
   [

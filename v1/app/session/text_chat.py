@@ -24,6 +24,7 @@ from app.session.model_instruction import personal_memory
 # REST ve Live aynı yetki kataloğunu paylaşır; bildirim turları yine araçsızdır.
 BASE_MODEL_TOOLS = ("apps.catalog", "system.status", "assistant.request_sleep_mode",
                     "assistant.request_shutdown", "clocks.create", "clocks.control", "clocks.list")
+MEMORY_MODEL_TOOLS = ("memory.read", "memory.patch")
 NOTE_MODEL_TOOLS = ("notes.add", "notes.list", "notes.select", "notes.update",
                    "notes.delete", "notes.delete_many", "notes.complete_many")
 
@@ -138,6 +139,8 @@ class TextChat:
                 return {'ok': False, 'unknown': True, 'code': 'memory_reset_failed',
                         'error': 'Previous memory context could not be closed. Reopen before continuing.'}
             allowed = BASE_MODEL_TOOLS
+            if profile and profile.get("pMemory") is True:
+                allowed += MEMORY_MODEL_TOOLS
             if notification:
                 allowed = ()  # Host bildirimi konuşur; kullanıcı adına araç çalıştıramaz.
             elif notes_ready:
@@ -217,6 +220,8 @@ class TextChat:
             # Not aktarımı bekliyor diye normal sohbet kapatılmaz. Aynı durum
             # backend'de araç kapsamını da daraltır; yalnız UI kilidine güvenmeyiz.
             allowed = BASE_MODEL_TOOLS
+            if profile and profile.get("pMemory") is True:
+                allowed += MEMORY_MODEL_TOOLS
             if notes_ready:
                 allowed += NOTE_MODEL_TOOLS
             tools = ModelTools(self._core, principal="local-user", session_id=uuid4().hex,

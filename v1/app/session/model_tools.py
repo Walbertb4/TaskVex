@@ -105,6 +105,8 @@ class ModelTools:
             raise ContractError("Model tool is not registered")
         self._core, self._principal, self._session_id = core, principal, session_id
         self._calls: dict[str, str] = {}
+        self._memory_snapshot: str | None = None
+        self._memory_reads: set[str] = set()
         self._clock_ids: set[str] = set()
         self._clock_reads: set[str] = set()
         self._selection: dict | None = None
@@ -118,6 +120,8 @@ class ModelTools:
         notes.select isteğinden gelir; eski bir liste veya seçim yeni turda
         yazma kanıtı olamaz. Sesin ara transkriptleri bu turu yeniden başlatmaz.
         """
+        self._memory_snapshot = None
+        self._memory_reads.clear()
         self._selection = None
         self._selection_blocked = False
         self._fresh_selections.clear()
@@ -178,6 +182,10 @@ class ModelTools:
             raise ContractError('Read clocks.list or create the clock in this turn; use an actual ID and clarify ambiguous targets')
         if not replay and name in {"notes.update", "notes.delete", "notes.delete_many", "notes.complete_many"}:
             self._check_note_target(name, call["arguments"])
+        if not replay and name == 'memory.patch' and (not isinstance(call['arguments'], dict)
+                or self._memory_snapshot is None
+                or call['arguments'].get('expected_snapshot') != self._memory_snapshot):
+            raise ContractError('Read memory.read in this turn before changing personal memory; do not guess a snapshot')
         # Çiftin JSON kodlaması ('ab','c') ile ('a','bc') karışmasını önler.
         # Ayrı model oturumlarında aynı sağlayıcı çağrı kimliği çakışmamalıdır.
         key = sha256(json.dumps([self._session_id, call_id], ensure_ascii=True).encode()).hexdigest()
@@ -187,6 +195,13 @@ class ModelTools:
         ))
         self._calls[task.task_id] = call_id
         if not replay:
+            if name == 'memory.read':
+                self._memory_snapshot = None
+                self._memory_reads.clear()
+                self._memory_reads.add(task.task_id)
+            elif name == 'memory.patch':
+                self._memory_snapshot = None
+                self._memory_reads.clear()
             if name in ('clocks.list', 'clocks.create'):
                 self._clock_reads.add(task.task_id)
             if name == 'notes.select':
@@ -217,6 +232,10 @@ class ModelTools:
             task = self._core.wait(task_id, timeout)
         except TimeoutError:
             task = self._core.get(task_id)
+        if task_id in self._memory_reads and task.status.terminal:
+            self._memory_reads.discard(task_id)
+            if task.result is not None and task.result.verified and task.status.value == 'succeeded':
+                self._memory_snapshot = task.result.to_dict()['data']['snapshot']
         if task_id in self._clock_reads and task.status.terminal:
             self._clock_reads.discard(task_id)
             if task.result is not None and task.result.verified and task.status.value == 'succeeded' and task.request.tool == 'clocks.list':
