@@ -42,6 +42,9 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
             listener.bind(('127.0.0.1', 0))
             port_file.write_text(str(listener.getsockname()[1]), encoding='ascii')
     webview.settings['DEFAULT_HTTP_PORT'] = int(port_file.read_text(encoding='ascii'))
+    from app.tools.local import telemetry as telemetry_module
+    telemetry_module.WindowsGpu=lambda:lambda:{'gpu_source':'windows-pdh','gpu_status':'ok',
+        'gpu_devices':[{'id':'synthetic-adapter','utilization_percent':0}]}
     from app.main import main
     from app.storage.json_store import StoreError
 
@@ -571,9 +574,16 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                          "system:document.getElementById('win').textContent};")
             assert initial["alias"] and initial["api"] == ["event"], initial
             assert "OFFLINE" in initial["online"], initial
-            wait_until(lambda: "Local sample" in window.evaluate_js("document.getElementById('systemStatus').textContent"))
+            wait_until(lambda: "%" in window.evaluate_js("document.getElementById('ram').textContent"))
             assert '%' in window.evaluate_js("document.getElementById('ram').textContent")
             outcome['native_local_memory_and_system_sample']=True
+            assert window.evaluate_js("document.getElementById('gpu').textContent")=='0%'
+            assert window.evaluate_js("document.getElementById('gpuT').textContent")=='—'
+            assert window.evaluate_js("document.getElementById('gpuLabel').textContent")=='GPU'
+            assert 'Windows GPU usage' in window.evaluate_js("document.getElementById('gpu').title")
+            assert window.evaluate_js("document.getElementById('systemStatus')===null")
+            assert window.evaluate_js("document.getElementById('cpuT').textContent")=='—'
+            outcome['native_windows_gpu_zero_and_static_label']=True
             if phase == "chat":
                 # Yeni otomatik başlangıç fiziksel mikrofona hiç ulaşmasın.
                 # Her izin çağrısı taze, sessiz bir sentetik track alır.

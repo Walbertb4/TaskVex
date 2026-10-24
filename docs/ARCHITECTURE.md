@@ -281,8 +281,9 @@ sorumluluk sınırı için açılır; satır sayısı tek başına bölme sebebi
 Telemetry, iki saniyelik cache ve CPU sayaç referansının tek sahibidir.
 Windows GetSystemTimes, GlobalMemoryStatusEx, GetSystemPowerStatus ve foreground
 process sorgusu; disk için standart shutil.disk_usage kullanılır. Disk uygulamanın
-Python çalışma biriminin doluluğudur, disk I/O hızı değildir. GPU ve sıcaklıklar
-henüz ölçülmez. CPU ilk örnekte, sayaç resetinde veya 64 üstü mantıksal işlemci
+Python çalışma biriminin doluluğudur, disk I/O hızı değildir. GPU kullanımı
+aynı Telemetry sahibindeki Windows PDH adaptöründen gelir; CPU/GPU sıcaklığı
+için destekli sistem kaynağı henüz yoktur. CPU ilk örnekte, sayaç resetinde veya 64 üstü mantıksal işlemci
 kapsamında None döner; desteklenmeyen veri uydurulmaz.
 
 Model system.status aracı registry/policy/TaskManager'dan aynı snapshot'ı okur.
@@ -292,3 +293,27 @@ istekleri en az üç saniye aralıklı başlatır, üst üste istek açmaz; ayr�
 thread/timer veya ikinci veri sahibi yoktur. Başarısız/12 saniye eski görünüm
 silinir; model offline olması yerel CPU/RAM'ı geçersizleştirmez.
 Aktif süreç yalnız exe adıyla çıkar: belge/pencere başlığı ve tam dosya yolu okunmaz.
+
+
+### Windows GPU adaptörü
+
+app/tools/local/windows_gpu.py, PDH DLL üzerinden GPU Engine performans
+sayaçlarını okur; üretici aracı, alt süreç, ek thread veya paket kullanmaz.
+İngilizce sayaç yolu PdhAddEnglishCounterW ile yerelleştirmeden bağımsızdır.
+Tek WindowsGpu nesnesi Telemetry'ye aittir; açık query handle'ı kapanışta
+bırakılır. Kısa ömürlü core'lar için nesne sonlandırıcısı da kaynağı bırakır.
+İlk toplama referanstır; sonraki örnek yüzde üretir. Ortak iki saniyelik cache
+UI/model arasında paylaşılır. Hata sorguyu kapatır; yeni sorgu tekrar ısınır.
+
+Aynı adaptör/fiziksel motorun süreç sayaçları toplanır. Kartın kullanımı en yoğun
+motorudur; tek dashboard barı adaptörlerin en yüksek yüzdesini gösterir. Farklı
+motorlar/kartlar toplanmaz. gpu_devices OS adaptör kimliği ve yüzde içerir;
+bu kimlikler Görev Yöneticisi GPU 0/1 sıralaması veya ürün adı değildir.
+Süreç kimlikleri dışarı aktarılmaz. UI etiketi sabit GPU'dur, yüzde barla aynıdır.
+
+Windows'un ilgili WDDM sayaçlarını sunduğu Intel/AMD/NVIDIA dahil adaptörlerde
+çalışır; eski veya sayaç sunmayan sistem için evrensel destek iddiası yoktur.
+Bu kaynak sıcaklık veya VRAM kapasitesi vermez. Bu alanlar —/None kalır;
+GPU veya ACPI sıcaklığı CPU sıcaklığına dönüştürülmez. Task Manager penceresi
+okunmaz/açılmaz; Windows performans altyapısı kullanılır. Örnekleme aralığı
+ve seçilen GPU farklı olduğunda sayılar Task Manager'la birebir eşzamanlı değildir.

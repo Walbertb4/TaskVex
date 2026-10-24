@@ -272,7 +272,8 @@ data: sampled_at (monoton saniye), os/os_release/architecture/logical_cpu_count,
 cpu_percent, memory_percent, memory_total/memory_used (bayt), disk_total/disk_used
 (bayt), disk_volume (yalnız sürücü harfi), battery_percent/battery_present,
 ac_connected, active_process (exe adı), gpu_percent/cpu_temperature/gpu_temperature
-ve unavailable alan adları. Son üç ölçüm bu dilimde None'dır. CPU ilk ölçümde
+ve unavailable alan adları. CPU sıcaklığı destekli kaynak yoksa None'dır;
+GPU alanları aşağıdaki Windows sayaç sözleşmesi kapsamındadır. CPU ilk ölçümde
 veya desteklenmeyen kapsamda None'dır; pil yok ve pil bilinmiyor farklıdır.
 
 system_view.js güvenli sayı ve alan tiplerini denetler; geçmiş sampled_at kabul
@@ -280,8 +281,32 @@ etmez, RAM/disk değerlerini GiB'ye dönüştürür. Başlık için güvenli tex
 kullanır. Query başarısız veya on iki saniyedir yeni sonuç yoksa metrikler — olur;
 geç cevap yeni örneği geriye götüremez. pagehide sonuç teslimini durdurur.
 Native başlangıcı/kurtarma sonrası açılır; bağımsız tarayıcı sahte CPU üretmez.
-GPU/sıcaklık/ağ/media bu dilimde bağlanmış sayılmaz. Modelin offline durumu
+CPU/GPU sıcaklığı, ağ ve media henüz bağlı değildir. Modelin offline durumu
 yerel ölçümü ve oturum token toplamını silmez.
 
 Win32 kaynakları: https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getsystemtimes
 ve https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getforegroundwindow
+
+
+## Windows GPU alanları — 6.2.2
+
+query_system ve model system.status aynı örneği kullanır:
+- gpu_source='windows-pdh', gpu_status=ok/warming_up/unavailable.
+- gpu_devices=[{id,utilization_percent}]. id, Windows adaptör/fiziksel cihaz
+  sayaç kimliğidir; ürün adı veya Task Manager GPU indeksi olduğu varsayılmaz.
+- gpu_percent: listelenen kartların en yüksek motor kullanım yüzdesi; liste
+  boşsa None. Aynı motordaki süreçler toplanır, farklı motorlar toplanmaz.
+- gpu_sampled_at: ortak sampled_at ile aynı monoton saniye. İki saniyelik
+  cache ve mevcut UI polling sıklığı korunur. İlk referans örneği yüzde değildir.
+- gpu_temperature/cpu_temperature=None; VRAM kapasitesi/ürün adı/üretici
+  indeksi bu kaynaktan üretilmez. Önceki yayınlanmamış vendor alanları kaldırıldı.
+
+Sayaç API hatası/boş veya geçersiz örnek unavailable olur; önceki GPU değeri
+saklanmaz, CPU/RAM silinmez. Gerçek sıfır geçerlidir. UI üst açıklama satırı
+kaldırılmıştır; GPU etiketi sabit, bar yüzdesi clamp(0,100)'dür. Kayıp veri —
+ve boş barla ayrılır; boş bar tek başına hata anlamına gelmez.
+
+Kaynaklar:
+- https://devblogs.microsoft.com/directx/gpus-in-the-task-manager/
+- https://learn.microsoft.com/en-us/windows/win32/api/pdh/nf-pdh-pdhaddenglishcounterw
+- https://learn.microsoft.com/en-us/windows/win32/api/pdh/nf-pdh-pdhgetformattedcounterarrayw

@@ -210,7 +210,8 @@ aside {
 
 .mh span {
   color: var(--gold);
-  width: 34px;
+  flex: 0 0 34px;
+  white-space: nowrap;
 }
 
 .mh b {

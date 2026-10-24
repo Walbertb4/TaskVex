@@ -5,6 +5,7 @@ takılmaz. PyWebView'in Edge/WebView2 motoru zorunludur; eski IE motoruna düşm
 Native profil ve ayarlar TASKVEX_HOME altında kaynak koddan ayrı tutulur.
 """
 
+from contextlib import closing
 import argparse
 import os
 from pathlib import Path
@@ -74,9 +75,8 @@ def main() -> None:
         if not ui.is_file():
             raise FileNotFoundError("TaskVex UI index.html is missing")
         clocks = Clocks()
-        telemetry = Telemetry()
         settings_store = JsonStore(home / "settings.json")
-        with create_core(clocks=clocks, settings_store=settings_store, telemetry=telemetry) as core:
+        with closing(Telemetry()) as telemetry, create_core(clocks=clocks, settings_store=settings_store, telemetry=telemetry) as core:
             bridge = NativeBridge(core, settings_store, clocks=clocks, telemetry=telemetry)
             window = webview.create_window("TaskVex", _ui_app(ui), js_api=bridge,
                                            http_port=webview.settings["DEFAULT_HTTP_PORT"],

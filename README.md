@@ -31,6 +31,9 @@ It is a development project, not a production-ready general computer-use agent.
   plus a limited set of active personalization fields.
 - Gemini API key storage in Windows Credential Manager and automatic Live model
   catalog loading. The saved selection is restored when returned by the API.
+- GPU utilization through Windows performance counters across supported vendors;
+  the dashboard shows the busiest engine/adapter. No vendor command is run.
+  GPU/CPU temperatures and VRAM capacity remain unavailable from this source.
 - A per-data-profile OS lock prevents a second native app instance from opening.
 - An application-session token total from reported Live/REST usage, including
   REST tool rounds and separately requested speech synthesis. It survives Stop,
@@ -48,7 +51,7 @@ Google Drive/Calendar/mail access, Telegram/Discord integration,
 general GUI automation and
 backend skill/routine scheduling are planned.
 Camera, screen inspection, location, weather and media controls are not connected.
-GPU/temperature and Wi-Fi/network monitoring are not implemented. CPU sampling
+Intel/AMD GPU monitoring, CPU temperature and Wi-Fi/network monitoring are not implemented. CPU sampling
 currently supports Windows processor groups with at most 64 logical processors;
 unsupported readings remain unavailable.
 Some saved legacy profile fields have no backend effect and are marked as planned.
@@ -99,15 +102,15 @@ Model availability, network conditions and hardware affect behavior.
 
 ## Verification and documentation
 
-The latest change passed 1,109 Python tests, 9 JavaScript suites, 12 browser
-acceptance groups, targeted type checking and 10 native regression phases using
-synthetic providers and temporary data. Memory review/automatic saving and
-button/conversation decisions were also reported working by the developer;
-the session counter was also reported working. The new local-system dashboard
-still awaits manual acceptance. An initial native chat run hit its 60-second
-deadline; an isolated repeat passed all 10 phases without extending the deadline.
+The latest GPU change replaces an unpublished vendor-specific implementation
+with Windows counters. It passed 1,120 Python tests, 9 JavaScript suites, 13 browser
+groups, 10 native phases and targeted type checking using temporary/synthetic data.
+Manual acceptance is pending in [the plan](docs/PLAN.md); see [test evidence](docs/reports/windows-gpu-checks.json).
+A read-only counter check succeeded on the development
+machine; this does not establish support for every GPU. Memory decisions, session
+token counting and basic local-system readings were previously reported working.
 These checks do not establish real-account availability, physical microphone
-accuracy or production readiness. See [test evidence](docs/reports/local-telemetry-checks.json).
+accuracy or production readiness.
 
 - [Architecture](docs/ARCHITECTURE.md): current ownership and planned boundaries.
 - [Plan](docs/PLAN.md): remaining work and acceptance status.

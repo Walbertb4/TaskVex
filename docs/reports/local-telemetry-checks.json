@@ -58,7 +58,7 @@
   ],
   "acceptance": {
     "session_tokens": "user reported working; requested deferring commit",
-    "local_telemetry": "awaiting user UI/model test"
+    "local_telemetry": "user reported successful tests; committed with session token changes as eba75a5; no push"
   },
-  "git": "no commit or push per explicit user instruction"
+  "git": "previous accepted slice committed as eba75a5; not pushed"
 }

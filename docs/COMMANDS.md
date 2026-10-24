@@ -448,6 +448,22 @@ consent invalidates an old approval. No automatic retry or merge is performed.
 | “Which application is active?” | Reads the foreground executable name. It does not read document/window titles or window contents. |
 
 The UI refreshes local readings without requiring a model connection. Missing
-values remain unavailable, never invented zeroes. GPU/temperature, network and
-media integration are still pending. System readings use the existing shared
+values remain unavailable, never invented zeroes. CPU/GPU temperatures, network and
+media integration are still pending. Windows GPU readings are described below. System readings use the existing shared
 registry/policy/TaskManager model path; UI polling reads the same local owner.
+
+
+## Windows GPU readings
+
+| Say or type → | What Vex does |
+|---|---|
+| “What is my GPU usage?” | Calls system.status for the shared Windows performance-counter sample, across vendors when supported by the OS. |
+| “Which GPUs are measured?” | Reads gpu_devices with OS adapter IDs and percentages. IDs are not product names or Task Manager display indices. |
+
+Each adapter reports its busiest engine after summing processes on that engine.
+The dashboard's single GPU bar displays the busiest adapter; it does not sum
+separate cards or engines. First samples and unavailable counters display —;
+zero is valid. The shared sample cache is two seconds, with UI polls at least
+three seconds apart. No vendor CLI, new driver or monitoring service is used.
+GPU/CPU temperature, VRAM capacity and friendly adapter names are unavailable
+from this source. Unsupported Windows/WDDM counters remain unavailable.

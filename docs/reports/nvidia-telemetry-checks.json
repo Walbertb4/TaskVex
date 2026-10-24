@@ -1,0 +1,77 @@
+{
+  "step": "6.2.2 first supported NVIDIA adapter",
+  "previous_step": {
+    "manual_acceptance": "user reported success",
+    "commit": "eba75a5",
+    "pushed": false
+  },
+  "owner": "existing Telemetry instance shared by model system.status and native query_system",
+  "adapter": "v1/app/tools/local/nvidia_gpu.py; fixed System32 nvidia-smi path via Win32, no PATH/cwd/shell lookup",
+  "metrics": [
+    "NVIDIA utilization percent",
+    "reported used/total VRAM converted from MiB to bytes",
+    "GPU temperature Celsius",
+    "actual device index/name for each NVIDIA device"
+  ],
+  "ui": "first enumerated NVIDIA explicitly labeled; name/VRAM hover; missing/stale GPU metadata clears",
+  "bounds": {
+    "query_seconds": 2,
+    "gpu_cache_seconds": 10,
+    "max_devices": 16,
+    "max_csv_characters": 65536,
+    "no_visible_console": true
+  },
+  "python_general": {
+    "passed": 1127,
+    "seconds": 127.2
+  },
+  "targeted_python": 26,
+  "browser_groups": 13,
+  "javascript_suites": 9,
+  "typecheck": {
+    "scope": [
+      "app",
+      "tests/test_nvidia_gpu.py"
+    ],
+    "errors": 0,
+    "warnings": 0
+  },
+  "native": {
+    "phases_passed": 10,
+    "report": "nvidia-telemetry-native.json",
+    "gpu_source": "synthetic fixture; real WebView2 and production bridge/core",
+    "zero_load_temperature_vram_and_explicit_scope": true
+  },
+  "actual_hardware_read_only_smoke": {
+    "gpu": "NVIDIA GeForce RTX 4060 Laptop GPU",
+    "shared_snapshot_status": "ok",
+    "utilization_reported": true,
+    "vram_reported": true,
+    "gpu_temperature_reported": true,
+    "cpu_temperature": null
+  },
+  "intermediate_failures": [
+    "Initial parametrized test IDs containing 64 KiB input/large multiline input exceeded Windows temporary path limits; short descriptive IDs fixed test setup without changing parser validation"
+  ],
+  "not_tested": [
+    "real/paid model API",
+    "Intel/AMD GPU providers",
+    "CPU temperature provider",
+    "all NVIDIA driver/device combinations"
+  ],
+  "limits": [
+    "CPU temperature is not implemented and is not inferred from GPU or ACPI zones",
+    "System32 NVIDIA driver tool must exist; no driver installation or PATH fallback",
+    "NVIDIA utilization may differ from Task Manager engine graphs and samples; not combined Intel/NVIDIA load",
+    "First NVIDIA shown in UI; model receives all reported NVIDIA devices"
+  ],
+  "dependencies_added": [],
+  "manual_acceptance": "awaiting user UI and conversational test of new NVIDIA slice",
+  "git": "new slice uncommitted pending user acceptance; previous accepted slice committed; no push",
+  "reference": "https://docs.nvidia.com/deploy/nvidia-smi/index.html",
+  "superseded": {
+    "reason": "User rejected vendor-specific GPU polling and its dashboard layout; implementation removed.",
+    "replacement": "windows-gpu-checks.json",
+    "current_acceptance": false
+  }
+}

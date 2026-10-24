@@ -13,6 +13,7 @@ export function applySystemSample(data) {
   if(!data||!finite(data.sampled_at)||data.sampled_at<sample)return false;
   if(!['cpu_percent','memory_percent','gpu_percent','battery_percent'].every(k=>optional(data[k],v=>finite(v,0,100)))||
      !['memory_used','memory_total','disk_used','disk_total'].every(k=>optional(data[k],v=>finite(v)))||
+     !['cpu_temperature','gpu_temperature'].every(k=>optional(data[k],v=>finite(v,0,150)))||
      !['active_process','disk_volume'].every(k=>optional(data[k],v=>typeof v==='string'&&v.length<=260)))return false;
   sample=data.sampled_at;
   const memory=finite(data.memory_used)&&finite(data.memory_total)&&data.memory_total>0;
@@ -24,8 +25,13 @@ export function applySystemSample(data) {
       `${data.battery_percent}%${data.ac_connected===true?' · AC':''}`,
     disk:disk?`${data.disk_volume??''} ${gib(data.disk_used)} / ${gib(data.disk_total)} GiB`:null,
     win:data.active_process??null});
-  const status=document.getElementById('systemStatus');
-  if(status)status.textContent='Local sample · CPU averages the sampling interval; unavailable: —';
+  const gpuValue=document.getElementById('gpu');
+  if(gpuValue)gpuValue.title=data.gpu_percent==null?'Windows GPU counters unavailable':
+    'Windows GPU usage · busiest engine across adapters · sampled interval';
+  for(const id of ['cpuT','gpuT']) {
+    const el=document.getElementById(id);
+    if(el)el.title='Temperature: no supported system sensor source';
+  }
   return true;
 }
 
@@ -36,8 +42,6 @@ export async function refreshSystem() {
   const now=performance.now();
   if(now-(lastSuccess===-Infinity?lastAttempt:lastSuccess)>12000&&lastAttempt!==-Infinity) {
     setTelemetry(null);
-    const status=document.getElementById('systemStatus');
-    if(status)status.textContent='System sample unavailable or stale';
   }
   if(pending||now-lastAttempt<3000)return;
   pending=true;lastAttempt=now;
@@ -47,8 +51,6 @@ export async function refreshSystem() {
     if(result.ok&&result.response?.completed===true&&applySystemSample(result.response.data))lastSuccess=performance.now();
     else {
       setTelemetry(null);
-      const status=document.getElementById('systemStatus');
-      if(status)status.textContent='System sample unavailable';
     }
   } finally {pending=false;}
 }

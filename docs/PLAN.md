@@ -1,6 +1,6 @@
 # TaskVex — Güncel plan
 
-## Şimdi: 6.2.1 yerel sistem ölçümleri; GPU/ağ/media sonraki dilimler
+## Şimdi: 6.2.2 NVIDIA GPU adaptörü; CPU sensörü açık, ağ/media sonra
 
 Önceki 5.R8.6 kullanıcı kabulü başarılı, 526bfed commit’inde.
 5.F6 bakımı kullanıcı tarafından kabul edildi; ea8aa15 commit’inde.
@@ -310,7 +310,7 @@ Bu tur yeni özellik kodlanmadı; aşağıdaki dilimler henüz başlamadı.
 | Sıra | Kapsam / kabul koşulu |
 |---|---|
 | 6.2.1 | CPU/RAM/disk/pil/aktif exe ortak sahibi ve periyodik UI/model bağlantısı uygulandı; bu turun otomatik/native ve kullanıcı kabulü aşağıda |
-| 6.2.2 | GPU kullanım/bellek ve CPU/GPU sıcaklığı; donanıma göre kaynak doğrulama; desteklenmeyene uydurma değer yerine kullanılamaz durumu |
+| 6.2.2 | Windows PDH GPU kullanım adaptörü uygulanıyor; CPU/GPU sıcaklığı ve VRAM kapasitesi destekli kaynak bekliyor |
 | 6.2.3 | Network/Wi-Fi, anlık gönderme/alma hızı, bağlantı ve gecikme; transfer hızı ile internet hız testi ayrımı; offline yerel CPU ölçümünü silmez |
 | 6.2.4 | Sağlayıcının gerçek kullanım verisinden token sayacı; tur/oturum ve context sınırı ayrı; bilinmeyen hesap kotası veya tahmini kullanım kesin değer gibi gösterilmez |
 | 6.2.5 | Mevcut Windows medya oturumu: parça bilgisi, oynat/duraklat/önceki/sonraki; UI ve model aynı araç/alan sahibi |
@@ -402,3 +402,38 @@ bitince aynı süre sınırıyla tek başına tekrar edilen bütün native süit
 Gerçek Windows CPU ikinci örnek/RAM/disk/pil salt okunur ölçüm kontrolü de geçti.
 Gerçek API ve modelin bu yeni soruları yorumlaması kullanıcı kabulünü bekler.
 Önceki token adımı kullanıcı kabul edildi; iki dilimin commit'i talimatla ertelendi.
+
+
+### 6.2.2 — Windows GPU kullanımı ve sistem görünümü
+
+Önceki token/yerel ölçüm adımları kullanıcı kabulüyle eba75a5 commit'inde;
+push yapılmadı. İlk NVIDIA denemesi kullanıcı isteğiyle kaldırıldı. Eski
+[nvidia özeti](reports/nvidia-telemetry-checks.json) ve [native raporu](reports/nvidia-telemetry-native.json)
+yalnız terk edilen denemenin kanıtıdır; güncel uygulamanın kabulü değildir.
+
+- windows_gpu.py: Windows PDH sayaçları, tek Telemetry sahibi, aynı
+  registry/policy/TaskManager model hattı; ayrı worker/model/depo yoktur.
+- Aynı motordaki süreçler toplanır; kartın en yoğun motoru, dashboard'da en
+  yoğun kart gösterilir. Üretici executable'ı/driver API'si çağrılmaz.
+- İlk örnek referans, gerçek sıfır geçerli, kayıp sayaç unavailable; hatada eski
+  GPU verisi kalmaz ve CPU/RAM korunur. Native kapanış PDH kaynağını bırakır.
+- Üst açıklama satırı kaldırıldı; GPU etiketi sabit. Barın yüzdeyle aynı
+  genişliği 1280/1920'de ve 0/25/100 değerlerinde test edilir.
+- Windows sayaç sağlayan adaptörler desteklenir; her eski kart için garanti
+  yoktur. CPU/GPU sıcaklığı ve VRAM kapasitesi açık sınırdır. NVIDIA fallback yok.
+- Gerçek Windows üzerinde doğrudan salt okunur sayaç sorgusu başarılı;
+  sayaç kimlikleri ürün adı/Task Manager sıra numarası diye sunulmadı.
+- Sonraki bağımsız özellik 6.2.3 ağ/Wi-Fi; bu tur yeni özellik aşamasına geçilmez.
+
+Son doğrulama: **1120 pytest** (127.49 s), **19 hedefli test**, **13 browser
+grubu** (1280/1920 ve GPU barı 0/25/100), **9 JS suite**, **10 native aşama**,
+app + GPU testi Pyright **0**. [Özet](reports/windows-gpu-checks.json),
+[native](reports/windows-gpu-native.json). İlk tip kontrolünde sahte PDH testinin
+None-only alanı hata verdi; açık tür eklenince geçti. Gerçek ortak Windows
+Telemetry ilk örnekte warming_up, ikinci örnekte GPU %8.4 ve geçerli RAM döndürdü;
+okuma sonrası kaynak kapatıldı. Diğer üreticilerin fiziksel cihazları ve gerçek
+model/ücretli API test edilmedi. Manuel kullanıcı kabulü, commit ve push yok.
+
+
+6.2.2 kullanıcı testi başarılı bildirildi; Windows GPU/sistem görünümü dilimi kabul edildi.
+AGENTS.md gereği sonraki adımdan önce commit alınır; push istenmedi.

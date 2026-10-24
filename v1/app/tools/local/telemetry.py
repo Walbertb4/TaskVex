@@ -1,7 +1,8 @@
 """Yerel sistem ölçümlerinin tek sahibi: model aracı ve UI aynı örneği okur.
 
 Windows'un belgeli API'leri kullanılır; yeni thread, shell komutu veya dış servis
-başlatılmaz. İki saniyelik ortak örnek aralığı CPU farkını hesaplar. İlk CPU
+başlatılmaz. GPU için Windows PDH sayacı kullanılır.
+İki saniyelik ortak örnek aralığı CPU farkını hesaplar. İlk CPU
 örneği ve desteklenmeyen ölçümler None'dır; eksik veri sıfır diye sunulmaz.
 """
 import ctypes as c
@@ -16,6 +17,7 @@ from threading import Lock
 from time import monotonic
 
 from app.core.contracts import TaskStatus, ToolContext, ToolError, ToolResult
+from app.tools.local.windows_gpu import WindowsGpu
 
 
 class _Memory(c.Structure):
@@ -87,12 +89,20 @@ def _read_windows() -> dict:
 
 class Telemetry:
     """Tek önbellek/CPU referansı; UI polling görev günlüğünü sürekli büyütmez."""
-    def __init__(self, *, reader=None, clock=None):
+    def __init__(self, *, reader=None, clock=None, gpu_reader=None):
         self._reader=reader or _read_windows
+        self._gpu_reader=gpu_reader or WindowsGpu()
         self._clock=clock or monotonic
         self._lock=Lock()
         self._previous=None
         self._sample=None
+
+    def close(self):
+        """Pencere/core kapandığında varsa yerel GPU sayaç kaynağını bırak."""
+        with self._lock:
+            close=getattr(self._gpu_reader,'close',None)
+            if close is not None:
+                close()
 
     def snapshot(self) -> dict:
         """En çok iki saniyede bir ölç; dönen kopya sahibin durumunu değiştiremez."""
@@ -121,6 +131,11 @@ class Telemetry:
             for key in data:
                 if key in raw:
                     data[key]=raw[key]
+            gpu=self._gpu_reader()
+            data.update({key:gpu.get(key) for key in ('gpu_source','gpu_status','gpu_devices')})
+            data['gpu_sampled_at']=now
+            devices=data['gpu_devices'] or []
+            data['gpu_percent']=max((device['utilization_percent'] for device in devices),default=None)
             total=data['memory_total'];used=data['memory_used']
             if total and used is not None and 0<=used<=total:
                 data['memory_percent']=round(100*used/total,1)

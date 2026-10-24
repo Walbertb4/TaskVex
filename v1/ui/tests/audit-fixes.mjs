@@ -290,5 +290,36 @@ try {
     assert.equal(result.calls,1);assert.equal(result.staleLabel,'—');
     assert.equal(result.recovered,'25%');assert.equal(result.afterOffline,'25%');
   });
+  await test('Windows GPU static row and bars retain proportional width without explanatory text',async()=>{
+    const p=await setup();
+    assert.equal(await p.locator('#systemStatus').count(),0);
+    for(const width of [1280,1920]) {
+      await p.setViewportSize({width,height:900});
+      for(const percent of [0,25,100]) {
+        await p.evaluate(async value=>{
+          const {applySystemSample}=await import('/js/system_view.js');
+          applySystemSample({sampled_at:10+value,gpu_percent:value});
+          document.getElementById('gpuBar').style.transition='none';
+        },percent);
+        assert.equal(await p.locator('#gpuLabel').innerText(),'GPU');
+        assert.equal(await p.locator('#gpu').innerText(),percent+'%');
+        assert.equal(await p.locator('#gpuT').innerText(),'—');
+        const layout=await p.evaluate(()=>{
+          const bar=document.getElementById('gpuBar'),value=document.getElementById('gpu'),label=document.getElementById('gpuLabel');
+          return {ratio:bar.getBoundingClientRect().width/bar.parentElement.getBoundingClientRect().width,
+            aligned:Math.abs(value.getBoundingClientRect().top-label.getBoundingClientRect().top)<3,
+            singleLine:label.getBoundingClientRect().height<20};
+        });
+        assert.ok(Math.abs(layout.ratio-percent/100)<0.01);
+        assert.ok(layout.aligned&&layout.singleLine);
+      }
+      // New page resets monotonic sample ordering for the next viewport.
+      if(width===1280)await p.reload();
+    }
+    assert.match(await p.locator('#gpu').getAttribute('title'),/Windows GPU usage/);
+    await p.evaluate(async()=>{const {setTelemetry}=await import('/js/connections.js');setTelemetry(null);});
+    assert.equal(await p.locator('#gpu').innerText(),'—');
+    assert.equal(await p.locator('#gpu').getAttribute('title'),'System sample unavailable');
+  });
   console.log(`${results.length} browser cleanup groups passed`);
 } finally { await browser.close(); await new Promise(resolve=>server.close(resolve)); }

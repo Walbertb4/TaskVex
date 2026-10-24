@@ -5,6 +5,21 @@ hali ARCHITECTURE.md, yapılacak işler PLAN.md içindedir. Henüz sürüm yayı
 
 ## Unreleased
 
+### Windows GPU sayaçları ve sistem görünümü düzeltmesi
+
+- Yayınlanmamış NVIDIA aracı/adaptörü kaldırıldı; üreticiden bağımsız Windows
+  PDH GPU Engine sayaçları ortak Telemetry/system.status/UI hattında kullanılır.
+- Aynı motor süreçleri toplanır; en yoğun motor/kart tek barı belirler. İlk
+  örnek, sıfır, sayaç kaybı, CPU/RAM bağımsızlığı ve handle kapanışı korunur.
+- Üstteki sistem açıklaması kaldırıldı; sabit GPU etiketi dar alanda bölünmez.
+  Barın 0/25/100 genişliği 1280/1920 görünümde doğrulanır.
+- Sıcaklık ve VRAM kapasitesi bu kaynaktan gelmediği için ölçülmüş sayılmaz.
+- Önceki vendor denemesi kullanıcı tarafından reddedildi; tarihsel raporları
+  yeni uygulamanın kanıtı değildir. Yeni adım manuel kabul/commit bekler.
+- 1120 pytest, 19 hedefli test, 13 browser grubu, 9 JS suite, 10 native aşama
+  ve Pyright 0: [kanıt](reports/windows-gpu-checks.json). Windows üzerinde salt
+  okunur ortak sayaç kontrolü de geçti; farklı fiziksel üreticiler denenmedi.
+
 ### Ortak yerel telemetri — CPU/RAM/disk/pil/aktif uygulama
 
 - Tek Telemetry örneği model ve UI için gerçek Win32 ölçümlerini sağlar.

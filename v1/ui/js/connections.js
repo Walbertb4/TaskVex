@@ -191,6 +191,11 @@ export function setReminders(reminders) {
 
 // Undefined preserves a partial field; null explicitly clears it. Zero is valid.
 export function setTelemetry(data) {
+  if (data === null) {
+    const gpuLabel=document.getElementById('gpuLabel'), gpu=document.getElementById('gpu');
+    if(gpuLabel)gpuLabel.textContent='GPU';
+    if(gpu)gpu.title='System sample unavailable';
+  }
   const o = data === null ? Object.fromEntries(['cpu','gpu','ram','cpuT','gpuT','ramTxt','bat','disk','win'].map(k => [k,null])) : data;
   if (!o) return;
   for (const key of ['cpu', 'gpu', 'ram']) {

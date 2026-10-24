@@ -1,0 +1,49 @@
+{
+  "step": "6.2.2 Windows GPU counters and dashboard layout correction",
+  "status": "user reported manual tests successful; approved for commit; no push requested",
+  "source": "Windows PDH GPU Engine counters; no vendor executable, API, subprocess, dependency or new thread",
+  "ownership": "existing Telemetry shared by query_system and system.status through ModelTools/registry/policy/TaskManager",
+  "aggregation": "sum processes on the same adapter/physical engine, max engine per adapter, max adapter for the single dashboard bar",
+  "removed": [
+    "unpublished nvidia_gpu.py and vendor tests",
+    "vendor device labels and VRAM tooltip",
+    "visible systemStatus explanatory text"
+  ],
+  "checks": {
+    "targeted_pytest": 19,
+    "full_pytest": 1120,
+    "full_pytest_seconds": 127.49,
+    "browser_groups": 13,
+    "browser_viewports": [
+      1280,
+      1920
+    ],
+    "gpu_bar_percentages": [
+      0,
+      25,
+      100
+    ],
+    "javascript_suites": 9,
+    "native_phases": 10,
+    "pyright_errors": 0,
+    "git_diff_check": true
+  },
+  "read_only_windows_check": {
+    "first": "warming_up; no GPU percentage invented",
+    "second": "ok; GPU 8.4 percent, RAM still available",
+    "counter_adapter_count": 3,
+    "friendly_names_or_task_manager_indices_inferred": false,
+    "closed_after_read": true
+  },
+  "initial_validation_failure": "Pyright inferred the synthetic PDH failure field as None-only. Added an explicit str | None annotation and reran successfully.",
+  "native_report": "windows-gpu-native.json",
+  "historical_vendor_reports": "nvidia-telemetry-*.json are superseded; not current implementation evidence",
+  "limits": [
+    "Windows must expose supported WDDM GPU counters; not a guarantee for every old adapter",
+    "CPU/GPU temperatures, friendly GPU names and VRAM capacity are unavailable from this counter source",
+    "GPU adapter IDs are OS counter IDs, not Task Manager GPU 0/1 order",
+    "Busiest adapter and sampling time can differ from a selected Task Manager graph",
+    "No real model/paid API, physical microphone or cross-vendor hardware acceptance"
+  ],
+  "manual_test": "Restart the native app. Check no explanatory text, one-line GPU row, RAM/CPU still updating, and GPU bar changes with load; missing values remain —."
+}
