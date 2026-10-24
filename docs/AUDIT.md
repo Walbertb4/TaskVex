@@ -81,7 +81,7 @@ açık sınırları kabul etmeden “üretime hazır” ilan edilemez.
 | REST varsayılan/fallback ve TTS modeli | gemini.py DEFAULT_MODEL/FALLBACK_MODEL, speech.py SPEECH_MODEL sabit | Ana masaüstü Live modeli API'den seçilip kaydoluyor; REST kanalı ürünleştirilirken ayrı sağlayıcı tercihine taşı |
 | Kullanıcı talimatı/dil | pIns/pLang gerçekten ortak model instruction'a gider | Çalışıyor; güvenlik/araç izni kişisel prompt ile değiştirilemez |
 | Base override / greeting | pSys/pGreet yalnız saklı metin | Henüz bağlı değil |
-| Kullanıcı hafızası | pMem + açık pMemory; elle ve modelle kaydet/düzelt/unut, ortak REST/Live bağlamı | 6.1.1/2; tek ayar deposu, snapshot/tekil hedef/paylaşılan kilit; otomatik çıkarım henüz yok, eski bağlam sonraki turda bırakılır |
+| Kullanıcı hafızası | pMem + açık pMemory; elle ve modelle kaydet/düzelt/unut, ortak REST/Live bağlamı | 6.1.1–3; tek ayar deposu, snapshot/tekil hedef/paylaşılan kilit; isteğe bağlı öğrenmede kullanıcı inceleme veya doğrudan kayıt seçer; anlamsal eleme sağlayıcıya bağlı |
 | Browser / yeni sekme / app önceliği / shortcut | pBr/pTab/pApp/pSc yalnız legacy tercih | İlgili plugin/resolver gelince tek servise bağla; şimdilik disabled |
 | Wake word | pWake backend'e bağlı; Vex/Veks/Rex ailesi, özel kelimede İngilizce sözlük sınırı | Serbest tüm diller iddiası yok; başka dil model/lexicon kalibrasyonu ayrı iş |
 | Wake sensitivity, konuşma eşiği, idle sleep | Mevcut ayarlar gerçek backend/worklet'e bağlı | Sabit değillerdir; wake değişimi sonraki uykuya uygulanır |
@@ -133,3 +133,26 @@ otorite yok. Snapshot/tekil hedef, UI base/ortak depo kilidi, readback,
 Stop/replay ve taslak koruması doğrulandı. 1050 pytest, 9 JS, 7 browser,
 10 native ve Pyright 0; [kanıt](reports/model-memory-checks.json).
 Gerçek model ve otomatik çıkarım kabulü yoktur; kullanıcı testi bekler.
+
+
+6.1.3: pLearn ile opt-in öneriler, host kaynak kanıtı, tek RAM adayı ve gerçek
+UI Save/Dismiss kararı ortak core hattına bağlandı. Öneri kendiliğinden profil
+gerçeği olmaz; kaynak eşleşmesi anlamsal doğruluk garantisi değildir. 1065 pytest,
+9 JS, 8 browser, 10 native ve Pyright 0; [kanıt](reports/memory-suggestions-checks.json).
+Gerçek model kalitesi/ücretli API denenmedi; kullanıcı testi bekler.
+
+
+6.1.3 manuel testte source_unavailable ile yeniden açıldı: birebir model alıntısı
+şartı gerçek konuşmada hatalıydı. Kaynak mevcut tur sahibinden bağlandı; alıntı
+varyasyonu regresyonu düzeltme öncesinde başarısız, sonrasında başarılı.
+1068 pytest, 8 browser, 10 native ve Pyright 0; [kanıt](reports/memory-source-checks.json).
+Gerçek sağlayıcıda tekrar kabulü beklenir; önceki sentetik başarı manuel kabul
+olarak sunulmaz. Görev günlüğü gerçek kaynak mesajını da içerebilir.
+
+
+Kullanıcı başarılı öneride Review düğmesini görünür onay olarak algılamadı;
+kişisel alana henüz yazılmaması bekleyen aday davranışıydı. Onay penceresi
+otomatik açılır hale getirildi; pMemoryConfirm false seçilirse aynı core
+hattında doğrudan doğrulanmış kayıt eklenir. 1074 pytest, 9 JS, 9 browser,
+10 native ve Pyright 0; [kanıt](reports/memory-review-checks.json).
+Çıkarım hatası otomatik kipte kayda geçebilir; gerçek model kabulü bekler.

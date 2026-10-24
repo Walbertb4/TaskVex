@@ -1,0 +1,52 @@
+{
+  "step": "6.1.3 source-binding fix",
+  "manual_issue": "User reported memory.read succeeded but memory.propose failed; step reopened, never accepted",
+  "observed_code": "source_unavailable",
+  "root_cause": "Provider-rewritten source quote was required to match actual ASR text verbatim; a paraphrase rejected an otherwise valid suggestion",
+  "diagnostic_scope": "Read-only journal query; only tool/status/code and proof boolean printed, no personal message, candidate text or key exported",
+  "fix": [
+    "ModelTools binds the current user message or actual Live transcript as source; provider no longer has to quote it",
+    "Source text and host proof are hidden from provider declarations; legacy quote hint cannot replace actual user input",
+    "Replay keeps the original host source instead of using a later user turn",
+    "Source allows the existing 20000-character user-input bound; no silent truncation to an invented excerpt",
+    "Human approval, same profile owner, fresh snapshot, absent-ASR guard and native decision path retained",
+    "Engine log includes safely formatted tool error code without raw arguments/messages/errors"
+  ],
+  "reproduction": {
+    "before_fix": "paraphrase regression failed: expected succeeded, observed failed",
+    "after_fix": "passed, actual current-turn source shown and profile unchanged before approval"
+  },
+  "python_general": {
+    "passed": 1068,
+    "seconds": 111.85
+  },
+  "targeted_memory_and_suggestions": 33,
+  "browser_groups": 8,
+  "targeted_javascript_suite": "live-status passed",
+  "native": {
+    "status": "passed",
+    "phases": 10,
+    "report": "memory-source-native.json",
+    "transport": "synthetic",
+    "paraphrased_provider_source_with_actual_ui_approval": true
+  },
+  "typecheck": {
+    "scope": [
+      "app",
+      "tests/test_memory_suggestions.py"
+    ],
+    "errors": 0,
+    "warnings": 0
+  },
+  "not_tested": [
+    "real/paid provider request",
+    "real microphone and real-model extraction quality"
+  ],
+  "limits": [
+    "Host source proves which turn supplied the candidate context, not that the model interpreted it correctly; UI review remains mandatory",
+    "Source is the whole current user message (up to 20000 characters); local task journal may retain this context with candidate requests",
+    "Missing speech transcription still cannot authorize tool execution; no quote or source is invented"
+  ],
+  "manual_acceptance": "awaiting user retest after reopening app",
+  "commit": "no current-step commit; 6.1.3 remains pending manual acceptance, no next step or push"
+}

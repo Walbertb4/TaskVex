@@ -1,0 +1,65 @@
+{
+  "step": "6.1.3",
+  "scope": "Opt-in self-report memory suggestions with native UI approval through existing core and profile storage",
+  "previous_approved_commit": "50421c3",
+  "python_general": {
+    "passed": 1065,
+    "seconds": 94.29
+  },
+  "targeted_suggestion_tests": 15,
+  "javascript_suites": 9,
+  "browser_groups": 8,
+  "typecheck": {
+    "scope": [
+      "app",
+      "tests/test_memory_suggestions.py"
+    ],
+    "errors": 0,
+    "warnings": 0
+  },
+  "native": {
+    "status": "passed",
+    "phases": 10,
+    "transport": "synthetic",
+    "report": "memory-suggestions-native.json",
+    "actual_ui_approval_and_dismiss": true
+  },
+  "verified": [
+    "pLearn boolean defaults off and persists through existing profile schema/snapshot/save; pMemory must also be enabled",
+    "REST and Live expose memory.propose in the same model turn; timer notifications remain tool-free",
+    "Current-turn user text or streamed Live transcription supplies host-owned exact quote evidence; model cannot supply the internal proof flag",
+    "Missing or mismatched quote is a failed tool result; normal Live reply continues without a proposal",
+    "Suggestion leaves the settings profile unchanged; only one bounded candidate waits in domain RAM",
+    "Model cannot use memory.decide; learning-mode direct append is removed from model schema and rejected at submit",
+    "Actual Save/Dismiss UI sends stable request identity into registry/policy/TaskManager; approved data comes from actual domain candidate",
+    "Approval uses existing append/readback and profile refresh without second save; dismissal preserves profile bytes",
+    "Stale candidate, changed document/consent, newer candidate, prior dismissal and restart cannot silently save the old candidate",
+    "Decision replay preserves original result and does not duplicate the fact",
+    "Safe text rendering, visible review notice, explicit modal review, unknown lock and terminal expired-candidate cleanup",
+    "Existing explicit remember flow remains when suggestions are off; corrections/forgetting keep their existing explicit-command flow"
+  ],
+  "intermediate_failures": [
+    "Initial voice test used a text-turn-only synthetic resume socket that interpreted PCM and EOS as separate user turns. Replaced only the test transport with the existing PCM-capable socket fixture; both valid and unavailable source cases passed.",
+    "Browser test checked modal visibility before asynchronous existing panel import completed under parallel load. Added an explicit wait for the actual visible dialog; final eight groups passed."
+  ],
+  "limits": [
+    "Exact quote matching verifies provenance only; semantic self/third-person, joke, quotation, sensitive-data and durability filtering is a model instruction, not a deterministic classifier",
+    "All model additions require clicking Save while suggestions are enabled, including explicit remember requests; voice approval is not implemented",
+    "Only one candidate waits in RAM; a newer candidate replaces it and restart discards it",
+    "Candidates are not saved as profile facts or exported as profile memory, but the existing local task journal can contain candidate text and quotes",
+    "Memory changes apply to the next model turn; forget does not erase provider history, prior replies, backups or task journal",
+    "No automatic conflict merge or retries; unknown decisions require reopening/checking persisted state"
+  ],
+  "not_tested": [
+    "real/paid API",
+    "real-model semantic extraction quality",
+    "physical microphone/acoustic accuracy"
+  ],
+  "manual_acceptance": "failed: user reported memory.propose failure; step reopened",
+  "commit": "current step uncommitted pending user manual acceptance; no push",
+  "known_manual_failure": {
+    "code": "source_unavailable",
+    "source_verified": false,
+    "status": "host-source fix under verification; not accepted"
+  }
+}

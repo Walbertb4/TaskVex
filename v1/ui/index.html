@@ -111,6 +111,7 @@
       <label class="sub"><input id="liveLatencyTest" type="checkbox" checked> Live session · local tools / audio replies</label>
     </div>
     <div class="ctl fx">
+      <button class="cb" id="memoryReviewNotice" hidden>Review memory suggestion</button>
       <button class="cb" id="stopTask">■ Stop Task</button>
       <button class="cb" id="mute" title="Mute voice replies; sound effects are separate">Mute</button>
       <button class="cb" id="disc">Disconnect</button>
@@ -195,7 +196,10 @@
   <div class="f"><label>Startup greeting prompt (planned)</label><input class="mi" id="pGreet" style="width:100%" disabled title="Saved legacy preference; backend integration is planned"></div>
   <div class="f"><label>Wake word (local English pronunciation)</label><input class="mi" id="pWake" value="Vex" maxlength="64" placeholder="Vex" style="width:100%"><div class="sub">One to three dictionary words, e.g. Vex, Hey Vex, Computer. Changes apply on the next sleep. No audio upload while asleep.</div></div>
   <div class="row"><label for="pMemory">Use saved personal memory in replies</label><input type="checkbox" id="pMemory"></div>
-  <div class="f"><label for="pMem">Personal memory — facts you choose to save</label><textarea class="ta" id="pMem" maxlength="16000" aria-describedby="memoryHelp"></textarea><div class="sub" id="memoryHelp">Save text here or explicitly ask Vex to remember, correct or forget it. Enabling sends saved memory to the model. Edit to correct; clear and Save profile to forget. Changes apply to the next reply and clear old conversation context. Turning off keeps the saved text locally. Existing replies, backups and local task history are not erased. Automatic learning is not enabled.</div></div>
+  <div class="row"><label for="pLearn">Learn personal facts from conversation</label><input type="checkbox" id="pLearn"></div>
+  <div class="row"><label for="pMemoryConfirm">Ask before saving learned information</label><input type="checkbox" id="pMemoryConfirm" checked></div>
+  <div id="memoryProposal" class="f" hidden aria-live="polite"><label>Suggested memory — not saved</label><div id="memoryProposalText" class="sub"></div><div id="memoryProposalSource" class="sub"></div><button class="cb" id="memoryAccept">Save</button> <button class="cb" id="memoryDismiss">Dismiss</button><div class="sub" id="memoryProposalStatus" role="status"></div></div>
+  <div class="f"><label for="pMem">Personal memory — facts you choose to save</label><textarea class="ta" id="pMem" maxlength="16000" aria-describedby="memoryHelp"></textarea><div class="sub" id="memoryHelp">Save text here or explicitly ask Vex to remember, correct or forget it. Enabling sends saved memory to the model. Edit to correct; clear and Save profile to forget. Changes apply to the next reply and clear old conversation context. Turning off keeps the saved text locally. Existing replies, backups and local task history are not erased. Suggestions are off by default and require both options above. With learning on, Ask before saving opens a review dialog. Uncheck it to save learned facts directly into this field. Corrections and forgetting keep their explicit-command flow.</div></div>
   <div class="f"><label>Command shortcut mappings (planned; existing text preserved)</label><textarea class="ta" id="pSc" disabled title="Shortcut execution is not connected yet"></textarea></div>
   <button class="cb on" id="btnSaveProf" style="width:100%">▣ Save profile</button>
   <div class="sub save-status" role="status" aria-live="polite"></div>

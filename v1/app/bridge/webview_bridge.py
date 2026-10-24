@@ -42,6 +42,7 @@ class NativeBridge:
         self._core, self._store = core, store
         self._clocks = clocks
         self._clock_uncertain = False
+        self._memory_uncertain = False
         self._credentials = GeminiCredentials(store.path.parent)
         self._window: Window | None = None
         self._ready = False
@@ -91,6 +92,29 @@ class NativeBridge:
             except (StoreError, ContractError):
                 return {**report, 'ok': False, 'unknown': True, 'error': 'Memory refresh could not be verified'}
         return report
+
+    def _memory_decision(self, data) -> dict:
+        """Onay düğmesini aynı core hattına taşı; UI metnini kalıcı gerçek sayma."""
+        if not self._ready or self._chat.busy or self._memory_uncertain:
+            return {'ok':False, 'unknown':self._memory_uncertain, 'error':'Wait for the reply, or reopen if a memory result is unknown'}
+        if (type(data) is not dict or set(data) != {'request_id','arguments'}
+                or not isinstance(data['request_id'], str) or not 1 <= len(data['request_id']) <= 128):
+            return {'ok':False, 'error':'Invalid memory decision envelope'}
+        submitted = False
+        try:
+            task = self._core.submit(ToolRequest(request_id=data['request_id'], source='desktop',
+                principal='local-user', tool='memory.decide', arguments=data['arguments']))
+            submitted = True
+            finished = self._core.wait(task.task_id, timeout=5)
+            if finished.result and finished.result.verified and finished.status == TaskStatus.SUCCEEDED:
+                return {'ok':True, 'completed':True, 'verified':True,
+                        'memory_profile':self._load_settings().get('prof', {})}
+            self._memory_uncertain = finished.status == TaskStatus.UNKNOWN
+            return {'ok':False, 'unknown':self._memory_uncertain, 'completed':finished.status.terminal,
+                    'error':finished.result.error.message if finished.result and finished.result.error else 'Memory decision did not complete'}
+        except Exception:
+            self._memory_uncertain = submitted
+            return {'ok':False, 'unknown':submitted, 'error':'Memory decision could not be verified; no automatic retry'}
 
     def _set_on_top(self, value: bool) -> None:
         """Windows pencere özelliğini GUI thread'inde değiştir.
@@ -425,8 +449,8 @@ class NativeBridge:
             # Ağ beklerken ayarlar, pencere ve diğer kısa API istekleri aynı
             # RLock arkasında beklememeli. TextChat kendi tek-tur kilidini tutar.
             with self._lock:
-                if self._clock_uncertain:
-                    return {"ok": False, "unknown": True, "error": "A clock result is unknown; reopen before a new message"}
+                if self._clock_uncertain or self._memory_uncertain:
+                    return {"ok": False, "unknown": True, "error": "An operation result is unknown; reopen before a new message"}
                 if not self._ready:
                     return {"ok": False, "error": "Native startup is incomplete. Retry startup or reopen the app."}
                 if self._sleeping and name in {'live_audio', 'live_audio_start'}:
@@ -501,6 +525,8 @@ class NativeBridge:
             return self._memory_reply(self._chat.run(data, model, notes_ready=notes_ready, request_id=request_id, profile=profile))
         with self._lock:
             try:
+                if name == 'memory_decision':
+                    return self._memory_decision(data)
                 if name in {'sleep_start', 'wake_feed', 'wake_close', 'wake'}:
                     return self._wake_event(name, data)
                 if name in {"notes_init", "note_add", "note_done", "note_del", "notes_replace"}:

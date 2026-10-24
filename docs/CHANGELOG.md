@@ -5,6 +5,53 @@ hali ARCHITECTURE.md, yapılacak işler PLAN.md içindedir. Henüz sürüm yayı
 
 ## Unreleased
 
+### Hafıza için sor/sorma tercihi ve doğrudan inceleme
+
+- Personalization'a Ask before saving learned information checkbox'ı eklendi;
+  eski kayıtta true. Öğrenme ve hafıza tercihleriyle aynı profilde saklanır.
+- Onay gerekiyorsa pencere otomatik açılır; Review düğmesinin bulunmasına
+  bağımlı değildir. Zaten açık paneli toggle ile kapatmaz.
+- Checkbox false ise memory.propose aynı alan sahibinin append/readback yoluyla
+  doğrudan kaydeder; UI backend'den yenilenir. Model bu tercihi değiştiremez.
+- memory.write yetkisi, taze snapshot, replay/Stop ve belirsizlik kuralları
+  korunur. Yeni alan snapshot kimliğine dahil edilir.
+- 1074 pytest, 9 JS, 9 browser, 10 native ve Pyright 0; [kanıt](reports/memory-review-checks.json),
+  [native](reports/memory-review-native.json). Canlı API/çıkarım doğruluğu denenmedi;
+  kullanıcı kabulü ve commit beklenir.
+
+
+### Hafıza önerisi kaynak reddi düzeltmesi
+
+- Kullanıcı manuel testte memory.propose başarısızlığı bildirdi. Günlükten
+  source_unavailable doğrulandı; 6.1.3 yeniden açıldı, kabul edilmiş sayılmaz.
+- Kaynak cümlesini modele yeniden yazdırıp birebir eşleştirme kaldırıldı.
+  ModelTools gerçek kullanıcı metni/ASR'yi kendisi bağlar; alıntı varyasyonu
+  geçerli öneriyi düşürmez. Öneri hâlâ onaydan önce profil gerçeği değildir.
+- Engine log araç başarısızlığında güvenli hata kodunu gösterir; özel veri
+  loglanmaz. Kaynaksız sesli işlem, snapshot, replay ve onay korumaları sürer.
+- 1068 pytest, 33 hedefli hafıza/öneri testi, 8 browser grubu, 10 native aşama,
+  Pyright 0 ve live-status JS geçti. [Kanıt](reports/memory-source-checks.json),
+  [native](reports/memory-source-native.json). Gerçek hesapla denenmedi;
+  kullanıcı tekrar testi ve commit beklenir.
+
+
+### Konuşmadan hafıza önerileri ve kullanıcı onayı (6.1.3)
+
+- Personalization pLearn tercihi varsayılan kapalı; pMemory ile birlikte aynı
+  konuşma modelinden memory.propose önerileri alınır. Kaynak bu turun gerçek
+  metni/Live transkriptine bağlanır; model host kanıtı üretemez.
+- Öneri profil hafızasına yazılmaz; günlük aday metnini içerebilir. Tek RAM
+  adayı ve Save/Dismiss UI kararı aynı core
+  hattındadır. Öğrenme açıkken model yeni bilgiyi append ile onaysız ekleyemez.
+- Onay tek profil/aynı append-readback; eski öneri/izin/snapshot/restart ret,
+  unknown kilidi ve ikinci save üretmeden UI güncellemesi. Taslak korunur.
+- 6.1.2 kullanıcı tarafından kabul edildi, 50421c3 commit'inde; push yok.
+- 1065 pytest, 15 hedefli öneri testi, 9 JS suite, 8 browser grubu, 10/10 native
+  aşama ve Pyright 0; [kanıt](reports/memory-suggestions-checks.json),
+  [native](reports/memory-suggestions-native.json). Gerçek/ücretli API ve modelin
+  anlamsal çıkarım doğruluğu denenmedi; kullanıcı kabulü/commit bekliyor.
+
+
 ### Açık model hafıza işlemleri (6.1.2)
 
 - memory.read/patch, REST ve Live'da mevcut registry/policy/TaskManager hattına
@@ -19,7 +66,7 @@ hali ARCHITECTURE.md, yapılacak işler PLAN.md içindedir. Henüz sürüm yayı
 - 1050 pytest, 9 JS suite, 7 browser grubu, 10/10 native aşama ve Pyright 0.
   [Kanıt ve başarısız ara denemeler](reports/model-memory-checks.json),
   [native](reports/model-memory-native.json). Açık form taslağı korunur;
-  gerçek hesap/ücretli API yok. Kullanıcı kabulü ve commit bekliyor.
+  gerçek hesap/ücretli API yok. Kullanıcı kabul etti; 50421c3 commit’inde.
 
 
 ### Elle yönetilen kullanıcı hafızası ve New Chat kaldırılması (6.1.1)

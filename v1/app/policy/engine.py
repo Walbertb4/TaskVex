@@ -22,6 +22,8 @@ _TOOL_CAPABILITIES = MappingProxyType({
     "apps.catalog": frozenset({"apps.read"}),
     "apps.status": frozenset({"apps.read"}),
     "apps.open": frozenset({"apps.read", "apps.launch"}),
+    "memory.propose": frozenset({"memory.write"}),
+    "memory.decide": frozenset({"memory.write"}),
     "memory.read": frozenset({"memory.read"}),
     "memory.patch": frozenset({"memory.write"}),
     "notes.add": frozenset({"notes.write"}),

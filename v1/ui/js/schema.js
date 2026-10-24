@@ -222,7 +222,7 @@ function validateAdditionalFields(candidate) {
   }
   if (candidate.prof) {
     for (const [key, value] of Object.entries(candidate.prof)) {
-      if (!optional(value, ['pTab', 'pApp', 'pMemory'].includes(key) ? v => typeof v === 'boolean' : text)) {
+      if (!optional(value, ['pTab', 'pApp', 'pMemory', 'pLearn', 'pMemoryConfirm'].includes(key) ? v => typeof v === 'boolean' : text)) {
         logToUI(`Skipped invalid profile field ${key}`);
         delete candidate.prof[key];
       }

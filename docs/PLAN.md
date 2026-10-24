@@ -35,7 +35,7 @@ sanki bugün çalışıyormuş gibi gösterilmez.
 | 3 | Tamam/kabul edildi | Backend not CRUD/aktarımı/yedek ve gerçek ID’ler |
 | 4 | İlk plugin tamam | Allowlist Notepad katalog/status/açma; genel GUI otomasyonu değil |
 | 5 | İşlevsel temel kabul; kalan sınırlar kayıtlı, kullanıcı aşama 6'ya geçiş istedi | Gemini REST/Live, ses, Stop/interrupt, resume, geçici hafıza, uyku, not/sayaç/kapatma |
-| 6 | 6.1.2 uygulandı; kullanıcı kabulü bekliyor | Kalıcı kullanıcı hafızası, L0 yetenekleri, Google/Telegram/Discord ve profil alanları |
+| 6 | 6.1.3 sor/sorma tercihi otomatik doğrulandı; kullanıcı testi bekliyor | Kalıcı kullanıcı hafızası, L0 yetenekleri, Google/Telegram/Discord ve profil alanları |
 | 7 | Başlamadı | GUI resolver, L1 reçete, L2 DOM, L3 UIA, L4 vision ve skill yürütme |
 | 8 | Başlamadı | Tek backend rutin/scheduler, servisler, dağıtım/paketleme |
 
@@ -68,7 +68,7 @@ Henüz uygulanmadılar; her promptta istenen tek dilim ayrıca daraltılır.
 
 | Kimlik | Amaç ve kabul sınırı |
 |---|---|
-| 6.1 | 6.1.1 kabul edildi; 6.1.2 model mutasyonları uygulandı/otomatik doğrulandı; çıkarım önerileri 6.1.3 bekliyor |
+| 6.1 | 6.1.1 kabul edildi; 6.1.2 model mutasyonları uygulandı/otomatik doğrulandı; 6.1.3 onaylı öneriler uygulandı/otomatik doğrulandı |
 | 6.2 | Telemetri/app/media araçları; her ölçüm/işlem gerçek kaynak ve doğrulama ile |
 | 6.3 | Dosya okuma, sonra kontrollü değişiklik; hedef/izin ve readback |
 | 6.4 | Hava/konum izni ve web arama; onay ve harici içerik sınırı |
@@ -172,8 +172,8 @@ unknown uzlaştırma, lisans ve kalan profil alanları kapanmış sayılmaz.
 | Adım | Kapsam | Durum |
 |---|---|---|
 | 6.1.1 | Personalization'da açık gönderim tercihi; kaydet/gör/düzelt/temizle, REST/Live bağlamı, eski sohbet bağlamını bırakma; New Chat düğmesini kaldır | Uygulandı: 1035 pytest, 9 JS, 6 browser, 10 native, Pyright 0; [kanıt](reports/personal-memory-checks.json). Kullanıcı kabul etti; e7f3ce4 commit’inde |
-| 6.1.2 | Model üzerinden hafıza gör/ekle/düzelt/unut; tek kayıt otoritesi ve snapshot doğrulamasıyla ModelTools → registry/policy/TaskManager | Uygulandı: 1050 pytest, 9 JS, 7 browser, 10 native, Pyright 0; [kanıt](reports/model-memory-checks.json). Kullanıcı testleri başarılı bildirdi; commit onaylı |
-| 6.1.3 | Model çıkarımlarını öneri olarak sunma; kullanıcı onayı öncesinde gerçek/kalıcı kullanıcı bilgisi saymama | Henüz uygulanmadı; ayrı onay/inceleme kapsamı |
+| 6.1.2 | Model üzerinden hafıza gör/ekle/düzelt/unut; tek kayıt otoritesi ve snapshot doğrulamasıyla ModelTools → registry/policy/TaskManager | Uygulandı: 1050 pytest, 9 JS, 7 browser, 10 native, Pyright 0; [kanıt](reports/model-memory-checks.json). Kullanıcı kabul etti; 50421c3 commit’inde |
+| 6.1.3 | Model çıkarımlarını öneri olarak sunma; kullanıcı onayı öncesinde gerçek/kalıcı kullanıcı bilgisi saymama | Uygulandı: 1065 pytest, 9 JS, 8 browser, 10 native, Pyright 0; [kanıt](reports/memory-suggestions-checks.json). Kullanıcı kabulü/commit bekliyor |
 
 6.1.1 otomatik öğrenmez; eski legacy pMem metni varsayılan kapalıdır. Kalıcılık
 mevcut settings.json profilidir; ek veritabanı yok. Unutma aktif yanıtı kesmez,
@@ -209,3 +209,66 @@ hatırlama/ses testi yok. Kullanıcı testleri başarılı bildirdi; commit onay
 Başarısız ara denemeler raporda korunur; ücretli API/gerçek model ve fiziksel
 ses kabulü yapılmadı. Açık form taslağı korunur; çakışmada uygulamayı yeniden
 açmak gerekebilir. Kullanıcı testleri başarılı bildirdi; commit onaylı.
+
+
+### 6.1.3 — konuşmadan kişisel bilgi önerme ve onaylı kayıt
+
+- Önceki dilim kullanıcı test onayıyla 50421c3 commit'ine alındı; push yok.
+- Varsayılan kapalı pLearn; pMemory ile birlikte aynı REST/Live konuşma
+  modelinde memory.propose açar. Ek çıkarım API'si veya yeni depo yoktur.
+- Kaynak alıntısı bu turun gerçek metni/Live transkriptine bağlanır;
+  host kanıtı modelden alınmaz. Kaynak yoksa öneri atlanır, sohbet sürer.
+- Tek RAM adayı; onay/ret yalnız UI memory.decide → registry/policy/TaskManager.
+  Model öneriyi onaylayamaz; bu kipte yeni ekleme append yolunu da aşamaz.
+- Onay mevcut append/readback ile tek profile yazılır. Eski ID, ret, değişmiş
+  izin/snapshot ve restart aday bilgisini kendiliğinden gerçeğe dönüştürmez.
+- Modelin üçüncü kişi/alıntı/şaka/hassas bilgi ayrımı gerçek sağlayıcıyla kabul
+  edilmedi; insan incelemesi bu yüzden korunur. Sesle onay bu dilimde yoktur.
+
+6.1.3 son doğrulama: **1065 pytest**, **15 hedefli öneri testi**, **9 JS suite**,
+**8 browser grubu**, **10/10 native aşama**, app + yeni öneri testi Pyright **0**.
+[Özet](reports/memory-suggestions-checks.json), [native](reports/memory-suggestions-native.json).
+Ara test varsayımları ve açık sınırlar raporda; gerçek/ücretli API ve anlamsal
+çıkarım kalitesi test edilmedi. Kullanıcı kabulü/commit bekliyor; yeni aşamaya geçilmedi.
+
+
+### 6.1.3 düzeltmesi — gerçek konuşmada kaynak alıntısı reddi
+
+- Kullanıcı manuel testte başarısızlık bildirdi; önceki sentetik başarı kullanıcı
+  kabulü değildir. Adım yeniden açıldı, commit/sonraki aşama yok.
+- Salt okunur tanı: gerçek memory.propose sonucu source_unavailable,
+  source_verified=false. Özel konuşma metni çıktıya/rapora alınmadı.
+- Modelin yeniden yazdığı kaynak cümlesini gerçek transkriptle birebir
+  eşleştirmek yanlış bir sözleşmeydi. Kaynak artık mevcut tur sahibinden
+  doğrudan bağlanır; model source_quote üretmez. Replay eski kaynağı korur.
+- Kullanıcı onayı, taze snapshot, native karar ve eksik ASR koruması aynen
+  kalır. Engine log yalnız güvenli hata kodunu da gösterir.
+- Parafraz regresyon testi düzeltmeden önce failed verdi; aynı örnek sonra
+  geçti. REST/Live/uzun kaynak ve gerçek native UI doğrulaması tamamlandı.
+
+Kaynak düzeltmesi son kontrol: **1068 pytest**, **33 hedefli hafıza/öneri testi**,
+**8 browser grubu**, **10 native aşama**, app + öneri testi Pyright **0** ve
+live-status JS paketi geçti. [Rapor](reports/memory-source-checks.json),
+[native](reports/memory-source-native.json). Gerçek hesap kullanılmadı; kullanıcı
+uygulamayı yeniden açıp tekrar test edecek. Henüz commit/sonraki adım yok.
+
+
+### 6.1.3 — görünür inceleme ve isteğe bağlı sormadan kayıt
+
+- Kullanıcı ekranında memory.propose başarılı ve Review memory suggestion
+  görünüyordu; kalıcı alanın boş olması onay bekleyen adayın beklenen durumuydu.
+  Kullanıcı bu görünümü yetersiz buldu ve sor/sorma tercihi istedi.
+- pMemoryConfirm varsayılan true: onay penceresi otomatik açılır. Kullanıcı
+  false kaydederse aynı propose → _apply append/readback üzerinden doğrudan
+  kaydedilir, editor backend'den yenilenir. Yeni depo/yürütücü yoktur.
+- Tercih UI/native/yedek/snapshot'ta kalıcı; model seçemez. Eski profilde
+  varsayılan sor'dur, onay tercihi değişimi eski snapshot'ı geçersiz kılar.
+- Doğrudan kayıt capability'si memory.write, Stop/replay/readback korumaları
+  aynıdır. Karar sonrası Save başarıya dönüşmeden disk kanıtı gerekir.
+- Kullanıcı kabulü henüz yok; mevcut 6.1.3 commit edilmedi, sonraki adım yok.
+
+Son sor/sorma doğrulaması: **1074 pytest**, **33 hedefli hafıza testi**, **9 JS
+suite**, **9 browser grubu**, **10 native aşama**, app + öneri testi Pyright **0**.
+[Rapor](reports/memory-review-checks.json), [native](reports/memory-review-native.json).
+Gerçek API/çıkarım doğruluğu denenmedi; her iki kip için kullanıcı testi ve
+commit beklenir. Yeni adıma geçilmedi.

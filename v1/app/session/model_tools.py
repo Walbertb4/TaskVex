@@ -101,10 +101,13 @@ class ModelTools:
             raise ContractError("Expected a tuple of allowed tool names")
         declarations = core.describe_tools()
         self._allowed = frozenset(allowed_tools)
+        if "memory.decide" in self._allowed:
+            raise ContractError("Memory approval belongs to the native user interface, never the model")
         if not self._allowed <= {item["name"] for item in declarations}:
             raise ContractError("Model tool is not registered")
         self._core, self._principal, self._session_id = core, principal, session_id
         self._calls: dict[str, str] = {}
+        self._user_text = ""
         self._memory_snapshot: str | None = None
         self._memory_reads: set[str] = set()
         self._clock_ids: set[str] = set()
@@ -120,6 +123,7 @@ class ModelTools:
         notes.select isteğinden gelir; eski bir liste veya seçim yeni turda
         yazma kanıtı olamaz. Sesin ara transkriptleri bu turu yeniden başlatmaz.
         """
+        self._user_text = text
         self._memory_snapshot = None
         self._memory_reads.clear()
         self._selection = None
@@ -127,6 +131,10 @@ class ModelTools:
         self._fresh_selections.clear()
         self._clock_ids.clear()
         self._clock_reads.clear()
+
+    def observe_input(self, text: str) -> None:
+        """Live transkriptini hedefleri sıfırlamadan güncelle; model metni kaynak olamaz."""
+        self._user_text = text
 
     def _check_note_target(self, name: str, arguments: object) -> None:
         """Mutasyonu yalnız taze, belirsiz olmayan gerçek seçimle eşleştir.
@@ -154,6 +162,14 @@ class ModelTools:
         """Host'un izin verdiği araç şemalarını bağımsız JSON verisi olarak ver."""
         items = [item for item in self._core.describe_tools() if item["name"] in self._allowed]
         for item in items:
+            if item['name'] == 'memory.propose':
+                # Kaynak kanıtını model belirleyemez; host mevcut girdiyle üretir.
+                for key in ('source_verified','source_quote'):
+                    item['parameters']['properties'].pop(key)
+                    item['parameters']['required'].remove(key)
+            if item['name'] == 'memory.patch' and 'memory.propose' in self._allowed:
+                # Öğrenme açıkken yeni bilgi ekleme daima kullanıcı incelemesine gider.
+                item['parameters']['properties']['action']['enum'].remove('append')
             if item['name'] in {'notes.update', 'notes.delete'}:
                 # Native tekli UI komutları core'da eski ID sözleşmesini korur;
                 # modelin daha dar sözleşmesinde taze snapshot zorunludur.
@@ -182,16 +198,33 @@ class ModelTools:
             raise ContractError('Read clocks.list or create the clock in this turn; use an actual ID and clarify ambiguous targets')
         if not replay and name in {"notes.update", "notes.delete", "notes.delete_many", "notes.complete_many"}:
             self._check_note_target(name, call["arguments"])
-        if not replay and name == 'memory.patch' and (not isinstance(call['arguments'], dict)
+        if not replay and name in {'memory.patch','memory.propose'} and (not isinstance(call['arguments'], dict)
                 or self._memory_snapshot is None
                 or call['arguments'].get('expected_snapshot') != self._memory_snapshot):
             raise ContractError('Read memory.read in this turn before changing personal memory; do not guess a snapshot')
+        if (not replay and name == 'memory.patch' and 'memory.propose' in self._allowed
+                and call['arguments'].get('action') == 'append'):
+            raise ContractError('With suggestions enabled, new facts require memory.propose and native user approval')
+        arguments = call['arguments']
+        if name == 'memory.propose':
+            if not isinstance(arguments, dict) or 'source_verified' in arguments:
+                raise ContractError('Memory source evidence belongs to the host')
+            # Modelin yeniden yazdığı alıntı ASR'den noktalama/ifade bakımından
+            # ayrılabilir. Kaynak sağlayıcıdan alınmaz: aynı turun gerçek girdisidir.
+            source = self._user_text
+            proof = bool(source.strip())
+            if replay:
+                task_id = next(key for key, value in self._calls.items() if value == call_id)
+                original = self._core.get(task_id).request.arguments
+                proof = original.get('source_verified', False)
+                source = original.get('source_quote', '')
+            arguments = {**arguments, 'source_quote': source, 'source_verified': proof}
         # Çiftin JSON kodlaması ('ab','c') ile ('a','bc') karışmasını önler.
         # Ayrı model oturumlarında aynı sağlayıcı çağrı kimliği çakışmamalıdır.
         key = sha256(json.dumps([self._session_id, call_id], ensure_ascii=True).encode()).hexdigest()
         task = self._core.submit(ToolRequest(
             request_id=f"model:{key}", source="desktop", principal=self._principal,
-            tool=name, arguments=call["arguments"],
+            tool=name, arguments=arguments,
         ))
         self._calls[task.task_id] = call_id
         if not replay:

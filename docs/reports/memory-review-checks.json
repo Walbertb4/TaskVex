@@ -1,0 +1,59 @@
+{
+  "step": "6.1.3 visible review and configurable automatic saving",
+  "user_observation": "Screenshot shows successful memory.propose and Review memory suggestion; candidate awaited review and was not yet a saved profile fact",
+  "scope": "Make approval visible and add a persisted Personalization choice to ask or save learned facts directly",
+  "preference": {
+    "field": "prof.pMemoryConfirm",
+    "default": true,
+    "legacy_default": true,
+    "false": "user explicitly enables direct saving",
+    "requires": [
+      "pMemory",
+      "pLearn"
+    ]
+  },
+  "implementation": [
+    "Review mode opens the existing Personalization dialog automatically; already-open dialog is not toggled closed",
+    "Automatic mode uses memory.propose through registry/policy/TaskManager and the same PersonalMemory append/readback owner; no second store or writer",
+    "Model cannot supply/change the review preference; propose requires memory.write because it can now persist",
+    "Review preference is included in snapshots, so a changed choice invalidates an earlier read",
+    "Automatic success returns verified persisted/read_back evidence and saved_automatically; profile refresh updates the editor without second save or popup",
+    "Old profiles default to asking and cannot inherit a prior false choice; explicit false persists across native processes",
+    "Failure does not claim success, replay appends once, completed writes survive Stop and unknown outcomes retain existing safety controls"
+  ],
+  "python_general": {
+    "passed": 1074,
+    "seconds": 93.57
+  },
+  "targeted_memory_suggestions_and_personal_memory": 33,
+  "browser_groups": 9,
+  "javascript_suites": 9,
+  "typecheck": {
+    "scope": [
+      "app",
+      "tests/test_memory_suggestions.py"
+    ],
+    "errors": 0,
+    "warnings": 0
+  },
+  "native": {
+    "status": "passed",
+    "phases": 10,
+    "report": "memory-review-native.json",
+    "transport": "synthetic",
+    "visible_review_or_direct_profile_save": true,
+    "review_preference_cross_process_restored": true
+  },
+  "not_tested": [
+    "real/paid provider API",
+    "real-model extraction quality",
+    "physical microphone/acoustic accuracy"
+  ],
+  "limits": [
+    "Automatic mode may persist incorrect model extraction; the Personalization editor remains the place to inspect/correct/delete it",
+    "Changed/disabled learning preferences never authorize writing from an old snapshot",
+    "Existing task history may retain facts/source messages even after the current profile memory is cleared"
+  ],
+  "manual_acceptance": "awaiting user test of both modes after reopening app",
+  "commit": "current 6.1.3 changes remain uncommitted pending acceptance; no next step or push"
+}

@@ -141,6 +141,8 @@ class TextChat:
             allowed = BASE_MODEL_TOOLS
             if profile and profile.get("pMemory") is True:
                 allowed += MEMORY_MODEL_TOOLS
+                if profile.get("pLearn") is True:
+                    allowed += ("memory.propose",)
             if notification:
                 allowed = ()  # Host bildirimi konuşur; kullanıcı adına araç çalıştıramaz.
             elif notes_ready:
@@ -222,6 +224,8 @@ class TextChat:
             allowed = BASE_MODEL_TOOLS
             if profile and profile.get("pMemory") is True:
                 allowed += MEMORY_MODEL_TOOLS
+                if profile.get("pLearn") is True:
+                    allowed += ("memory.propose",)
             if notes_ready:
                 allowed += NOTE_MODEL_TOOLS
             tools = ModelTools(self._core, principal="local-user", session_id=uuid4().hex,

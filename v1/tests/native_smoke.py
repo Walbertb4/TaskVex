@@ -232,6 +232,18 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                             remembered_name = 'Ada'
                             frames.append(audio_reply('Native temporary name acknowledged'))
                             return
+                        if text in ('Native self report Ada','Native self report Beta','Native self report Gamma'):
+                            from app.tools.local.personal_memory import memory_snapshot
+                            from app.storage.json_store import JsonStore
+                            profile = (JsonStore(home / 'settings.json').read() or {}).get('prof', {})
+                            for name,args,call_id in (
+                                ('memory.read',{},'read-'+text),
+                                ('memory.propose',{'text':'User name '+text.split()[-1], 'source_quote':'Paraphrased source, not actual user input',
+                                    'expected_snapshot':memory_snapshot(profile)},'propose-'+text),
+                            ):
+                                frames.append({'toolCall':{'functionCalls':[{'id':call_id,'name':name,'args':args}]}})
+                            frames.append(audio_reply('Native memory suggestion ready'))
+                            return
                         if text == 'Native remember job':
                             from app.tools.local.personal_memory import memory_snapshot
                             from app.storage.json_store import JsonStore
@@ -527,6 +539,8 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                     # UI profilinin açık izni/metni bu profile miras kalmamalı.
                     expected[3]['pMem'] = ''
                     expected[3]['pMemory'] = False
+                    expected[3]['pLearn'] = False
+                    expected[3]['pMemoryConfirm'] = True
                 assert json.loads(after) == expected, (json.loads(after), expected)
                 new_backups = set(home.glob("settings.json.*.corrupt")) - existing_backups
                 assert len(new_backups) == 1 and new_backups.pop().read_bytes() == original
@@ -1081,6 +1095,40 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 assert window.evaluate_js("document.getElementById('pMem').value") == 'Native saved school\nNative saved job'
                 assert window.evaluate_js("JSON.parse(localStorage.getItem('taskvex_ui')).prof.pMem") == 'Native saved school\nNative saved job'
                 outcome['model_memory_verified_and_ui_refreshed'] = True
+                js("const p=await import('./js/panels.js');p.openM('mProf');document.getElementById('pLearn').checked=true;document.getElementById('btnSaveProf').click();return true;")
+                wait_until(lambda: api._store.read()['prof'].get('pLearn') is True)
+                wait_until(lambda: not window.evaluate_js("document.getElementById('mProf').classList.contains('o')"))
+                memory_before=api._store.read()['prof']['pMem']
+                js("document.getElementById('inp').value='Native self report Ada';document.getElementById('send').click();return true;")
+                wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
+                assert api._store.read()['prof']['pMem']==memory_before
+                wait_until(lambda: window.evaluate_js("document.getElementById('mProf').classList.contains('o')"))
+                assert window.evaluate_js("!document.getElementById('memoryReviewNotice').hidden")
+                assert 'Native self report Ada' in window.evaluate_js("document.getElementById('memoryProposalSource').textContent")
+                assert 'Paraphrased source' not in window.evaluate_js("document.getElementById('memoryProposalSource').textContent")
+                js("document.getElementById('memoryReviewNotice').click();return true;")
+                js("document.getElementById('memoryAccept').click();return true;")
+                wait_until(lambda: api._store.read()['prof']['pMem']==memory_before+'\nUser name Ada')
+                wait_until(lambda: window.evaluate_js("document.getElementById('memoryProposal').hidden"))
+                assert window.evaluate_js("document.getElementById('pMem').value")==memory_before+'\nUser name Ada'
+                js("const p=await import('./js/panels.js');p.closeM('mProf');document.getElementById('inp').value='Native self report Beta';document.getElementById('send').click();return true;")
+                wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
+                js("document.getElementById('memoryReviewNotice').click();document.getElementById('memoryDismiss').click();return true;")
+                wait_until(lambda: window.evaluate_js("document.getElementById('memoryProposal').hidden"))
+                assert api._store.read()['prof']['pMem']==memory_before+'\nUser name Ada'
+                outcome['memory_suggestion_requires_actual_ui_approval_and_dismiss_preserves_profile']=True
+                js("document.getElementById('pMemoryConfirm').checked=false;document.getElementById('btnSaveProf').click();return true;")
+                wait_until(lambda: api._store.read()['prof'].get('pMemoryConfirm') is False)
+                wait_until(lambda: not window.evaluate_js("document.getElementById('mProf').classList.contains('o')"))
+                js("document.getElementById('inp').value='Native self report Gamma';document.getElementById('send').click();return true;")
+                wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
+                assert api._store.read()['prof']['pMem']==memory_before+'\nUser name Ada\nUser name Gamma'
+                assert window.evaluate_js("document.getElementById('pMem').value")==memory_before+'\nUser name Ada\nUser name Gamma'
+                assert not window.evaluate_js("document.getElementById('mProf').classList.contains('o')")
+                assert window.evaluate_js("document.getElementById('memoryProposal').hidden")
+                outcome['memory_ask_choice_opens_dialog_or_saves_directly']=True
+
+
                 js("const p=await import('./js/panels.js');p.openM('mProf');"
                    "document.getElementById('pMem').value='';document.getElementById('pMemory').checked=false;"
                    "document.getElementById('btnSaveProf').click();return true;")
@@ -1338,7 +1386,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                           "window._events=[]; window.vex.onEvent=(name)=>window._events.push(name);"
                           "window.vex.setSkills([{id:'keep-skill',name:'Keep skill',steps:[]}]);"
                           "window.vex.setRoutines([{id:'keep-routine',name:'Keep routine',type:'manual',steps:'Keep step',on:0}]);"
-                          "return window.vex.loadStore({theme:'#4fd8ff',prof:{pIns:'Native profile 📝',pMemory:true,pMem:'Native saved memory'},"
+                          "return window.vex.loadStore({theme:'#4fd8ff',prof:{pIns:'Native profile 📝',pMemory:true,pMem:'Native saved memory',pMemoryConfirm:false},"
                           "devs:{dIn:'7'},conn:{model:'gemini-3.8-flash',voice:'Kore'}});") is True
                 assert js("return window._events.includes('save');") is False
                 js("const checkbox=document.getElementById('onTop'); checkbox.checked=true;"
@@ -1367,6 +1415,8 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 assert restored["theme"] == "#4fd8ff", restored
                 assert restored["profile"] == "Native profile 📝", restored
                 assert js("return document.getElementById('pMemory').checked && document.getElementById('pMem').value==='Native saved memory';")
+                assert js("return !document.getElementById('pMemoryConfirm').checked;")
+                outcome['memory_review_choice_cross_process_restored'] = True
                 outcome['personal_memory_cross_process_restored'] = True
                 assert js("const {liveAudio}=await import('./js/live_audio.js');"
                           "return liveAudio.volume===0.35 && document.getElementById('replyVolR').value==='35';")

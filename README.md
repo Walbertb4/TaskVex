@@ -17,6 +17,7 @@ It is a development project, not a production-ready general computer-use agent.
 - Temporary conversation context held in memory.
 - Personal memory edited in Personalization or through explicit model commands, with opt-in before
   sending it to the model; correction and deletion drop the old chat context.
+- Optional conversation-derived memory, with a saved choice between review and automatic verified saving.
 - Backend notes with stable IDs and timestamps: add, list, edit, complete and
   delete, including structured selection and atomic batch deletion/completion.
 - Multiple timers and stopwatches shared between the UI and model tools.
@@ -34,7 +35,7 @@ A separate REST adapter remains available for development and future channels.
 ## Not implemented yet
 
 Google Drive/Calendar/mail access, Telegram/Discord integration,
-automatic personal-memory learning, general GUI automation, and
+general GUI automation and
 backend skill/routine scheduling are planned.
 Camera, screen inspection, location and media controls are not connected.
 Some saved legacy profile fields have no backend effect and are marked as planned.
@@ -84,10 +85,10 @@ Model availability, network conditions and hardware affect behavior.
 
 ## Verification and documentation
 
-The latest core change passed 1,050 Python tests, targeted type checking and
+The latest core change passed 1,074 Python tests, targeted type checking and
 10 native regression phases using synthetic providers and temporary data.
 These checks do not establish real-account availability, physical microphone
-accuracy or production readiness. See [test evidence](docs/reports/model-memory-checks.json).
+accuracy or production readiness. See [test evidence](docs/reports/memory-review-checks.json).
 
 - [Architecture](docs/ARCHITECTURE.md): current ownership and planned boundaries.
 - [Plan](docs/PLAN.md): remaining work and acceptance status.

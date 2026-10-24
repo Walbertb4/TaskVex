@@ -129,6 +129,64 @@ try {
     });
     assert.deepEqual(draft,{draft:'Unsaved draft',style:'Unsaved style',saved:'New saved fact'});
   });
+  await test('memory suggestions are opt-in, safe text and need an explicit native decision', async()=>{
+    const p=await setup();
+    assert.equal(await p.locator('#pLearn').isChecked(),false);
+    assert.equal(await p.locator('#memoryReviewNotice').isVisible(),false);
+    await p.evaluate(async()=>{
+      window.vex.loadStore({prof:{pMemory:true,pLearn:true,pMem:'Original'}});
+      const s=await import('/js/settings.js');
+      s.showMemoryProposal({id:'a'.repeat(32),text:'Name: <img src=x onerror=alert(1)>',source_quote:'My name is Ada'});
+      window.memoryCalls=[];
+      window.pywebview={api:{event:async(name,data)=>{
+        window.memoryCalls.push({name,data});
+        return {ok:true,verified:true,completed:true,memory_profile:{pMemory:true,pLearn:true,pMem:'Original\nName: Ada'}};
+      }}};
+    });
+    assert.equal(await p.locator('#pMem').inputValue(),'Original');
+    assert.equal(await p.locator('#memoryProposalText img').count(),0);
+    // Onay isteği artık bildirimin arkasına saklanmaz; modal kendisi açılır.
+    await p.locator('#mProf').waitFor({state:'visible'});
+    assert.equal(await p.locator('#mProf').isVisible(),true);
+    await p.locator('#memoryAccept').click();
+    await p.waitForFunction(()=>document.getElementById('memoryProposal').hidden);
+    assert.equal(await p.locator('#pMem').inputValue(),'Original\nName: Ada');
+    assert.deepEqual(await p.evaluate(()=>window.memoryCalls.map(call=>[call.name,call.data.arguments.approve])),[['memory_decision',true]]);
+    await p.evaluate(async()=>{
+      const s=await import('/js/settings.js');s.showMemoryProposal({id:'b'.repeat(32),text:'Other candidate',source_quote:'My name is Other'});
+      window.pywebview.api.event=async()=>({ok:false,unknown:true,error:'Synthetic unknown'});
+    });
+    await p.locator('#memoryDismiss').click();
+    await p.waitForFunction(()=>document.getElementById('memoryProposalStatus').textContent.includes('unknown'));
+    assert.equal(await p.locator('#memoryAccept').isDisabled(),true);
+    assert.equal(await p.locator('#pMem').inputValue(),'Original\nName: Ada');
+    await p.evaluate(async()=>{
+      const s=await import('/js/settings.js');s.showMemoryProposal({id:'c'.repeat(32),text:'Stale candidate',source_quote:'Old text'});
+      window.pywebview.api.event=async()=>({ok:false,completed:true,error:'Suggestion expired; nothing saved'});
+    });
+    await p.locator('#memoryDismiss').click();
+    await p.waitForFunction(()=>document.getElementById('memoryProposal').hidden);
+    assert.equal(await p.locator('#pMem').inputValue(),'Original\nName: Ada');
+    await p.evaluate(()=>window.vex.loadStore({prof:{pMemory:true,pMem:'Original'}}));
+    assert.equal(await p.locator('#pLearn').isChecked(),false);
+    assert.equal(await p.locator('#memoryProposal').isVisible(),false);
+  });
+  await test('saved memory review choice defaults on and never leaks through a legacy profile',async()=>{
+    const p=await setup();
+    assert.equal(await p.locator('#pMemoryConfirm').isChecked(),true);
+    await p.evaluate(async()=>{
+      const s=await import('/js/settings.js');
+      document.getElementById('pMemoryConfirm').checked=false;s.saveAll({emitSave:false});
+    });
+    await p.reload();await p.waitForFunction(()=>!!window.vex);
+    assert.equal(await p.locator('#pMemoryConfirm').isChecked(),false);
+    await p.evaluate(()=>window.vex.loadStore({prof:{pMemory:true,pLearn:true,pMem:'Old profile'}}));
+    assert.equal(await p.locator('#pMemoryConfirm').isChecked(),true);
+    await p.evaluate(()=>window.vex.loadStore({prof:{pMemory:true,pLearn:true,pMemoryConfirm:false,pMem:'Auto saved fact'}}));
+    assert.equal(await p.locator('#pMemoryConfirm').isChecked(),false);
+    assert.equal(await p.locator('#pMem').inputValue(),'Auto saved fact');
+    assert.equal(await p.locator('#memoryProposal').isVisible(),false);
+  });
   await test('single preference object across form, layout and devices; no lost legacy text',async()=>{
     const p=await setup();
     await p.evaluate(()=>{localStorage.setItem('taskvex_ui',JSON.stringify({prof:{pSys:'KEEP BASE',pMem:'KEEP MEMORY'},notes:[{t:'legacy note',d:0}]}));});

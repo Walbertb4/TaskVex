@@ -134,6 +134,8 @@ export function saveAll(options = {}) {
     ['pTab', 'checked'],
     ['pApp', 'checked'],
     ['pMemory', 'checked'],
+    ['pLearn', 'checked'],
+    ['pMemoryConfirm', 'checked'],
     ['pIns', 'value'],
     ['pMem', 'value'],
     ['pSc', 'value'],
@@ -144,6 +146,8 @@ export function saveAll(options = {}) {
     const el = document.getElementById(i);
     if (el) p[i] = el[k];
   });
+
+  if (!p.pMemory || !p.pLearn || p.pMemoryConfirm === false) showMemoryProposal(null);
 
   store.devs = store.devs || {};
   const dIn = document.getElementById('dIn');
@@ -318,10 +322,59 @@ export function switchTab(t) {
   store.tab = t;
 }
 
+let memoryProposal = null;
+let memoryDecisionBusy = false;
+
+/** Aday yalnız gösterilir; serbest model metni hiçbir zaman kalıcı kayıt değildir. */
+export function showMemoryProposal(proposal) {
+  memoryProposal = proposal;
+  const panel = document.getElementById('memoryProposal'), notice = document.getElementById('memoryReviewNotice');
+  panel.hidden = notice.hidden = !proposal;
+  if (!proposal) return;
+  document.getElementById('memoryProposalText').textContent = proposal.text;
+  document.getElementById('memoryProposalSource').textContent = 'From this message: ' + proposal.source_quote;
+  document.getElementById('memoryProposalStatus').textContent = 'Not saved. Review the fact before accepting.';
+  for (const id of ['memoryAccept','memoryDismiss']) document.getElementById(id).disabled = false;
+  openMemoryReview(proposal.id);
+}
+
+async function openMemoryReview(id) {
+  const {openM} = await import('./panels.js');
+  if (memoryProposal?.id === id && !document.getElementById('mProf').classList.contains('o')) openM('mProf');
+}
+
+async function decideMemory(approve) {
+  if (!memoryProposal || memoryDecisionBusy) return;
+  memoryDecisionBusy = true;
+  const id = memoryProposal.id, buttons = ['memoryAccept','memoryDismiss'].map(id => document.getElementById(id));
+  buttons.forEach(b => {b.disabled = true;});
+  try {
+    const result = await emit('memory_decision', {request_id:crypto.randomUUID(), arguments:{id,approve}});
+    if (memoryProposal?.id !== id) return;
+    if (result.ok && result.response?.verified && result.response?.completed) {
+      if (!applyMemoryProfile(result.response.memory_profile)) throw new Error('Profile refresh rejected');
+      showMemoryProposal(null);
+      saveStatus(approve ? 'Suggested fact saved' : 'Suggestion dismissed; memory unchanged');
+    } else {
+      document.getElementById('memoryProposalStatus').textContent = result.response?.unknown
+        ? 'Result unknown. Reopen the app; do not retry.' : (result.response?.error || 'Suggestion was not saved');
+      if (!result.response?.unknown && !result.unknown) {
+        if (result.response?.completed) {
+          const message = result.response.error || 'Suggestion expired; nothing saved';
+          showMemoryProposal(null);saveStatus(message);
+        } else buttons.forEach(b => {b.disabled = false;});
+      }
+    }
+  } catch (error) {
+    logBridgeError('memory decision', error);
+    document.getElementById('memoryProposalStatus').textContent = 'Result unknown. Reopen the app; do not retry.';
+  } finally {memoryDecisionBusy = false;}
+}
+
 /** Model sonucu aynı snapshot yolunu kullanır; açık formdaki taslağı silmez. */
 export function applyMemoryProfile(profile) {
   const previous = store.prof || {}, base = memoryBase, drafts = [];
-  for (const key of ['pLang','pWake','pBr','pIns','pMem','pSc','pSys','pGreet','pTab','pApp','pMemory']) {
+  for (const key of ['pLang','pWake','pBr','pIns','pMem','pSc','pSys','pGreet','pTab','pApp','pMemory','pLearn','pMemoryConfirm']) {
     const el = document.getElementById(key);
     if (!el) continue;
     const prop = el.type === 'checkbox' ? 'checked' : 'value';
@@ -376,13 +429,16 @@ export function loadStore(o, options = {}) {
   });
 
   const P = store.prof || {};
+  const review = document.getElementById('pMemoryConfirm');
+  if (review) review.checked = P.pMemoryConfirm !== false;
+  if (P.pMemory !== true || P.pLearn !== true || P.pMemoryConfirm === false) showMemoryProposal(null);
   ['pLang', 'pBr', 'pIns', 'pMem', 'pSc', 'pSys', 'pGreet', 'pWake'].forEach(i => {
     const el = document.getElementById(i);
     if (el && (P[i] != null || i === 'pMem')) el.value = P[i] ?? '';
   });
-  ['pTab', 'pApp', 'pMemory'].forEach(i => {
+  ['pTab', 'pApp', 'pMemory', 'pLearn'].forEach(i => {
     const el = document.getElementById(i);
-    if (el && (P[i] != null || i === 'pMemory')) el.checked = P[i] === true;
+    if (el && (P[i] != null || ['pMemory','pLearn','pMemoryConfirm'].includes(i))) el.checked = P[i] === true;
   });
 
   const sfxT = document.getElementById('sfxT');
@@ -730,15 +786,23 @@ export function initSettings(options = {}) {
     });
   }
 
+  document.getElementById('memoryAccept').addEventListener('click', () => {sfx.blip();decideMemory(true);});
+  document.getElementById('memoryDismiss').addEventListener('click', () => {sfx.blip();decideMemory(false);});
+  document.getElementById('memoryReviewNotice').addEventListener('click', () => {
+    sfx.blip();if (memoryProposal) openMemoryReview(memoryProposal.id);
+  });
   // Load profile values into inputs
   const P = store.prof || {};
+  const review = document.getElementById('pMemoryConfirm');
+  if (review) review.checked = P.pMemoryConfirm !== false;
+  if (P.pMemory !== true || P.pLearn !== true || P.pMemoryConfirm === false) showMemoryProposal(null);
   ['pLang', 'pBr', 'pIns', 'pMem', 'pSc', 'pSys', 'pGreet', 'pWake'].forEach(i => {
     const el = document.getElementById(i);
     if (P[i] != null && el) el.value = P[i];
   });
-  ['pTab', 'pApp', 'pMemory'].forEach(i => {
+  ['pTab', 'pApp', 'pMemory', 'pLearn'].forEach(i => {
     const el = document.getElementById(i);
-    if (el && (P[i] != null || i === 'pMemory')) el.checked = P[i] === true;
+    if (el && (P[i] != null || ['pMemory','pLearn','pMemoryConfirm'].includes(i))) el.checked = P[i] === true;
   });
 
   paint();

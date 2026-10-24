@@ -9,7 +9,7 @@ import { liveAudio } from './live_audio.js';
 import { liveMic } from './live_mic.js';
 import { liveTranscript } from './live_transcript.js';
 import { setState, getState, setMicLevel } from './reactor.js';
-import { store, queryDevices, getAudioDeviceId, applyMemoryProfile } from './settings.js';
+import { store, queryDevices, getAudioDeviceId, applyMemoryProfile, showMemoryProposal } from './settings.js';
 import { applyClockSnapshot, canSendClockText, setClocksChatLock } from './clocks.js';
 import { connectNativeNotes, setNotesChatLock, canSendNativeText } from './notes.js';
 
@@ -571,12 +571,20 @@ export async function sendText(text = null, audio = null, notification = null) {
       textOperation.markUnknown();
       return;
     }
+    if (report?.ok && !report.stopped && !report.unknown) {
+      for (const tool of report.tool_results || []) {
+        if (tool.name === 'memory.propose' && tool.status === 'succeeded' && tool.result?.verified && tool.result.data.proposal)
+          showMemoryProposal(tool.result.data.proposal);
+      }
+    }
     let playbackProblem = null;
     if (audio?.stream && replyMicRequest !== activeTextRequest) { liveMic.cancel(); paintMic(); }
     for (const tool of report?.tool_results || []) {
       if(tool.name?.startsWith('clocks.')&&tool.result?.verified)applyClockSnapshot(tool.result.data,tool.result.data.clock?.id);
+      const errorCode = tool.result?.error?.code;
       addLog('Tool ' + sanitizeError(tool.name) + ': ' + sanitizeError(tool.status) +
-        (tool.result?.verified ? ' · verified' : ' · not verified'));
+        (tool.result?.verified ? ' · verified' : ' · not verified') +
+        (typeof errorCode === 'string' && /^[a-z][a-z0-9_]{0,63}$/.test(errorCode) ? ' · ' + errorCode : ''));
     }
     for (const attempt of report?.model_attempt_details || []) {
       addLog('Model request: ' + sanitizeError(attempt.model) + ' · ' +

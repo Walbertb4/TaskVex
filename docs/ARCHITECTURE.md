@@ -137,8 +137,8 @@ internal new_chat reset endpoint'i test/gelecek kanal uyumluluğunda korunur.
 Kalıcı kullanıcı bağlamı settings.json/prof.pMem metnidir; tek
 tercih sahibi/depo korunur. prof.pMemory varsayılan false açık gönderim tercihidir;
 eski pMem metni kendiliğinden modele gitmez. Kullanıcı Personalization'da
-metni görür/düzeltir/temizler ve mevcut Save profile yoluyla kaydeder. Ayrı DB veya öğrenme servisi yoktur. Model çıkarımı
-kullanıcı gerçeği olarak kaydedilmez; profil araç yetkisi vermez.
+metni görür/düzeltir/temizler ve mevcut Save profile yoluyla kaydeder. Ayrı DB veya öğrenme servisi yoktur. Kullanıcının öğrenme/kayıt tercihine uymayan model çıktısı
+kalıcı kullanıcı bilgisi sayılmaz; profil araç yetkisi vermez.
 
 memory.read ve memory.patch yalnız açık gönderim tercihi etkinse REST/Live
 kataloğundadır; timer bildirimleri araçsız kalır. Açık kullanıcı isteği model
@@ -156,6 +156,42 @@ UI aynı loadStore yoluyla, outbound save üretmeden güncellenir. Eski replay
 sonucu güncel profilin yerine yazılmaz. Başarılı işlem Stop ile geri alınmaz;
 yazma sonrası readback hatası unknown olur. Görev günlüğü hafıza metnini
 saklayabilir; forget bu geçmişi temizlemez.
+
+prof.pLearn varsayılan false öneri tercihidir; yalnız pMemory ile birlikte
+memory.propose kataloğunu açar. Ayrı çıkarım modeli veya arka plan taraması yoktur.
+Aynı konuşma modeli açık birinci kişi bilgisini aday olarak seçer; üçüncü kişi,
+alıntı, şaka, varsayım, geçici durum, sır ve hassas bilgi dışarıda tutulur.
+Bu anlamsal eleme model talimatıdır; deterministik doğruluk iddiası değildir.
+
+ModelTools aynı turun gerçek metnini/Live transkriptini kaynak olarak kendisi
+bağlar. Modelden kelimesi kelimesine alıntı istenmez; modelin yeniden yazdığı
+cümle gerçek girdi yerine kullanılamaz. Gerçek girdi yoksa kaynak uydurulmaz:
+sesli girişin ortak transkript koruması araçları durdurur; alan aracına ulaşan
+kaynaksız öneri normal failed sonucu verir. Kaynağı host'un bağlaması adayın
+anlamsal doğruluğunu ispatlamaz.
+Yeni bilgi ekleme, öneri modu açıkken ModelTools'ta memory.patch append yolundan
+geçemez; açık hatırla isteği de öneri oluşturur. Düzeltme/unutma mevcut açık
+komut akışını korur; öneri modu kapalıyken önceki araç sözleşmesi sürer.
+
+İnceleme kipinde PersonalMemory en fazla bir aday RAM'de tutar (1000 karakter; kaynak alıntısı
+20.000; aynı kullanıcı mesajı sınırı). Yeni aday eski ID'yi geçersiz kılar. Aday profil/yedek değildir;
+yürütme günlüğü öneri isteğini/sonucunu yine saklayabilir. Restart aday onayı
+sayılmaz; aday RAM'den kaybolur. memory.decide modeli kabul eden hiçbir
+ModelTools kataloğuna açılamaz. Kullanıcının Save/Dismiss düğmesi aynı
+registry/policy/TaskManager hattına gider. Onay metni UI'dan alınmaz; alan
+sahibindeki gerçek aday ve güncel izin/snapshot kontrol edilir. Save mevcut
+append/readback iş mantığını kullanır; ret profil dosyasını değiştirmez.
+prof.pMemoryConfirm eksik/eski kayıtta true'dur: onay gerekiyorsa öneri
+Personalization penceresini kendiliğinden açar; Review düğmesi yedek erişimdir.
+Kullanıcı checkbox'ı false olarak kaydederse memory.propose yeni bilgiyi aynı
+_apply append/readback üzerinden doğrudan tek profile yazar. Model auto-save
+parametresi veya onay gönderemez. Onay tercihi snapshot'ın parçasıdır; tur
+ortasında değişen tercih eski okumayı geçersiz kılar. memory.propose bu nedenle
+memory.write yetkisi ister. Doğrudan kayıtta yeni öneri penceresi açılmaz ve
+backend profili aynı mevcut snapshot yoluyla editöre yansır.
+Sonuç doğrulanmazsa otomatik tekrar/merge yoktur; belirsiz kararda yeni model
+isteği ve karar kontrolleri engellenir. Onaylanan bilgi tek profilden UI'a
+yansır; taslak korunur ve ikinci save üretilmez. Tek tek kararlar sesle değil UI'da alınır; sormadan kayıt tercihi de yalnız UI'dan seçilir.
 
 Ortak model_instruction yalnız opt-in metnini JSON veri olarak talimata ekler;
 REST/Live/timer aynı profil snapshot'ını kullanır. TextChat değişen etkin hafıza
@@ -218,7 +254,7 @@ uygulanmalıdır; bugün bunların tamamı varmış gibi davranılmaz.
 
 ## Bugün uygulanmayanlar
 
-Google/konum/hava/media/kamera/sistem sesi/dosya ekleme; otomatik kullanıcı hafızası çıkarımı,
+Google/konum/hava/media/kamera/sistem sesi/dosya ekleme; onaysız otomatik kalıcı kullanıcı öğrenimi,
 base instruction override/greeting; skill/rutin backend yürütme ve
 scheduler; GUI L1–L4 ve dış mesaj kanalları. Yerel tanımlar ve mevcut kullanıcı
 metni korunur; yürütücüsü olmayan kontroller açıkça planlı/disabled görünür.

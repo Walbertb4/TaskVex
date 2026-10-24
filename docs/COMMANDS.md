@@ -292,7 +292,7 @@ Idle sleep +/- buttons adjust the same saved 0–300 second timer setting.
 
 ## Planned — not available yet
 
-- Automatic inference and user-approved inference proposals; explicit personal-memory commands are available below.
+- Silent, unapproved personal-memory learning. Optional suggestions with UI approval are available below.
 - Model-driven skill/routine/calendar/weather/Google/Telegram/Discord actions.
 
 Move an item into the available tables only after its implementation and
@@ -388,3 +388,33 @@ again. Memory changes apply to the next turn and drop old Live/temporary chat
 context. Completed changes survive Stop and restart; an uncertain result must
 not be retried. Forgetting does not erase existing replies, provider history,
 backups or the persistent local task journal. Automatic learning is not enabled.
+
+
+## Optional memory suggestions
+
+- **Personalization → Learn personal facts from conversation** → Enables
+  learning only while **Use saved personal memory in replies** is also on.
+  Both choices are saved; learning is off by default.
+- “By the way, my name is Ada.” → Vex may propose this durable self-reported
+  fact without a “remember” command. With review enabled, a proposal is not saved personal memory.
+- **Review memory suggestion → Save** → Reviews the exact fact and its source
+  message, then saves the current candidate through the existing memory tool.
+- **Dismiss** → Drops the candidate without changing saved memory.
+
+With learning enabled, all model additions, including explicit “remember”
+requests, follow **Ask before saving learned information**. When checked
+(default), the review dialog opens automatically and **Save** is required.
+When unchecked and saved, Vex writes verified new facts directly into the
+Personal memory field without asking. Corrections and forgetting keep their
+explicit-command flow. With suggestions off, existing explicit remember commands
+still work. Spoken “yes” does not approve a suggestion in this version.
+
+The model is instructed to exclude third-party facts, quotations, jokes,
+hypotheticals, transient states, sensitive details and personality guesses.
+These semantic decisions are not guaranteed: review the candidate before saving.
+The host attaches the actual current user message/transcript as the source;
+Vex does not have to reproduce its wording exactly. Missing user speech
+transcription never authorizes a tool call. In review mode only one candidate waits in RAM; a new one
+replaces it, and restart discards it. Pending candidates are not exported as
+profile memory, but local task history can contain their text. Changed memory or
+consent invalidates an old approval. No automatic retry or merge is performed.
