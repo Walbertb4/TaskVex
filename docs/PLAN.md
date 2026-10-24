@@ -1,6 +1,6 @@
 # TaskVex — Güncel plan
 
-## Şimdi: 6.1.3 — hafıza önerisine düğme veya konuşmayla karar
+## Şimdi: hafif 6.2.4 token göstergesi öne alındı; ardından 6.2.1 telemetri
 
 Önceki 5.R8.6 kullanıcı kabulü başarılı, 526bfed commit’inde.
 5.F6 bakımı kullanıcı tarafından kabul edildi; ea8aa15 commit’inde.
@@ -35,7 +35,7 @@ sanki bugün çalışıyormuş gibi gösterilmez.
 | 3 | Tamam/kabul edildi | Backend not CRUD/aktarımı/yedek ve gerçek ID’ler |
 | 4 | İlk plugin tamam | Allowlist Notepad katalog/status/açma; genel GUI otomasyonu değil |
 | 5 | İşlevsel temel kabul; kalan sınırlar kayıtlı, kullanıcı aşama 6'ya geçiş istedi | Gemini REST/Live, ses, Stop/interrupt, resume, geçici hafıza, uyku, not/sayaç/kapatma |
-| 6 | 6.1.3 sor/sorma tercihi otomatik doğrulandı; kullanıcı testi bekliyor | Kalıcı kullanıcı hafızası, L0 yetenekleri, Google/Telegram/Discord ve profil alanları |
+| 6 | 6.1 hafıza dilimleri kullanıcı tarafından kabul edildi; sıradaki 6.2 | Kalıcı kullanıcı hafızası, L0 yetenekleri, Google/Telegram/Discord ve profil alanları |
 | 7 | Başlamadı | GUI resolver, L1 reçete, L2 DOM, L3 UIA, L4 vision ve skill yürütme |
 | 8 | Başlamadı | Tek backend rutin/scheduler, servisler, dağıtım/paketleme |
 
@@ -68,7 +68,7 @@ Henüz uygulanmadılar; her promptta istenen tek dilim ayrıca daraltılır.
 
 | Kimlik | Amaç ve kabul sınırı |
 |---|---|
-| 6.1 | 6.1.1 kabul edildi; 6.1.2 model mutasyonları uygulandı/otomatik doğrulandı; 6.1.3 onaylı öneriler uygulandı/otomatik doğrulandı |
+| 6.1 | Elle/modelden hafıza, öneri, sor/sorma ve düğme/konuşma kararı kullanıcı tarafından kabul edildi; son commit 6f52b4c |
 | 6.2 | Telemetri/app/media araçları; her ölçüm/işlem gerçek kaynak ve doğrulama ile |
 | 6.3 | Dosya okuma, sonra kontrollü değişiklik; hedef/izin ve readback |
 | 6.4 | Hava/konum izni ve web arama; onay ve harici içerik sınırı |
@@ -173,7 +173,7 @@ unknown uzlaştırma, lisans ve kalan profil alanları kapanmış sayılmaz.
 |---|---|---|
 | 6.1.1 | Personalization'da açık gönderim tercihi; kaydet/gör/düzelt/temizle, REST/Live bağlamı, eski sohbet bağlamını bırakma; New Chat düğmesini kaldır | Uygulandı: 1035 pytest, 9 JS, 6 browser, 10 native, Pyright 0; [kanıt](reports/personal-memory-checks.json). Kullanıcı kabul etti; e7f3ce4 commit’inde |
 | 6.1.2 | Model üzerinden hafıza gör/ekle/düzelt/unut; tek kayıt otoritesi ve snapshot doğrulamasıyla ModelTools → registry/policy/TaskManager | Uygulandı: 1050 pytest, 9 JS, 7 browser, 10 native, Pyright 0; [kanıt](reports/model-memory-checks.json). Kullanıcı kabul etti; 50421c3 commit’inde |
-| 6.1.3 | Model çıkarımlarını öneri olarak sunma; kullanıcı onayı öncesinde gerçek/kalıcı kullanıcı bilgisi saymama | Uygulandı: 1065 pytest, 9 JS, 8 browser, 10 native, Pyright 0; [kanıt](reports/memory-suggestions-checks.json). Kullanıcı kabulü/commit bekliyor |
+| 6.1.3 | Model çıkarımı, sor/sorma tercihi, düğme veya sonraki kullanıcı yanıtıyla ortak karar | Son doğrulama: 1081 pytest, 9 JS, 9 browser, 10 native, Pyright 0; [kanıt](reports/memory-voice-review-checks.json). Kullanıcı kabul etti; 6f52b4c commit’inde |
 
 6.1.1 otomatik öğrenmez; eski legacy pMem metni varsayılan kapalıdır. Kalıcılık
 mevcut settings.json profilidir; ek veritabanı yok. Unutma aktif yanıtı kesmez,
@@ -298,3 +298,52 @@ app + öneri testi Pyright **0**. [Rapor](reports/memory-voice-review-checks.jso
 [native](reports/memory-voice-review-native.json). 1920px'de sağda ayrı grup,
 1280px'de taşmayan görünüm doğrulandı. Gerçek API, fiziksel mikrofon ve modelin
 anlamsal onay doğruluğu denenmedi. Kullanıcı kabulü ve bu dilimin commit'i bekler.
+
+
+## 6.1 kabulü ve kalan UI bağlantılarının sırası
+
+Kullanıcı düğme/konuşmayla karar testlerini başarılı bildirdi. İlgili uygulama
+6f52b4c commit'ine alındı; push yapılmadı. Yukarıdaki önceki kabul bekleme
+notları tarihsel doğrulama turlarını anlatır; güncel 6.1 durumu kabul edildi'dir.
+Bu tur yeni özellik kodlanmadı; aşağıdaki dilimler henüz başlamadı.
+
+| Sıra | Kapsam / kabul koşulu |
+|---|---|
+| 6.2.1 — sıradaki | CPU/RAM, disk, pil ve aktif pencere için gerçek yerel kaynak; tek telemetri sahibi, periyodik UI yenileme, modelden aynı kaynağı sorgulama; yok/sıfır/eski veri ayrımı |
+| 6.2.2 | GPU kullanım/bellek ve CPU/GPU sıcaklığı; donanıma göre kaynak doğrulama; desteklenmeyene uydurma değer yerine kullanılamaz durumu |
+| 6.2.3 | Network/Wi-Fi, anlık gönderme/alma hızı, bağlantı ve gecikme; transfer hızı ile internet hız testi ayrımı; offline yerel CPU ölçümünü silmez |
+| 6.2.4 | Sağlayıcının gerçek kullanım verisinden token sayacı; tur/oturum ve context sınırı ayrı; bilinmeyen hesap kotası veya tahmini kullanım kesin değer gibi gösterilmez |
+| 6.2.5 | Mevcut Windows medya oturumu: parça bilgisi, oynat/duraklat/önceki/sonraki; UI ve model aynı araç/alan sahibi |
+| 6.3 | Dosya eki/dosya okuma ve ardından kontrollü değişiklik; hedef/izin/readback |
+| 6.4 | Hava durumu, manuel/izinli otomatik konum ve web arama; önbellek/son güncelleme ve gerçek hata durumu |
+| 6.5 | Google bağlantısı, Calendar/Drive/mail; önce 6.7'nin ilgili risk/kanal/yazma korumaları |
+| 6.6 | Telegram/Discord; yine 6.7'nin ilgili korumaları önkoşul |
+| 6.8 — kapsam önerisi | UI'daki kamera, Live ekran paylaşımı ve mikrofon dışı ses kaynakları için ayrı dilimler; izin, görsel/ses akışı ve kaynak temizliği; GUI tıklama otomasyonundan ayrı |
+| 5.F8.3 kalan profil alanları | Başlangıç karşılama, tarayıcı/sekme/uygulama tercihleri ve shortcut alanları ilgili uygulama/dosya/tarayıcı dilimiyle bağlanır; kişisel talimat güvenlik sınırlarını aşan base override olmaz |
+| 8.1 | Gerçek yerel hatırlatıcılar için mevcut planın tek backend scheduler'ı; skill/rutin yürütmesinden ayrı olsa da ikinci zamanlayıcı yazılmaz |
+
+Timeline/log mevcut yerel görünüm olarak kalır; yeni veri üreticileri yalnız gerçek
+olaylarını besler. Inspect/Create Skill, skill yürütmesi ve rutin kapsamı bu UI
+önceliklendirme isteğinin dışındadır. 6.8 yeni bir uygulama onayı veya tamamlanma
+iddiası değildir; mevcut plandaki eksik multimodal kapsamın önerilen yeridir.
+
+
+### 6.2.4 ilk dilim — son sağlayıcı token bildirimi
+
+Kullanıcı sınırlı tur bütçesiyle en hafif 6. aşama adımını ve doğrudan commit
+istedi; 6.2.4 bu nedenle öne alındı. Live/REST usage metadata mevcut rapordan
+UI'a bağlandı. Limit bilinmiyorsa sayı tek başına gösterilir; yeni tur/verisiz
+yanıt eski değeri temizler, sıfır geçerlidir. Eski setter limit sözleşmesi korunur.
+Oturum toplamı, ücret/kota ve model context limiti bu küçük dilimde uygulanmadı;
+6.2.4 için bunlar yapılmış sayılmaz. Sonraki özellik adımı hâlâ 6.2.1'dir.
+Gerçek/ücretli API çağrısı yapılmadı. Kullanıcı bu tur commit'e açık izin verdi;
+fiziksel kullanıcı kabulü henüz yoktur. Otomatik sonuçlar raporda kaydedilecek.
+
+
+Token dilimi: **1091 pytest** (86.85 s), **96 hedefli Python testi**,
+**10 browser grubu**, **9 JS suite**, app Pyright **0**.
+[Özet](reports/token-counter-checks.json). Fiziksel kullanıcı/API kabulü bekler;
+kullanıcının bu tur verdiği açık commit izni manuel kabul olarak sunulmaz.
+
+**10/10 native aşama** da geçti: [native regresyon](reports/token-counter-native.json).
+Token sayısı için SDK sentetik taşıma + tarayıcı görünüm testi; gerçek hesap yok.

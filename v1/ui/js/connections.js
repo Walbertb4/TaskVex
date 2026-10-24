@@ -223,7 +223,16 @@ export function setTokens(u, m, isEst) {
   const tokSub = document.getElementById('tokSub');
   const tokBar = document.getElementById('tokBar');
 
-  if (u == null || m == null || m <= 0) {
+  const validUsed = Number.isSafeInteger(u) && u >= 0;
+  // Sağlayıcı kullanım bildirmiş fakat limit bilinmiyorsa kota uydurma.
+  if (validUsed && m == null) {
+    if (tokTxt) {tokTxt.textContent = u.toLocaleString('en-US');tokTxt.title = 'Latest provider token report; not account quota or session total';}
+    if (tokSub) tokSub.textContent = `Latest provider report: ${u.toLocaleString('en-US')} tokens · Limit/quota: unknown`;
+    if (tokBar) tokBar.style.width = '0%';
+    return;
+  }
+  if (tokTxt) tokTxt.removeAttribute('title');
+  if (!validUsed || !Number.isSafeInteger(m) || m <= 0) {
     if (tokTxt) tokTxt.textContent = '— / —';
     if (tokSub) tokSub.textContent = 'Remaining: — · Used: —';
     if (tokBar) tokBar.style.width = '0%';

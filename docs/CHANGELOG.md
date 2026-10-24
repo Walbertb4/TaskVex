@@ -5,6 +5,21 @@ hali ARCHITECTURE.md, yapılacak işler PLAN.md içindedir. Henüz sürüm yayı
 
 ## Unreleased
 
+### Son sağlayıcı token göstergesi
+
+- Live/REST gerçek usage metadata mevcut sohbet raporuna ve UI'a bağlandı.
+  Eksik bilgi eski değeri korumaz; sıfır geçerlidir. Limit/kota uydurulmaz.
+- Ayrı API çağrısı/depo/bağımlılık eklenmedi. Gösterilen son bildirimdir;
+  oturum toplamı, hesap kotası veya tüm araç/ses isteklerinin toplamı değildir.
+- Kullanıcı bu küçük adım için doğrudan commit istedi; gerçek API kabulü yapılmadı.
+- 1091 pytest, 96 hedefli test, 9 JS, 10 browser, 10 native ve Pyright 0;
+  [kanıt](reports/token-counter-checks.json).
+
+- Kullanıcı hafıza önerisinin düğme/konuşma kararını başarılı bildirdi;
+  uygulama 6f52b4c commit'inde, push yok. PLAN'da güncel kabul durumu ve
+  telemetri/ağ/token/media ile kalan UI bağlantılarının sırası netleştirildi.
+  Bu planlama turunda yeni uygulama özelliği eklenmedi.
+
 ### Hafıza önerisine sohbet yanında veya konuşarak karar
 
 - Save/Dismiss kişiselleştirmeden sohbetin altındaki dört kontrolün sağına,

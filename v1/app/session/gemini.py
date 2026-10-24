@@ -272,7 +272,10 @@ class GeminiText:
                 answer = "".join(part.text for part in content.parts if part.text and not part.thought)
                 if not answer.strip():
                     return _failure("empty_response", "Gemini returned no answer", results)
-                return {"ok": True, "text": answer, "tool_results": results}
+                # Araç döngüsünün toplamını uydurma: yalnız son generation bildirimi.
+                count = reply.usage_metadata.total_token_count if reply.usage_metadata else None
+                usage = {'usage_tokens':count} if type(count) is int and 0 <= count <= 9007199254740991 else {}
+                return {"ok": True, "text": answer, "tool_results": results, **usage}
             if round_index == MAX_REQUESTS - 1 or len(results) + len(calls) > MAX_TOOL_CALLS:
                 return _failure("turn_limit", "Model/tool turn limit reached", results)
 

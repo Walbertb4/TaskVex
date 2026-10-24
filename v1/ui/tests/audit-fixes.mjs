@@ -222,5 +222,19 @@ try {
     const keys=await p.evaluate(async()=>{writes.length=0;const s=await import('/js/settings.js');s.saveAll({emitSave:false});return writes;});
     assert.equal(keys.includes('jarvis_ui'),false);assert.ok(keys.includes('taskvex_ui'));
   });
+  await test('provider token count has no invented limit, supports zero and clears missing usage',async()=>{
+    const p=await setup();
+    await p.evaluate(()=>window.vex.tokens(123,null,false));
+    assert.equal(await p.locator('#tokTxt').innerText(),'123');
+    assert.match(await p.locator('#tokSub').innerText(),/Latest provider report.*123.*unknown/);
+    await p.evaluate(()=>window.vex.tokens(0,null,false));
+    assert.equal(await p.locator('#tokTxt').innerText(),'0');
+    for (const value of [null,-1,1.5,'123']) {
+      await p.evaluate(value=>window.vex.tokens(value,null,false),value);
+      assert.equal(await p.locator('#tokTxt').innerText(),'— / —');
+    }
+    await p.evaluate(()=>window.vex.tokens(10,100,false));
+    assert.equal(await p.locator('#tokTxt').innerText(),'10 / 100');
+  });
   console.log(`${results.length} browser cleanup groups passed`);
 } finally { await browser.close(); await new Promise(resolve=>server.close(resolve)); }

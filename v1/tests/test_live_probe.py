@@ -202,3 +202,18 @@ def test_persistent_live_error_is_not_replayed_and_next_message_is_fresh(socket)
         assert fresh["ok"] and not fresh["session_reused"] and socket.opened == 2
     finally:
         assert host.close()
+
+
+@pytest.mark.parametrize('count', [0, 123, -1, 9007199254740992, None])
+def test_live_usage_is_last_provider_report_not_sum_or_quota(socket, count):
+    socket.frames = [{'setupComplete':{}}, {'usageMetadata':{'totalTokenCount':50}},
+        {**frame('Hello', complete=True),'usageMetadata':{'totalTokenCount':count}}]
+    report = asyncio.run(live_probe.probe_live_text('Hello','future-live'))
+    assert report['ok']
+    assert report['usage_tokens'] == (count if type(count) is int and 0 <= count <= 9007199254740991 else None)
+
+
+def test_live_missing_usage_stays_unknown(socket):
+    socket.frames = [{'setupComplete':{}},frame('Hello',complete=True)]
+    report = asyncio.run(live_probe.probe_live_text('Hello','future-live'))
+    assert 'usage_tokens' not in report

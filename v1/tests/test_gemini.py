@@ -509,3 +509,14 @@ def test_smoke_entrypoint_isolated_and_checks_actual_tool_use(transport, monkeyp
     import os
     assert os.environ["TASKVEX_HOME"] == str(taskvex_home)
     assert not (taskvex_home / "notes.json").exists()
+
+
+@pytest.mark.parametrize('count', [0, 123, -1, None])
+def test_rest_final_generation_usage_only(transport, count):
+    response = reply([{'text':'Hello'}])
+    response['usageMetadata'] = {'totalTokenCount':count}
+    transport.responses = [response]
+    with create_core() as core, gemini.GeminiText(tools(core)) as model:
+        report = model.run('Hello')
+    assert report['ok']
+    assert report.get('usage_tokens') == (count if type(count) is int and count >= 0 else None)

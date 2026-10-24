@@ -58,6 +58,6 @@
     "One pending candidate in RAM; replacement invalidates prior ID and restart drops candidate",
     "Task journal may retain proposed facts/source even after profile memory deletion"
   ],
-  "manual_acceptance": "awaiting user test of inline buttons, spoken approval/rejection and unrelated answer",
-  "commit": "new change uncommitted pending user acceptance; no push"
+  "manual_acceptance": "user reported tests successful",
+  "commit": "6f52b4c; not pushed"
 }

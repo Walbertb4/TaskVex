@@ -1,0 +1,42 @@
+{
+  "step": "6.2.4 first slice: latest provider token report",
+  "scope": "Existing Live/REST report to existing token display; no extra request/dependency/store",
+  "source": "https://ai.google.dev/api/live#UsageMetadata",
+  "semantics": {
+    "live": "last usage_metadata.total_token_count observed in this turn; never sum events",
+    "rest": "successful final generation total_token_count only; not tool/retry/speech aggregate",
+    "missing": "unknown, clear stale UI value at next send and missing response",
+    "zero": "valid",
+    "max_or_quota": "unknown; no invented denominator"
+  },
+  "python_general": {
+    "passed": 1091,
+    "seconds": 86.85
+  },
+  "targeted_python": 96,
+  "browser_groups": 10,
+  "javascript_suites": 9,
+  "typecheck": {
+    "scope": "app",
+    "errors": 0,
+    "warnings": 0
+  },
+  "native_report": "token-counter-native.json",
+  "not_tested": [
+    "real/paid provider API",
+    "physical microphone/speaker acceptance"
+  ],
+  "manual_acceptance": "not yet performed; user explicitly requested implementation and commit in this turn",
+  "remaining": [
+    "session/cost aggregation",
+    "known model context capacity",
+    "account quota retrieval"
+  ],
+  "risk": "provider may omit usage metadata; unknown display is expected, not a quota calculation",
+  "native": {
+    "passed": 10,
+    "transport": "synthetic",
+    "renderer": "edgechromium",
+    "scope": "native regression; usage values tested through actual SDK synthetic transports plus browser setter tests"
+  }
+}

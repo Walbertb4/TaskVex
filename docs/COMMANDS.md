@@ -423,3 +423,12 @@ transcription never authorizes a tool call. In review mode only one candidate wa
 replaces it, and restart discards it. Pending candidates are not exported as
 profile memory, but local task history can contain their text. Changed memory or
 consent invalidates an old approval. No automatic retry or merge is performed.
+
+
+## Token display
+
+- Send a Live or REST message → The header shows the latest token count the
+  provider reports. Hover the number or open System settings for its scope.
+- Missing metadata → The counter shows unknown, not the previous turn's count.
+- This is not an account quota, remaining credit, session total or a sum of
+  tool/retry/speech requests. No extra token-counting API request is made.

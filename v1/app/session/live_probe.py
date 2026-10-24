@@ -139,6 +139,10 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
                             return report
                     except StopAsyncIteration:
                         break
+                    # Son sağlayıcı bildirimi: toplamayız; kota/oturum toplamı değildir.
+                    if message.usage_metadata is not None:
+                        count = message.usage_metadata.total_token_count
+                        report['usage_tokens'] = count if type(count) is int and 0 <= count <= 9007199254740991 else None
                     messages += 1
                     report['received_events'] = messages
                     report['last_received_ms'] = round((perf_counter() - started) * 1000)

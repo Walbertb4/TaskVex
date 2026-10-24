@@ -227,3 +227,21 @@ Model tercih seçemez veya değiştiremez. Yeni bilgilerin tümü hâlâ memory.
 hattından geçer; memory.patch append ile bu tercih atlanamaz. Kullanıcının
 sormadan kayda açık tercihi, önceki sürümün her aday için Save zorunluluğunun
 isteğe bağlı alternatifi olmuştur. Anlamsal çıkarım doğruluğu garanti edilmez.
+
+
+## Token kullanımı — son sağlayıcı bildirimi
+
+Sohbet raporu isteğe bağlı usage_tokens alanı taşır: 0..9007199254740991
+arasında tam sayı, bilinmiyorsa eksik/null. Live, bu turda alınan en son
+usage_metadata.total_token_count değerini aktarır; olaylar toplanmaz. REST
+başarılı son generation yanıtının aynı alanını verir; önceki araç turlarının,
+retry/fallback veya ayrı ses üretiminin toplamı değildir.
+
+UI yeni tur başında sayacı temizler, yalnız güncel request sonucunu gösterir.
+Metadata yoksa önceki tur güncelmiş gibi kalmaz; gerçek sıfır korunur.
+Limit bilinmediğinde sayı tek başına Latest provider report etiketiyle gösterilir;
+kalan hesap kotası/context yüzdesi/bütçe uydurulmaz. Mevcut tokens(used,max,isEst)
+setter'ının açık limit verilen uyumluluk yolu korunur. Ek countTokens API çağrısı,
+kalıcı kullanım deposu veya yeni yürütücü yoktur.
+
+Sağlayıcı sözleşmesi: https://ai.google.dev/api/live#UsageMetadata
