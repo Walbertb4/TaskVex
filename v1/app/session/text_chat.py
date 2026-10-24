@@ -99,7 +99,8 @@ class TextChat:
                 **({"accepted": True} if accepted else {"error": "No matching active request"})}
 
     def run_live(self, text: object, model: str, *, notes_ready: bool = False, request_id: str | None = None,
-                 audio_input: bytes | LiveInput | None = None, profile: dict | None = None, notification: bool = False) -> dict:
+                 audio_input: bytes | LiveInput | None = None, profile: dict | None = None, notification: bool = False,
+                 voice: str | None = None) -> dict:
         """Aynı Live oturumuna bir mesaj; REST ile ortak meşgul/kapanış kilidi."""
         if audio_input is not None:
             # UI'ya güvenme: 15 saniye, mono/16 kHz/16-bit; PCM rapora yazılmaz.
@@ -129,6 +130,7 @@ class TextChat:
             text_output = self._transcript_sink
             text_sink = (lambda role, value, sequence: text_output(request_id, role, value, sequence)) if text_output and request_id else None
             report = self._live.ask(text, model, tools, request_id=request_id, audio_sink=sink, profile=profile,
+                                    voice=voice,
                                     context=self._memory.snapshot(),
                                     **({'transcript_sink': text_sink} if text_sink else {}),
                                     **({"audio_input": audio_input} if audio_input is not None else {}))

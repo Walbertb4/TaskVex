@@ -13,17 +13,22 @@ export function initCredentials() {
   let statusRevision = 0;
 
   const operation = createPendingOperation(() => {
+    input.placeholder = 'Key save not confirmed';
     message.textContent = 'Key save not confirmed. Restart the app to check storage; the request will not be repeated.';
   });
 
   async function refresh() {
     const revision = ++statusRevision;
     if (!isBackendAvailable()) {
+      input.placeholder = 'Enter API key in the desktop app';
       message.textContent = 'Key storage requires the desktop app.';
       return;
     }
     const result = await emit('query_apikey');
     if (revision !== statusRevision || operation.pending || operation.uncertain) return;
+    input.placeholder = result.ok && result.response?.completed === true
+      ? (result.response.configured ? 'API key configured — enter a new key to replace' : 'Enter API key')
+      : 'Key storage status unavailable';
     message.textContent = result.ok && result.response?.completed === true
       ? (result.response.configured ? 'Key stored locally. API access has not been checked.' : 'No key stored for this profile.')
       : 'Could not check Windows key storage.';
@@ -39,6 +44,7 @@ export function initCredentials() {
     const id = operation.begin();
     input.disabled = button.disabled = true;
     message.textContent = 'Saving to Windows credentials…';
+    input.placeholder = 'Saving API key…';
     const result = await emit('apikey', key);
     if (!operation.isCurrent(id)) return;
     if (result.ok && (result.response?.completed !== true || result.response?.saved !== true || result.response?.configured !== true)) {
@@ -49,6 +55,7 @@ export function initCredentials() {
     input.disabled = button.disabled = false;
     message.textContent = result.ok ? 'Key stored locally. API access has not been checked.'
       : 'Key save was not confirmed. Check Windows credentials before trying again.';
+    input.placeholder = result.ok ? 'API key configured — enter a new key to replace' : 'Key save was not confirmed';
     if (result.ok) {
       sfx.ok();
       window.dispatchEvent(new Event('taskvex-key-saved'));

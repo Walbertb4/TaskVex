@@ -76,7 +76,7 @@ açık sınırları kabul etmeden “üretime hazır” ilan edilemez.
 
 | Konu | Gerçek durum | Öneri |
 |---|---|---|
-| Yanıt sesi | REST speech.py içinde Kore sabit; Live SDK ses varsayılanı, conn.voice uygulanmıyor | Tek profil tercihini uyumlu sağlayıcı seçeneklerine bağla; bugün voice seçimi disabled |
+| Yanıt sesi | Live conn.voice, belgelenmiş hazır Live listesi ve oturum speech_config'una bağlı; REST speech.py Kore sabit | Live seçimi uygulandı; REST kanalı ürünleştirilirken ayrı tercih kapsamı |
 | Yanıt ses seviyesi | replyVolume aynı PCM oynatıcısında 0–1 kazançtır; Settings Audio barı, kalıcı kayıt ve reset bağlıdır | 5.F8.1'de uygulandı; efektlerden ayrıdır. Ses karakteri/voice seçimi ayrı açık iştir |
 | REST varsayılan/fallback ve TTS modeli | gemini.py DEFAULT_MODEL/FALLBACK_MODEL, speech.py SPEECH_MODEL sabit | Ana masaüstü Live modeli API'den seçilip kaydoluyor; REST kanalı ürünleştirilirken ayrı sağlayıcı tercihine taşı |
 | Kullanıcı talimatı/dil | pIns/pLang gerçekten ortak model instruction'a gider | Çalışıyor; güvenlik/araç izni kişisel prompt ile değiştirilemez |

@@ -1129,6 +1129,8 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                                "observer:window.keyEvents,online:document.getElementById('netP').textContent,"
                                "pending:Object.keys(window.pywebview._returnValuesCallbacks.event)};")
                     assert state["empty"] and state["secretAbsent"] and state["observer"] == ["[REDACTED]"]
+                    assert js("return document.getElementById('apiKeyIn').placeholder.startsWith('API key configured');")
+                    outcome['key_placeholder_configured_without_secret'] = True
                     assert "OFFLINE" in state["online"]
                     assert state["pending"]
                     release_key_query.set()
@@ -1298,12 +1300,17 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                           "return liveAudio.volume===0.35;")
                 wait_until(lambda: (api._store.read() or {}).get('replyVolume') == 0.35)
                 outcome['reply_volume_native_saved'] = True
+                assert js("const v=document.getElementById('vSel');"
+                          "if(v.disabled || v.options.length!==30 || ![...v.options].every(o=>o.textContent.startsWith('[LIVE] ')))return false;"
+                          "v.value='Kore';v.dispatchEvent(new Event('change'));return true;")
+                wait_until(lambda: (api._store.read() or {}).get('conn', {}).get('voice') == 'Kore')
+                outcome['live_only_voices_selected_and_saved'] = True
                 assert js("const n=await import('./js/notes.js');if(!(await n.addNote('Native local note')))throw new Error('Note add failed');"
                           "window._events=[]; window.vex.onEvent=(name)=>window._events.push(name);"
                           "window.vex.setSkills([{id:'keep-skill',name:'Keep skill',steps:[]}]);"
                           "window.vex.setRoutines([{id:'keep-routine',name:'Keep routine',type:'manual',steps:'Keep step',on:0}]);"
                           "return window.vex.loadStore({theme:'#4fd8ff',prof:{pIns:'Native profile 📝'},"
-                          "devs:{dIn:'7'},conn:{model:'gemini-3.8-flash'}});") is True
+                          "devs:{dIn:'7'},conn:{model:'gemini-3.8-flash',voice:'Kore'}});") is True
                 assert js("return window._events.includes('save');") is False
                 js("const checkbox=document.getElementById('onTop'); checkbox.checked=true;"
                    "checkbox.dispatchEvent(new Event('change')); return true;")
@@ -1333,6 +1340,8 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 assert js("const {liveAudio}=await import('./js/live_audio.js');"
                           "return liveAudio.volume===0.35 && document.getElementById('replyVolR').value==='35';")
                 outcome['reply_volume_cross_process_restored'] = True
+                assert js("return document.getElementById('vSel').value==='Kore';")
+                outcome['live_voice_cross_process_restored'] = True
                 assert "Native local note" in restored["notes"], restored
                 assert window.native.TopMost
                 outcome["on_top_restored"] = True

@@ -95,6 +95,17 @@ değer korunur. Sıfır sessiz çıkıştır, eksik veri değildir. Reset %100'e
 Yeni bir olay/TTS sahibi yoktur; aynı PCM gain'i anlık değişir, Mute seçili
 seviyeyi kaybetmez. Effects volume ve mikrofon etkilenmez.
 
+setCatalog.voices yalnız belgelenmiş hazır Live seçenekleridir; UI [LIVE] etiketi
+basar. conn.voice aynı genel ayar kaydıyla saklanır; sonraki Live turunun setup
+speech_config alanına gider. Yeni bir voice olayı/yürütücü yoktur. Değişiklik
+aktif yanıtı kesmez; yeni tur eski resume token'ını kullanmaz. API model keşfi
+ile belgelerden alınan sabit ses listesi birbirinden ayrıdır. REST TTS değişmez.
+
+API anahtarı input'u value alanını boş tutar; configured onayı yalnız
+placeholder içinde gösterilir. Kayıt/erişim belirsizliğinde bu ibare başarı gibi
+gösterilmez; API erişimi ayrıca doğrulanmış sayılmaz. Anahtar veya son karakterleri
+placeholder/localStorage/snapshot'a konmaz.
+
 ## Doğrulama sınırı
 
 Sentetik provider ile WebView2, Python ve JS regresyonları gerçek dış işlem yapmadan

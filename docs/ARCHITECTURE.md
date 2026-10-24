@@ -133,6 +133,15 @@ Geçici hafıza TextChat RAM’indedir: 12 tur / 16.000 JSON karakteri / taraf b
 belleği korur, New Chat/kapanış/anahtar değişimi temizler. Kalıcı kullanıcı hafızası
 henüz yoktur. Profilde yalnız pLang/pIns modele gider; profil yetki vermez.
 
+Live ses karakteri conn.voice tercihidir; pLang/pIns talimatından ayrıdır.
+catalog.py Google'un belgelenmiş 30 hazır Live sesinin tek izinli listesidir;
+model keşfi hâlâ API'dendir, ses listesi API sorgusu gibi sunulmaz. Legacy/boş
+ses tercihi Puck'a düşer. Native giriş aynı kayıttan dil/talimat/ses snapshot'ı
+alır; Live metin/PCM/timer yanıtı bunu aynı TextChat/PersistentLive hattına taşır.
+speech_config seçili sesi setup'a koyar. Ses değişimi connection identity'yi
+değiştirir; önceki resume handle/araç çağrı haritası yeni sese taşınmaz, aktif
+turun snapshot'ı değişmez. Mevcut REST TTS sesi bu tercihe bağlı değildir.
+
 ## Veri ve kalıcılık
 
 TASKVEX_HOME veya %LOCALAPPDATA%/TaskVex. Kaynak kodu/kullanıcı verisi ayrıdır.
@@ -179,7 +188,7 @@ uygulanmalıdır; bugün bunların tamamı varmış gibi davranılmaz.
 ## Bugün uygulanmayanlar
 
 Google/konum/hava/media/kamera/sistem sesi/dosya ekleme; kalıcı kullanıcı hafızası,
-base instruction override/greeting/voice seçimi; skill/rutin backend yürütme ve
+base instruction override/greeting; skill/rutin backend yürütme ve
 scheduler; GUI L1–L4 ve dış mesaj kanalları. Yerel tanımlar ve mevcut kullanıcı
 metni korunur; yürütücüsü olmayan kontroller açıkça planlı/disabled görünür.
 

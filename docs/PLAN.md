@@ -1,6 +1,6 @@
 # TaskVex — Güncel plan
 
-## Şimdi: 5.F8.1 — Vex yanıt ses seviyesi
+## Şimdi: 5.F8.2 — Live ses seçimi ve anahtar durum ibaresi
 
 Önceki 5.R8.6 kullanıcı kabulü başarılı, 526bfed commit’inde.
 5.F6 bakımı kullanıcı tarafından kabul edildi; ea8aa15 commit’inde.
@@ -9,7 +9,7 @@ GitHub’a push onayı verdi; 5c338e8 ile yayımlandı. Ayrı fiziksel test sonu
 5.F7.2/3 uygulandı: 1017 pytest, 17 hedefli günlük testi, Pyright 0 ve 10 native
 aşama geçti. Kullanıcı devam/commit onayı verdi; 5c21156 commit'inde, push yok.
 5.F8.1 yalnız yanıt ses seviyesini mevcut tercihlere ve oynatıcıya bağlar. Ses
-karakteri/diğer profil alanları 5.F8.2'de ayrıca daraltılacak.
+karakteri 5.F8.2'de bağlanıyor; diğer profil alanları 5.F8.3 olarak ayrı kapsamda.
 
 - [x] İlk envanter ve onaylanan önceki adımın commit’i.
 - [x] Tarihsel belgeleri docs/eski altına özgün yollarıyla taşı.
@@ -97,7 +97,8 @@ Sıra bağımlılığa göre seçildi; kullanıcı onayıyla 5.F7.2 ve 5.F7.3 ay
 | 5.F7.2 | Kalıcı görev/istek günlüğü; restart sonrası eski tamamlanmış veya belirsiz işlem tekrar yürütülmez | Uygulandı/otomatik doğrulandı; [kanıt](reports/task-journal-checks.json). Kullanıcı devam/commit onayı; 5c21156 commit'inde, push yok |
 | 5.F7.3 | Kalıcı dedup korunarak terminal kayıt retention; 256 sınırı ömür boyu toplam değil aktif işler için | Uygulandı/otomatik doğrulandı; 300 iş (kapasite 4/256), aktif kuyruk ve eski replay. Kullanıcı devam/commit onayı; 5c21156 commit'inde, push yok |
 | 5.F8.1 | Settings Audio altında efektlerden ayrı Vex reply volume; aynı PCM gain, kayıt/snapshot/reset/Mute | Uygulandı: 1024 pytest, 9 JS, 5 browser, 10 native, Pyright 0; [kanıt](reports/reply-volume-checks.json). Kullanıcı çalıştığını doğruladı; commit onaylı |
-| 5.F8.2 | Ses karakteri ve kalan profil sabitleri; sağlayıcı seçenekleri ve mevcut alan sahipliğiyle kapsamı daralt | Henüz uygulanmadı; kalıcı hafıza/entegrasyonların aşama 6 sınırı korunur |
+| 5.F8.2 | Belgelenmiş hazır Live sesleri, [LIVE] etiketi, conn.voice → speech_config; anahtar input durum ibaresi | Uygulandı: 1025 genel pytest + 24 son hedefli test, 9 JS, 5 browser, 10 native, Pyright 0; [kanıt](reports/live-voices-checks.json). Kullanıcı devam onayı verdi; ayrı fiziksel ses testi bildirmedi |
+| 5.F8.3 | Kalan profil/base instruction/greeting sabitlerinin gerekli kapsamını ayrıca belirle | Henüz uygulanmadı; kalıcı hafıza ve entegrasyonların aşama 6 sınırı korunur |
 
 5.F7.1 kilidi native host içindir. 5.F7.2 create_core girişine ayrıca günlük/core
 OS kilidi ekler; doğrudan JsonStore yazıcısı hâlâ bu sahipliği atlayamaz. Günlük
@@ -122,8 +123,8 @@ ve not/dış işlem tek transaction değildir; lock/günlük dosyalarını siler
 İkisi uygulandı: **1017 pytest**, 17 hedefli günlük testi, hedefli Pyright **0** ve
 **10/10 native** aşama geçti. [Test kanıtı](reports/task-journal-checks.json),
 [native kanıt](reports/task-journal-native.json). Gerçek hesap/API ve fiziksel ses
-yeniden denenmedi. Kullanıcı devam/commit onayı verdi; ayrı fiziksel test bildirmedi. 5.F8.1 yanıt ses seviyesi uygulandı/otomatik doğrulandı; ses karakteri ve diğer profil
-boşlukları 5.F8.2 olarak bekliyor.
+yeniden denenmedi. Kullanıcı devam/commit onayı verdi; ayrı fiziksel test bildirmedi. 5.F8.1 yanıt ses seviyesi uygulandı/otomatik doğrulandı; ses karakteri 5.F8.2
+olarak uygulanıyor; diğer profil boşlukları 5.F8.3 olarak bekliyor.
 
 
 ### 5.F8.1 — kabul kapsamı
@@ -141,3 +142,22 @@ boşlukları 5.F8.2 olarak bekliyor.
 **10/10 native aşama**, app Pyright **0**. [Özet](reports/reply-volume-checks.json),
 [native kanıt](reports/reply-volume-native.json). Ücretli API ve fiziksel hoparlör
 kabulü denenmedi. Kullanıcı çalıştığını doğruladı; commit onaylı, push yok.
+
+
+### 5.F8.2 — bu turun sınırı
+
+- Google belgelerindeki 30 hazır Live sesinden tek allowlist; [LIVE] UI etiketi.
+  Ses keşfi API'den yapılmış gibi gösterilmez. conn.voice genel ayar deposunda.
+- Seçim sonraki Live metin/mikrofon/timer turuna gider; aktif yanıt kesilmez.
+  Ses değişimi eski resume handle'ını kullanmaz. REST TTS ve güvenlik hattı korunur.
+- Anahtarın varlığı input placeholder'ında; gerçek value/sır DOM'da tutulmaz.
+  Başarısız/belirsiz kayıt başarılı API bağlantısı gibi sunulmaz.
+- 5.F8.1 kullanıcı tarafından çalışıyor olarak onaylandı; 9d67a1d commit'inde.
+  Yeni dilimin kullanıcı kabulü/commit'i ayrı bekler; aşama 5 kapanmış sayılmaz.
+
+
+5.F8.2 doğrulama: **1025 genel pytest**, ek son katalog kontrolü dahil **24 hedefli
+profil/ses/belge testi**, **9 JS suite**, **5 browser grubu**, app Pyright **0**,
+**10/10 native aşama**. [Özet](reports/live-voices-checks.json),
+[native kanıt](reports/live-voices-native.json). Gerçek hesap ve fiziksel ses
+kabulü yapılmadı; kullanıcı aşama 6'ya geçiş onayı verdi; ayrı fiziksel ses testi bildirmedi. Aşama 5'in açık sınırları korunur.

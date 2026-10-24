@@ -303,6 +303,17 @@ uses; the intended main desktop experience is Live.
 
 ## Connection settings — available UI behavior
 
+Settings → Connection → **Live voice** → Choose a documented prebuilt voice
+labelled `[LIVE]`. The saved choice applies to the next Live text, microphone
+or timer reply; it does not interrupt the current answer. Changing voice opens
+a fresh Live scope rather than resuming the old voice session. REST TTS keeps
+its separate voice. The voice list comes from Google documentation, while model
+discovery comes from the API; custom/TTS-only voices are not offered.
+
+The API key input shows **API key configured — enter a new key to replace** as
+placeholder text after a confirmed configured status. Its actual value stays
+empty. This confirms key presence, not successful API access.
+
 Settings → Audio → **Vex reply volume** → Adjust voice replies and spoken timer
 notifications from 0 to 100%, independently of Effects volume. Changes apply
 to the current reply immediately and are saved across restarts. At 0% playback

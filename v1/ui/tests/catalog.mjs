@@ -17,7 +17,12 @@ globalThis.window={addEventListener(){},dispatchEvent:e=>signals.push(e),pywebvi
   return await new Promise(r=>{resolve=r;});
 }}}};
 const {store}=await import('../js/settings.js');
-const {loadLiveModels}=await import('../js/connections.js');
+const {loadLiveModels,setCatalog}=await import('../js/connections.js');
+store.conn.voice='Kore';
+setCatalog({voices:[{id:'Puck',name:'Puck',live:true},{id:'Kore',name:'Kore',live:true},{id:'tts-only',name:'Unsupported',live:false}]});
+assert.equal(nodes.get('vSel').value,'Kore');
+assert.equal(nodes.get('vSel').disabled,false);
+assert.deepEqual(nodes.get('vSel').options.map(o=>o.textContent),['[LIVE] Puck','[LIVE] Kore']);
 store.conn.model='saved-live';
 const first=loadLiveModels();
 assert.equal(await loadLiveModels(),false);assert.equal(calls,1);

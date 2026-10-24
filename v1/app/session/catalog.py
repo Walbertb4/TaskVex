@@ -11,6 +11,24 @@ from google.genai import types
 
 from app.storage.credentials import load_gemini_key
 
+# Google Live voice belgesi (2026-10-24): bu liste API'den keşfedilmiş değildir.
+# https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/live-api/configure-language-voice
+# Yalnız belgelenmiş hazır Live sesleri; özel/TTS-only sesleri ekleme.
+LIVE_VOICES = tuple('Zephyr Puck Charon Kore Fenrir Leda Orus Aoede Callirrhoe '
+    'Autonoe Enceladus Iapetus Umbriel Algieba Despina Erinome Algenib Rasalgethi '
+    'Laomedeia Achernar Alnilam Schedar Gacrux Pulcherrima Achird Zubenelgenubi '
+    'Vindemiatrix Sadachbia Sadaltager Sulafat'.split())
+
+
+def live_voice_catalog() -> list[dict]:
+    """Aynı izinli listeden UI seçenekleri üret; hesap erişim kanıtı değildir."""
+    return [{'id': voice, 'name': voice, 'live': True} for voice in LIVE_VOICES]
+
+
+def selected_live_voice(value: object) -> str:
+    """Eski/boş legacy tercihi Puck'a taşı; sağlayıcıya bilinmeyen isim gönderme."""
+    return value if isinstance(value, str) and value in LIVE_VOICES else 'Puck'
+
 
 def load_live_catalog() -> dict:
     """En çok beş sayfa oku; tam başarı yoksa kısmi/eski listeyi başarı sayma.

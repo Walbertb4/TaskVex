@@ -1,0 +1,59 @@
+{
+  "step": "5.F8.2",
+  "scope": "Documented Live voices, persisted Live speech configuration, and secret-free API key placeholder",
+  "previous_commit": "9d67a1d",
+  "provider_sources": [
+    "https://ai.google.dev/gemini-api/docs/live-api/capabilities",
+    "https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/live-api/configure-language-voice"
+  ],
+  "verified_on": "2026-10-24",
+  "python_general": {
+    "passed": 1025,
+    "seconds": 97.73
+  },
+  "final_targeted": {
+    "profile_voice_and_documentation_passed": 24,
+    "note": "Includes one final additional catalog/legacy-default test added after general suite collection."
+  },
+  "javascript_suites": 9,
+  "browser_groups": 5,
+  "typecheck": {
+    "scope": [
+      "app"
+    ],
+    "errors": 0,
+    "warnings": 0
+  },
+  "native": {
+    "passed": 10,
+    "report": "live-voices-native.json",
+    "transport": "synthetic"
+  },
+  "verified": [
+    "30 unique documented Live prebuilt voices; UI filters non-Live entries and prefixes labels",
+    "native UI selection persisted and restored in another process",
+    "typed Live, microphone clip/stream and timer notification use frozen conn.voice",
+    "actual SDK setup contains selected speech voice",
+    "voice change creates new logical scope without old resume handle; same voice can reuse connection",
+    "legacy or empty voice maps to Puck; arbitrary custom/TTS-only IDs not sent",
+    "API key configured placeholder after confirmed save; input empty and observer redacted",
+    "existing REST/Live Stop, resumption, notes, clocks, sleep and audio lifecycle regressions retained"
+  ],
+  "intermediate_checks": [
+    "new setup test initially expected camelCase nested speech config; installed SDK emits snake_case nested config, so assertion corrected against actual serialization",
+    "Pyright caught conditional keyword expansion ambiguity; explicit voice keyword resolved it without suppressing types"
+  ],
+  "not_tested": [
+    "real/paid API voice acceptance",
+    "physical voice quality",
+    "each voice on every provider model/account"
+  ],
+  "limits": [
+    "voice list is documentation-derived, not API voice discovery",
+    "REST TTS remains separate",
+    "change applies after confirmed settings save and next Live turn",
+    "remaining personalization fields not connected in this step"
+  ],
+  "manual_acceptance": "user approved proceeding to stage 6; no separate physical voice test reported",
+  "commit": "approved; see git history"
+}

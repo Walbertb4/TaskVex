@@ -22,6 +22,16 @@ from test_gemini import transport, reply, call
 from test_live_probe import socket, frame
 from test_live_resume import wire, checkpoint, GOAWAY, setups, inputs
 from test_native_bridge import bridge, ready
+from app.session.catalog import LIVE_VOICES, live_voice_catalog, selected_live_voice
+
+
+def test_live_voice_catalog_has_only_documented_prebuilt_names_and_safe_legacy_default():
+    """Ses listesi model keşfi değildir; eski serbest metin sağlayıcıya taşınmaz."""
+    assert len(LIVE_VOICES) == len(set(LIVE_VOICES)) == 30
+    assert all(v['live'] and v['id'] == v['name'] for v in live_voice_catalog())
+    assert selected_live_voice('Kore') == 'Kore'
+    for invalid in (None, '', 'legacy-voice', 'custom-tts-only', {}, 1):
+        assert selected_live_voice(invalid) == 'Puck'
 
 
 def system_text(request):
@@ -141,7 +151,7 @@ def test_profile_change_cannot_resume_old_instruction_scope(wire, changed):
 def test_bridge_reads_saved_profile_for_every_input_and_keeps_snapshots_independent(bridge, monkeypatch, event):
     assert ready(bridge)['ok']
     profile = {'pLang': 'en', 'pIns': 'Use one sentence.'}
-    assert bridge.event('save', {'prof': profile})['saved']
+    assert bridge.event('save', {'prof': profile, 'conn': {'voice': 'Kore'}})['saved']
     bridge._live_models = {'future-live': {'id': 'future-live'}}
     assert bridge.event('model', 'future-live')['ok']
     seen = []
@@ -158,6 +168,8 @@ def test_bridge_reads_saved_profile_for_every_input_and_keeps_snapshots_independ
         payload = {'request_id': 'host-request', 'mime_type': 'audio/pcm;rate=16000', 'data': b64encode(bytes(3200)).decode()}
     assert bridge.event(event, payload)['ok']
     assert seen[0]['profile'] == profile and not seen[0]['notes_ready']
+    if event != 'text':
+        assert seen[0]['voice'] == 'Kore'
     assert bridge.event('save', {'prof': {'pLang': 'tr', 'pIns': 'Yeni'}})['saved']
     assert seen[0]['profile'] == profile  # Eski turun kopyası değişmedi.
     assert bridge.event(event, payload)['ok'] and seen[1]['profile']['pLang'] == 'tr'
@@ -188,3 +200,25 @@ def test_unreadable_profile_blocks_model_without_silent_default(bridge, monkeypa
 def test_invalid_live_profile_is_not_sent_to_provider(socket):
     result = asyncio.run(probe_live_text('Hello', 'future-live', profile={'pIns': {}}))
     assert not result['ok'] and result['code'] == 'live_contract_error' and not socket.opened
+
+
+def test_live_voice_setup_change_discards_old_resume_and_preserves_same_voice_reuse(wire):
+    """Gerçek SDK setup'ında seçili ses; ses değişiminde eski token kullanılmaz."""
+    wire.plans = [
+        {'turns': [[frame('First', complete=True)]], 'idle': [[checkpoint(), GOAWAY]]},
+        {'turns': [[frame('Second', complete=True)], [frame('Third', complete=True)]]},
+    ]
+    host = PersistentLive()
+    try:
+        first = host.ask('Hello', 'future-live', voice='Kore')
+        second = host.ask('Hello again', 'future-live', voice='Puck')
+        third = host.ask('Same voice', 'future-live', voice='Puck')
+        assert first['ok'] and second['ok'] and third['ok']
+        configs = setups(wire)
+        assert [s['generationConfig']['speechConfig']['voice_config']['prebuilt_voice_config']['voice_name']
+                for s in configs] == ['Kore', 'Puck']
+        assert 'handle' not in configs[1]['sessionResumption']
+        assert first['logical_session_id'] != second['logical_session_id']
+        assert not second['session_resumed'] and third['session_reused']
+    finally:
+        assert host.close()

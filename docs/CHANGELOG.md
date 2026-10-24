@@ -5,6 +5,25 @@ hali ARCHITECTURE.md, yapılacak işler PLAN.md içindedir. Henüz sürüm yayı
 
 ## Unreleased
 
+### Live ses seçimi ve anahtar durum ibaresi (5.F8.2)
+
+- Connection altında belgelenmiş 30 hazır Live sesi [LIVE] etiketiyle listelenir.
+  Tek conn.voice tercihi kalıcı ayarlardan aynı Live setup speech_config'una
+  taşınır; metin/mikrofon/timer yanıtı ortaktır. Ses değişimi eski resume token'ını
+  kullanmaz, aktif turu kesmez. REST TTS değişmedi; özel/TTS-only ses eklenmedi.
+- API key input'u kayıtlı/eksik/belirsiz durumu placeholder'da gösterir; gerçek
+  anahtar veya son karakterleri göstermez. Anahtar varlığı API erişim onayı değildir.
+- gemini-live-api-dev skill'i ve Google Live sağlayıcı sözleşmesi doğrulandı.
+  Ses listesi belge kaynaklıdır; model keşfi API'den kalır. Yeni bağımlılık yok.
+- Önceki ses seviyesi adımı kullanıcı kabulüyle 9d67a1d commit'ine kaydedildi;
+  push yok. Kullanıcı devam/commit onayı verdi; ayrı fiziksel ses testi bildirmedi.
+- 1025 genel pytest + 24 son hedefli test, 9 JS suite, 5 browser grubu,
+  app Pyright 0 ve 10/10 native aşama geçti. [Özet](reports/live-voices-checks.json),
+  [native](reports/live-voices-native.json). SDK testinin alan adı varsayımı ve
+  bir tip belirsizliği düzeltildi; başarısız denemeler raporda korunur.
+  Gerçek hesap/ücretli API ve fiziksel ses denenmedi.
+
+
 ### Vex yanıt ses seviyesi (5.F8.1)
 
 - Settings Audio altında tema ve klavye uyumlu Vex reply volume barı eklendi.

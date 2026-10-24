@@ -19,6 +19,7 @@ from app.session.live_input import LiveInput
 from app.session.model_tools import ModelTools
 from app.session.model_instruction import model_instruction
 from app.core.contracts import ContractError
+from app.session.catalog import selected_live_voice
 
 
 class LiveConnection:
@@ -27,7 +28,7 @@ class LiveConnection:
     def __init__(self):
         self._stack: AsyncExitStack | None = None
         self._session: AsyncSession | None = None
-        self._identity: tuple[str, bytes, str, bool | str, bytes] | None = None
+        self._identity: tuple[str, bytes, str, bool | str, bytes, str] | None = None
         self.tools: ModelTools | None = None
         self.calls: dict[str, str] = {}
         self.reused = False
@@ -87,7 +88,7 @@ class LiveConnection:
         return True
 
     async def _connect(self, model: str, key: str, declarations: list[dict], handle: str | None,
-                       audio_input: bool | str, instruction: str):
+                       audio_input: bool | str, instruction: str, voice: str):
         """Tek setup denemesi; doğrulanmadan kullanıcı metni gönderilmez."""
         stack = self._stack = AsyncExitStack()
         client = stack.enter_context(genai.Client(api_key=key, vertexai=False,
@@ -97,6 +98,8 @@ class LiveConnection:
             parameters_json_schema=item["parameters"],
             behavior=types.Behavior.NON_BLOCKING if "extended-thinking" in model else types.Behavior.BLOCKING) for item in declarations]
         config = types.LiveConnectConfig(response_modalities=[types.Modality.AUDIO],
+            speech_config=types.SpeechConfig(voice_config=types.VoiceConfig(
+                prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name=voice))),
             input_audio_transcription=types.AudioTranscriptionConfig() if audio_input else None,
             realtime_input_config=types.RealtimeInputConfig(
                 automatic_activity_detection=types.AutomaticActivityDetection(
@@ -111,16 +114,17 @@ class LiveConnection:
 
     @asynccontextmanager
     async def open(self, model: str, key: str, tools: ModelTools | None = None, *, audio_input: bool | str = False,
-                   profile: dict | None = None, context: str = ''):
+                   profile: dict | None = None, context: str = '', voice: str | None = None):
         """Aynı kapsamı koru; idle kopmada bir resume, gerekirse bir fresh setup dene."""
         declarations = tools.declarations() if tools else []
         instruction = model_instruction(profile, tools_enabled=bool(declarations))
+        voice = selected_live_voice(voice)
         # Klip, VAD akışı ve metin turu farklı setup kullanır;
         # birinin resume bilgisini diğerinin ayarlarıyla kullanma.
         # Dil/kişisel talimat değişince eski socket ve resume handle kullanılamaz.
         # Kişisel metnin kendisi kimlik/teşhis raporlarına eklenmez.
         identity = (model, sha256(key.encode()).digest(), json.dumps(declarations, sort_keys=True), audio_input,
-                    sha256(instruction.encode()).digest())
+                    sha256(instruction.encode()).digest(), voice)
         self.reused = self.resumed = False
         self.context_restored = False
         if self._identity is not None and self._identity != identity:
@@ -140,7 +144,7 @@ class LiveConnection:
                 reason = self.reset_reason or ("no_checkpoint" if self._identity else None)
                 await self.reset(reason)
             try:
-                await self._connect(model, key, declarations, handle, audio_input, instruction)
+                await self._connect(model, key, declarations, handle, audio_input, instruction, voice)
                 self.resumed = handle is not None
                 if self.resumed:
                     self.reset_reason = None
@@ -150,7 +154,7 @@ class LiveConnection:
                 if not handle or isinstance(error, errors.APIError) and error.code not in {400, 404, 1008}:
                     raise
                 await self.reset("resume_rejected")
-                await self._connect(model, key, declarations, None, audio_input, instruction)
+                await self._connect(model, key, declarations, None, audio_input, instruction, voice)
             if not self.resumed:
                 self.logical_id = uuid4().hex
                 self.tools = tools
@@ -200,19 +204,19 @@ class PersistentLive:
             self._thread = Thread(target=self._loop.run_forever, name="taskvex-live-io", daemon=True)
             self._thread.start()
 
-    async def _request(self, text, model, tools, stop_event, audio_sink, audio_input, transcript_sink, profile, context):
+    async def _request(self, text, model, tools, stop_event, audio_sink, audio_input, transcript_sink, profile, context, voice):
         from app.session.live_probe import probe_live_text
         self._active = asyncio.current_task()
         try:
             return await probe_live_text(text, model, connection=self._connection, tools=tools, stop_event=stop_event,
                                          audio_sink=audio_sink, audio_input=audio_input, transcript_sink=transcript_sink,
-                                         profile=profile, context=context)
+                                         profile=profile, context=context, voice=voice)
         finally:
             self._active = None
 
     def ask(self, text: str, model: str, tools: ModelTools | None = None, *, request_id: str | None = None, audio_sink=None,
             transcript_sink=None, audio_input: bytes | LiveInput | None = None, profile: dict | None = None,
-            context: str = '') -> dict:
+            context: str = '', voice: str | None = None) -> dict:
         """İstek olay/toplam süre sınırını yönetir; host otomatik replay yapmaz."""
         self._start()
         assert self._loop is not None
@@ -223,7 +227,7 @@ class PersistentLive:
             self._pending = (request_id or uuid4().hex, stop_event)
             self._input = audio_input if isinstance(audio_input, LiveInput) else None
         try:
-            return asyncio.run_coroutine_threadsafe(self._request(text, model, tools, stop_event, audio_sink, audio_input, transcript_sink, profile, context), self._loop).result()
+            return asyncio.run_coroutine_threadsafe(self._request(text, model, tools, stop_event, audio_sink, audio_input, transcript_sink, profile, context, voice), self._loop).result()
         finally:
             with self._guard:
                 self._pending = None

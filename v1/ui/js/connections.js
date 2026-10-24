@@ -4,7 +4,7 @@
 
 import { sfx } from './sfx.js';
 import { emit, isBackendAvailable, sanitizeError, createPendingOperation } from './api.js';
-import { store } from './settings.js';
+import { store, saveSettingsConfirmed } from './settings.js';
 
 let isPlayingMedia = false;
 let calEvents = [];
@@ -38,6 +38,25 @@ export async function loadLiveModels() {
 
 export function setCatalog(cat) {
   if (!cat) return;
+
+  const vs = document.getElementById('vSel');
+  if (vs && Array.isArray(cat.voices)) {
+    const voices = cat.voices.filter(v => v?.live === true && typeof v.id === 'string' && v.id);
+    vs.innerHTML = '';
+    for (const voice of voices) {
+      const option = document.createElement('option');
+      option.value = voice.id;
+      option.textContent = '[LIVE] ' + voice.name;
+      vs.append(option);
+    }
+    vs.disabled = !voices.length;
+    if (voices.length) {
+      vs.value = voices.some(v => v.id === store.conn?.voice) ? store.conn.voice
+        : voices.some(v => v.id === 'Puck') ? 'Puck' : voices[0].id;
+      store.conn = store.conn || {};
+      store.conn.voice = vs.value;
+    } else vs.append(new Option('Live voices unavailable', '', true, true));
+  }
 
   const ms = document.getElementById('mSel');
   if (ms && Array.isArray(cat.models)) {
@@ -270,6 +289,14 @@ export function setNetwork(data) {
 
 export function initConnections(options = {}) {
   saveStoreCb = options.saveStore || null;
+  document.getElementById('vSel')?.addEventListener('change', async () => {
+    sfx.blip();
+    const status = document.getElementById('voiceStatus');
+    const saved = await saveSettingsConfirmed();
+    if (status) status.textContent = saved
+      ? 'Live voice saved. Applies to the next Live reply; the current reply continues.'
+      : 'Voice save was not confirmed. Check settings before the next reply.';
+  });
 
   // Native başlangıcı ve anahtar kaydı API kataloğunu otomatik yükler. Boş/hatalı katalog
   // sabit model adlarıyla doldurulmaz; katalog başarısı Live bağlantısı değildir.
