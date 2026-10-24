@@ -300,20 +300,29 @@ export function setMedia(o) {
 }
 
 export function setNetwork(data) {
-  const o = data === null ? {ping:null,down:null,wifi:null,api:null} : data;
+  const o = data === null ? {ping:null,down:null,up:null,wifi:null,link:null,wifiConnected:null,api:null} : data;
   if (!o) return;
-  for (const [key, id, unit] of [['ping','nPing',' ms'],['down','nDown',' Mbps'],['wifi','nWifi','%'],['api','nApi',' ms']]) {
+  for (const [key, id, unit] of [['ping','nPing',' ms'],['down','nDown',' Mbps'],['up','nUp',' Mbps'],['wifi','nWifi','%'],['api','nApi',' ms']]) {
     if (o[key] === undefined) continue;
     const value = o[key];
     const valid = typeof value === 'number' && Number.isFinite(value);
     const el = document.getElementById(id);
-    if (el) el.textContent = valid ? Math.round(value) + unit : '—';
+    if (el) el.textContent = valid ? (key==='down'||key==='up'?Math.max(0,value).toFixed(2):Math.round(value)) + unit : '—';
     if (key === 'api') {
       if (valid && value > 1500 && !warnedHighApi) sfx.warn();
       warnedHighApi = valid && value > 1500;
       if (el) el.style.color = !valid ? '' : value > 1500 ? '#ff5d5d' : value > 800 ? '#ffb347' : '';
     }
   }
+  if(o.link!==undefined) {
+    const el=document.getElementById('nLink');
+    if(el)el.textContent=({wifi:'Wi-Fi',ethernet:'Ethernet',other:'Connected',multiple:'Multiple links',disconnected:'Disconnected'})[o.link]??'—';
+  }
+  if(o.wifiConnected!==undefined) {
+    const el=document.getElementById('nWifi');
+    if(el)el.textContent=o.wifiConnected===true?'Connected':o.wifiConnected===false?'Not connected':'—';
+  }
+
 }
 
 export function initConnections(options = {}) {

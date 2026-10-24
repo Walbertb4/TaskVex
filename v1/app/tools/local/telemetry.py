@@ -18,6 +18,7 @@ from time import monotonic
 
 from app.core.contracts import TaskStatus, ToolContext, ToolError, ToolResult
 from app.tools.local.windows_gpu import WindowsGpu
+from app.tools.local.network import Network
 
 
 class _Memory(c.Structure):
@@ -89,9 +90,10 @@ def _read_windows() -> dict:
 
 class Telemetry:
     """Tek önbellek/CPU referansı; UI polling görev günlüğünü sürekli büyütmez."""
-    def __init__(self, *, reader=None, clock=None, gpu_reader=None):
+    def __init__(self, *, reader=None, clock=None, gpu_reader=None, network_reader=None):
         self._reader=reader or _read_windows
         self._gpu_reader=gpu_reader or WindowsGpu()
+        self._network=Network(network_reader)
         self._clock=clock or monotonic
         self._lock=Lock()
         self._previous=None
@@ -136,11 +138,13 @@ class Telemetry:
             data['gpu_sampled_at']=now
             devices=data['gpu_devices'] or []
             data['gpu_percent']=max((device['utilization_percent'] for device in devices),default=None)
+            data.update(self._network.sample(now))
             total=data['memory_total'];used=data['memory_used']
             if total and used is not None and 0<=used<=total:
                 data['memory_percent']=round(100*used/total,1)
             data['unavailable']=[key for key in ('cpu_percent','memory_percent','battery_percent',
-                'disk_total','active_process','gpu_percent','cpu_temperature','gpu_temperature') if data[key] is None]
+                'disk_total','active_process','gpu_percent','cpu_temperature','gpu_temperature',
+                'network_link','network_receive_bps','network_send_bps') if data[key] is None]
             self._sample=data
             return deepcopy(data)
 

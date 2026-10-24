@@ -5,6 +5,21 @@ hali ARCHITECTURE.md, yapılacak işler PLAN.md içindedir. Henüz sürüm yayı
 
 ## Unreleased
 
+### Yerel ağ trafiği ve fiziksel link — 6.2.3a
+
+- Mevcut Telemetry/system.status/query_system hattına pasif Windows IP Helper
+  sayaçları bağlandı. UI Receive/Send Mbps ve yerel/Wi-Fi bağlılık durumunu gösterir.
+- İlk örnek, sayaç reseti, cihaz kümesi değişimi ve kaynak hatası hız uydurmaz;
+  gerçek sıfır, bilinmeyen durum ve bağlantısız durum ayrılır.
+- Sanal/VPN sayaçları çift sayılmaz; SSID/IP/MAC/profil adı dışarı verilmez.
+  Aktif ping/hız testi, Wi-Fi sinyal yüzdesi veya bağlantı ayarı eklenmedi.
+- GPU dilimi kullanıcı kabulüyle 43c7f28 commit'inde. Bu yeni dilimin otomatik
+  kontrolleri tamamlandı; manuel kabul/commit/push bekler.
+- 1132 pytest, 31 hedefli test, 14 browser grubu, 9 JS suite, 10 native aşama
+  ve Pyright 0: [kanıt](reports/network-local-checks.json). Gerçek Windows
+  üzerinde salt okunur sayaç okuması geçti; fiziksel kesip bağlama denenmedi.
+
+
 ### Windows GPU sayaçları ve sistem görünümü düzeltmesi
 
 - Yayınlanmamış NVIDIA aracı/adaptörü kaldırıldı; üreticiden bağımsız Windows

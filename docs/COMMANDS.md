@@ -448,7 +448,7 @@ consent invalidates an old approval. No automatic retry or merge is performed.
 | “Which application is active?” | Reads the foreground executable name. It does not read document/window titles or window contents. |
 
 The UI refreshes local readings without requiring a model connection. Missing
-values remain unavailable, never invented zeroes. CPU/GPU temperatures, network and
+values remain unavailable, never invented zeroes. CPU/GPU temperatures, active network probes and
 media integration are still pending. Windows GPU readings are described below. System readings use the existing shared
 registry/policy/TaskManager model path; UI polling reads the same local owner.
 
@@ -467,3 +467,20 @@ zero is valid. The shared sample cache is two seconds, with UI polls at least
 three seconds apart. No vendor CLI, new driver or monitoring service is used.
 GPU/CPU temperature, VRAM capacity and friendly adapter names are unavailable
 from this source. Unsupported Windows/WDDM counters remain unavailable.
+
+
+## Local network traffic and physical link
+
+| Say or type → | What Vex does |
+|---|---|
+| “What is my current receive and send traffic?” | Calls system.status for interval bytes per second from the same local sample as the dashboard. |
+| “Am I connected through Wi-Fi or Ethernet?” | Reads physical adapter link state and connection kind; multiple active kinds are reported explicitly. |
+
+The dashboard shows Receive/Send in Mbps and local link/Wi-Fi connected status.
+These are passive OS readings, not an internet speed test, data quota, maximum
+link capacity or a guarantee of internet access. First samples, counter resets,
+adapter-set changes and unavailable data do not become zero; measured zero is valid.
+Only physical interfaces are counted; virtual/VPN/loopback counters are excluded
+to avoid duplicate packet accounting. No SSID, IP/MAC or adapter profile names
+are returned. No remote requests or network configuration changes are made.
+Ping, Wi-Fi signal percentage and API transport latency remain separate pending work.

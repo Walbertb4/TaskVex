@@ -45,6 +45,8 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
     from app.tools.local import telemetry as telemetry_module
     telemetry_module.WindowsGpu=lambda:lambda:{'gpu_source':'windows-pdh','gpu_status':'ok',
         'gpu_devices':[{'id':'synthetic-adapter','utilization_percent':0}]}
+    from app.tools.local import network as network_module
+    network_module.read_interfaces=lambda:[{'id':'synthetic','up':True,'kind':'wifi','rx_bytes':100,'tx_bytes':50}]
     from app.main import main
     from app.storage.json_store import StoreError
 
@@ -584,6 +586,12 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
             assert window.evaluate_js("document.getElementById('systemStatus')===null")
             assert window.evaluate_js("document.getElementById('cpuT').textContent")=='—'
             outcome['native_windows_gpu_zero_and_static_label']=True
+            assert window.evaluate_js("document.getElementById('nLink').textContent")=='Wi-Fi'
+            assert window.evaluate_js("document.getElementById('nWifi').textContent")=='Connected'
+            if phase=='save':
+                wait_until(lambda: window.evaluate_js("document.getElementById('nDown').textContent")=='0.00 Mbps')
+                assert window.evaluate_js("document.getElementById('nUp').textContent")=='0.00 Mbps'
+            outcome['native_local_network_link_and_rates']=True
             if phase == "chat":
                 # Yeni otomatik başlangıç fiziksel mikrofona hiç ulaşmasın.
                 # Her izin çağrısı taze, sessiz bir sentetik track alır.

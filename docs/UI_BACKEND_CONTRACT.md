@@ -281,7 +281,7 @@ etmez, RAM/disk değerlerini GiB'ye dönüştürür. Başlık için güvenli tex
 kullanır. Query başarısız veya on iki saniyedir yeni sonuç yoksa metrikler — olur;
 geç cevap yeni örneği geriye götüremez. pagehide sonuç teslimini durdurur.
 Native başlangıcı/kurtarma sonrası açılır; bağımsız tarayıcı sahte CPU üretmez.
-CPU/GPU sıcaklığı, ağ ve media henüz bağlı değildir. Modelin offline durumu
+CPU/GPU sıcaklığı, aktif ağ yoklamaları ve media henüz bağlı değildir. Modelin offline durumu
 yerel ölçümü ve oturum token toplamını silmez.
 
 Win32 kaynakları: https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getsystemtimes
@@ -310,3 +310,30 @@ Kaynaklar:
 - https://devblogs.microsoft.com/directx/gpus-in-the-task-manager/
 - https://learn.microsoft.com/en-us/windows/win32/api/pdh/nf-pdh-pdhaddenglishcounterw
 - https://learn.microsoft.com/en-us/windows/win32/api/pdh/nf-pdh-pdhgetformattedcounterarrayw
+
+
+## Pasif ağ alanları — 6.2.3a
+
+Mevcut query_system/system.status data alanına eklenir:
+- network_source='windows-iphelper'.
+- network_link: true aktif fiziksel kart, false bilinen aktif kart yok,
+  None kaynak/operasyonel durum bilinmiyor. İnternet erişimi kanıtı değildir.
+- network_kind: wifi/ethernet/other/multiple veya None.
+- network_wifi_connected: true/false/None; sinyal yüzdesi değildir.
+- network_receive_bps/network_send_bps: byte/s, ilk/eksik/reset/değişmiş
+  arabirim kümesinde None. Birim bps burada byte/s; Mbps dönüşümü ×8/1_000_000.
+- unavailable listesi kayıp network_link ve hız alanlarını da içerir.
+
+Alanlar ortak iki saniyelik örnek ve sampled_at ile gelir. UI Receive/Send
+iki ondalık Mbps, Local link ve Wi-Fi bağlılık etiketlerini gösterir. Küçük
+trafik 0.00 Mbps olarak yuvarlanabilir; model tam byte/s değerini görür.
+Hız testi, data plan kotası, paket içeriği veya internet erişimi ölçülmez.
+Kaynak/stale hatasında yalnız yerel ağ alanları — yapılır; API gecikmesi ayrı
+sahibindedir. Model offline olması yerel ağ ve CPU/RAM ölçümünü temizlemez.
+setNetwork eski ping/down/wifi/api alanlarını korur; up (Mbps), link enum'u ve
+wifiConnected boolean/null alanları eklenir. Wi-Fi sinyal ve ping mevcut
+pasif poll tarafından uydurulmaz. Ağ yapılandırması veya radyo değiştirilmez.
+
+Kaynaklar:
+- https://learn.microsoft.com/en-us/windows/win32/api/netioapi/nf-netioapi-getiftable2
+- https://learn.microsoft.com/en-us/windows/win32/api/netioapi/ns-netioapi-mib_if_row2

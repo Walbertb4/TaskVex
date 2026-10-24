@@ -15,3 +15,10 @@ def isolate_gpu_counters(monkeypatch):
     """Genel süitte gerçek donanımı okuma; adaptör testleri sahte PDH sağlar."""
     def unavailable(): raise OSError('Synthetic unavailable counters')
     monkeypatch.setattr('app.tools.local.windows_gpu._load_pdh',unavailable)
+
+
+@pytest.fixture(autouse=True)
+def isolate_network_counters(monkeypatch):
+    """Standart testler gerçek arabirim bilgisine veya internete erişmez."""
+    def unavailable(): raise OSError('Synthetic unavailable interfaces')
+    monkeypatch.setattr('app.tools.local.network._load_iphelper',unavailable)

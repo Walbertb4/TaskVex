@@ -277,17 +277,18 @@ try {
       await view.refreshSystem();
       time=13000;await view.refreshSystem();
       const staleLabel=document.getElementById('cpu').textContent;
+      const staleNetwork=document.getElementById('nDown').textContent;
       resolve({ok:true,completed:true,data:{...sample,sampled_at:12,cpu_percent:25}});
       await new Promise(done=>setTimeout(done,0));
       const recovered=document.getElementById('cpu').textContent;
       window.vex.online(false,'MODEL OFFLINE');
-      return {accepted,before,staleAccepted,invalidAccepted,calls,staleLabel,recovered,
+      return {accepted,before,staleAccepted,invalidAccepted,calls,staleLabel,staleNetwork,recovered,
         afterOffline:document.getElementById('cpu').textContent};
     });
     assert.equal(result.accepted,true);assert.equal(result.staleAccepted,false);assert.equal(result.invalidAccepted,false);
     assert.equal(result.before.cpu,'0%');assert.match(result.before.ram,/0.0.*1.0/);
     assert.equal(result.before.battery,'0%');assert.equal(result.before.win,'<synthetic>.exe');
-    assert.equal(result.calls,1);assert.equal(result.staleLabel,'—');
+    assert.equal(result.calls,1);assert.equal(result.staleLabel,'—');assert.equal(result.staleNetwork,'—');
     assert.equal(result.recovered,'25%');assert.equal(result.afterOffline,'25%');
   });
   await test('Windows GPU static row and bars retain proportional width without explanatory text',async()=>{
@@ -320,6 +321,42 @@ try {
     await p.evaluate(async()=>{const {setTelemetry}=await import('/js/connections.js');setTelemetry(null);});
     assert.equal(await p.locator('#gpu').innerText(),'—');
     assert.equal(await p.locator('#gpu').getAttribute('title'),'System sample unavailable');
+  });
+  await test('local network rates distinguish zero, missing and offline model without fake internet success',async()=>{
+    const p=await setup();
+    await p.evaluate(async()=>{
+      const {applySystemSample}=await import('/js/system_view.js');
+      applySystemSample({sampled_at:10,network_link:true,network_kind:'wifi',network_wifi_connected:true,
+        network_receive_bps:1250000,network_send_bps:0,memory_percent:25});
+    });
+    assert.equal(await p.locator('#nDown').innerText(),'10.00 Mbps');
+    assert.equal(await p.locator('#nUp').innerText(),'0.00 Mbps');
+    assert.equal(await p.locator('#nLink').innerText(),'Wi-Fi');
+    assert.equal(await p.locator('#nWifi').innerText(),'Connected');
+    await p.evaluate(()=>window.vex.online(false,'MODEL OFFLINE'));
+    assert.equal(await p.locator('#nDown').innerText(),'10.00 Mbps');
+    assert.equal(await p.locator('#nApi').innerText(),'—');
+    assert.equal(await p.locator('#nPing').innerText(),'—');
+    const invalid=await p.evaluate(async()=>{
+      const {applySystemSample}=await import('/js/system_view.js');
+      return applySystemSample({sampled_at:11,network_receive_bps:-1});
+    });
+    assert.equal(invalid,false);
+    await p.evaluate(async()=>{
+      const {applySystemSample}=await import('/js/system_view.js');
+      applySystemSample({sampled_at:12,network_link:false,network_wifi_connected:false,memory_percent:25});
+    });
+    assert.equal(await p.locator('#nDown').innerText(),'—');
+    assert.equal(await p.locator('#nUp').innerText(),'—');
+    assert.equal(await p.locator('#nLink').innerText(),'Disconnected');
+    assert.equal(await p.locator('#nWifi').innerText(),'Not connected');
+    assert.equal(await p.locator('#ram').innerText(),'25%');
+    await p.evaluate(async()=>{
+      const {applySystemSample}=await import('/js/system_view.js');
+      applySystemSample({sampled_at:13,network_link:null,network_wifi_connected:null});
+    });
+    assert.equal(await p.locator('#nLink').innerText(),'—');
+    assert.equal(await p.locator('#nWifi').innerText(),'—');
   });
   console.log(`${results.length} browser cleanup groups passed`);
 } finally { await browser.close(); await new Promise(resolve=>server.close(resolve)); }

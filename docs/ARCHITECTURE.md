@@ -317,3 +317,26 @@ Bu kaynak sıcaklık veya VRAM kapasitesi vermez. Bu alanlar —/None kalır;
 GPU veya ACPI sıcaklığı CPU sıcaklığına dönüştürülmez. Task Manager penceresi
 okunmaz/açılmaz; Windows performans altyapısı kullanılır. Örnekleme aralığı
 ve seçilen GPU farklı olduğunda sayılar Task Manager'la birebir eşzamanlı değildir.
+
+
+### Pasif yerel ağ ölçümleri
+
+network.py yalnız Windows IP Helper GetIfTable2 adaptörüdür. Önceki RX/TX
+örneğinin sahibi Telemetry içindeki tek Network nesnesidir; aynı iki saniyelik
+cache/kilit kullanılır. query_system UI sorgusu ve system.status model aracı
+aynı snapshot'ı okur. Yeni timer/worker/model isteği yoktur.
+
+Tablodan donanımsal, filtre/endpoint/loopback/tünel olmayan arabirimler seçilir.
+Aktif fiziksel kartların 64 bit byte sayaç farkı örnek süresine bölünür; kart
+kümesi değişiminde veya sayaç geriye gittiğinde referans yenilenir. İlk örnekte
+hız None; sabit sayaçta sıfır gerçektir. Kayıp kaynak eski veriyi taşımaz ve
+CPU/RAM/GPU örneğini bozmaz. MIB tablo belleği finally içinde FreeMibTable ile bırakılır.
+
+Dönen alanlar link durumu/kind, Wi-Fi bağlılık durumu ve RX/TX byte/s'dir.
+SSID, IP/MAC veya profil/arabirim adı dışarı çıkmaz. UI Mbps'ye çevirir;
+alma/gönderme trafiği internet hız testi veya link kapasitesi değildir.
+Yerel kart up olsa da internet erişimi olmayabilir. VPN/sanal sayaçlar,
+aynı paket iki kez sayılmasın diye dahil edilmez; yalnız sanal bağlantı
+kullanan kurulumlar için bu kapsam tam trafik ölçümü değildir.
+Ping/uzak erişilebilirlik, Wi-Fi sinyal yüzdesi ve API taşıma gecikmesi bu
+pasif kaynakla üretilmez. Mevcut API/model durumu yerel link olarak yorumlanmaz.

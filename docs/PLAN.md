@@ -1,6 +1,6 @@
 # TaskVex — Güncel plan
 
-## Şimdi: 6.2.2 NVIDIA GPU adaptörü; CPU sensörü açık, ağ/media sonra
+## Şimdi: 6.2.3a yerel ağ trafiği/bağlantısı; ping ve Wi-Fi sinyali sonraki dilim
 
 Önceki 5.R8.6 kullanıcı kabulü başarılı, 526bfed commit’inde.
 5.F6 bakımı kullanıcı tarafından kabul edildi; ea8aa15 commit’inde.
@@ -437,3 +437,35 @@ model/ücretli API test edilmedi. Manuel kullanıcı kabulü, commit ve push yok
 
 6.2.2 kullanıcı testi başarılı bildirildi; Windows GPU/sistem görünümü dilimi kabul edildi.
 AGENTS.md gereği sonraki adımdan önce commit alınır; push istenmedi.
+
+
+### 6.2.3a — pasif fiziksel ağ ölçümleri
+
+GPU/sistem görünümü kullanıcı tarafından kabul edildi ve 43c7f28 commit'ine
+alındı; push yok. Bu tur yalnız ağ dilimi uygulanır.
+
+- Tek Telemetry örneği IP Helper ile fiziksel arabirim link durumunu ve 64 bit
+  RX/TX sayaç farkını örnekler; UI aynı query_system, model aynı system.status
+  registry/policy/TaskManager hattını kullanır. Yeni worker/timer/depo yoktur.
+- UI Receive/Send Mbps, yerel bağlantı ve Wi-Fi bağlı/bağlı değil bilgisi verir.
+  Bu veri internet erişim testi veya azami bant genişliği değildir.
+- İlk örnek, reset, cihaz kümesi değişimi ve kaynak hatası hız üretmez; sıfır
+  gerçek ölçümdür. VPN/sanal arabirimler çift sayılmamak için dışarıda kalır.
+- SSID/IP/MAC/profil adı modele veya rapora alınmaz; sistem tablosu finally'de bırakılır.
+- 6.2.3b: hedefi belli ping/erişilebilirlik ve izin/kaynak sınırlarıyla Wi-Fi
+  sinyal yüzdesi ayrıca yapılacak. API gecikmesi genel yanıt süresi sanılmayacak.
+- Bu daraltma bir sonraki özelliği yarım kabul etmez: a diliminin kabulü
+  yerel sayaç/UI/model/yeniden bağlantı testleridir; b açık kalır.
+
+Son doğrulama: **1132 pytest** (142.83 s), **31 hedefli test**, **14 browser
+grubu**, **9 JS suite**, **10 native aşama** ve app + ağ testi Pyright **0**.
+[Özet](reports/network-local-checks.json), [native](reports/network-local-native.json).
+İlk hedefli turda iki test yalıtım noktasından başarısız oldu; yalıtım DLL
+yükleyicisine taşınınca geçti. Gerçek Windows pasif okuması ilk örnekte hız
+üretmedi, ikinci örnekte RX/TX döndürdü; özel ağ kimliği kaydedilmedi.
+Gerçek model/ücretli API ve fiziksel bağlantı kesip açma denenmedi.
+Kullanıcı kabulü bekler; yeni dilim commit/push edilmedi. Sırada 6.2.3b var.
+
+
+6.2.3a kullanıcı tarafından başarılı bildirildi; yerel ağ dilimi kabul edildi.
+Sonraki adımdan önce commit alınır, push yapılmaz.

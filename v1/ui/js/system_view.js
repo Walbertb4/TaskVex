@@ -2,7 +2,7 @@
  * Ayrı örnekleyici/thread veya görev mutasyonu yoktur. Ağ/model durumu bu yerel
  * ölçümleri silmez; gecikmiş/başarısız ölçüm güncelmiş gibi gösterilmez. */
 import {emit,isBackendAvailable} from './api.js';
-import {setTelemetry} from './connections.js';
+import {setTelemetry,setNetwork} from './connections.js';
 let started=false,pending=false,closed=false,lastAttempt=-Infinity,lastSuccess=-Infinity,sample=-Infinity;
 window.addEventListener('pagehide',()=>{closed=true;},{once:true});
 const finite=(value,min=0,max=Infinity)=>typeof value==='number'&&Number.isFinite(value)&&value>=min&&value<=max;
@@ -14,6 +14,9 @@ export function applySystemSample(data) {
   if(!['cpu_percent','memory_percent','gpu_percent','battery_percent'].every(k=>optional(data[k],v=>finite(v,0,100)))||
      !['memory_used','memory_total','disk_used','disk_total'].every(k=>optional(data[k],v=>finite(v)))||
      !['cpu_temperature','gpu_temperature'].every(k=>optional(data[k],v=>finite(v,0,150)))||
+     !['network_receive_bps','network_send_bps'].every(k=>optional(data[k],v=>finite(v)))||
+     !['network_link','network_wifi_connected'].every(k=>optional(data[k],v=>typeof v==='boolean'))||
+     !optional(data.network_kind,v=>['wifi','ethernet','other','multiple'].includes(v))||
      !['active_process','disk_volume'].every(k=>optional(data[k],v=>typeof v==='string'&&v.length<=260)))return false;
   sample=data.sampled_at;
   const memory=finite(data.memory_used)&&finite(data.memory_total)&&data.memory_total>0;
@@ -25,6 +28,10 @@ export function applySystemSample(data) {
       `${data.battery_percent}%${data.ac_connected===true?' · AC':''}`,
     disk:disk?`${data.disk_volume??''} ${gib(data.disk_used)} / ${gib(data.disk_total)} GiB`:null,
     win:data.active_process??null});
+  setNetwork({down:data.network_receive_bps==null?null:data.network_receive_bps*8/1000000,
+    up:data.network_send_bps==null?null:data.network_send_bps*8/1000000,
+    link:data.network_link===false?'disconnected':data.network_link===true?(data.network_kind??'other'):null,
+    wifiConnected:data.network_wifi_connected??null});
   const gpuValue=document.getElementById('gpu');
   if(gpuValue)gpuValue.title=data.gpu_percent==null?'Windows GPU counters unavailable':
     'Windows GPU usage · busiest engine across adapters · sampled interval';
@@ -42,6 +49,7 @@ export async function refreshSystem() {
   const now=performance.now();
   if(now-(lastSuccess===-Infinity?lastAttempt:lastSuccess)>12000&&lastAttempt!==-Infinity) {
     setTelemetry(null);
+    setNetwork({down:null,up:null,link:null,wifiConnected:null});
   }
   if(pending||now-lastAttempt<3000)return;
   pending=true;lastAttempt=now;
@@ -51,6 +59,7 @@ export async function refreshSystem() {
     if(result.ok&&result.response?.completed===true&&applySystemSample(result.response.data))lastSuccess=performance.now();
     else {
       setTelemetry(null);
+      setNetwork({down:null,up:null,link:null,wifiConnected:null});
     }
   } finally {pending=false;}
 }

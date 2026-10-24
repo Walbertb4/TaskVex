@@ -27,6 +27,9 @@ It is a development project, not a production-ready general computer-use agent.
 - Periodic local CPU/RAM, runtime-volume disk usage, battery and foreground
   executable readings shared by the UI and system.status tool. Initial or
   unavailable readings are not replaced with invented numbers.
+- Passive physical network receive/send rates and link/Wi-Fi connected status
+  shared with system.status. This is not a speed test or proof of internet access;
+  ping and Wi-Fi signal strength remain pending.
 - Saved interface preferences, Live voice selection and separate reply volume,
   plus a limited set of active personalization fields.
 - Gemini API key storage in Windows Credential Manager and automatic Live model
@@ -102,15 +105,17 @@ Model availability, network conditions and hardware affect behavior.
 
 ## Verification and documentation
 
-The latest GPU change replaces an unpublished vendor-specific implementation
-with Windows counters. It passed 1,120 Python tests, 9 JavaScript suites, 13 browser
-groups, 10 native phases and targeted type checking using temporary/synthetic data.
-Manual acceptance is pending in [the plan](docs/PLAN.md); see [test evidence](docs/reports/windows-gpu-checks.json).
-A read-only counter check succeeded on the development
-machine; this does not establish support for every GPU. Memory decisions, session
-token counting and basic local-system readings were previously reported working.
+The latest local-network change passed 1,132 Python tests, 9 JavaScript suites,
+14 browser groups, 10 native phases and targeted type checking using temporary
+profiles and synthetic providers. Passive Windows counter reading also succeeded
+on the development machine. [Test evidence](docs/reports/network-local-checks.json).
+Manual acceptance of this network slice is pending; the preceding GPU dashboard
+change was accepted by the developer. Memory decisions, session token counting
+and basic local-system readings were also reported working.
+
 These checks do not establish real-account availability, physical microphone
-accuracy or production readiness.
+accuracy, support for every network adapter or production readiness. Ping and
+Wi-Fi signal percentage are not part of this passive slice.
 
 - [Architecture](docs/ARCHITECTURE.md): current ownership and planned boundaries.
 - [Plan](docs/PLAN.md): remaining work and acceptance status.

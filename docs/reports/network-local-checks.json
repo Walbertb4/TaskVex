@@ -1,0 +1,70 @@
+{
+  "step": "6.2.3a passive Windows physical network traffic/link",
+  "status": "user reported manual tests successful; approved for commit",
+  "previous_step": {
+    "id": "6.2.2",
+    "manual_acceptance": "user reported tests successful",
+    "commit": "43c7f28",
+    "pushed": false
+  },
+  "owner": "Network adapter owned by existing Telemetry; shared query_system/system.status via registry/policy/TaskManager",
+  "source": "GetIfTable2 / FreeMibTable, physical hardware only; no external request, subprocess, new dependency/thread/timer",
+  "fields": {
+    "network_receive_bps": "bytes per second; not bits",
+    "network_send_bps": "bytes per second; not bits",
+    "network_link": "physical link true/false/unknown; not internet reachability",
+    "network_kind": "wifi/ethernet/other/multiple/null",
+    "network_wifi_connected": "boolean/null, not signal percentage"
+  },
+  "validation": {
+    "targeted_pytest": 31,
+    "full_pytest": 1132,
+    "full_pytest_seconds": 142.83,
+    "browser_groups": 14,
+    "javascript_suites": 9,
+    "native_phases": 10,
+    "pyright_errors": 0,
+    "diff_check": true
+  },
+  "covered": [
+    "64-bit byte counters",
+    "true zero vs first sample",
+    "counter rollback",
+    "adapter identity-set change",
+    "disconnected vs unavailable/unknown",
+    "hardware/filter/endpoint/loopback exclusion",
+    "FreeMibTable on success and invalid count",
+    "same UI/model snapshot without UI journal tasks",
+    "Mbps formatting and null clearing",
+    "model offline does not clear local readings",
+    "native temporary-profile link and zero-rate rendering"
+  ],
+  "initial_failure": "First targeted run: 2 failures because autouse isolation replaced read_interfaces itself, bypassing synthetic DLL tests. Moved isolation to _load_iphelper; identical tests pass.",
+  "read_only_windows_check": {
+    "success": true,
+    "row_size": 1352,
+    "table_offset": 8,
+    "first_rate_unavailable": true,
+    "second_rate_available": true,
+    "kind": "multiple",
+    "wifi_connected": true,
+    "private_identifiers_recorded": false
+  },
+  "native_report": "network-local-native.json",
+  "limits": [
+    "Ping/active reachability and Wi-Fi signal percentage are deferred to 6.2.3b",
+    "Link up does not prove internet access; traffic rate is not speed-test capacity or plan quota",
+    "Virtual/VPN/loopback interfaces are intentionally excluded; virtual-only setups are outside physical-link coverage",
+    "No SSID/IP/MAC/profile names returned",
+    "Very small UI rates can round to 0.00 Mbps; tool keeps bytes/s precision",
+    "Real model/paid API, physical disconnect/reconnect and other hardware were not tested"
+  ],
+  "manual_test": [
+    "Restart the app and wait for two local samples",
+    "Start some browser traffic; Receive/Send should update",
+    "Disconnect/reconnect Wi-Fi if convenient: local link/rates update while CPU/RAM continue",
+    "Ask Vex to read current receive/send traffic and connection type"
+  ],
+  "commit": false,
+  "push": false
+}
