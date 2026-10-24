@@ -322,3 +322,11 @@ notice when the current snapshot is read. No automatic retry follows failure.
 A second native instance using the same data profile is rejected before starting
 its worker/window. Close the existing app first. Separate TASKVEX_HOME profiles
 are independent. A crash releases the OS lock; do not delete the lock file.
+
+Native tool requests keep their IDs and results in a local task journal across
+restarts. A repeated request ID returns its historical result, rather than
+running again. Unfinished started actions become unknown and block new tools;
+restarting does not clear that uncertainty. This is separate from conversation
+memory and does not restore timers. There is no lifetime 256-task limit in the
+native app; active work and in-memory records remain bounded. Do not delete the
+journal to bypass a lock. Manual unknown reconciliation is not available yet.

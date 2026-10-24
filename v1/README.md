@@ -45,6 +45,11 @@ paketleme/lisans sınırı [üçüncü taraf notlarında](../docs/THIRD_PARTY_NO
 Varsayılan `%LOCALAPPDATA%\TaskVex`; izole ortam için TASKVEX_HOME. settings.json
 izinli tercihleri, notes.json notları saklar. Sırlar Windows Credentials'dadır.
 Skill/rutin tanımları localStorage; sayaç ve sohbet hafızası RAM'dir. Aynı veri kökünde ikinci native TaskVex örneği OS kilidiyle engellenir.
+Core görev günlüğü `tasks/tasks.sqlite3` içindedir; ikinci core da ayrı OS kilidiyle
+engellenir. Günlük eski sonuçları korur; aktif/RAM kayıt sınırı 256'dır, toplam
+görev sayısı sınırı değildir. Unknown işlem restart sonrası kilidi korur.
+Günlük şifrelenmemiştir ve eski not metnini tutabilir; otomatik silinmez, JSON
+yedeğine girmez. Günlük silmek güvenli kurtarma sayılmaz.
 Ayrı veri profilleri açılabilir; doğrudan core/script yazıcıları host kilidini atlamamalıdır.
 
 ## Doğrulama

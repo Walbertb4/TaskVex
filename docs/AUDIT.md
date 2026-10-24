@@ -58,8 +58,9 @@ doğal dil router'ı değildir. Kaldırılan shortcut/scheduler yolları bu ayr�
 
 | Öncelik | Bulgu ve kanıt | Karar |
 |---|---|---|
-| P1 | app/tasks/manager.py: capacity=256, terminal kayıtlar da tutulur. Yeni kimlikler dolunca reddedilir. | Uzun açık kullanım için gerçek ürün sınırı. Sessiz silmek replay korumasını bozar; kalıcı dedup/retention tasarımı ayrı kapanış işi. |
-| P1 | TaskManager ve model çağrı replay kayıtları RAM'de. | Restart sonrası kalıcı exactly-once yok. Gelecekte dış yan etkili entegrasyondan önce journal/recovery gerekir. Otomatik eski task replay eklenmedi. |
+| Kapatıldı (5.F7.3) | Kalıcı core'da 256 RAM/aktif iş sınırıdır; terminal kayıtlar SQLite'tan sorgulanır. | Eski kimlikler disk indeksinde kalır. Aktif kuyruk dolunca açık ret; disk geçmişi otomatik silinmez. |
+| Kapatıldı (5.F7.2) | TaskManager kimlik/istek/sonucu SQLite FULL transaction ile tutar; core tek sahip kilidi vardır. | Restart eskiyi yürütmez; yarım başlamış iş unknown, queued iptal. Bu harici servisler için exactly-once değildir; model oturum RAM'i yeniden canlandırılmaz. |
+| P2 | Günlük süresiz ve şifrelenmemiştir; unknown yeni işleri profil genelinde kilitler. | Disk/açılış maliyeti geçmişle büyür; eski not metni kalabilir. Kullanıcıya yönelik unknown uzlaştırma ve güvenli disk sıkıştırma henüz yoktur. |
 | P1 | json_store.py atomik replace kullanır; native main artık veri kökü OS kilidini tutar. | 5.F7.1 native aynı-profil çakışmasını kapatır. Host dışı scriptler için JsonStore tek başına kilit sağlamaz. |
 | P2 | main.py kapanışta bridge._chat._live.close gibi private sınırları bilir. | İkinci socket sahibi yok, fakat host/bridge bağlaşımı var. Sonraki lifecycle değişiminde mevcut sahibin public kapanış noktası kullanılmalı; yeni manager kurulmamalı. |
 | P2 | Skill/rutin tanımları localStorage; core yürütme ve backend scheduler yok. | Bugün editör kapsamı. İleri entegrasyon tek backend sahipliğinde yapılmalı. Yerel zamanlayıcı ile geçici yürütme kurulmadı. |

@@ -75,6 +75,14 @@ bekler; belirsiz durumda kilit korunur. Geç Stop yeni request_id'yi durduramaz.
 Resume bağlantı kapsamı/model/key/tools ile bağlıdır; kopan mesaj körlemesine tekrar
 yollanmaz, yan etkili araç replay kaydı korunur. Otomatik bağlantı denemesi sınırlıdır.
 
+Core isteği (principal, request_id) ile kalıcı günlüğe bağlanır; aynı kimlik ve
+içerik restart sonrası da eski sonucu verir, yeni komut sayılmaz. Yeni gözlem/
+işlem için giriş adaptörü yeni request_id üretir. RAM'den çıkarılmış terminal
+görevler sorgulanabilir. Timer/sohbet RAM durumu restart'ta yeniden kurulmaz;
+eski başarılı kayıt bunları tekrar oluşturma talimatı değildir. Günlük arızası
+veya eski unknown yeni araçları kilitler; UI bunu başarı veya otomatik tekrar
+olarak sunamaz. Yan etkiyle günlük commit'i tek atomik işlem değildir.
+
 Mic Off yalnız kullanıcı girişini keser, Mute yalnız çıkışı susturur. Sleep aracı pending
 istektir; model yanıtı/oynatma bitince mevcut host uygular. Tek seferlik/persistent uyku
 ve bağımsız idle timer ayrıdır. Shutdown da yanıt bitişini bekler; Stop/unknown/geç

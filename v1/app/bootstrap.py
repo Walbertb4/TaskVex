@@ -21,8 +21,8 @@ from app.tools.local.assistant import SLEEP_SCHEMA, request_sleep_mode, SHUTDOWN
 def create_core(*, principal: str = "local-user", clocks: Clocks | None = None) -> TaskManager:
     """Tek yerel kullanıcı için registry + policy + worker'ı birleştir.
 
-    Veriler get_data_home()/notes.json'a gider. Kurulum dosya oluşturmaz; ilk
-    başarılı not mutasyonu veya onaylı aktarım yazacaktır. principal güvenilir host tarafından seçilir;
+    Notlar get_data_home()/notes.json'a, yürütme günlüğü tasks/tasks.sqlite3'e gider.
+    Günlük başlangıçta doğrulanır/kurtarılır; bozuksa worker açılmaz. principal güvenilir host tarafından seçilir;
     bu parametreyi modelin/kullanıcının gönderdiği payload'dan alma. Kaynak
     yalnız desktop'tır. Worker tüm kayıt ve izin kurulumu bittikten sonra açılır.
     """
@@ -120,4 +120,4 @@ def create_core(*, principal: str = "local-user", clocks: Clocks | None = None) 
     ))
     policy = PolicyEngine(principal=principal,
                           capabilities=frozenset({"notes.read", "notes.write", "system.read", "apps.read", "apps.launch", "assistant.control", "clocks.read", "clocks.write"}))
-    return TaskManager(registry, authorize=policy.authorize)
+    return TaskManager(registry, authorize=policy.authorize, journal_home=get_data_home() / 'tasks')

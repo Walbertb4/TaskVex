@@ -1,0 +1,70 @@
+{
+  "steps": [
+    "5.F7.2",
+    "5.F7.3"
+  ],
+  "scope": "durable request/result journal and bounded RAM retention in the existing TaskManager",
+  "python": {
+    "passed": 1017,
+    "seconds": 93.16,
+    "warnings_filters_weakened": false
+  },
+  "targeted": {
+    "task_journal": 17,
+    "sleep_journal_local_tools_native_bridge_intermediate": 244,
+    "final_manager_journal_documentation": 55,
+    "final_seconds": 12.78
+  },
+  "typecheck": {
+    "scope": [
+      "app",
+      "tests/test_task_journal.py"
+    ],
+    "errors": 0,
+    "warnings": 0
+  },
+  "native": {
+    "status": "passed",
+    "phases": 10,
+    "report": "task-journal-native.json",
+    "transport": "synthetic"
+  },
+  "verified": [
+    "300 sequential operations at capacity 4 and 256; bounded RAM maps",
+    "archived get/wait/cancel and concurrent replays return historical results",
+    "same principal/request ID with changed content rejected after eviction/restart",
+    "real subprocess normal restart returns same result without repeating effect",
+    "killed subprocess after effect recovers unknown without repeating effect",
+    "queued recovery cancelled; started recovery unknown; neither requeued",
+    "unknown remains globally locked after restart",
+    "write failure at admission/start blocks effects; at completion preserves actual result and blocks later effects",
+    "corrupt database/version/record preserved and startup refused",
+    "missing journal during runtime refused without recreating empty history",
+    "second core owner refused; normal and killed process release lock",
+    "historical clock creation result does not restore RAM clock state",
+    "existing REST/Live Stop, resume, notes, clocks and native lifecycle regressions passed"
+  ],
+  "intermediate_failures": [
+    "first focused run: 49 passed, 1 failure from test corruption setup leaving two SQLite connections open; test connections now explicitly closed",
+    "first full run: 48 failures, 966 passed, 1 teardown error; outdated no-data-directory assumptions, existing-directory setup and reused read request ID updated for the new contract",
+    "that first full run also saw one synthetic Live sleep failure and asyncio event-loop teardown warning; neither reproduced in focused 244-test or final 1017-test run; no warning filter changed",
+    "targeted test typecheck initially found seven optional accesses; explicit assertions narrowed them; final zero"
+  ],
+  "limits": [
+    "journal contains unencrypted request/result history, including potentially deleted note content; disk history is not automatically removed or compacted",
+    "startup validates history row by row: bounded RAM, history-dependent startup time",
+    "unknown reconciliation UI not implemented; restart alone does not clear safety lock",
+    "external effect/domain JSON and journal are separate transactions, not an exactly-once guarantee",
+    "without journal_home isolated TaskManager keeps the old safe total-record bound",
+    "new observations need new request IDs; replay is historical result, not refreshed observation",
+    "conversation/session RAM and model call maps are not restored by the task journal"
+  ],
+  "not_tested": [
+    "real account/paid API",
+    "physical acoustic behavior",
+    "hardware power-loss guarantees",
+    "arbitrary third-party writers bypassing ownership"
+  ],
+  "manual_acceptance": "user approved continuation; separate physical test result not reported",
+  "commit": "approved by user; see git history"
+}

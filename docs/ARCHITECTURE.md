@@ -50,7 +50,7 @@ yaşam döngüsü sahibinde kalır.
 | Live bağlantısı | app/session/live_session.py; tek I/O loop/socket sahibi; scope, resume ve GoAway |
 | Araç kataloğu/parametre | app/session/tool_registry.py; açık kayıt, JSON schema; otomatik plugin import yok |
 | Yetki | app/policy/engine.py; yerel kullanıcı ve desktop kaynağı için açık izin |
-| Yürütme/replay/iptal | app/tasks/manager.py; tek worker ve request_id kaydı |
+| Yürütme/replay/iptal | app/tasks/manager.py; tek worker ve request_id kaydı; storage/task_journal.py kalıcı SQLite deposu |
 | Not | app/tools/local/notes.py; ID/tarih/seçim/snapshot ve tek dosya yazımı |
 | Timer/stopwatch | app/tools/local/clocks.py; süreç RAM’i, monoton saat; UI/model aynı nesne |
 | Sır | app/storage/credentials.py; Windows Credentials; UI store/JSON/yedekte anahtar yok |
@@ -70,10 +70,19 @@ sırf satır azaltmak için paylaşılan durumu kopyalayan alt yöneticiler olu�
   durumlarını ayırır. İptal kabulü bitiş değildir; handler öncesi ve sonrası sonuç
   doğru raporlanır. Doğrulanmış yan etkiyi Stop geri almış sayamaz.
 - Aynı kimlik+aynı içerik mevcut sonucu verir; farklı içerik çakışmadır.
-  Replay kaydı süreç RAM’indedir: restart sonrası kalıcı idempotency garantisi yok.
+  Native core bu kaydı tasks/tasks.sqlite3 içinde kalıcı tutar. Aynı kimlik tekrar
+  handler çalıştırmaz; kayıt eski sonucun kanıtıdır, güncel ölçüm/nesne değildir.
 - Parametreler ve sonuçlar JSON sınırında kopyalanır; sırlar/ham exception loglanmaz.
-- Mevcut görev kaydı kapasitesi terminal kayıtlar dahil 256’dır. Sessiz evict yok;
-  kapasite dolunca yeni iş reddedilir. Bu ürün sınırı PLAN.md’de açık tutulur.
+- Kalıcı core'da capacity=256 RAM kayıt/aktif iş sınırıdır; terminal kayıtların RAM
+  kopyaları gerektiğinde çıkarılır. Eski get/wait/cancel/replay disk indeksinden
+  sonuç verir. 256 aktif iş doluysa yenisi reddedilir; disk geçmişi silinmez.
+  Günlüksüz TaskManager yalnız izole test/gömülü kullanım içindir; eski toplam
+  kapasite sınırını korur, restart garantisi vermez.
+- Kabul, handler öncesi RUNNING ve terminal sonuç ayrı FULL SQLite transaction'larıdır.
+  Restart'ta QUEUED iptal olur, RUNNING/CANCEL_REQUESTED unknown olur; hiçbiri otomatik
+  çalıştırılmaz. Herhangi bir unknown yeni işleri profil genelinde engeller.
+  Günlük yazma/okuma hatası yeni handler'ları durdurur. Araç bitişi doğrulanmışsa
+  geç disk hatası o gerçek sonucu geri almaz; restart kaydı unknown kalabilir.
 
 ## Alan kuralları
 
@@ -132,7 +141,19 @@ SingleInstance OS dosya kilidini core/pencere ömrü boyunca tutar; aynı kökte
 uygulama açılmaz. Crash handle kilidini bırakır; restart kilit bırakıldıktan sonra
 başlatılır. Ayrı veri profilleri bağımsızdır. Doğrudan core/script kullananlar bu
 host kilidini atlamamalıdır; JsonStore kendi başına süreç kilidi sağlamaz.
-Disk journal ürünleştirme öncesi açık sınırdır. Testler geçici veri kökü ve sentetik taşıma kullanır.
+Kalıcı core ayrıca tasks/instance.lock ile günlük/core sahipliğini korur; doğrudan
+create_core kullanan script de aynı profilin ikinci worker'ını açamaz. Normal
+kapanış worker bitmeden kilidi bırakmaz. SQLite dosyası bozuk/yeni sürümlüyse
+başlangıç durur; otomatik boşaltma/kurtarma yoktur.
+
+Günlük yerel, şifrelenmemiş istek/sonuç geçmişidir; silinen notun eski metni burada
+kalabilir. Anahtar saklama aracı değildir ve JSON yedeğine dahil değildir. Disk
+geçmişi süresiz saklanır; açılış doğrulaması geçmişle büyür, RAM'e tümü yüklenmez.
+Günlük ile alan verisi/dış işlem tek transaction değildir: belirsizlikte tekrar
+etmemek, genel bir exactly-once dış servis garantisi vermez. Unknown uzlaştırma
+arayüzü henüz yoktur; restart tek başına kilidi temizlemez. Günlük dosyalarını
+silmek tekrar korumasını kaldırır ve kurtarma yöntemi değildir. Testler geçici
+veri kökü ve sentetik taşıma kullanır.
 
 ## Hedef L0 ve dört GUI katmanı — henüz uygulanmadı
 

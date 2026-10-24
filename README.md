@@ -66,21 +66,24 @@ offline assistant. API keys use Windows Credential Manager; notes and settings
 are local files. Skill/routine definitions use browser storage. Timers and
 conversation context do not survive application exit.
 
-Two important core tasks remain open: durable request history across restarts,
-and replacing the current 256-record lifetime task limit with safe retention.
-Process-local replay protection is not a durable exactly-once guarantee. The
-native instance lock protects normal app launches sharing a data profile;
-standalone scripts must not bypass that ownership rule.
+Native tool requests and results are kept in a local SQLite journal. Reusing
+the same request ID does not run the action again, including after restart.
+The 256-record limit bounds active work and RAM records, rather than lifetime
+usage; historical records stay on disk. Unknown outcomes block new tools and
+currently require manual investigation; there is no reconciliation UI yet.
+The journal is not encrypted, can retain deleted note content, and grows with
+usage. It is not an exactly-once guarantee for external services. Native and
+core ownership locks reject a second worker sharing the same data profile.
 
 There are no general latency, memory-footprint or acoustic-accuracy guarantees.
 Model availability, network conditions and hardware affect behavior.
 
 ## Verification and documentation
 
-The latest core change passed 1,000 Python tests, targeted type checking and
+The latest core change passed 1,017 Python tests, targeted type checking and
 10 native regression phases using synthetic providers and temporary data.
 These checks do not establish real-account availability, physical microphone
-accuracy or production readiness. See [test evidence](docs/reports/instance-checks.json).
+accuracy or production readiness. See [test evidence](docs/reports/task-journal-checks.json).
 
 - [Architecture](docs/ARCHITECTURE.md): current ownership and planned boundaries.
 - [Plan](docs/PLAN.md): remaining work and acceptance status.

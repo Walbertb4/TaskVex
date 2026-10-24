@@ -25,6 +25,11 @@ api_keys.json
 google_token.json
 google_client_secret.json
 credentials.json
+# Local task history can contain note text and must not enter Git.
+*.sqlite3
+*.sqlite3-journal
+*.sqlite3-wal
+*.sqlite3-shm
 
 # Local backups and build artifacts
 *.rar

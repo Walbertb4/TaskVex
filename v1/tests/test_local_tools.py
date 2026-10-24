@@ -49,7 +49,7 @@ def test_add_list_and_reopen_keep_stable_note_identity():
         assert added.result.evidence == {"persisted": True, "read_back": True, "note_id": note["id"]}
         assert json.loads(path.read_text("utf-8"))["data"] == {"notes": [note]}
     with create_core() as manager:
-        listed = run(manager, request("notes.list"))
+        listed = run(manager, request("notes.list", "reopen-list"))
         assert listed.result.data == {"notes": [note]}
 
 
@@ -275,7 +275,8 @@ def test_bad_arguments_never_reach_local_handlers(tool, arguments, monkeypatch):
         with pytest.raises(RegistryError) as caught:
             manager.submit(request(tool, arguments=arguments))
         assert caught.value.code == "invalid_arguments"
-    assert not get_data_home().exists()
+    # Core başlangıcı artık yalnız kalıcı görev günlüğünü oluşturur.
+    assert {p.name for p in get_data_home().iterdir()} == {'tasks'}
 
 
 @pytest.mark.parametrize("identity", [{"principal": "other-user"}, {"source": "telegram"}])
@@ -288,7 +289,8 @@ def test_real_note_tool_denies_wrong_identity_without_creating_file(identity, to
         denied = run(manager, request(tool, arguments=arguments, **identity))
         assert denied.status == TaskStatus.FAILED
         assert denied.result.error.code == "permission_denied"
-    assert not get_data_home().exists()
+    # Core başlangıcı artık yalnız kalıcı görev günlüğünü oluşturur.
+    assert {p.name for p in get_data_home().iterdir()} == {'tasks'}
 
 
 @pytest.mark.parametrize("data", [
@@ -438,7 +440,8 @@ def test_system_status_uses_real_read_only_system_calls():
         assert result.result.data["logical_cpu_count"] == telemetry.os.cpu_count()
         assert result.result.data["cpu_percent"] is None
         assert result.result.data["memory_percent"] is None
-    assert not get_data_home().exists()
+    # Core başlangıcı artık yalnız kalıcı görev günlüğünü oluşturur.
+    assert {p.name for p in get_data_home().iterdir()} == {'tasks'}
 
 
 @pytest.mark.parametrize("count", [None, 0])

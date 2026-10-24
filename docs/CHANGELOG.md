@@ -5,6 +5,29 @@ hali ARCHITECTURE.md, yapılacak işler PLAN.md içindedir. Henüz sürüm yayı
 
 ## Unreleased
 
+### Kalıcı görev günlüğü ve kapasite (5.F7.2/3)
+
+- Aynı TaskManager, standart kütüphane SQLite günlüğünü kullanır; kabul, handler
+  öncesi ve terminal kayıtlar FULL transaction ile yazılır. İkinci core OS
+  kilidiyle reddedilir; yeni bağımlılık/yürütücü/model yolu eklenmedi.
+- Restart tamamlanan işi yeniden çalıştırmaz. Queued iptal, başlamış yarım iş
+  unknown olur. Kimlik/içerik çakışması reddedilir; disk hatası yeni etkileri
+  durdurur. Doğrulanmış araç sonucu geç kayıt hatasıyla geri alınmış sayılmaz.
+- Native core'da 256 toplam ömür sınırı kaldırıldı; RAM kayıtları ve aktif işler
+  sınırlıdır. Terminal RAM kopyaları çıkarılsa da eski get/wait/cancel/replay
+  diskten aynı kimliği/sonucu verir. Günlüksüz test yöneticisi eski güvenli sınırı korur.
+- Günlük düz yerel veri içerir, eski not metnini tutabilir, otomatik silinmez.
+  Unknown uzlaştırma ekranı ve dış servis exactly-once garantisi eklenmedi.
+- Eski açılış testleri artık yalnız tasks dizininin oluşmasını bekler; yeni
+  gözlem restart'ta yeni request_id kullanır. İlk test turundaki eski varsayım
+  hataları ve test bağlantısı ResourceWarning'i düzeltildi. İlk genel turdaki
+  tek Live/asyncio uyarısı odaklı ve son genel turda tekrarlanmadı; filtre gevşetilmedi.
+- 1017 pytest, 17 hedefli günlük testi, Pyright 0 ve 10/10 native aşama geçti.
+  Ayrıntılar [test kanıtı](reports/task-journal-checks.json) ve
+  [native raporda](reports/task-journal-native.json). Gerçek hesap/ücretli API yok;
+  kullanıcı devam/commit onayı verdi; ayrı fiziksel test bildirilmedi.
+
+
 ### README ve oturum kapanışı
 
 - GitHub README, uygulanan özellikler/planlı kapsam/veri akışı/açık sınırlar ve

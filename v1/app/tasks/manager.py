@@ -1,11 +1,11 @@
-"""TaskVex'in tek worker ile çalışan, bellek içi görev yöneticisi.
+"""TaskVex'in tek worker ile çalışan görev ve tekrar yürütme yöneticisi.
 
 submit isteği kabul eder; tek worker handler'ları sırayla çalıştırır. get/wait
 durum kopyası verir, cancel iptal ister, close yeni iş kabulünü durdurur.
 Tek worker olduğu için iki handler aynı anda desktop gibi ortak kaynağı kullanmaz.
 
-Bu sürüm kalıcı görev günlüğü, paralel kaynak planlayıcısı veya policy motoru
-değildir. Yetki kararı için dar bir callback noktası vardır; verilmezse yürütme
+Kalıcı profil verildiğinde disk günlüğü yürütmeden önce kaydedilir. Paralel
+kaynak planlayıcısı veya policy motoru değildir. Yetki callback'i yoksa yürütme
 reddedilir. Thread iptali zorlamaz; handler kendi alt kaynaklarını yönetmelidir.
 """
 
@@ -14,8 +14,9 @@ from dataclasses import dataclass, field, replace
 from inspect import iscoroutine, iscoroutinefunction
 import json
 import math
+from pathlib import Path
 from threading import Condition, Event, Thread, current_thread
-from typing import Callable
+from typing import Callable, NoReturn
 from uuid import uuid4
 
 from app.core.contracts import (
@@ -23,6 +24,7 @@ from app.core.contracts import (
     ToolRequest, ToolResult, ToolSpec,
 )
 from app.session.tool_registry import RegistryError, ToolRegistry
+from app.storage.task_journal import JournalError, TaskJournal
 
 
 class TaskManagerError(ContractError):
@@ -58,6 +60,12 @@ def _snapshot(task: Task) -> Task:
                    result=_copy_result(task.result) if task.result is not None else None)
 
 
+def _fingerprint(request: ToolRequest) -> str:
+    """Alan sırasından bağımsız, içerik değişimini fark eden istek gösterimi."""
+    return json.dumps(request.to_dict(), sort_keys=True, separators=(",", ":"),
+                      ensure_ascii=False, allow_nan=False)
+
+
 def _timeout(value: float | None) -> None:
     """Bekleme sınırını kontrol et; None sınırsız, sıfır anlık kontrol demektir."""
     if value is not None and (
@@ -73,14 +81,14 @@ class TaskManager:
     Kimlik doğrulaması giriş adaptörünün, izin kuralları policy modülünün
     sorumluluğudur. Callback yokluğu tüm yürütmeleri reddeder.
 
-    capacity, terminal görevler dahil tutulan kayıt sayısını sınırlar. Eski
-    kayıtları sessizce silmeyiz: silersek aynı isteği ikinci kez çalıştırabiliriz.
-    Bu sınır dolunca yeni kimlikler reddedilir; eski istekler hâlâ sorgulanabilir.
+    Kalıcı journal_home verilirse capacity RAM/aktif görev sınırıdır; terminal
+    kayıtlar diskten sorgulanır. Günlüksüz birim kullanımında eski güvenli toplam
+    sınırı korunur: diske taşınmamış tekrar bilgisi sessizce silinemez.
     """
 
     def __init__(self, registry: ToolRegistry, *,
                  authorize: Callable[[ToolRequest, ToolSpec], bool] | None = None,
-                 capacity: int = 256) -> None:
+                 capacity: int = 256, journal_home: Path | None = None) -> None:
         if not isinstance(registry, ToolRegistry):
             raise TaskManagerError("invalid_registry", "Expected ToolRegistry")
         if authorize is not None and not callable(authorize):
@@ -97,9 +105,16 @@ class TaskManager:
         # meşgul etmeden uyumasını sağlar. Handler çalışırken bu kilit tutulmaz.
         self._condition = Condition()
         self._closing = False
-        self._uncertain = False
+        self._journal = TaskJournal(journal_home) if journal_home is not None else None
+        self._journal_failed = False
+        self._uncertain = self._journal.uncertain if self._journal else False
         self._worker = Thread(target=self._run, name="taskvex-worker", daemon=False)
-        self._worker.start()
+        try:
+            self._worker.start()
+        except BaseException:
+            if self._journal is not None:
+                self._journal.close()
+            raise
 
     def describe_tools(self) -> list[dict]:
         """Model adaptörüne yalnız bildirim ver; handler ve yetki nesnesi verme.
@@ -118,8 +133,7 @@ class TaskManager:
         aynı kullanıcı aynı kimliği farklı istek için kullanırsa hata alır.
         """
         owned = self._registry.validate_request(request)
-        fingerprint = json.dumps(owned.to_dict(), sort_keys=True, separators=(",", ":"),
-                                 ensure_ascii=False, allow_nan=False)
+        fingerprint = _fingerprint(owned)
         key = (owned.principal, owned.request_id)
         with self._condition:
             if self._closing:
@@ -130,11 +144,30 @@ class TaskManager:
                 if entry.fingerprint != fingerprint:
                     raise TaskManagerError("request_conflict", "Request id has different content")
                 return _snapshot(entry.task)
+            if self._journal is not None:
+                try:
+                    archived = self._journal.find(*key)
+                except JournalError:
+                    self._journal_error()
+                if archived is not None:
+                    if _fingerprint(archived.request) != fingerprint:
+                        raise TaskManagerError("request_conflict", "Request id has different content")
+                    return _snapshot(archived)
             if self._uncertain:
                 raise TaskManagerError("uncertain_state", "An earlier operation has unknown outcome")
+            # Yalnız kalıcı kopyası olan terminal kayıt RAM'den çıkabilir. Disk
+            # geçmişi silinmediği için eski request_id hâlâ aynı sonucu verir.
+            if self._journal is not None:
+                for task_id, entry in list(self._entries.items()):
+                    if len(self._entries) < self._capacity:
+                        break
+                    if entry.task.status.terminal:
+                        del self._entries[task_id]
+                        del self._requests[(entry.task.request.principal, entry.task.request.request_id)]
             if len(self._entries) >= self._capacity:
-                raise TaskManagerError("capacity_exceeded", "Task record capacity reached")
+                raise TaskManagerError("capacity_exceeded", "Active task capacity reached")
             task = Task(task_id=uuid4().hex, request=owned)
+            self._persist(task)
             self._entries[task.task_id] = _Entry(task=task, fingerprint=fingerprint)
             self._requests[key] = task.task_id
             self._queue.append(task.task_id)
@@ -143,9 +176,33 @@ class TaskManager:
 
     def _entry(self, task_id: str) -> _Entry:
         """Kilit altındaki iç yardımcı; bulunmayan görevi kontrollü hata yap."""
-        if not isinstance(task_id, str) or task_id not in self._entries:
-            raise TaskManagerError("unknown_task", "Task id is not known")
-        return self._entries[task_id]
+        if isinstance(task_id, str):
+            if task_id in self._entries:
+                return self._entries[task_id]
+            if self._journal is not None:
+                try:
+                    archived = self._journal.get(task_id)
+                except JournalError:
+                    self._journal_error()
+                if archived is not None and archived.status.terminal:
+                    return _Entry(task=archived, fingerprint=_fingerprint(archived.request))
+        raise TaskManagerError("unknown_task", "Task id is not known")
+
+    def _journal_error(self) -> NoReturn:
+        """Depo hatasından sonra hiçbir yeni handler'a izin verme; içeriği gizle."""
+        self._journal_failed = True
+        self._uncertain = True
+        raise TaskManagerError('journal_unavailable', 'Task history could not be safely recorded')
+
+    def _persist(self, task: Task) -> None:
+        """Kilit altında diske commit et; yazma hatası kabul/başarı sayılmaz."""
+        if self._journal_failed:
+            self._journal_error()
+        if self._journal is not None:
+            try:
+                self._journal.save(task)
+            except JournalError:
+                self._journal_error()
 
     def get(self, task_id: str) -> Task:
         """Görevin o andaki bağımsız kopyasını ver; bekleme veya çalıştırma yapma."""
@@ -179,6 +236,7 @@ class TaskManager:
             if not entry.task.status.terminal:
                 entry.cancel_event.set()
                 if entry.task.status == TaskStatus.QUEUED:
+                    self._queue.remove(task_id)
                     self._finish(entry, self._result(entry, TaskStatus.CANCELLED, "cancelled",
                                                     "Cancelled before execution"))
                 else:
@@ -205,7 +263,11 @@ class TaskManager:
                     entry.task = replace(entry.task, status=TaskStatus.CANCEL_REQUESTED)
             self._condition.notify_all()
         self._worker.join(timeout)
-        return not self._worker.is_alive()
+        stopped = not self._worker.is_alive()
+        with self._condition:
+            if stopped and self._journal is not None:
+                self._journal.close()
+        return stopped
 
     def __enter__(self):
         """with bloğunda kullanımı sağlar; çıkışta worker kapatılacaktır."""
@@ -225,6 +287,12 @@ class TaskManager:
     def _finish(self, entry: _Entry, result: ToolResult) -> None:
         """Kilit altında terminal durumu ve sonucu birlikte yerleştir."""
         entry.task = replace(entry.task, status=result.status, result=result)
+        try:
+            self._persist(entry.task)
+        except TaskManagerError:
+            # Araç gerçekten bitmişse onun sonucunu geri almış sayma. Depo
+            # hatası yeni işleri kilitler; restart'ta eski RUNNING unknown olur.
+            pass
 
     def _cancel_pending(self, reason: str) -> None:
         """Kilit altında henüz çalıştırılmamış işleri iptal et ve kuyruğu boşalt."""
@@ -249,6 +317,9 @@ class TaskManager:
             with self._condition:
                 if entry.cancel_event.is_set():
                     return self._result(entry, TaskStatus.CANCELLED, "cancelled", "Cancelled before execution")
+                # Transaction bitmeden araca teslim yok. Crash bu kayıttan
+                # sonra olursa yeniden açılış sonucu UNKNOWN sayar.
+                self._persist(entry.task)
                 # Bu noktadan sonra handler'a teslim edilmiş sayılır. Daha sonra
                 # gelen iptal Event ile görülür; henüz başlamadı garantisi verilmez.
                 started = True
@@ -291,7 +362,7 @@ class TaskManager:
             result = self._execute(entry)
             with self._condition:
                 self._finish(entry, result)
-                if result.status == TaskStatus.UNKNOWN:
+                if result.status == TaskStatus.UNKNOWN or self._uncertain:
                     # Belirsiz dış işlem sürüyor olabilir. Worker geri döndü diye
                     # ortak kaynağı güvenli sanıp sonraki handler'ı başlatmıyoruz.
                     self._uncertain = True

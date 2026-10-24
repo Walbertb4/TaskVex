@@ -1,11 +1,13 @@
 # TaskVex — Güncel plan
 
-## Şimdi: 5.F6 bakım ve Aşama 5 kapanış incelemesi
+## Şimdi: 5.F7.2/3 kalıcı günlük ve güvenli kapasite
 
-Önceki 5.R8.6 kullanıcı kabulü başarılı, 526bfed commit’inde (push yok).
-5.F6 bakımı kullanıcı tarafından kabul edildi; ea8aa15 commit’inde (push yok).
+Önceki 5.R8.6 kullanıcı kabulü başarılı, 526bfed commit’inde.
+5.F6 bakımı kullanıcı tarafından kabul edildi; ea8aa15 commit’inde.
 5.F7.1 tek-instance dilimi uygulandı ve otomatik doğrulandı. Kullanıcı devam ve
-GitHub’a push onayı verdi; ayrı fiziksel test sonucu bildirilmedi.
+GitHub’a push onayı verdi; 5c338e8 ile yayımlandı. Ayrı fiziksel test sonucu bildirilmedi.
+5.F7.2/3 uygulandı: 1017 pytest, 17 hedefli günlük testi, Pyright 0 ve 10 native
+aşama geçti. Kullanıcı devam/commit onayı verdi; ayrı fiziksel test bildirmedi.
 
 - [x] İlk envanter ve onaylanan önceki adımın commit’i.
 - [x] Tarihsel belgeleri docs/eski altına özgün yollarıyla taşı.
@@ -26,11 +28,11 @@ sanki bugün çalışıyormuş gibi gösterilmez.
 | Aşama | Durum | Kapsam |
 |---|---|---|
 | 0 | Temel tamam | MIT, veri sahipliği ve referans/lisans sınırı |
-| 1 | Temel tamam; kapasite sınırı açık | Sözleşmeler, registry, policy, tek TaskManager, JSON kayıt |
+| 1 | Temel tamam; kalıcı günlük/retention kabulü bekleniyor | Sözleşmeler, registry, policy, tek TaskManager, JSON kayıt |
 | 2 | Temel tamam | PyWebView2 host, köprü, ayarlar/kimlik deposu, native yaşam döngüsü |
 | 3 | Tamam/kabul edildi | Backend not CRUD/aktarımı/yedek ve gerçek ID’ler |
 | 4 | İlk plugin tamam | Allowlist Notepad katalog/status/açma; genel GUI otomasyonu değil |
-| 5 | İşlevsel dilimler kabul; 5.F6 devam | Gemini REST/Live, ses, Stop/interrupt, resume, geçici hafıza, uyku, not/sayaç/kapatma |
+| 5 | İşlevsel dilimler kabul; 5.F7.2/3 doğrulama | Gemini REST/Live, ses, Stop/interrupt, resume, geçici hafıza, uyku, not/sayaç/kapatma |
 | 6 | Başlamadı | Kalıcı kullanıcı hafızası, L0 yetenekleri, Google/Telegram/Discord ve profil alanları |
 | 7 | Başlamadı | GUI resolver, L1 reçete, L2 DOM, L3 UIA, L4 vision ve skill yürütme |
 | 8 | Başlamadı | Tek backend rutin/scheduler, servisler, dağıtım/paketleme |
@@ -47,13 +49,14 @@ adım numaraları docs/eski/aşamalar.md içinde tarihsel olarak korunur.
   genel regresyon korunur. Yeni bir zorunlu uzun kullanıcı testi icat edilmez.
 - Gerçek hesap resume/GoAway ve sağlayıcı kaynaklı gecikme kabulü API limiti
   nedeniyle yeniden test edilemedi. Sentetik başarı gerçek sağlayıcı ispatı değildir.
-- 256 kayıt kapasitesi: uzun oturum sınırı açık. Sonraki core işi terminal kayıt
-  retention'ını replay garantisiyle birlikte tasarlamak; sessiz evict yasak.
-- Restart sonrası idempotency/journal, dış yan etkili entegrasyonlardan önce
-  zorunlu. Bugünkü süreç içi koruma kalıcı garanti olarak sunulamaz.
+- Kalıcı core'da 256 artık RAM/aktif iş sınırıdır; disk geçmişi korunur.
+  Günlüksüz izole TaskManager eski güvenli toplam sınırını korur.
+- Restart günlüğü tamamlananı tekrar yürütmez; başlamış yarım iş unknown, kuyruk
+  iptal olur. Unknown uzlaştırma ekranı yok; kilit restart ile kalkmaz. Disk
+  geçmişi büyür ve eski not içeriklerini tutabilir; otomatik temizlik yoktur.
 - Native tek-instance kilidi 5.F7.1’de uygulandı; doğrudan script yazıcıları aynı
   host kilidi sözleşmesini kullanmalı. Üçüncü taraf/varlık paketleme lisansları dağıtım öncesi.
-- 5.F6 için kısa kullanıcı kabulü → commit; bu koşullar çözülmüş sayılmadan
+- 5.F7.2/3 için kısa kullanıcı kabulü → commit; bu koşullar çözülmüş sayılmadan
   Aşama 5 için sınırsız/üretime hazır iddiası yok. Açık sınırla geliştirmeye
   devam kararı ve sonraki tek adım kullanıcıyla belirlenir.
 
@@ -69,7 +72,7 @@ Henüz uygulanmadılar; her promptta istenen tek dilim ayrıca daraltılır.
 | 6.4 | Hava/konum izni ve web arama; onay ve harici içerik sınırı |
 | 6.5 | Google Drive/Calendar/mail; OAuth kapsam, yenileme, bağlantı ve işlem kanıtı |
 | 6.6 | Telegram/Discord giriş-çıkış; principal/hedef yetkisi, belirsiz teslimde replay yok |
-| 6.7 | Dış yan etkiler öncesi kalıcı çağrı günlüğü/taint/risk onayı; 6.5/6.6 yazma önkoşulu |
+| 6.7 | Mevcut görev günlüğü üzerinde harici veri taint/risk onayı/kanal yetkisi ve unknown uzlaştırma; 6.5/6.6 yazma önkoşulu |
 | 7.1 | Tek uygulamada L3 UIA hedef ve sonuç doğrulama |
 | 7.2 | L1 doğrulanmış reçete; bağlam değişiminde eski hedef kullanılmaz |
 | 7.3 | Tarayıcı L2 DOM, gerektiğinde bütçeli L4 vision/OCR |
@@ -84,21 +87,22 @@ Henüz uygulanmadılar; her promptta istenen tek dilim ayrıca daraltılır.
 
 ## 5.F7 — İlk üç denetim bulgusunun kapatılması
 
-Sıra bağımlılığa göre seçildi; kapsam her promptta bir dilimdir.
+Sıra bağımlılığa göre seçildi; kullanıcı onayıyla 5.F7.2 ve 5.F7.3 aynı turda birleştirildi.
 
 | Adım | Kapsam | Durum |
 |---|---|---|
 | 5.F7.1 | Aynı veri kökü için OS tek-instance kilidi; crash/exception/restart/ayrı profil | Uygulandı: 1000 pytest, 10 native aşama, Pyright 0; [kanıt](reports/instance-checks.json). Kullanıcı devam/commit/push onayı verdi; ayrı fiziksel test raporu yok |
-| 5.F7.2 | Kalıcı görev/istek günlüğü; restart sonrası eski tamamlanmış veya belirsiz işlem tekrar yürütülmez | Sonraki adım; henüz uygulanmadı |
-| 5.F7.3 | Kalıcı dedup korunarak terminal kayıt retention; 256 sınırı ömür boyu toplam değil aktif işler için | 5.F7.2 sonrası; henüz uygulanmadı |
+| 5.F7.2 | Kalıcı görev/istek günlüğü; restart sonrası eski tamamlanmış veya belirsiz işlem tekrar yürütülmez | Uygulandı/otomatik doğrulandı; [kanıt](reports/task-journal-checks.json). Kullanıcı devam/commit onayı verdi; ayrı fiziksel test bildirmedi |
+| 5.F7.3 | Kalıcı dedup korunarak terminal kayıt retention; 256 sınırı ömür boyu toplam değil aktif işler için | Uygulandı/otomatik doğrulandı; 300 iş (kapasite 4/256), aktif kuyruk ve eski replay. Kullanıcı devam/commit onayı verdi; ayrı fiziksel test bildirmedi |
 | 5.F8 | Ses/kişiselleştirme sabitleri ve Settings altında Vex yanıt ses seviyesi | Kullanıcı istedi; ilk üç bulgudan sonra daraltılacak, henüz uygulanmadı |
 
-5.F7.1 kilidi native host içindir; bağımsız script/core yazıcıları henüz genel
-bir süreçler arası transaction garantisi kazanmaz. Yeni kalıcı günlük bu sahipliği
-kullanmalı; lock dosyasını silerek “temizleme” yapılmamalıdır.
+5.F7.1 kilidi native host içindir. 5.F7.2 create_core girişine ayrıca günlük/core
+OS kilidi ekler; doğrudan JsonStore yazıcısı hâlâ bu sahipliği atlayamaz. Günlük
+ve not/dış işlem tek transaction değildir; lock/günlük dosyalarını silerek
+“temizleme” yapılmamalıdır.
 
 
-### Bir sonraki oturum: 5.F7.2 → 5.F7.3
+### 5.F7.2/3 — uygulanan kapsam ve kabul
 
 - **5.F7.2 — kalıcı görev günlüğü:** aynı veri kökünün tek sahipliği altında
   request kimliği/parmak izi ve yürütme durumunu kalıcı tut. Tamamlanan aynı
@@ -112,5 +116,8 @@ kullanmalı; lock dosyasını silerek “temizleme” yapılmamalıdır.
   256'dan fazla ardışık iş, dolu aktif kuyruk, eski isteğin tekrarı ve restart
   testleriyle doğrula. Sınırı sadece büyütmek çözüm sayılmaz.
 
-İkisi de henüz uygulanmadı. Ardından 5.F8: ses/kişiselleştirme boşlukları ve
-Settings altında efektlerden ayrı Vex yanıt ses seviyesi. Bugün yeni özellik yok.
+İkisi uygulandı: **1017 pytest**, 17 hedefli günlük testi, hedefli Pyright **0** ve
+**10/10 native** aşama geçti. [Test kanıtı](reports/task-journal-checks.json),
+[native kanıt](reports/task-journal-native.json). Gerçek hesap/API ve fiziksel ses
+yeniden denenmedi. Kullanıcı devam/commit onayı verdi; ayrı fiziksel test bildirmedi. Ardından 5.F8: ses/kişiselleştirme boşlukları ve
+Settings altında efektlerden ayrı Vex yanıt ses seviyesi. Bu iş henüz yapılmadı.

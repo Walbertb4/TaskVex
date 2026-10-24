@@ -247,7 +247,8 @@ def test_unsupported_events_and_bad_handshake_are_rejected(bridge):
     for name, data in [("ui_ready", {}), ("note_add", "do not write"),
                        ("text", "hello"), ("apikey", "secret"), ("system_status", {})]:
         assert bridge.event(name, data)["ok"] is False
-    assert not get_data_home().exists()
+    # Core başlangıcı artık yalnız kalıcı görev günlüğünü oluşturur.
+    assert {p.name for p in get_data_home().iterdir()} == {'tasks'}
 
 
 def test_api_key_storage_returns_only_status_and_does_not_mark_online(bridge, monkeypatch):
@@ -410,7 +411,7 @@ def test_startup_repair_preserves_original_and_valid_profile(bridge, semantic):
 
 @pytest.mark.parametrize("confirmation", [None, {}, {"confirmed": False}, {"confirmed": 1}, True])
 def test_repair_requires_explicit_confirmation(bridge, confirmation):
-    bridge._store.path.parent.mkdir(parents=True)
+    bridge._store.path.parent.mkdir(parents=True, exist_ok=True)
     bridge._store.path.write_bytes(b"broken")
     assert not ready(bridge)["ok"]
     assert not bridge.event("recover_settings", confirmation)["ok"]
@@ -419,7 +420,7 @@ def test_repair_requires_explicit_confirmation(bridge, confirmation):
 
 
 def test_newer_settings_version_cannot_be_repaired_as_corruption(bridge):
-    bridge._store.path.parent.mkdir(parents=True)
+    bridge._store.path.parent.mkdir(parents=True, exist_ok=True)
     original = b'{"version":2,"data":{"new_feature":true}}'
     bridge._store.path.write_bytes(original)
     issue = ready(bridge)
@@ -445,7 +446,7 @@ def test_access_error_is_retryable_but_not_destructively_repairable(bridge, monk
 
 
 def test_backup_failure_never_resets_corrupt_file(bridge, monkeypatch):
-    bridge._store.path.parent.mkdir(parents=True)
+    bridge._store.path.parent.mkdir(parents=True, exist_ok=True)
     bridge._store.path.write_bytes(b"broken")
     assert not ready(bridge)["ok"]
 
@@ -458,7 +459,7 @@ def test_backup_failure_never_resets_corrupt_file(bridge, monkeypatch):
 
 
 def test_write_failure_after_backup_keeps_original_backup(bridge, monkeypatch):
-    bridge._store.path.parent.mkdir(parents=True)
+    bridge._store.path.parent.mkdir(parents=True, exist_ok=True)
     bridge._store.path.write_bytes(b"broken")
     assert not ready(bridge)["ok"]
 

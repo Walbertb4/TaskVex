@@ -27,7 +27,8 @@ def test_catalog_uses_core_and_does_not_claim_installed_or_running():
         assert finished.result.verified
         assert finished.result.data == {"apps": [{"id": "notepad", "name": "Notepad"}]}
         assert finished.result.evidence == {"source": "builtin_allowlist"}
-    assert not get_data_home().exists()
+    # Core başlangıcı artık yalnız kalıcı görev günlüğünü oluşturur.
+    assert {p.name for p in get_data_home().iterdir()} == {'tasks'}
 
 
 @pytest.mark.parametrize("identity", [{"source": "telegram"}, {"principal": "other-user"}])
@@ -36,7 +37,8 @@ def test_catalog_requires_trusted_local_identity(identity):
         finished = core.wait(core.submit(request(**identity)).task_id, timeout=3)
         assert finished.status == TaskStatus.FAILED
         assert finished.result.error.code == "permission_denied"
-    assert not get_data_home().exists()
+    # Core başlangıcı artık yalnız kalıcı görev günlüğünü oluşturur.
+    assert {p.name for p in get_data_home().iterdir()} == {'tasks'}
 
 
 @pytest.mark.parametrize("arguments", [{"app_id": "notepad"}, {"path": "cmd.exe"},
@@ -50,7 +52,8 @@ def test_catalog_rejects_parameters_before_handler(arguments, monkeypatch):
         with pytest.raises(RegistryError) as caught:
             core.submit(request(arguments=arguments))
     assert caught.value.code == "invalid_arguments"
-    assert not get_data_home().exists()
+    # Core başlangıcı artık yalnız kalıcı görev günlüğünü oluşturur.
+    assert {p.name for p in get_data_home().iterdir()} == {'tasks'}
 
 
 def test_catalog_is_immutable_and_results_are_independent():
@@ -83,7 +86,8 @@ def test_status_uses_common_core_and_partial_read_does_not_halt_worker(monkeypat
         if not complete:
             assert result.error.code == "observation_incomplete"
         assert core.wait(core.submit(request(request_id="after-read")).task_id, 3).status == TaskStatus.SUCCEEDED
-    assert not get_data_home().exists()
+    # Core başlangıcı artık yalnız kalıcı görev günlüğünü oluşturur.
+    assert {p.name for p in get_data_home().iterdir()} == {'tasks'}
 
 
 @pytest.mark.parametrize("arguments", [{}, {"app_id": "cmd"}, {"app_id": []},
