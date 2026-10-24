@@ -60,6 +60,30 @@ const muted = liveAudio.finish('next'); contexts.at(-1).nodes[0].onended();
 assert.equal((await muted).status, 'muted');
 liveAudio.setMuted(false);
 
+// Seviye canlı GainNode'a uygulanır; mute kaldırınca tercih geri gelir.
+liveAudio.setVolume(0.35);
+liveAudio.begin('volume');
+assert.equal(contexts.at(-1).gain.gain.value, 0.35);
+liveAudio.setVolume(0.7);
+assert.equal(contexts.at(-1).gain.gain.value, 0.7);
+liveAudio.setMuted(true);
+liveAudio.setVolume(0.2);
+assert.equal(contexts.at(-1).gain.gain.value, 0);
+liveAudio.setMuted(false);
+assert.equal(contexts.at(-1).gain.gain.value, 0.2);
+for (const invalid of [-1, 2, NaN, Infinity, null, '0.5']) {
+  assert.equal(liveAudio.setVolume(invalid), false);
+  assert.equal(liveAudio.volume, 0.2);
+}
+liveAudio.setVolume(0);
+assert.equal(liveAudio.chunk(packet('volume')), true);
+const silent = liveAudio.finish('volume'); contexts.at(-1).nodes[0].onended();
+assert.equal((await silent).status, 'muted');
+liveAudio.begin('zero-preserved');
+assert.equal(contexts.at(-1).gain.gain.value, 0);
+liveAudio.stop('zero-preserved');
+liveAudio.setVolume(1);
+
 liveAudio.begin('bounded');
 const large = packet('bounded', Buffer.alloc(131072));
 for(let i=0;i<7;i++) assert.equal(liveAudio.chunk(large), true);

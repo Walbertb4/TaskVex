@@ -1291,6 +1291,13 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                    "{key:'F11',bubbles:true,cancelable:true})); return true;")
                 wait_until(lambda: not window.native.is_fullscreen)
                 outcome.update(default_purple=True, audio_without_gesture=True, f11_toggle=True)
+                assert js("const {liveAudio}=await import('./js/live_audio.js');"
+                          "if(liveAudio.volume!==1) return false;"
+                          "const r=document.getElementById('replyVolR');r.value='35';"
+                          "r.dispatchEvent(new Event('input'));r.dispatchEvent(new Event('change'));"
+                          "return liveAudio.volume===0.35;")
+                wait_until(lambda: (api._store.read() or {}).get('replyVolume') == 0.35)
+                outcome['reply_volume_native_saved'] = True
                 assert js("const n=await import('./js/notes.js');if(!(await n.addNote('Native local note')))throw new Error('Note add failed');"
                           "window._events=[]; window.vex.onEvent=(name)=>window._events.push(name);"
                           "window.vex.setSkills([{id:'keep-skill',name:'Keep skill',steps:[]}]);"
@@ -1323,6 +1330,9 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                               "JSON.stringify(settings.store.notes)};")
                 assert restored["theme"] == "#4fd8ff", restored
                 assert restored["profile"] == "Native profile 📝", restored
+                assert js("const {liveAudio}=await import('./js/live_audio.js');"
+                          "return liveAudio.volume===0.35 && document.getElementById('replyVolR').value==='35';")
+                outcome['reply_volume_cross_process_restored'] = True
                 assert "Native local note" in restored["notes"], restored
                 assert window.native.TopMost
                 outcome["on_top_restored"] = True
@@ -1351,6 +1361,10 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                                  "return {theme:settings.store.theme,kept:JSON.stringify([settings.store.notes,"
                                  "settings.store.skills,settings.store.routines,settings.store.prof,settings.store.devs,settings.store.conn])};")
                 assert after_reset["theme"] == "#a78bfa" and after_reset["kept"] == before_reset, (after_reset, before_reset)
+                assert js("const {liveAudio}=await import('./js/live_audio.js');"
+                          "return liveAudio.volume===1 && document.getElementById('replyVolR').value==='100';")
+                assert api._store.read()['replyVolume'] == 1
+                outcome['reply_volume_reset_to_default'] = True
                 assert not window.native.TopMost
                 outcome.update(reset_preserved_collections_profile=True, reset_failure_preserved_preferences=True)
             outcome.update(ok=True, phase=phase, native=initial)

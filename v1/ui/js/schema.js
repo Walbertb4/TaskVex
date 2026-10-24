@@ -238,6 +238,11 @@ function validateAdditionalFields(candidate) {
       delete candidate[key];
     }
   }
+  if (candidate.replyVolume !== undefined &&
+      (!numeric(candidate.replyVolume) || candidate.replyVolume < 0 || candidate.replyVolume > 1)) {
+    delete candidate.replyVolume;
+    logToUI('Skipped invalid replyVolume');
+  }
   for (const key of ['cmp', 'tab']) {
     if (!optional(candidate[key], text)) {
       logToUI(`Skipped invalid ${key}`);
@@ -494,7 +499,7 @@ export function validateAndNormalizeSnapshot(data) {
 
   // Optional pass-throughs
   [
-    'sfx', 'vol', 'wake', 'sleepDelay', 'noise', 'onTop', 'cmp', 'tab',
+    'sfx', 'vol', 'replyVolume', 'wake', 'sleepDelay', 'noise', 'onTop', 'cmp', 'tab',
     'calendar', 'reminders', 'weather', 'telemetry', 'tokens',
     'network', 'media', 'googleStatus', 'timeline', 'devices', 'catalog'
   ].forEach(k => {

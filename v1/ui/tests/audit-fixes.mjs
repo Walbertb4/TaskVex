@@ -44,6 +44,28 @@ async function setup() {
 const results = [];
 async function test(name, fn) { await fn(); assert.deepEqual(pageErrors, [], 'uncaught browser errors'); results.push(name); console.log('PASS '+name); }
 try {
+  await test('reply volume is separate, persists and follows snapshots without changing mute',async()=>{
+    const p=await setup();
+    const state=()=>p.evaluate(async()=>{
+      const {liveAudio}=await import('/js/live_audio.js');
+      const {store}=await import('/js/preferences.js');
+      return {volume:liveAudio.volume,muted:liveAudio.muted,effects:store.vol,slider:document.getElementById('replyVolR').value};
+    });
+    assert.deepEqual(await state(),{volume:1,muted:false,effects:0.8,slider:'100'});
+    await p.evaluate(()=>{const r=document.getElementById('replyVolR');r.value='25';r.dispatchEvent(new Event('input'));r.dispatchEvent(new Event('change'));});
+    await p.reload();await p.waitForFunction(()=>!!window.vex);
+    assert.deepEqual(await state(),{volume:0.25,muted:false,effects:0.8,slider:'25'});
+    await p.evaluate(async()=>{
+      const {liveAudio}=await import('/js/live_audio.js');liveAudio.setMuted(true);
+      const r=document.getElementById('volR');r.value='55';r.dispatchEvent(new Event('input'));
+      window.vex.loadStore({replyVolume:0});
+    });
+    assert.deepEqual(await state(),{volume:0,muted:true,effects:0.55,slider:'0'});
+    await p.evaluate(()=>window.vex.loadStore({replyVolume:2}));
+    assert.equal((await state()).volume,0);
+    await p.reload();await p.waitForFunction(()=>!!window.vex);
+    assert.deepEqual(await state(),{volume:0,muted:false,effects:0.55,slider:'0'});
+  });
   await test('planned controls stay disabled and do not claim connected actions',async()=>{
     const p=await setup();
     for(const id of ['camB','audioModeB','attB','gConnB','locSaveB','locAutoB','vSel','pSys','pGreet','pMem','pSc','scrT','inspectBtn'])

@@ -80,10 +80,10 @@ Model availability, network conditions and hardware affect behavior.
 
 ## Verification and documentation
 
-The latest core change passed 1,017 Python tests, targeted type checking and
+The latest core change passed 1,024 Python tests, targeted type checking and
 10 native regression phases using synthetic providers and temporary data.
 These checks do not establish real-account availability, physical microphone
-accuracy or production readiness. See [test evidence](docs/reports/task-journal-checks.json).
+accuracy or production readiness. See [test evidence](docs/reports/reply-volume-checks.json).
 
 - [Architecture](docs/ARCHITECTURE.md): current ownership and planned boundaries.
 - [Plan](docs/PLAN.md): remaining work and acceptance status.

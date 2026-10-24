@@ -195,13 +195,14 @@ def test_active_chat_does_not_hold_bridge_lock_but_blocks_conflicting_actions(br
 
 def test_save_projects_settings_and_reloads_in_fresh_bridge(bridge, monkeypatch):
     assert ready(bridge)["ok"]
-    payload = {"theme": "#4fd8ff", "vol": 0, "sfx": False,
+    payload = {"theme": "#4fd8ff", "vol": 0, "replyVolume": 0, "sfx": False,
                "prof": {"pIns": "Türkçe </script> ' \\ 📝"},
                "notes": [{"t": "LOCAL ONLY"}], "skills": [], "routines": [], "apikey": "never-persist"}
     result = bridge.event("save", payload)
     assert result == {"ok": True, "completed": True, "saved": True}
     saved = bridge._store.read()
     assert saved["vol"] == 0 and saved["sfx"] is False
+    assert saved['replyVolume'] == 0
     assert not {"notes", "skills", "routines", "apikey"} & saved.keys()
     fresh = NativeBridge(bridge._core, bridge._store)
     window = FakeWindow()
@@ -211,6 +212,7 @@ def test_save_projects_settings_and_reloads_in_fresh_bridge(bridge, monkeypatch)
 
 
 @pytest.mark.parametrize("payload", [None, [], {"vol": 2}, {"sfx": 1},
+    *({'replyVolume': v} for v in [-1, 2, '0.5', True, None, float('nan'), float('inf')]),
     {"prof": {"pApp": "yes"}}, {"conn": {"apikey": "secret"}},
     {"theme": "<img>"}, {"layout": [{"id": "evil"}]},
     {"layout": [{"id": "time", "c": "L", "on": 1, "sz": 1}] * 2}])
@@ -518,7 +520,7 @@ def test_on_top_rejects_non_boolean_values(bridge, value):
 
 def test_reset_preserves_profile_connections_and_core_notes(bridge):
     assert ready(bridge)["ok"]
-    preferences = {"theme": "#4fd8ff", "vol": 0.2, "onTop": True,
+    preferences = {"theme": "#4fd8ff", "vol": 0.2, "replyVolume": 0.3, "onTop": True,
                    "prof": {"pIns": "Keep profile"}, "devs": {"dIn": "7"}, "conn": {"model": "keep-model"}}
     assert bridge.event("save", preferences)["ok"]
     notes = JsonStore(get_data_home() / "notes.json")
@@ -528,6 +530,7 @@ def test_reset_preserves_profile_connections_and_core_notes(bridge):
     assert response["ok"] and response["saved"]
     saved = bridge._store.read()
     assert saved["theme"] == "#a78bfa" and saved["vol"] == 0.8 and saved["onTop"] is False
+    assert saved['replyVolume'] == 1
     for key in ["prof", "devs", "conn"]:
         assert saved[key] == preferences[key]
     assert notes.path.read_bytes() == previous

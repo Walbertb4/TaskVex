@@ -5,7 +5,7 @@
  * begin ikinci parametreyle özel çıkışı hazırlar; başarısızsa varsayılana
  * sessizce dönmez. Stop, bekleyen cihaz hazırlığını da serbest bırakır.
  */
-let current = null, muted = false;
+let current = null, muted = false, volume = 1;
 
 function dispose(state) {
   clearTimeout(state.timer);
@@ -15,11 +15,12 @@ function dispose(state) {
   state.gain?.disconnect();
   if (state.context) state.context.close().catch(() => {});
   if (current === state && (state.resolve || state.stopped)) current = null;
-  state.resolve?.({ status: state.error ? 'error' : state.stopped ? 'stopped' : !state.bytes ? 'no_audio' : muted ? 'muted' : 'finished', error: state.error });
+  state.resolve?.({ status: state.error ? 'error' : state.stopped ? 'stopped' : !state.bytes ? 'no_audio' : (muted || volume === 0) ? 'muted' : 'finished', error: state.error });
 }
 
 export const liveAudio = {
   get muted() { return muted; },
+  get volume() { return volume; },
   async begin(requestId, deviceId = '') {
     if (current) this.stop(current.id);
     const state = current = { id: requestId, nodes: new Set(), next: 0, bytes: 0, error: null,
@@ -28,7 +29,7 @@ export const liveAudio = {
       const Audio = window.AudioContext || window.webkitAudioContext;
       state.context = new Audio();
       state.gain = state.context.createGain();
-      state.gain.gain.value = muted ? 0 : 1;
+      state.gain.gain.value = muted ? 0 : volume;
       state.gain.connect(state.context.destination);
       // Gönder düğmesinin kullanıcı hareketi içinde başlatılır; otomatik
       // çalma reddedilirse metin/araç sonucu başarısız sayılmaz.
@@ -108,7 +109,15 @@ export const liveAudio = {
   },
   setMuted(value) {
     muted = !!value;
-    if (current?.gain) current.gain.gain.value = muted ? 0 : 1;
+    if (current?.gain) current.gain.gain.value = muted ? 0 : volume;
+  },
+  setVolume(value) {
+    // Tercih yalnız PCM çıkış kazancıdır; mute, mikrofon ve efektleri değiştirmez.
+    // Geçersiz snapshot mevcut düzeyi değiştirmesin veya NaN kazanç üretmesin.
+    if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 1) return false;
+    volume = value;
+    if (current?.gain) current.gain.gain.value = muted ? 0 : volume;
+    return true;
   },
   close() { if (current) this.stop(current.id); }
 };

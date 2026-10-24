@@ -303,6 +303,13 @@ uses; the intended main desktop experience is Live.
 
 ## Connection settings — available UI behavior
 
+Settings → Audio → **Vex reply volume** → Adjust voice replies and spoken timer
+notifications from 0 to 100%, independently of Effects volume. Changes apply
+to the current reply immediately and are saved across restarts. At 0% playback
+is silent; microphone input stays unchanged. Mute temporarily silences output;
+unmuting restores the selected level. Reset restores 100%. This is a UI setting,
+not a new spoken command or a voice/personality selector.
+
 Save an API key once in Settings → it stays in Windows credential storage for
 this TaskVex data profile; the app never puts it in a JSON backup or browser store.
 Choose a returned Live model → the selection is saved and restored if still

@@ -77,6 +77,7 @@ açık sınırları kabul etmeden “üretime hazır” ilan edilemez.
 | Konu | Gerçek durum | Öneri |
 |---|---|---|
 | Yanıt sesi | REST speech.py içinde Kore sabit; Live SDK ses varsayılanı, conn.voice uygulanmıyor | Tek profil tercihini uyumlu sağlayıcı seçeneklerine bağla; bugün voice seçimi disabled |
+| Yanıt ses seviyesi | replyVolume aynı PCM oynatıcısında 0–1 kazançtır; Settings Audio barı, kalıcı kayıt ve reset bağlıdır | 5.F8.1'de uygulandı; efektlerden ayrıdır. Ses karakteri/voice seçimi ayrı açık iştir |
 | REST varsayılan/fallback ve TTS modeli | gemini.py DEFAULT_MODEL/FALLBACK_MODEL, speech.py SPEECH_MODEL sabit | Ana masaüstü Live modeli API'den seçilip kaydoluyor; REST kanalı ürünleştirilirken ayrı sağlayıcı tercihine taşı |
 | Kullanıcı talimatı/dil | pIns/pLang gerçekten ortak model instruction'a gider | Çalışıyor; güvenlik/araç izni kişisel prompt ile değiştirilemez |
 | Base override / greeting / kullanıcı hafızası | pSys/pGreet/pMem yalnız saklı metin | Kalıcı hafıza ve selamlama ayrı kapsam; bugün aktif gibi göstermiyoruz |
@@ -92,9 +93,9 @@ kullanır. UI timer/alarm metni ile kişiselleştirilmiş ses yanıtı farklı �
 
 ## Doğrulama ve sınırlar
 
-Güncel sonuçlar [cleanup-checks.json](reports/cleanup-checks.json) içinde, gerçek
+İlk 5.F6 bakımının sonuçları [cleanup-checks.json](reports/cleanup-checks.json) içinde, gerçek
 WebView2 sentetik kabul [cleanup-native.json](reports/cleanup-native.json) içindedir.
-Son sonuç: **996 pytest**, **9 JS suite**, **4 browser grubu**, **10 native aşama**
+5.F6 sonucu: **996 pytest**, **9 JS suite**, **4 browser grubu**, **10 native aşama**
 başarılı; app ve etkilenen Python dosyalarında **Pyright 0 hata/uyarı**. pip check
 bağımlılık çakışması bulmadı. 78 Python ve 34 JS/MJS dosyası syntax taramasından geçti.
 133 arşiv dosyasının hash'i ve güncel belge bağlantıları doğrulandı.
@@ -118,3 +119,9 @@ süresiz kararlılık, sıfır bug veya bütün olası dinamik üçüncü taraf 
 
 API limiti sürüyorsa 4. maddeyi test edilemedi bırak; diğerlerini atlama. Önceki
 kullanıcı kabulü bu bakım değişikliğinin manuel kabulü yerine geçmez.
+
+
+5.F8.1 güncel doğrulama: 1024 pytest, 9 JS suite, 5 browser grubu, app Pyright 0
+ve 10 native aşama. [Sonuç](reports/reply-volume-checks.json),
+[native](reports/reply-volume-native.json). Ses seviyesi fiziksel duyum/API
+kabulü değildir; kullanıcı çalıştığını doğruladı.

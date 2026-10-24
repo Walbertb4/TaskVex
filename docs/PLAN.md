@@ -1,13 +1,15 @@
 # TaskVex — Güncel plan
 
-## Şimdi: 5.F7.2/3 kalıcı günlük ve güvenli kapasite
+## Şimdi: 5.F8.1 — Vex yanıt ses seviyesi
 
 Önceki 5.R8.6 kullanıcı kabulü başarılı, 526bfed commit’inde.
 5.F6 bakımı kullanıcı tarafından kabul edildi; ea8aa15 commit’inde.
 5.F7.1 tek-instance dilimi uygulandı ve otomatik doğrulandı. Kullanıcı devam ve
 GitHub’a push onayı verdi; 5c338e8 ile yayımlandı. Ayrı fiziksel test sonucu bildirilmedi.
 5.F7.2/3 uygulandı: 1017 pytest, 17 hedefli günlük testi, Pyright 0 ve 10 native
-aşama geçti. Kullanıcı devam/commit onayı verdi; ayrı fiziksel test bildirmedi.
+aşama geçti. Kullanıcı devam/commit onayı verdi; 5c21156 commit'inde, push yok.
+5.F8.1 yalnız yanıt ses seviyesini mevcut tercihlere ve oynatıcıya bağlar. Ses
+karakteri/diğer profil alanları 5.F8.2'de ayrıca daraltılacak.
 
 - [x] İlk envanter ve onaylanan önceki adımın commit’i.
 - [x] Tarihsel belgeleri docs/eski altına özgün yollarıyla taşı.
@@ -92,9 +94,10 @@ Sıra bağımlılığa göre seçildi; kullanıcı onayıyla 5.F7.2 ve 5.F7.3 ay
 | Adım | Kapsam | Durum |
 |---|---|---|
 | 5.F7.1 | Aynı veri kökü için OS tek-instance kilidi; crash/exception/restart/ayrı profil | Uygulandı: 1000 pytest, 10 native aşama, Pyright 0; [kanıt](reports/instance-checks.json). Kullanıcı devam/commit/push onayı verdi; ayrı fiziksel test raporu yok |
-| 5.F7.2 | Kalıcı görev/istek günlüğü; restart sonrası eski tamamlanmış veya belirsiz işlem tekrar yürütülmez | Uygulandı/otomatik doğrulandı; [kanıt](reports/task-journal-checks.json). Kullanıcı devam/commit onayı verdi; ayrı fiziksel test bildirmedi |
-| 5.F7.3 | Kalıcı dedup korunarak terminal kayıt retention; 256 sınırı ömür boyu toplam değil aktif işler için | Uygulandı/otomatik doğrulandı; 300 iş (kapasite 4/256), aktif kuyruk ve eski replay. Kullanıcı devam/commit onayı verdi; ayrı fiziksel test bildirmedi |
-| 5.F8 | Ses/kişiselleştirme sabitleri ve Settings altında Vex yanıt ses seviyesi | Kullanıcı istedi; ilk üç bulgudan sonra daraltılacak, henüz uygulanmadı |
+| 5.F7.2 | Kalıcı görev/istek günlüğü; restart sonrası eski tamamlanmış veya belirsiz işlem tekrar yürütülmez | Uygulandı/otomatik doğrulandı; [kanıt](reports/task-journal-checks.json). Kullanıcı devam/commit onayı; 5c21156 commit'inde, push yok |
+| 5.F7.3 | Kalıcı dedup korunarak terminal kayıt retention; 256 sınırı ömür boyu toplam değil aktif işler için | Uygulandı/otomatik doğrulandı; 300 iş (kapasite 4/256), aktif kuyruk ve eski replay. Kullanıcı devam/commit onayı; 5c21156 commit'inde, push yok |
+| 5.F8.1 | Settings Audio altında efektlerden ayrı Vex reply volume; aynı PCM gain, kayıt/snapshot/reset/Mute | Uygulandı: 1024 pytest, 9 JS, 5 browser, 10 native, Pyright 0; [kanıt](reports/reply-volume-checks.json). Kullanıcı çalıştığını doğruladı; commit onaylı |
+| 5.F8.2 | Ses karakteri ve kalan profil sabitleri; sağlayıcı seçenekleri ve mevcut alan sahipliğiyle kapsamı daralt | Henüz uygulanmadı; kalıcı hafıza/entegrasyonların aşama 6 sınırı korunur |
 
 5.F7.1 kilidi native host içindir. 5.F7.2 create_core girişine ayrıca günlük/core
 OS kilidi ekler; doğrudan JsonStore yazıcısı hâlâ bu sahipliği atlayamaz. Günlük
@@ -119,5 +122,22 @@ ve not/dış işlem tek transaction değildir; lock/günlük dosyalarını siler
 İkisi uygulandı: **1017 pytest**, 17 hedefli günlük testi, hedefli Pyright **0** ve
 **10/10 native** aşama geçti. [Test kanıtı](reports/task-journal-checks.json),
 [native kanıt](reports/task-journal-native.json). Gerçek hesap/API ve fiziksel ses
-yeniden denenmedi. Kullanıcı devam/commit onayı verdi; ayrı fiziksel test bildirmedi. Ardından 5.F8: ses/kişiselleştirme boşlukları ve
-Settings altında efektlerden ayrı Vex yanıt ses seviyesi. Bu iş henüz yapılmadı.
+yeniden denenmedi. Kullanıcı devam/commit onayı verdi; ayrı fiziksel test bildirmedi. 5.F8.1 yanıt ses seviyesi uygulandı/otomatik doğrulandı; ses karakteri ve diğer profil
+boşlukları 5.F8.2 olarak bekliyor.
+
+
+### 5.F8.1 — kabul kapsamı
+
+- Aynı live_audio GainNode'u: anlık yüzde, Mute kaldırınca seçili seviye;
+  Live/REST/timer sesleri ortak; mikrofon ve efekt seviyesi bağımsız.
+- UI tercihi ve native şema: 0–1 doğrulama, eski kayıtta varsayılan 1,
+  sıfırı koruma, snapshot/yerel kayıt/native süreçte yeniden açma ve reset 1.
+- Yeni komut, sağlayıcı isteği, framework veya ikinci oynatıcı yok.
+- Hedefli PCM testleri, browser/native ayar-kayıt-kapanış ve gerekli regresyon.
+  Fiziksel hoparlör kabulü kullanıcıda; ücretli API testte kullanılmaz.
+
+
+5.F8.1 son doğrulama: **1024 pytest**, **9 JS suite**, **5 browser grubu**,
+**10/10 native aşama**, app Pyright **0**. [Özet](reports/reply-volume-checks.json),
+[native kanıt](reports/reply-volume-native.json). Ücretli API ve fiziksel hoparlör
+kabulü denenmedi. Kullanıcı çalıştığını doğruladı; commit onaylı, push yok.

@@ -3,6 +3,7 @@
  */
 
 import { sfx, setSfxConfig } from './sfx.js';
+import { liveAudio } from './live_audio.js';
 import { emit, logBridgeError, isBackendAvailable } from './api.js';
 import { writeStoredJSON } from './storage.js';
 import { canRestoreNativeNotes, restoreNativeNotes, setNotesImportLock } from './notes.js';
@@ -163,6 +164,8 @@ export function saveAll(options = {}) {
 
   store.sfx = sfxT ? sfxT.checked : true;
   store.vol = volR ? +volR.value / 100 : 0.8;
+  const replyVolR = document.getElementById('replyVolR');
+  if (replyVolR) store.replyVolume = +replyVolR.value / 100;
   store.wake = wakeR ? +wakeR.value : 50;
   const sleepDelay = document.getElementById('sleepDelay');
   if (sleepDelay && sleepDelay.checkValidity()) store.sleepDelay = +sleepDelay.value;
@@ -171,6 +174,7 @@ export function saveAll(options = {}) {
   store.cmp = cmpSel ? cmpSel.value : 'auto';
 
   setSfxConfig(store.sfx, store.vol);
+  liveAudio.setVolume(store.replyVolume);
 
   const mSel = document.getElementById('mSel');
   const vSel = document.getElementById('vSel');
@@ -318,6 +322,7 @@ export function loadStore(o, options = {}) {
     'prof',
     'sfx',
     'vol',
+    'replyVolume',
     'conn',
     'notes',
     'skills',
@@ -369,6 +374,11 @@ export function loadStore(o, options = {}) {
   if (sleepDelay) sleepDelay.value = store.sleepDelay ?? 10;
   if (sfxT) sfxT.checked = store.sfx !== false;
   if (volR) volR.value = (store.vol == null ? 0.8 : store.vol) * 100;
+  const replyVolR = document.getElementById('replyVolR');
+  const replyVolValue = document.getElementById('replyVolValue');
+  if (replyVolR) replyVolR.value = Math.round(store.replyVolume * 100);
+  if (replyVolValue) replyVolValue.textContent = Math.round(store.replyVolume * 100);
+  liveAudio.setVolume(store.replyVolume);
   if (cmpSel) cmpSel.value = store.cmp || 'auto';
   if (wakeR) {
     wakeR.value = store.wake == null ? 50 : store.wake;
@@ -410,6 +420,7 @@ export function initSettings(options = {}) {
   initDeviceSettings(saveAll);
   loadStoredData();
   setSfxConfig(store.sfx, store.vol);
+  liveAudio.setVolume(store.replyVolume);
 
   // Settings tabs
   const setTabs = document.getElementById('setTabs');
@@ -524,6 +535,19 @@ export function initSettings(options = {}) {
       sfx.blip();
       saveAll();
     });
+  }
+
+  const replyVolR = document.getElementById('replyVolR');
+  const replyVolValue = document.getElementById('replyVolValue');
+  if (replyVolR) {
+    replyVolR.value = Math.round(store.replyVolume * 100);
+    if (replyVolValue) replyVolValue.textContent = replyVolR.value;
+    replyVolR.addEventListener('input', () => {
+      store.replyVolume = +replyVolR.value / 100;
+      liveAudio.setVolume(store.replyVolume);
+      if (replyVolValue) replyVolValue.textContent = replyVolR.value;
+    });
+    replyVolR.addEventListener('change', () => saveAll());
   }
 
   const thr = document.getElementById('thr');

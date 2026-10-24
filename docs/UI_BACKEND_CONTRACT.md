@@ -88,6 +88,13 @@ istektir; model yanıtı/oynatma bitince mevcut host uygular. Tek seferlik/persi
 ve bağımsız idle timer ayrıdır. Shutdown da yanıt bitişini bekler; Stop/unknown/geç
 istek kapanışa izin vermez. Yerel KWS/Stop/UI kontrolleri doğal dil router'ı değildir.
 
+Settings Audio altında Vex reply volume, `replyVolume` sayısı olarak 0–1 arasında
+kaydedilir. Native şema tür/aralık dışını reddeder; UI snapshot doğrulayıcısı
+geçersiz alanı atlar. Eski kayıtta yoksa %100; kısmi snapshot'ta yoksa mevcut
+değer korunur. Sıfır sessiz çıkıştır, eksik veri değildir. Reset %100'e döner.
+Yeni bir olay/TTS sahibi yoktur; aynı PCM gain'i anlık değişir, Mute seçili
+seviyeyi kaybetmez. Effects volume ve mikrofon etkilenmez.
+
 ## Doğrulama sınırı
 
 Sentetik provider ile WebView2, Python ve JS regresyonları gerçek dış işlem yapmadan

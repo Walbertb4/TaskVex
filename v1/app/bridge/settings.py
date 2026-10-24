@@ -26,6 +26,7 @@ _FIELDS = {
     "conn": {"type": "object", "properties": {k: _TEXT for k in ["model", "voice"]}, "additionalProperties": False},
     "sfx": {"type": "boolean"}, "onTop": {"type": "boolean"},
     "vol": {"type": "number", "minimum": 0, "maximum": 1},
+    "replyVolume": {"type": "number", "minimum": 0, "maximum": 1},
     "sleepDelay": {"type": "integer", "minimum": 0, "maximum": 300},
     "wake": {"type": "number", "minimum": 0, "maximum": 100},
     "noise": {"type": "number", "minimum": 0, "maximum": 1000},
@@ -40,7 +41,7 @@ _VALIDATOR = Draft202012Validator({"type": "object", "properties": _FIELDS, "add
 
 # Reset yalnız görünüm/davranış tercihlerini kapsar; profil, cihaz/bağlantı ve
 # koleksiyonlar burada yoktur. Her kullanımda kopya alınarak varsayılan korunur.
-INTERFACE_DEFAULTS = {"theme": "#a78bfa", "colors": {}, "sfx": True, "vol": 0.8,
+INTERFACE_DEFAULTS = {"theme": "#a78bfa", "colors": {}, "sfx": True, "vol": 0.8, "replyVolume": 1,
                       "wake": 50, "sleepDelay": 10, "noise": 420, "onTop": False, "cmp": "auto",
                       "tab": "theme", "layout": None}
 

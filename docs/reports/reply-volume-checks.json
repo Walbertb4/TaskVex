@@ -1,0 +1,45 @@
+{
+  "step": "5.F8.1",
+  "scope": "Separate persistent Vex reply volume on the existing PCM GainNode",
+  "previous_commit": "5c21156",
+  "python": {
+    "passed": 1024,
+    "seconds": 76.81
+  },
+  "targeted_native_bridge_tests": 88,
+  "javascript_suites": 9,
+  "browser_groups": 5,
+  "typecheck": {
+    "scope": [
+      "app"
+    ],
+    "errors": 0,
+    "warnings": 0
+  },
+  "native": {
+    "passed": 10,
+    "report": "reply-volume-native.json",
+    "transport": "synthetic"
+  },
+  "verified": [
+    "current and future PCM output gain follows a validated 0..1 level",
+    "Mute silences output and restores the chosen level when disabled",
+    "zero persists and reports silent playback without disabling microphone",
+    "effects level and reply level are independent",
+    "old settings default to 100 percent; invalid field is not applied",
+    "browser reload, snapshot and native save/reopen restore selected volume",
+    "native reset restores 100 percent",
+    "same shared PCM player covers Live, REST speech and spoken timer notifications",
+    "existing Stop, scoped audio, sleep, notes, clocks and native lifecycle regressions pass"
+  ],
+  "not_tested": [
+    "real/paid API",
+    "physical speaker loudness or acoustic quality"
+  ],
+  "remaining": [
+    "voice/personality hardcodes scoped in 5.F8.2",
+    "manual user acceptance"
+  ],
+  "commit": "approved by user; see git history",
+  "manual_acceptance": "user reported working"
+}

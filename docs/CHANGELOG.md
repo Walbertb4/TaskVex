@@ -5,6 +5,22 @@ hali ARCHITECTURE.md, yapılacak işler PLAN.md içindedir. Henüz sürüm yayı
 
 ## Unreleased
 
+### Vex yanıt ses seviyesi (5.F8.1)
+
+- Settings Audio altında tema ve klavye uyumlu Vex reply volume barı eklendi.
+  Tek PCM oynatıcısının kazancını anlık değiştirir; Live/REST/timer bildiriminde
+  ortaktır. Mute aç/kapat seçili seviyeyi korur; SFX ve mikrofon değişmez.
+- replyVolume 0–1 arası doğrulanır; varsayılan/reset 1, sıfır korunur.
+  Aynı save/snapshot/import-export yoluyla yerel ve native tercihe kaydolur.
+  Yeni sağlayıcı çağrısı/oynatıcı eklenmedi. Voice/kişiselleştirme 5.F8.2 bekliyor.
+- Önceki günlük/kapasite adımı kullanıcı devam onayıyla 5c21156 commit'ine
+  kaydedildi; push yapılmadı. Kullanıcı bu dilimin çalıştığını doğruladı; commit onaylı.
+- 1024 pytest, 9 JS suite, 5 browser grubu, app Pyright 0 ve 10/10 native
+  aşama geçti. [Özet](reports/reply-volume-checks.json),
+  [native kanıt](reports/reply-volume-native.json). Gerçek hesap/ücretli API ve
+  fiziksel hoparlör testi yapılmadı.
+
+
 ### Kalıcı görev günlüğü ve kapasite (5.F7.2/3)
 
 - Aynı TaskManager, standart kütüphane SQLite günlüğünü kullanır; kabul, handler

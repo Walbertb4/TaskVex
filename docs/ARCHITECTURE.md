@@ -115,6 +115,12 @@ aynı istek kimliğinde oynatır. VAD aday/eşik, ön tampon ve sınırlı kuyru
 mikrofon sahibindedir. Mic Off yalnız girişi keser; Mute çıktıyı susturur; Stop
 turu durdurur. Geç PCM/transkript yeni mesaja taşınmaz; unknown kontrolleri kilitler.
 
+replyVolume (0–1, varsayılan 1) aynı live_audio PCM oynatıcısının GainNode
+kazancıdır. Live/REST sesleri ve konuşulan timer bildirimi paylaşır; SFX vol
+ayrıdır. Değişiklik mevcut sesi kesmeden uygulanır; Mute yalnız çıkışı sıfırlar,
+kaldırılınca seçili seviyeye döner. Tercih aynı settings save/snapshot/yedek/reset
+yolundadır; model oturumu veya mikrofon ayarı değildir.
+
 Uyku isteği model aracıyla kabul edilir, Vex’in yanıt/ses bitişinden sonra mevcut
 host tarafından uygulanır. Tek seferlik uyku ve her etkileşimden sonra tekrar
 uyuyan kalıcı kip ayrıdır. Idle sleep ayrı 0–300 s tercihidir. Uyurken PCM yerel
