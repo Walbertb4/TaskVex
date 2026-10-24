@@ -1,6 +1,6 @@
 # TaskVex — Güncel plan
 
-## Şimdi: 6.2.3a yerel ağ trafiği/bağlantısı; ping ve Wi-Fi sinyali sonraki dilim
+## Şimdi: 6.2.3b yerel ağ geçidi pingi ve konumsuz Wi-Fi sinyali
 
 Önceki 5.R8.6 kullanıcı kabulü başarılı, 526bfed commit’inde.
 5.F6 bakımı kullanıcı tarafından kabul edildi; ea8aa15 commit’inde.
@@ -469,3 +469,41 @@ Kullanıcı kabulü bekler; yeni dilim commit/push edilmedi. Sırada 6.2.3b var.
 
 6.2.3a kullanıcı tarafından başarılı bildirildi; yerel ağ dilimi kabul edildi.
 Sonraki adımdan önce commit alınır, push yapılmaz.
+
+
+### 6.2.3b — hedefi açık ping ve Wi-Fi sinyal kalitesi
+
+6.2.3a kullanıcı tarafından kabul edildi, 3e3cb8c commit'inde; push yok.
+Bu dilimin sahibi mevcut Telemetry → Network; ölçüm adaptörü network_quality.py.
+Model aynı system.status → registry/policy/TaskManager hattından okur.
+
+- Windows IPv4 varsayılan rotalarından aktif fiziksel karta ait en düşük
+  metrikli ağ geçidi seçilir. UI Gateway ping, internete değil bu hedefe tek
+  ICMP round-trip'tir. Adres dışarı verilmez; serbest hedef/DNS/hız testi yoktur.
+- ICMP beklemesi 250 ms, normal kalite sorgu aralığı 10 s; rota/kart değişimi
+  eski başarıyı temizler. Kaynak hatası, timeout, no_gateway/no_link ayrılır.
+- Konum istemeyen WlanQueryInterface opcode 19 kullanılır. current_connection,
+  BSS taraması veya konum isteyen fallback yoktur. Desteklenmeyen OS/izin hatası
+  sinyal üretmez. Çoklu bağlı Wi-Fi kartında en düşük kalite yüzdesi gösterilir.
+- Ölçüm yaşı/status tooltip'te; gerçek 0% ve 0 ms geçerli. Hata eski sayıyı
+  güncelmiş gibi göstermez; CPU/RAM/GPU ve trafik devam eder.
+- Ek worker/timer/paket/depo/model bağlantısı yok; ICMP/client handle'ları ve
+  WLAN buffer'ları tüm çıkışlarda kapanır. Native testlerde her kaynak sentetiktir.
+- API taşıma gecikmesi hâlâ açık sınırdır; toplam model yanıt süresi bu alana
+  yazılmaz. Dış internet erişimi, IPv6-only gateway ve başka donanım kabulü yoktur.
+- Sonraki bağımsız UI bağlantısı 6.2.5 Windows medya oturumu/denetimleridir.
+  6.2.4 oturum token toplamı zaten kabul edildi; yeniden yapılmaz. API gecikmesi
+  gerçek kaynak/sözleşme belirlenmeden tamamlandı sayılmaz.
+
+Son doğrulama: **1154 pytest** (137.49 s), **53 hedefli test**, **15 browser
+grubu**, **9 JS suite**, **10 native aşama** ve app + kalite testi Pyright **0**.
+[Özet](reports/network-quality-checks.json), [native](reports/network-quality-native.json).
+İlk tip kontrolünde finally içindeki iki DLL değişkeni olası başlatılmamış
+bulundu; açık başlangıç/cleanup koşuluyla giderildi. Gerçek Windows tek örneğinde
+gateway 2 ms, Wi-Fi %91 döndü; özel adres/kimlik kaydedilmedi. Diğer donanım/eski
+Windows, fiziksel yeniden bağlantı ve gerçek model yorumu denenmedi.
+Kullanıcı kabulü bekleniyor; bu yeni dilim commit/push edilmedi.
+
+
+6.2.3b kullanıcı testleri başarılı bildirildi; kalite dilimi kabul edildi.
+Sonraki adımdan önce commit alınır; push yapılmaz.

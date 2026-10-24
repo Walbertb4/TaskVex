@@ -14,6 +14,9 @@ export function applySystemSample(data) {
   if(!['cpu_percent','memory_percent','gpu_percent','battery_percent'].every(k=>optional(data[k],v=>finite(v,0,100)))||
      !['memory_used','memory_total','disk_used','disk_total'].every(k=>optional(data[k],v=>finite(v)))||
      !['cpu_temperature','gpu_temperature'].every(k=>optional(data[k],v=>finite(v,0,150)))||
+     !optional(data.network_quality_sampled_at,v=>finite(v)&&v<=data.sampled_at)||
+     !optional(data.network_wifi_signal,v=>finite(v,0,100))||
+     !optional(data.network_ping_ms,v=>finite(v,0,4294967295))||
      !['network_receive_bps','network_send_bps'].every(k=>optional(data[k],v=>finite(v)))||
      !['network_link','network_wifi_connected'].every(k=>optional(data[k],v=>typeof v==='boolean'))||
      !optional(data.network_kind,v=>['wifi','ethernet','other','multiple'].includes(v))||
@@ -31,7 +34,12 @@ export function applySystemSample(data) {
   setNetwork({down:data.network_receive_bps==null?null:data.network_receive_bps*8/1000000,
     up:data.network_send_bps==null?null:data.network_send_bps*8/1000000,
     link:data.network_link===false?'disconnected':data.network_link===true?(data.network_kind??'other'):null,
-    wifiConnected:data.network_wifi_connected??null});
+    wifiConnected:data.network_wifi_connected??null,wifi:data.network_wifi_signal??null,
+    ping:data.network_ping_ms??null});
+  const ping=document.getElementById("nPing"), wifi=document.getElementById("nWifi");
+  const age=finite(data.network_quality_sampled_at)?Math.max(0,data.sampled_at-data.network_quality_sampled_at).toFixed(0):"unknown";
+  if(ping)ping.title=`Local IPv4 gateway · sample age: ${age} s · ${["ok","timeout","unreachable","no_gateway","no_link","unavailable"].includes(data.network_ping_status)?data.network_ping_status:"unavailable"}`;
+  if(wifi)wifi.title=`Wi-Fi signal · weakest connected adapter · sample age: ${age} s · ${["ok","unsupported","access_denied","not_connected","unavailable"].includes(data.network_wifi_status)?data.network_wifi_status:"unavailable"}`;
   const gpuValue=document.getElementById('gpu');
   if(gpuValue)gpuValue.title=data.gpu_percent==null?'Windows GPU counters unavailable':
     'Windows GPU usage · busiest engine across adapters · sampled interval';
@@ -49,7 +57,7 @@ export async function refreshSystem() {
   const now=performance.now();
   if(now-(lastSuccess===-Infinity?lastAttempt:lastSuccess)>12000&&lastAttempt!==-Infinity) {
     setTelemetry(null);
-    setNetwork({down:null,up:null,link:null,wifiConnected:null});
+    setNetwork({down:null,up:null,link:null,wifiConnected:null,wifi:null,ping:null});
   }
   if(pending||now-lastAttempt<3000)return;
   pending=true;lastAttempt=now;
@@ -59,7 +67,7 @@ export async function refreshSystem() {
     if(result.ok&&result.response?.completed===true&&applySystemSample(result.response.data))lastSuccess=performance.now();
     else {
       setTelemetry(null);
-      setNetwork({down:null,up:null,link:null,wifiConnected:null});
+      setNetwork({down:null,up:null,link:null,wifiConnected:null,wifi:null,ping:null});
     }
   } finally {pending=false;}
 }

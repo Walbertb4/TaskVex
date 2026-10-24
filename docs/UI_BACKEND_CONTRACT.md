@@ -281,7 +281,7 @@ etmez, RAM/disk değerlerini GiB'ye dönüştürür. Başlık için güvenli tex
 kullanır. Query başarısız veya on iki saniyedir yeni sonuç yoksa metrikler — olur;
 geç cevap yeni örneği geriye götüremez. pagehide sonuç teslimini durdurur.
 Native başlangıcı/kurtarma sonrası açılır; bağımsız tarayıcı sahte CPU üretmez.
-CPU/GPU sıcaklığı, aktif ağ yoklamaları ve media henüz bağlı değildir. Modelin offline durumu
+CPU/GPU sıcaklığı, uzak internet yoklamaları ve media henüz bağlı değildir. Modelin offline durumu
 yerel ölçümü ve oturum token toplamını silmez.
 
 Win32 kaynakları: https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getsystemtimes
@@ -331,9 +331,41 @@ Hız testi, data plan kotası, paket içeriği veya internet erişimi ölçülme
 Kaynak/stale hatasında yalnız yerel ağ alanları — yapılır; API gecikmesi ayrı
 sahibindedir. Model offline olması yerel ağ ve CPU/RAM ölçümünü temizlemez.
 setNetwork eski ping/down/wifi/api alanlarını korur; up (Mbps), link enum'u ve
-wifiConnected boolean/null alanları eklenir. Wi-Fi sinyal ve ping mevcut
-pasif poll tarafından uydurulmaz. Ağ yapılandırması veya radyo değiştirilmez.
+wifiConnected boolean/null alanları eklenir. Wi-Fi sinyal ve ping aşağıdaki kalite adaptöründen gelir; pasif trafik
+sayacından türetilmez. Ağ yapılandırması veya radyo değiştirilmez.
 
 Kaynaklar:
 - https://learn.microsoft.com/en-us/windows/win32/api/netioapi/nf-netioapi-getiftable2
 - https://learn.microsoft.com/en-us/windows/win32/api/netioapi/ns-netioapi-mib_if_row2
+
+
+## Ağ kalitesi alanları — 6.2.3b
+
+Aynı query_system/system.status data içinde:
+- network_ping_ms: IPv4 fiziksel default gateway ICMP RTT ms veya None.
+- network_ping_status: ok/timeout/unreachable/no_gateway/no_link/unavailable.
+- network_wifi_signal: 0–100, en düşük bağlı fiziksel Wi-Fi kalite yüzdesi veya None.
+- network_wifi_status: ok/unsupported/access_denied/not_connected/unavailable.
+- network_quality_sampled_at: monoton saniye; network.sample cache üretim zamanı.
+
+Kalite örneği en çok on saniye saklanır; kart/rota değişikliği anında yeniler.
+Temel sampled_at ile aynı olmak zorunda değildir, geçmişte/eşit olmalıdır;
+UI tooltip kalite yaşını sampled_at ile farkından gösterir. Global 12 s staleness
+kalite değerlerini ve tooltip'lerini de temizler. Sıfır geçerlidir.
+
+UI Gateway ping etiketini kullanır; bu genel internet/API gecikmesi değildir.
+Timeout None gösterir, internet offline/bağlı değil kararı üretmez. Wi-Fi bağlı
+ve kalite okunamıyorsa Connected · —; bağlı değilse Not connected; kaynak
+bilinmiyorsa —. Yüzde kalite alanından gelir, trafik veya link hızından hesaplanmaz.
+setNetwork legacy wifi yüzde/ping ms setter'ları korunur. API alanı ayrı kalır.
+
+GetIpForwardTable rotası yalnız aktif fiziksel kartlardan seçilir; ham hedef
+adresinin UI/tool çıktısı yoktur. Model istenen host'a ping atamaz; araç parametresizdir.
+WLAN opcode 19 konum gerektirmez; destek yoksa/izin reddedilirse hassas fallback
+çağrısı yapılmaz. Windows handle/buffer'ları finally'de bırakılır.
+
+Kaynaklar:
+- https://learn.microsoft.com/en-us/windows/win32/api/iphlpapi/nf-iphlpapi-getipforwardtable
+- https://learn.microsoft.com/en-us/windows/win32/api/icmpapi/nf-icmpapi-icmpsendecho
+- https://learn.microsoft.com/en-us/windows/win32/api/wlanapi/ne-wlanapi-wlan_intf_opcode
+- https://learn.microsoft.com/en-us/windows/win32/api/wlanapi/ns-wlanapi-wlan_realtime_connection_quality

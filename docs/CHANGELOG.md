@@ -5,6 +5,21 @@ hali ARCHITECTURE.md, yapılacak işler PLAN.md içindedir. Henüz sürüm yayı
 
 ## Unreleased
 
+### Gateway ping ve konumsuz Wi-Fi kalitesi — 6.2.3b
+
+- Aynı Telemetry/Network sahibi yerel IPv4 gateway RTT ve Wi-Fi kalite yüzdesi
+  sağlar; UI hedefi Gateway ping olarak belirtir, yaş/status tooltip'i vardır.
+- Tek ICMP isteği 250 ms, normal kalite cache'i 10 s; rota/kart değişiminde
+  eski başarı bırakılır. Gerçek sıfır, timeout ve eksik sorgu farklıdır.
+- WLAN realtime opcode 19 konum izni istemez; hassas current_connection/BSS
+  fallback'i yoktur. Kaynak desteklenmiyorsa ölçüm — kalır.
+- Önceki yerel trafik dilimi kullanıcı kabulüyle 3e3cb8c commit'inde. Yeni
+  dilim için kullanıcı kabulü ve commit/push bekler.
+- 1154 pytest, 53 hedefli test, 15 browser grubu, 9 JS suite, 10 native aşama
+  ve Pyright 0: [kanıt](reports/network-quality-checks.json). Tek Windows
+  makinesinde gerçek gateway/Wi-Fi sorguları geçti; eski OS/donanım denenmedi.
+
+
 ### Yerel ağ trafiği ve fiziksel link — 6.2.3a
 
 - Mevcut Telemetry/system.status/query_system hattına pasif Windows IP Helper

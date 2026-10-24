@@ -448,7 +448,7 @@ consent invalidates an old approval. No automatic retry or merge is performed.
 | “Which application is active?” | Reads the foreground executable name. It does not read document/window titles or window contents. |
 
 The UI refreshes local readings without requiring a model connection. Missing
-values remain unavailable, never invented zeroes. CPU/GPU temperatures, active network probes and
+values remain unavailable, never invented zeroes. CPU/GPU temperatures, remote internet probes and
 media integration are still pending. Windows GPU readings are described below. System readings use the existing shared
 registry/policy/TaskManager model path; UI polling reads the same local owner.
 
@@ -483,4 +483,25 @@ adapter-set changes and unavailable data do not become zero; measured zero is va
 Only physical interfaces are counted; virtual/VPN/loopback counters are excluded
 to avoid duplicate packet accounting. No SSID, IP/MAC or adapter profile names
 are returned. No remote requests or network configuration changes are made.
-Ping, Wi-Fi signal percentage and API transport latency remain separate pending work.
+Gateway ping and Wi-Fi signal quality use the bounded source below; API transport latency remains pending.
+
+
+## Gateway ping and Wi-Fi signal quality
+
+| Say or type → | What Vex does |
+|---|---|
+| “What is my gateway ping?” | Reads the cached IPv4 physical default-gateway ICMP RTT, status and sample time through system.status. |
+| “How strong is my Wi-Fi signal?” | Reads the OS connection quality percentage; with multiple Wi-Fi adapters it reports the weakest connected adapter. |
+
+These use the same Telemetry owner as the dashboard. Gateway ping is a local
+router measurement, not internet/API latency or a speed test. One echo waits
+up to 250 ms, normally at most once per ten seconds; a card/route change refreshes
+it immediately. No arbitrary host, DNS lookup, public probe service or network
+scan is offered. A timeout does not prove internet loss. IPv6-only/VPN-only
+routing is outside the physical IPv4 gateway scope.
+
+Wi-Fi uses the location-free realtime quality opcode. Older/unsupported Windows
+or denied data stays unavailable; TaskVex does not fall back to location-sensitive
+queries. 0% signal and 0 ms ping are valid. The UI tooltip shows status and sample
+age. No gateway address, SSID, MAC or device GUID is returned. API transport
+latency remains unavailable until a separate real transport metric is defined.

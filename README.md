@@ -29,7 +29,8 @@ It is a development project, not a production-ready general computer-use agent.
   unavailable readings are not replaced with invented numbers.
 - Passive physical network receive/send rates and link/Wi-Fi connected status
   shared with system.status. This is not a speed test or proof of internet access;
-  ping and Wi-Fi signal strength remain pending.
+  local IPv4 gateway ping and location-free Wi-Fi signal quality are available
+  when Windows exposes them. These are not internet/API latency measurements.
 - Saved interface preferences, Live voice selection and separate reply volume,
   plus a limited set of active personalization fields.
 - Gemini API key storage in Windows Credential Manager and automatic Live model
@@ -105,17 +106,18 @@ Model availability, network conditions and hardware affect behavior.
 
 ## Verification and documentation
 
-The latest local-network change passed 1,132 Python tests, 9 JavaScript suites,
-14 browser groups, 10 native phases and targeted type checking using temporary
-profiles and synthetic providers. Passive Windows counter reading also succeeded
-on the development machine. [Test evidence](docs/reports/network-local-checks.json).
-Manual acceptance of this network slice is pending; the preceding GPU dashboard
-change was accepted by the developer. Memory decisions, session token counting
-and basic local-system readings were also reported working.
+The latest gateway/Wi-Fi quality change passed 1,154 Python tests, 9 JavaScript
+suites, 15 browser groups, 10 native phases and targeted type checking using
+temporary profiles and synthetic providers. A local gateway echo and Windows
+Wi-Fi quality query also succeeded on the development machine.
+[Test evidence](docs/reports/network-quality-checks.json).
 
+Manual acceptance of this quality slice is pending; preceding local traffic,
+GPU dashboard, memory decisions and session token counting were reported working.
 These checks do not establish real-account availability, physical microphone
-accuracy, support for every network adapter or production readiness. Ping and
-Wi-Fi signal percentage are not part of this passive slice.
+accuracy, support for every adapter/Windows version or production readiness.
+Gateway ping is not internet/API latency. The API latency field remains unavailable
+until a real transport metric is defined.
 
 - [Architecture](docs/ARCHITECTURE.md): current ownership and planned boundaries.
 - [Plan](docs/PLAN.md): remaining work and acceptance status.

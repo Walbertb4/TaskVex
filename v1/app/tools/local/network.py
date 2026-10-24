@@ -1,12 +1,15 @@
 """Yerel ağ sayaçları: Telemetry'nin çağırdığı pasif Windows alan adaptörü.
 
 GetIfTable2 ile fiziksel arabirimlerin 64 bit byte sayaçlarını okur. Paket,
-IP/MAC, SSID, profil adı veya uzak sunucu sorgulanmaz; ping/hız testi yapılmaz.
+IP/MAC, SSID veya profil adı dışarı verilmez; hız testi yapılmaz. Yerel ağ geçidi
+ping ve konum istemeyen Wi-Fi kalite adaptörü aynı örnekten çağrılır.
 İki örnek arasındaki fark trafik hızıdır, bağlantının azami hızı değildir.
 """
 import ctypes as c
 from ctypes import wintypes as w
 import os
+
+from app.tools.local.network_quality import read_gateway, ping_gateway, wifi_signal
 
 
 class _Guid(c.Structure):
@@ -65,7 +68,8 @@ def read_interfaces() -> list[dict]:
                 continue
             result.append({'id': str(row.luid), 'up': None if row.oper_status == 4 else row.oper_status == 1 and row.media_state != 2,
                 'kind': 'wifi' if row.type == 71 else 'ethernet' if row.type == 6 else 'other',
-                'rx_bytes': row.rx_bytes, 'tx_bytes': row.tx_bytes})
+                'rx_bytes': row.rx_bytes, 'tx_bytes': row.tx_bytes,
+                'index': row.index, 'guid': bytes(row.guid)})
         return result
     finally:
         dll.FreeMibTable(table)
@@ -76,6 +80,30 @@ class Network:
     def __init__(self, reader=None):
         self._reader = reader or read_interfaces
         self._previous = None
+        self._quality_key = None
+        self._quality_at = -float("inf")
+        self._quality = {}
+
+    def _sample_quality(self, now, active):
+        """Sınırlı kalite sorgusu on saniyede bir; kart/rota değişimi eski sonucu siler."""
+        if not active:
+            self._quality_key = None
+            return {
+                "network_ping_ms": None, "network_ping_status": "unavailable" if active is None else "no_link",
+                "network_wifi_signal": None, "network_wifi_status": "unavailable" if active is None else "not_connected",
+                "network_quality_sampled_at": now}
+        route_ok = True
+        try:
+            gateway = read_gateway(active)
+        except (OSError, AttributeError):
+            gateway, route_ok = None, False
+        key = (tuple(sorted(row["id"] for row in active)), route_ok, gateway)
+        if key != self._quality_key or now-self._quality_at >= 10:
+            self._quality_key, self._quality_at = key, now
+            self._quality = {**wifi_signal(active), **(ping_gateway(gateway) if gateway is not None else {
+                "network_ping_ms": None, "network_ping_status": "no_gateway" if route_ok else "unavailable"}),
+                "network_quality_sampled_at": now}
+        return self._quality
 
     def sample(self, now: float) -> dict:
         """Byte farkını saniyeye böl; reset/kayıp/değişen cihazda hız uydurma."""
@@ -85,6 +113,7 @@ class Network:
             rows = self._reader()
         except (OSError, AttributeError):
             self._previous = None
+            data.update(self._sample_quality(now, None))
             return data
         active = [row for row in rows if row['up']]
         data['network_link'] = True if active else None if any(row['up'] is None for row in rows) else False
@@ -103,4 +132,5 @@ class Network:
                     data['network_receive_bps'] = sum(delta[::2]) / elapsed
                     data['network_send_bps'] = sum(delta[1::2]) / elapsed
         self._previous = (now, current)
+        data.update(self._sample_quality(now, active if data['network_link'] is not None else None))
         return data

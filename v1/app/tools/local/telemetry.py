@@ -144,7 +144,7 @@ class Telemetry:
                 data['memory_percent']=round(100*used/total,1)
             data['unavailable']=[key for key in ('cpu_percent','memory_percent','battery_percent',
                 'disk_total','active_process','gpu_percent','cpu_temperature','gpu_temperature',
-                'network_link','network_receive_bps','network_send_bps') if data[key] is None]
+                'network_link','network_receive_bps','network_send_bps','network_ping_ms','network_wifi_signal') if data[key] is None]
             self._sample=data
             return deepcopy(data)
 

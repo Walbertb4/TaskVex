@@ -314,13 +314,15 @@ export function setNetwork(data) {
       if (el) el.style.color = !valid ? '' : value > 1500 ? '#ff5d5d' : value > 800 ? '#ffb347' : '';
     }
   }
+  if(o.ping===null)document.getElementById('nPing')?.removeAttribute('title');
+  if(o.wifi===null||o.wifiConnected===null)document.getElementById('nWifi')?.removeAttribute('title');
   if(o.link!==undefined) {
     const el=document.getElementById('nLink');
     if(el)el.textContent=({wifi:'Wi-Fi',ethernet:'Ethernet',other:'Connected',multiple:'Multiple links',disconnected:'Disconnected'})[o.link]??'—';
   }
   if(o.wifiConnected!==undefined) {
     const el=document.getElementById('nWifi');
-    if(el)el.textContent=o.wifiConnected===true?'Connected':o.wifiConnected===false?'Not connected':'—';
+    if(el)el.textContent=o.wifiConnected===true?(typeof o.wifi==='number'&&Number.isFinite(o.wifi)&&o.wifi>=0&&o.wifi<=100?Math.round(o.wifi)+'%':'Connected · —'):o.wifiConnected===false?'Not connected':'—';
   }
 
 }

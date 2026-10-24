@@ -1,0 +1,76 @@
+{
+  "step": "6.2.3b local IPv4 gateway ping and location-free Wi-Fi quality",
+  "status": "user reported manual tests successful; approved for commit",
+  "previous_step": {
+    "id": "6.2.3a",
+    "commit": "3e3cb8c",
+    "manual_acceptance": "user reported successful tests",
+    "pushed": false
+  },
+  "ownership": "existing Telemetry -> Network owns the sample/cache; network_quality.py only adapts Win32 calls; model remains system.status -> registry/policy/TaskManager",
+  "gateway_probe": {
+    "target": "lowest-metric default gateway of an active physical IPv4 interface; address not exported",
+    "api": "GetIpForwardTable + IcmpSendEcho",
+    "timeout_ms": 250,
+    "payload_bytes": 7,
+    "normal_interval_seconds": 10,
+    "route_or_adapter_change": "invalidates cache and refreshes",
+    "public_service_dns_or_arbitrary_target": false
+  },
+  "wifi": {
+    "api": "WlanQueryInterface opcode 19 realtime_connection_quality",
+    "location_sensitive_fallback": false,
+    "multiple_cards": "weakest connected adapter; missing member query makes signal unavailable",
+    "maximum_connected_cards": 16
+  },
+  "validation": {
+    "full_pytest": 1154,
+    "full_pytest_seconds": 137.49,
+    "targeted_pytest": 53,
+    "browser_groups": 15,
+    "javascript_suites": 9,
+    "native_phases": 10,
+    "pyright_errors": 0,
+    "diff_check": true
+  },
+  "initial_issue": "Pyright found two possibly unbound DLL variables in finally blocks. Initialized DLL references and guarded cleanup; targeted app/test check now has zero errors.",
+  "covered": [
+    "physical default route selection and bounded buffer",
+    "single ICMP timeout and zero RTT",
+    "ICMP handle closed on success/error",
+    "wrong peer, unreachable and unsupported source",
+    "Wi-Fi zero/multiple cards/invalid quality",
+    "opcode 19 only; no location fallback",
+    "denied/unsupported/null/short WLAN responses",
+    "WLAN buffers and client handle released",
+    "10-second cache plus route/card change and disconnect clearing",
+    "UI quality age and safe status text",
+    "unsupported/timeout do not retain old values",
+    "model offline does not clear local ping/signal",
+    "native synthetic ping and Wi-Fi rendering"
+  ],
+  "real_windows_check": {
+    "gateway_ping_status": "ok",
+    "gateway_ping_ms": 2,
+    "wifi_status": "ok",
+    "wifi_signal_percent": 91,
+    "private_network_identifiers_recorded": false,
+    "external_or_paid_api_used": false
+  },
+  "native_report": "network-quality-native.json",
+  "limits": [
+    "Gateway RTT is not internet/API latency; ICMP failure does not prove internet loss",
+    "IPv6-only/VPN-only gateway routing is outside this physical IPv4 probe",
+    "OS support is required for opcode 19; unsupported versions stay unavailable",
+    "Synchronous ICMP can hold the sample lock for its bounded wait; WLAN service calls have OS-controlled duration",
+    "API transport latency has no defined source yet and remains unavailable",
+    "Other hardware/older Windows, physical reconnect and real model interpretation were not accepted in this agent run"
+  ],
+  "manual_test": [
+    "Restart and check Gateway ping / Wi-Fi percentage; Ethernet-only should report Not connected for Wi-Fi",
+    "Hover the values for source/status/sample age, then wait for a fresh sample",
+    "Ask Vex for Wi-Fi signal and local gateway ping; it must not call this internet/API latency"
+  ],
+  "commit": false,
+  "push": false
+}

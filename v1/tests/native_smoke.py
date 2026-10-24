@@ -47,6 +47,9 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
         'gpu_devices':[{'id':'synthetic-adapter','utilization_percent':0}]}
     from app.tools.local import network as network_module
     network_module.read_interfaces=lambda:[{'id':'synthetic','up':True,'kind':'wifi','rx_bytes':100,'tx_bytes':50}]
+    network_module.read_gateway=lambda _:1
+    network_module.ping_gateway=lambda _:{'network_ping_ms':0,'network_ping_status':'ok'}
+    network_module.wifi_signal=lambda _:{'network_wifi_signal':75,'network_wifi_status':'ok'}
     from app.main import main
     from app.storage.json_store import StoreError
 
@@ -587,11 +590,14 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
             assert window.evaluate_js("document.getElementById('cpuT').textContent")=='—'
             outcome['native_windows_gpu_zero_and_static_label']=True
             assert window.evaluate_js("document.getElementById('nLink').textContent")=='Wi-Fi'
-            assert window.evaluate_js("document.getElementById('nWifi').textContent")=='Connected'
+            assert window.evaluate_js("document.getElementById('nWifi').textContent")=='75%'
+            assert window.evaluate_js("document.getElementById('nPing').textContent")=='0 ms'
+            assert 'Local IPv4 gateway' in window.evaluate_js("document.getElementById('nPing').title")
             if phase=='save':
                 wait_until(lambda: window.evaluate_js("document.getElementById('nDown').textContent")=='0.00 Mbps')
                 assert window.evaluate_js("document.getElementById('nUp').textContent")=='0.00 Mbps'
             outcome['native_local_network_link_and_rates']=True
+            outcome['native_gateway_ping_and_wifi_signal']=True
             if phase == "chat":
                 # Yeni otomatik başlangıç fiziksel mikrofona hiç ulaşmasın.
                 # Her izin çağrısı taze, sessiz bir sentetik track alır.

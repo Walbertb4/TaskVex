@@ -332,7 +332,7 @@ try {
     assert.equal(await p.locator('#nDown').innerText(),'10.00 Mbps');
     assert.equal(await p.locator('#nUp').innerText(),'0.00 Mbps');
     assert.equal(await p.locator('#nLink').innerText(),'Wi-Fi');
-    assert.equal(await p.locator('#nWifi').innerText(),'Connected');
+    assert.equal(await p.locator('#nWifi').innerText(),'Connected · —');
     await p.evaluate(()=>window.vex.online(false,'MODEL OFFLINE'));
     assert.equal(await p.locator('#nDown').innerText(),'10.00 Mbps');
     assert.equal(await p.locator('#nApi').innerText(),'—');
@@ -357,6 +357,45 @@ try {
     });
     assert.equal(await p.locator('#nLink').innerText(),'—');
     assert.equal(await p.locator('#nWifi').innerText(),'—');
+  });
+  await test('gateway ping and Wi-Fi signal preserve zero, label age and clear failed or unsupported samples',async()=>{
+    const p=await setup();
+    await p.evaluate(async()=>{
+      const {applySystemSample}=await import('/js/system_view.js');
+      window.qualitySample={sampled_at:100,network_quality_sampled_at:100,network_link:true,
+        network_kind:'wifi',network_wifi_connected:true,network_wifi_signal:0,network_wifi_status:'ok',
+        network_ping_ms:0,network_ping_status:'ok',memory_percent:25};
+      applySystemSample(window.qualitySample);
+    });
+    assert.equal(await p.locator('#nWifi').innerText(),'0%');
+    assert.equal(await p.locator('#nPing').innerText(),'0 ms');
+    await p.evaluate(async()=>{
+      const {applySystemSample}=await import('/js/system_view.js');
+      applySystemSample({...window.qualitySample,sampled_at:103});
+      window.vex.online(false,'MODEL OFFLINE');
+    });
+    assert.match(await p.locator('#nPing').getAttribute('title'),/Local IPv4 gateway.*age: 3 s/);
+    assert.equal(await p.locator('#nPing').innerText(),'0 ms');
+    const invalid=await p.evaluate(async()=>{
+      const {applySystemSample}=await import('/js/system_view.js');
+      return [applySystemSample({...window.qualitySample,sampled_at:104,network_wifi_signal:101}),
+        applySystemSample({...window.qualitySample,sampled_at:104,network_ping_ms:-1}),
+        applySystemSample({...window.qualitySample,sampled_at:104,network_quality_sampled_at:105})];
+    });
+    assert.deepEqual(invalid,[false,false,false]);
+    await p.evaluate(async()=>{
+      const {applySystemSample}=await import('/js/system_view.js');
+      applySystemSample({...window.qualitySample,sampled_at:110,network_quality_sampled_at:110,
+        network_wifi_signal:null,network_wifi_status:'unsupported',network_ping_ms:null,network_ping_status:'timeout'});
+    });
+    assert.equal(await p.locator('#nWifi').innerText(),'Connected · —');
+    assert.match(await p.locator('#nWifi').getAttribute('title'),/unsupported/);
+    assert.equal(await p.locator('#nPing').innerText(),'—');
+    assert.match(await p.locator('#nPing').getAttribute('title'),/timeout/);
+    assert.equal(await p.locator('#ram').innerText(),'25%');
+    await p.evaluate(async()=>{const {setNetwork}=await import('/js/connections.js');setNetwork(null);});
+    assert.equal(await p.locator('#nWifi').getAttribute('title'),null);
+    assert.equal(await p.locator('#nPing').getAttribute('title'),null);
   });
   console.log(`${results.length} browser cleanup groups passed`);
 } finally { await browser.close(); await new Promise(resolve=>server.close(resolve)); }

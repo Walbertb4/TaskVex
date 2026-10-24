@@ -321,7 +321,7 @@ ve seçilen GPU farklı olduğunda sayılar Task Manager'la birebir eşzamanlı 
 
 ### Pasif yerel ağ ölçümleri
 
-network.py yalnız Windows IP Helper GetIfTable2 adaptörüdür. Önceki RX/TX
+network.py, Windows IP Helper GetIfTable2 adaptörü ve ağ örneğinin sahibidir. Önceki RX/TX
 örneğinin sahibi Telemetry içindeki tek Network nesnesidir; aynı iki saniyelik
 cache/kilit kullanılır. query_system UI sorgusu ve system.status model aracı
 aynı snapshot'ı okur. Yeni timer/worker/model isteği yoktur.
@@ -338,5 +338,31 @@ alma/gönderme trafiği internet hız testi veya link kapasitesi değildir.
 Yerel kart up olsa da internet erişimi olmayabilir. VPN/sanal sayaçlar,
 aynı paket iki kez sayılmasın diye dahil edilmez; yalnız sanal bağlantı
 kullanan kurulumlar için bu kapsam tam trafik ölçümü değildir.
-Ping/uzak erişilebilirlik, Wi-Fi sinyal yüzdesi ve API taşıma gecikmesi bu
-pasif kaynakla üretilmez. Mevcut API/model durumu yerel link olarak yorumlanmaz.
+Ping ve Wi-Fi kalite adaptörü aşağıda tanımlıdır; API taşıma gecikmesi bu
+pasif trafik sayacından üretilmez. Mevcut API/model durumu yerel link olarak yorumlanmaz.
+
+
+### Ağ kalitesi: tek örnek sahibi, sınırlandırılmış kaynaklar
+
+network_quality.py yalnız Win32 adaptörüdür; durum/10 saniyelik önbellek yine
+Network'te, Telemetry kilidinin altındadır. Yerel tablo okuması sonrası kart/rota
+anahtarı karşılaştırılır; değişince kalite sorgusu hemen yenilenir. Yeni sampler,
+thread, genel ağ yürütücüsü veya model bağlantısı yoktur.
+
+GetIpForwardTable'dan en düşük metrikli aktif fiziksel IPv4 default route seçilir.
+IcmpSendEcho yalnız bu yerel gateway'e sabit küçük payload gönderir; DNS, kullanıcı
+URL'si, kamu sunucusu veya ağ taraması yoktur. Tek isteğin beklemesi 250 ms'dir;
+bu süre boyunca ortak örnek kilidi de bekleyebilir. ICMP timeout internet kesintisi
+kanıtı değildir. VPN-only/IPv6-only gateway bu fiziksel IPv4 kapsamın dışındadır.
+
+Wi-Fi kalitesi, WlanQueryInterface realtime_connection_quality opcode'u ile
+alınır. Bu kaynak konum hassas alanları içermez; current_connection/BSS/scan
+fallback yapılmaz ve konum izni açtırılmaz. OS/sürücü desteklemiyorsa veri yoktur.
+En fazla 16 bağlı fiziksel Wi-Fi kartı okunur; çoklu kartta en düşük kalite,
+eksik sorguda None gösterilir. Sıfır kalitesi geçerli bir ölçümdür.
+
+Sonuçta yalnız ms/yüzde, statü ve monoton örnek zamanı bulunur. Rota adresi,
+GUID/index ve SSID/MAC rapora/UI/model sonucuna taşınmaz. Query_system snapshot
+okuması bu sınırlı gateway yoklamasını başlatabilir; polling görev günlüğü yazmaz.
+Model okuması mevcut system.read yetkisiyle normal araç hattındadır. Wlan client,
+WLAN buffer ve ICMP handle yaşam döngüleri adaptörde finally ile tamamlanır.
