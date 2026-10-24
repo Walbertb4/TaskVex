@@ -15,10 +15,13 @@ It is a development project, not a production-ready general computer-use agent.
 - Microphone input control, playback mute, Stop and interruption handling.
 - Local wake-word detection, one-time sleep, return-to-sleep mode and an idle timer.
 - Temporary conversation context held in memory.
+- User-edited personal memory in Personalization, with explicit opt-in before
+  sending it to the model; correction and deletion drop the old chat context.
 - Backend notes with stable IDs and timestamps: add, list, edit, complete and
   delete, including structured selection and atomic batch deletion/completion.
 - Multiple timers and stopwatches shared between the UI and model tools.
-- Saved interface preferences and a limited set of active personalization fields.
+- Saved interface preferences, Live voice selection and separate reply volume,
+  plus a limited set of active personalization fields.
 - Gemini API key storage in Windows Credential Manager and automatic Live model
   catalog loading. The saved selection is restored when returned by the API.
 - A per-data-profile OS lock prevents a second native app instance from opening.
@@ -30,11 +33,11 @@ A separate REST adapter remains available for development and future channels.
 
 ## Not implemented yet
 
-Google Drive/Calendar/mail access, Telegram/Discord integration, persistent user
-memory, general GUI automation, and backend skill/routine scheduling are planned.
+Google Drive/Calendar/mail access, Telegram/Discord integration, model-driven
+personal-memory changes or automatic learning, general GUI automation, and
+backend skill/routine scheduling are planned.
 Camera, screen inspection, location and media controls are not connected.
 Some saved legacy profile fields have no backend effect and are marked as planned.
-Voice selection and a separate assistant-reply volume slider are also pending.
 
 ## Run from source
 
@@ -64,7 +67,8 @@ Active conversation input and model tool results are sent to Google. During
 sleep, wake detection processes microphone audio locally. This is not a fully
 offline assistant. API keys use Windows Credential Manager; notes and settings
 are local files. Skill/routine definitions use browser storage. Timers and
-conversation context do not survive application exit.
+conversation context do not survive application exit. User-edited personal memory
+is saved separately in the profile and sent to the model only when explicitly enabled.
 
 Native tool requests and results are kept in a local SQLite journal. Reusing
 the same request ID does not run the action again, including after restart.
@@ -80,10 +84,10 @@ Model availability, network conditions and hardware affect behavior.
 
 ## Verification and documentation
 
-The latest core change passed 1,025 Python tests, targeted type checking and
+The latest core change passed 1,035 Python tests, targeted type checking and
 10 native regression phases using synthetic providers and temporary data.
 These checks do not establish real-account availability, physical microphone
-accuracy or production readiness. See [test evidence](docs/reports/live-voices-checks.json).
+accuracy or production readiness. See [test evidence](docs/reports/personal-memory-checks.json).
 
 - [Architecture](docs/ARCHITECTURE.md): current ownership and planned boundaries.
 - [Plan](docs/PLAN.md): remaining work and acceptance status.

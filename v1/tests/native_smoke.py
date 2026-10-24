@@ -509,7 +509,13 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 wait_until(lambda: api._notes_ready)
                 wait_until(lambda: not window.evaluate_js("document.getElementById('noteAdd').disabled"))
                 after = js("const s=await import('./js/settings.js');return JSON.stringify([s.store.notes,s.store.skills,s.store.routines,s.store.prof]);")
-                assert after == before
+                expected = json.loads(before)
+                if phase == 'schema_invalid':
+                    # Onarılan geçerli backend profili hafıza içermiyor. Eski
+                    # UI profilinin açık izni/metni bu profile miras kalmamalı.
+                    expected[3]['pMem'] = ''
+                    expected[3]['pMemory'] = False
+                assert json.loads(after) == expected, (json.loads(after), expected)
                 new_backups = set(home.glob("settings.json.*.corrupt")) - existing_backups
                 assert len(new_backups) == 1 and new_backups.pop().read_bytes() == original
                 assert api._store.read()["vol"] == 0.8
@@ -1032,32 +1038,37 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 assert api._chat._live._connection.logical_id != old_profile_session
                 assert 'scope_changed' in window.evaluate_js("document.getElementById('textStatus').textContent")
                 outcome['saved_profile_form_shared_rest_live_instruction_and_scope_reset'] = True
-                # Gerçek New Chat düğmesi/bridge; hatırlama yalnız sentetik
-                # sunucunun gerçekten aldığı history verisinden üretilir.
+                # New Chat düğmesi kaldırıldı. Geçici hafıza Stop'ta korunur;
+                # kalıcı hafıza tercihi değişince eski bağlam aktarılmaz.
                 js("testMicOff();document.getElementById('inp').value='Native temporary name is Ada';document.getElementById('send').click();return true;")
                 wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
                 preserved_notes = (home / 'notes.json').read_bytes()
                 js("document.getElementById('inp').value='Native Stop';document.getElementById('send').click();return true;")
                 wait_until(lambda: api._chat.busy)
-                assert window.evaluate_js("document.getElementById('newChat').disabled")
+                assert window.evaluate_js("document.getElementById('newChat')===null")
                 js("document.getElementById('stopTask').click();return true;")
                 wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
                 js("document.getElementById('inp').value='Native memory ask';document.getElementById('send').click();return true;")
                 wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
                 assert 'Native remembered name: Ada' in window.evaluate_js("document.getElementById('msgs').textContent")
                 assert 'recent conversation restored' in window.evaluate_js("document.getElementById('textStatus').textContent")
-                memory_before = api._chat._memory.snapshot()
-                js("window.confirm=()=>false;document.getElementById('newChat').click();return true;")
-                assert api._chat._memory.snapshot() == memory_before
-                js("window.confirm=()=>true;document.getElementById('newChat').click();return true;")
-                wait_until(lambda: 'New chat. Temporary' in window.evaluate_js("document.getElementById('textStatus').textContent"))
-                assert not api._chat._memory.snapshot()
-                assert window.evaluate_js("document.getElementById('msgs').childElementCount") == 0
+                js("const p=await import('./js/panels.js');p.openM('mProf');"
+                   "document.getElementById('pMem').value='Native saved school';"
+                   "document.getElementById('pMemory').checked=true;document.getElementById('btnSaveProf').click();return true;")
+                wait_until(lambda: api._store.read().get('prof', {}).get('pMemory') is True)
+                wait_until(lambda: not window.evaluate_js("document.getElementById('mProf').classList.contains('o')"))
                 assert (home / 'notes.json').read_bytes() == preserved_notes
                 js("document.getElementById('inp').value='Native memory ask';document.getElementById('send').click();return true;")
                 wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
                 assert 'Native remembered name: unknown' in window.evaluate_js("document.getElementById('msgs').textContent")
-                outcome['temporary_memory_after_stop_new_chat_confirmation_and_notes_preserved'] = True
+                memory_setup = [m['setup'] for m in live_state['sent'] if 'setup' in m][-1]
+                assert 'Native saved school' in json.dumps(memory_setup['systemInstruction'])
+                js("const p=await import('./js/panels.js');p.openM('mProf');"
+                   "document.getElementById('pMem').value='';document.getElementById('pMemory').checked=false;"
+                   "document.getElementById('btnSaveProf').click();return true;")
+                wait_until(lambda: api._store.read().get('prof', {}).get('pMem') == '')
+                wait_until(lambda: not window.evaluate_js("document.getElementById('mProf').classList.contains('o')"))
+                outcome['personal_memory_form_opt_in_and_temporary_context_cleared'] = True
                 check_local_sleep(window, api, js, wait_until, live_state, wake_state, outcome)
                 check_native_note_batches(api, home, window, js, wait_until, outcome)
                 check_native_shutdown_request(window, api, js, wait_until, outcome)
@@ -1309,7 +1320,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                           "window._events=[]; window.vex.onEvent=(name)=>window._events.push(name);"
                           "window.vex.setSkills([{id:'keep-skill',name:'Keep skill',steps:[]}]);"
                           "window.vex.setRoutines([{id:'keep-routine',name:'Keep routine',type:'manual',steps:'Keep step',on:0}]);"
-                          "return window.vex.loadStore({theme:'#4fd8ff',prof:{pIns:'Native profile 📝'},"
+                          "return window.vex.loadStore({theme:'#4fd8ff',prof:{pIns:'Native profile 📝',pMemory:true,pMem:'Native saved memory'},"
                           "devs:{dIn:'7'},conn:{model:'gemini-3.8-flash',voice:'Kore'}});") is True
                 assert js("return window._events.includes('save');") is False
                 js("const checkbox=document.getElementById('onTop'); checkbox.checked=true;"
@@ -1337,6 +1348,8 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                               "JSON.stringify(settings.store.notes)};")
                 assert restored["theme"] == "#4fd8ff", restored
                 assert restored["profile"] == "Native profile 📝", restored
+                assert js("return document.getElementById('pMemory').checked && document.getElementById('pMem').value==='Native saved memory';")
+                outcome['personal_memory_cross_process_restored'] = True
                 assert js("const {liveAudio}=await import('./js/live_audio.js');"
                           "return liveAudio.volume===0.35 && document.getElementById('replyVolR').value==='35';")
                 outcome['reply_volume_cross_process_restored'] = True

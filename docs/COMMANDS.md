@@ -143,7 +143,6 @@ be clarified. No phrase list is used to interpret application actions.
 | --- | --- |
 | `Explain what a CPU does.` | Answers a general question; this is not a system measurement or a saved operation. |
 | `For this conversation, my favorite color is purple.` then `What color did I mention?` | Uses recent conversation context, including after a Live session reset. This does not create a permanent user profile. |
-| **New Chat** button | After confirmation, clears the temporary conversation memory and displayed messages. Saved notes and preferences stay. Unavailable during an active/unknown request. |
 | **Microphone Off / On** button | Disables/enables microphone capture. Off does not interrupt Vex's reply. Its label, light and pressed state show only your On/Off input preference. Errors and connection states are shown separately; On does not guarantee a working device. Each click uses the camera click effect, respecting Sound effects and Effects volume. |
 | **Stop Task** button | Requests cancellation of the current response/task. Completed actions remain completed; controls wait for confirmed termination. A normal confirmed stop shows neutral LIVE READY, not a connection failure. |
 | **Mute / Unmute** button | Mutes/unmutes voice playback; sound effects are separate. |
@@ -160,7 +159,7 @@ The buttons above are UI controls, not implemented spoken commands. Temporary
 memory is held only in RAM: up to 12 recent turns and 16,000 JSON characters,
 with each user/assistant text limited to 2,000 characters. Older turns are
 dropped, not summarized. Stop, Disconnect and model changes preserve it;
-New Chat, application exit or an API-key update clears it. On a fresh Live
+Application exit, an API-key update or a saved-personal-memory change clears it. On a fresh Live
 connection, history is supplied as data without replaying old tool calls.
 Reused/resumed sessions do not receive duplicate history. This is not perfect
 recall or a substitute for reading current saved notes. Restart loses it.
@@ -181,7 +180,7 @@ recall or a substitute for reading current saved notes. Restart loses it.
 | **Settings → Theme → SLEEPING** | Customizes the color of the real sleeping reactor state. This is distinct from IDLE and does not change the wake word. |
 
 Stay-asleep mode is a chat-only preference held in RAM. Explicit disable,
-New Chat or application exit clears it. A one-time Sleep command does not
+Application exit clears it. A one-time Sleep command does not
 disable it. An addressed interaction returns to sleep immediately after its
 confirmed response/tools/playback finish; it does not listen for a new
 barge-in request during that reply. Unknown outcomes and active tasks cannot
@@ -293,7 +292,7 @@ Idle sleep +/- buttons adjust the same saved 0–300 second timer setting.
 
 ## Planned — not available yet
 
-- Persistent user facts and editable/forgettable user memory in Personalization.
+- Model-driven personal-memory add/update/forget and user-approved inference proposals. Manual Personalization memory is available below.
 - Model-driven skill/routine/calendar/weather/Google/Telegram/Discord actions.
 
 Move an item into the available tables only after its implementation and
@@ -348,3 +347,22 @@ restarting does not clear that uncertainty. This is separate from conversation
 memory and does not restore timers. There is no lifetime 256-task limit in the
 native app; active work and in-memory records remain bounded. Do not delete the
 journal to bypass a lock. Manual unknown reconciliation is not available yet.
+
+
+## Personal memory — manual Personalization controls
+
+- **Personalization → Personal memory** → Enter facts you want Vex to use.
+  **Save profile** stores them locally. Edit and save to correct; clear and save
+  to forget. This is one editable document, not automatic learning.
+- **Use saved personal memory in replies** → Explicitly enables sending those
+  facts to the model in future replies. Off by default, including for old saved
+  text. Turning off keeps the document locally without sending it.
+- `What do you know about my school?` → When enabled, the model can use the
+  facts you saved. Its inference is not automatically stored as a user fact.
+- Corrections, deletion or disabling apply to the next reply and drop the old
+  Live session/temporary context. They do not interrupt the current reply or
+  erase past provider requests, existing messages, backups or task history.
+- Restart keeps the saved document and opt-in choice; temporary chat memory
+  remains RAM-only. The New Chat button has been removed.
+- Spoken `remember this` / `forget this fact` mutations are not connected yet;
+  use the Personalization editor in this first slice.

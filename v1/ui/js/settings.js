@@ -128,6 +128,7 @@ export function saveAll(options = {}) {
     ['pBr', 'value'],
     ['pTab', 'checked'],
     ['pApp', 'checked'],
+    ['pMemory', 'checked'],
     ['pIns', 'value'],
     ['pMem', 'value'],
     ['pSc', 'value'],
@@ -353,11 +354,11 @@ export function loadStore(o, options = {}) {
   const P = store.prof || {};
   ['pLang', 'pBr', 'pIns', 'pMem', 'pSc', 'pSys', 'pGreet', 'pWake'].forEach(i => {
     const el = document.getElementById(i);
-    if (P[i] != null && el) el.value = P[i];
+    if (el && (P[i] != null || i === 'pMem')) el.value = P[i] ?? '';
   });
-  ['pTab', 'pApp'].forEach(i => {
+  ['pTab', 'pApp', 'pMemory'].forEach(i => {
     const el = document.getElementById(i);
-    if (P[i] != null && el) el.checked = !!P[i];
+    if (el && (P[i] != null || i === 'pMemory')) el.checked = P[i] === true;
   });
 
   const sfxT = document.getElementById('sfxT');
@@ -711,9 +712,9 @@ export function initSettings(options = {}) {
     const el = document.getElementById(i);
     if (P[i] != null && el) el.value = P[i];
   });
-  ['pTab', 'pApp'].forEach(i => {
+  ['pTab', 'pApp', 'pMemory'].forEach(i => {
     const el = document.getElementById(i);
-    if (P[i] != null && el) el.checked = !!P[i];
+    if (el && (P[i] != null || i === 'pMemory')) el.checked = P[i] === true;
   });
 
   paint();

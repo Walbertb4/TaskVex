@@ -5,6 +5,25 @@ hali ARCHITECTURE.md, yapılacak işler PLAN.md içindedir. Henüz sürüm yayı
 
 ## Unreleased
 
+### Elle yönetilen kullanıcı hafızası ve New Chat kaldırılması (6.1.1)
+
+- New Chat düğmesi ve kullanılmayan UI handler/kontrol referansları kaldırıldı.
+  Internal reset API'si korunur; geçici hafıza Stop/Disconnect'te devam eder.
+- Personalization pMem editörü ve açık pMemory tercihi mevcut profil deposuna
+  bağlandı. Eski metin onaysız gönderilmez. Ortak instruction opt-in bilgiyi
+  yalnız veri olarak alır; model çıkarımı otomatik kaydedilmez.
+- Etkin kişisel hafıza değişince sonraki turda eski Live/RAM bağlamı bırakılır;
+  belirsiz kapanışta yeni tur başlamaz. Aktif yanıt/geçmiş mesaj/yedekler silinmez.
+- Ses seçimi adımı devam onayıyla 2cebea8 commit'ine alındı; push yok.
+- 6.1.2 model mutasyon araçları ve 6.1.3 çıkarım önerileri ayrı dilimlerdir;
+  bu turda eklenmedi. Yeni bağımlılık/veri otoritesi yok.
+- 1035 pytest, 9 JS suite, 6 browser grubu, Pyright 0 ve 10/10 native aşama
+  geçti. Checkbox restore hatası düzeltildi; iki native eski varsayım daha
+  kesin kontrolle güncellendi. Başarısız ara turlar [raporda](reports/personal-memory-checks.json),
+  son native kabul [burada](reports/personal-memory-native.json). Gerçek hesap/
+  ücretli API ve fiziksel ses yok; kullanıcı kabulü/commit bekliyor.
+
+
 ### Live ses seçimi ve anahtar durum ibaresi (5.F8.2)
 
 - Connection altında belgelenmiş 30 hazır Live sesi [LIVE] etiketiyle listelenir.

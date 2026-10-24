@@ -326,9 +326,10 @@ def check_local_sleep(window, api, js, wait_until, live_state, wake_state, outco
     assert wake_state['packets'] == after_off
     js("testMicOn();return true;")
     wait_until(lambda: 'Asleep · say' in window.evaluate_js("document.getElementById('textStatus').textContent"))
+    previous_wake_replies = window.evaluate_js("document.getElementById('msgs').textContent").count('Native microphone answer')
     wake_state['detect'] = True
     js("wakeOsc.connect(wakeDestinations.at(-1));return true;")
-    wait_until(lambda: 'Native microphone answer' in window.evaluate_js("document.getElementById('msgs').textContent"))
+    wait_until(lambda: not api._sleeping and window.evaluate_js("document.getElementById('msgs').textContent").count('Native microphone answer') > previous_wake_replies)
     wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
     assert not api._sleeping
     assert window.evaluate_js("document.getElementById('sleep').textContent") == 'Sleep'

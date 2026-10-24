@@ -1,0 +1,56 @@
+{
+  "step": "6.1.1",
+  "scope": "Remove New Chat UI; manual opt-in personal memory using existing settings profile",
+  "previous_commit": "2cebea8",
+  "python_general": {
+    "passed": 1035,
+    "seconds": 126.55
+  },
+  "targeted": {
+    "personal_memory_profile_and_conversation": 36,
+    "final_personal_memory_and_docs": 11
+  },
+  "javascript_suites": 9,
+  "browser_groups": 6,
+  "typecheck": {
+    "scope": [
+      "app",
+      "tests/test_personal_memory.py"
+    ],
+    "errors": 0,
+    "warnings": 0
+  },
+  "native": {
+    "status": "passed",
+    "phases": 10,
+    "report": "personal-memory-native.json",
+    "transport": "synthetic"
+  },
+  "verified": [
+    "New Chat button, unused handler and its UI references removed",
+    "old personal-memory text remains local without explicit pMemory opt-in",
+    "manual profile memory edit, clear and checkbox persist in the same settings store",
+    "REST and Live shared instruction includes enabled memory only as data, never permissions",
+    "effective memory correction/deletion/disable closes old Live and clears temporary RAM before next turn",
+    "unconfirmed old-context cleanup blocks new provider request",
+    "legacy profile import does not inherit prior opt-in; empty profile clears stale editor text",
+    "invalid memory flag/content rejected without exposing content or poisoning saved profile"
+  ],
+  "intermediate_failures": [
+    "browser test found the new checkbox omitted from the initial local-profile checkbox restore list; fixed both initial and snapshot form restoration",
+    "first native chat check matched old microphone answer text because New Chat no longer clears the screen; now waits for a new answer and actual wake state",
+    "second native run reached schema-invalid recovery: old expected entire UI profile unchanged; corrected the expectation so repaired profile without memory cannot inherit stale UI memory consent/text; collection preservation remains asserted"
+  ],
+  "not_tested": [
+    "real/paid API",
+    "physical audio/real-model recall quality"
+  ],
+  "limits": [
+    "manual editor only; model-driven remember/edit/forget tools in 6.1.2, inference proposals in 6.1.3",
+    "memory change applies next turn and resets previous temporary chat context; current answer continues",
+    "forget does not erase past provider requests, existing UI messages, backups or task history",
+    "turning memory off retains local saved text; clear and save to remove the profile document"
+  ],
+  "manual_acceptance": "user reported all tests passed and approved continuation",
+  "commit": "approved by user; no push"
+}

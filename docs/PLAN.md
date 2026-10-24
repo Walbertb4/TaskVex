@@ -1,6 +1,6 @@
 # TaskVex — Güncel plan
 
-## Şimdi: 5.F8.2 — Live ses seçimi ve anahtar durum ibaresi
+## Şimdi: 6.1.1 — elle yönetilen kalıcı kullanıcı hafızası
 
 Önceki 5.R8.6 kullanıcı kabulü başarılı, 526bfed commit’inde.
 5.F6 bakımı kullanıcı tarafından kabul edildi; ea8aa15 commit’inde.
@@ -30,12 +30,12 @@ sanki bugün çalışıyormuş gibi gösterilmez.
 | Aşama | Durum | Kapsam |
 |---|---|---|
 | 0 | Temel tamam | MIT, veri sahipliği ve referans/lisans sınırı |
-| 1 | Temel tamam; kalıcı günlük/retention kabulü bekleniyor | Sözleşmeler, registry, policy, tek TaskManager, JSON kayıt |
+| 1 | Temel tamam; kalıcı günlük/retention kabul edildi | Sözleşmeler, registry, policy, tek TaskManager, JSON kayıt |
 | 2 | Temel tamam | PyWebView2 host, köprü, ayarlar/kimlik deposu, native yaşam döngüsü |
 | 3 | Tamam/kabul edildi | Backend not CRUD/aktarımı/yedek ve gerçek ID’ler |
 | 4 | İlk plugin tamam | Allowlist Notepad katalog/status/açma; genel GUI otomasyonu değil |
-| 5 | İşlevsel dilimler kabul; 5.F7.2/3 doğrulama | Gemini REST/Live, ses, Stop/interrupt, resume, geçici hafıza, uyku, not/sayaç/kapatma |
-| 6 | Başlamadı | Kalıcı kullanıcı hafızası, L0 yetenekleri, Google/Telegram/Discord ve profil alanları |
+| 5 | İşlevsel temel kabul; kalan sınırlar kayıtlı, kullanıcı aşama 6'ya geçiş istedi | Gemini REST/Live, ses, Stop/interrupt, resume, geçici hafıza, uyku, not/sayaç/kapatma |
+| 6 | 6.1.1 uygulanıyor | Kalıcı kullanıcı hafızası, L0 yetenekleri, Google/Telegram/Discord ve profil alanları |
 | 7 | Başlamadı | GUI resolver, L1 reçete, L2 DOM, L3 UIA, L4 vision ve skill yürütme |
 | 8 | Başlamadı | Tek backend rutin/scheduler, servisler, dağıtım/paketleme |
 
@@ -68,7 +68,7 @@ Henüz uygulanmadılar; her promptta istenen tek dilim ayrıca daraltılır.
 
 | Kimlik | Amaç ve kabul sınırı |
 |---|---|
-| 6.1 | Kullanıcı hafızası: açık tercih, gör/düzelt/unut; çıkarım kullanıcı gerçeği sayılmaz |
+| 6.1 | İlk elle yönetilen dilim 6.1.1 uygulandı; model mutasyonları ve çıkarım önerileri 6.1.2/3 olarak bekliyor |
 | 6.2 | Telemetri/app/media araçları; her ölçüm/işlem gerçek kaynak ve doğrulama ile |
 | 6.3 | Dosya okuma, sonra kontrollü değişiklik; hedef/izin ve readback |
 | 6.4 | Hava/konum izni ve web arama; onay ve harici içerik sınırı |
@@ -161,3 +161,30 @@ profil/ses/belge testi**, **9 JS suite**, **5 browser grubu**, app Pyright **0**
 **10/10 native aşama**. [Özet](reports/live-voices-checks.json),
 [native kanıt](reports/live-voices-native.json). Gerçek hesap ve fiziksel ses
 kabulü yapılmadı; kullanıcı aşama 6'ya geçiş onayı verdi; ayrı fiziksel ses testi bildirmedi. Aşama 5'in açık sınırları korunur.
+
+
+## 6.1 — kullanıcı hafızası dilimleri
+
+Kullanıcı aşama 6'ya geçiş istedi; aşama 5'in sağlayıcı/fiziksel kabul,
+unknown uzlaştırma, lisans ve kalan profil alanları kapanmış sayılmaz.
+Önceki Live ses seçimi 2cebea8 commit'inde; push yok.
+
+| Adım | Kapsam | Durum |
+|---|---|---|
+| 6.1.1 | Personalization'da açık gönderim tercihi; kaydet/gör/düzelt/temizle, REST/Live bağlamı, eski sohbet bağlamını bırakma; New Chat düğmesini kaldır | Uygulandı: 1035 pytest, 9 JS, 6 browser, 10 native, Pyright 0; [kanıt](reports/personal-memory-checks.json). Kullanıcı testleri başarılı bildirdi; commit onaylı |
+| 6.1.2 | Model üzerinden hafıza gör/ekle/düzelt/unut; tek kayıt otoritesi ve snapshot doğrulamasıyla ModelTools → registry/policy/TaskManager | Henüz uygulanmadı; bu promptun sonraki dilimi değildir |
+| 6.1.3 | Model çıkarımlarını öneri olarak sunma; kullanıcı onayı öncesinde gerçek/kalıcı kullanıcı bilgisi saymama | Henüz uygulanmadı; ayrı onay/inceleme kapsamı |
+
+6.1.1 otomatik öğrenmez; eski legacy pMem metni varsayılan kapalıdır. Kalıcılık
+mevcut settings.json profilidir; ek veritabanı yok. Unutma aktif yanıtı kesmez,
+geçmiş sağlayıcı kayıtlarını/yedekleri silmez. Geçersiz kayıt/disk hatası başarı
+sayılmaz. New Chat UI ve kullanılmayan handler kaldırıldı; internal reset
+endpoint'i mevcut core test/gelecek kanal sözleşmesi için korunur.
+
+
+6.1.1 son doğrulama: **1035 pytest**, **9 JS suite**, **6 browser grubu**,
+**10/10 native aşama**, app + yeni hafıza testi Pyright **0**. İlk tarayıcı
+checkbox hatası düzeltildi; native geçmiş-metin beklemesi ve profil kurtarma
+beklentisi yeni sözleşmeye göre netleştirildi. [Rapor](reports/personal-memory-checks.json),
+[native](reports/personal-memory-native.json). Gerçek hesap/ücretli API ve fiziksel
+hatırlama/ses testi yok. Kullanıcı testleri başarılı bildirdi; commit onaylı.

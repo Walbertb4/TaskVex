@@ -80,7 +80,8 @@ açık sınırları kabul etmeden “üretime hazır” ilan edilemez.
 | Yanıt ses seviyesi | replyVolume aynı PCM oynatıcısında 0–1 kazançtır; Settings Audio barı, kalıcı kayıt ve reset bağlıdır | 5.F8.1'de uygulandı; efektlerden ayrıdır. Ses karakteri/voice seçimi ayrı açık iştir |
 | REST varsayılan/fallback ve TTS modeli | gemini.py DEFAULT_MODEL/FALLBACK_MODEL, speech.py SPEECH_MODEL sabit | Ana masaüstü Live modeli API'den seçilip kaydoluyor; REST kanalı ürünleştirilirken ayrı sağlayıcı tercihine taşı |
 | Kullanıcı talimatı/dil | pIns/pLang gerçekten ortak model instruction'a gider | Çalışıyor; güvenlik/araç izni kişisel prompt ile değiştirilemez |
-| Base override / greeting / kullanıcı hafızası | pSys/pGreet/pMem yalnız saklı metin | Kalıcı hafıza ve selamlama ayrı kapsam; bugün aktif gibi göstermiyoruz |
+| Base override / greeting | pSys/pGreet yalnız saklı metin | Henüz bağlı değil |
+| Kullanıcı hafızası | pMem + açık pMemory; elle kaydet/düzelt/unut ve ortak REST/Live bağlamı | 6.1.1; model mutasyonu/otomatik çıkarım henüz yok, eski bağlam sonraki turda bırakılır |
 | Browser / yeni sekme / app önceliği / shortcut | pBr/pTab/pApp/pSc yalnız legacy tercih | İlgili plugin/resolver gelince tek servise bağla; şimdilik disabled |
 | Wake word | pWake backend'e bağlı; Vex/Veks/Rex ailesi, özel kelimede İngilizce sözlük sınırı | Serbest tüm diller iddiası yok; başka dil model/lexicon kalibrasyonu ayrı iş |
 | Wake sensitivity, konuşma eşiği, idle sleep | Mevcut ayarlar gerçek backend/worklet'e bağlı | Sabit değillerdir; wake değişimi sonraki uykuya uygulanır |

@@ -130,8 +130,22 @@ cache yeniden kurulur; eski hit ve PCM tekrar kullanılmaz.
 
 Geçici hafıza TextChat RAM’indedir: 12 tur / 16.000 JSON karakteri / taraf başına
 2.000 karakter; eski turlar bırakılır, otomatik özet API’si yoktur. Stop/Disconnect
-belleği korur, New Chat/kapanış/anahtar değişimi temizler. Kalıcı kullanıcı hafızası
-henüz yoktur. Profilde yalnız pLang/pIns modele gider; profil yetki vermez.
+belleği korur; kapanış/anahtar değişimi temizler. New Chat UI düğmesi yoktur;
+internal new_chat reset endpoint'i test/gelecek kanal uyumluluğunda korunur.
+
+Elle yönetilen kalıcı kullanıcı bağlamı settings.json/prof.pMem metnidir; tek
+tercih sahibi/depo korunur. prof.pMemory varsayılan false açık gönderim tercihidir;
+eski pMem metni kendiliğinden modele gitmez. Kullanıcı Personalization'da
+metni görür/düzeltir/temizler ve mevcut Save profile yoluyla kaydeder. Ayrı DB,
+öğrenme servisi veya model mutasyon aracı bu dilimde yoktur. Model çıkarımı
+kullanıcı gerçeği olarak kaydedilmez; profil araç yetkisi vermez.
+
+Ortak model_instruction yalnız opt-in metnini JSON veri olarak talimata ekler;
+REST/Live/timer aynı profil snapshot'ını kullanır. TextChat değişen etkin hafıza
+parmak izini sonraki turda kontrol eder; eski Live socket ve RAM geçmişini
+bırakır. Kapanış doğrulanmazsa yeni tur başlatılmaz. Aktif yanıt kesilmez;
+unutma geçmiş sağlayıcı istekleri, görünen mesajlar, yedekler veya disk geçmişini
+silme iddiası değildir. Yerel metin/gönderim tercihi restart'ta korunur.
 
 Live ses karakteri conn.voice tercihidir; pLang/pIns talimatından ayrıdır.
 catalog.py Google'un belgelenmiş 30 hazır Live sesinin tek izinli listesidir;
@@ -187,7 +201,7 @@ uygulanmalıdır; bugün bunların tamamı varmış gibi davranılmaz.
 
 ## Bugün uygulanmayanlar
 
-Google/konum/hava/media/kamera/sistem sesi/dosya ekleme; kalıcı kullanıcı hafızası,
+Google/konum/hava/media/kamera/sistem sesi/dosya ekleme; otomatik kullanıcı hafızası çıkarımı ve modelden hafıza mutasyonu,
 base instruction override/greeting; skill/rutin backend yürütme ve
 scheduler; GUI L1–L4 ve dış mesaj kanalları. Yerel tanımlar ve mevcut kullanıcı
 metni korunur; yürütücüsü olmayan kontroller açıkça planlı/disabled görünür.

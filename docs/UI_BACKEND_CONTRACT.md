@@ -28,7 +28,8 @@ Native host hazır değilse mutasyonlar korunur; bozuk ayarlar açık kurtarma i
 | live_audio, live_audio_start, live_audio_feed | Sınırlı PCM girişi, sıra ve istek kimliği; bitiş paketi ayrıca doğrulanır |
 | stop_task | Hedef request_id zorunlu; kabul gerçek bitiş değildir |
 | read_reply | REST yanıtına mevcut tek ses hattında araçsız ses üretimi |
-| new_chat, disconnect | RAM bağlamını temizleme / bağlantı kaynağını bırakma ayrı işlemlerdir |
+| disconnect | Bağlantı kaynağını bırakır; RAM bağlamını silmez |
+| new_chat (internal/test) | RAM reset uyumluluk endpoint'i; UI düğmesi kaldırıldı |
 | sleep_start, wake_feed, wake_close, wake | Yerel KWS oturumu ve doğrulanmış ses sınırı; sıradan uyku sesi ağa gitmez |
 | notes_init, note_add, note_done, note_del, notes_replace | Onaylı backend not sahipliği; ID/snapshot ve readback doğrulaması |
 | query_clocks, clock_command | Aynı Clocks durumunu okuma / core üzerinden mutasyon; delete yalnız UI |
@@ -111,3 +112,17 @@ placeholder/localStorage/snapshot'a konmaz.
 Sentetik provider ile WebView2, Python ve JS regresyonları gerçek dış işlem yapmadan
 çalışır. Ücretli hesap, canlı GoAway/resume, fiziksel akustik/echo/cihaz doğruluğu bu
 bakımda yeniden test edilmedi. Sonuçlar [AUDIT](AUDIT.md) ve reports/ içindedir.
+
+
+## Kullanıcı hafızası — 6.1.1
+
+prof.pMemory boolean ve prof.pMem en çok 16.000 karakter metindir. Genel
+save/profil snapshot'ı, doğrulama, yedek ve native tercih deposu kullanılır;
+bu bir notes/save yan kanalı veya model aracı değildir. Checkbox varsayılan
+false; pMem mevcut olsa bile açık onay olmadan sağlayıcıya gitmez.
+
+Düzeltme/boş metin/kapatma sonraki turda eski Live ve RAM bağlamını temizler.
+Devam eden yanıtın eski snapshot'ı sonradan değiştirilmez; UI geçmişinin veya
+sağlayıcıya daha önce gitmiş verinin silindiği söylenmez. Başarısız profil kaydı
+unutma başarısı değildir. Yeni model hafıza araçları sonraki dilimde aynı
+registry/policy/TaskManager ve tek kayıt otoritesiyle tasarlanacaktır.

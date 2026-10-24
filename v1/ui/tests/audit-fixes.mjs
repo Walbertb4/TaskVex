@@ -68,9 +68,35 @@ try {
   });
   await test('planned controls stay disabled and do not claim connected actions',async()=>{
     const p=await setup();
-    for(const id of ['camB','audioModeB','attB','gConnB','locSaveB','locAutoB','vSel','pSys','pGreet','pMem','pSc','scrT','inspectBtn'])
+    for(const id of ['camB','audioModeB','attB','gConnB','locSaveB','locAutoB','vSel','pSys','pGreet','pSc','scrT','inspectBtn'])
       assert.equal(await p.locator('#'+id).isDisabled(),true,id);
     assert.equal(await p.evaluate(()=>[...intervals.values()].filter(x=>[15000,30000].includes(x.ms)).length),0);
+  });
+  await test('personal memory is explicit, editable and persistent; New Chat button removed', async()=>{
+    const p=await setup();
+    assert.equal(await p.locator('#newChat').count(),0);
+    assert.equal(await p.locator('#pMemory').isChecked(),false);
+    assert.equal(await p.locator('#pMem').isDisabled(),false);
+    await p.evaluate(async()=>{
+      const {saveAll}=await import('/js/settings.js');
+      document.getElementById('pMemory').checked=true;
+      document.getElementById('pMem').value='I study engineering.';
+      saveAll({emitSave:false});
+    });
+    await p.reload();await p.waitForFunction(()=>!!window.vex);
+    assert.equal(await p.locator('#pMemory').isChecked(),true);
+    assert.equal(await p.locator('#pMem').inputValue(),'I study engineering.');
+    // Eski profilde onay alanı yoksa önceki hesabın açık tercihi miras kalmaz.
+    await p.evaluate(()=>window.vex.loadStore({prof:{pMem:'Legacy private fact'}}));
+    assert.equal(await p.locator('#pMemory').isChecked(),false);
+    await p.evaluate(()=>window.vex.loadStore({prof:{}}));
+    assert.equal(await p.locator('#pMem').inputValue(),'');
+    await p.evaluate(async()=>{
+      const {saveAll}=await import('/js/settings.js');
+      document.getElementById('pMem').value='';saveAll({emitSave:false});
+    });
+    await p.reload();await p.waitForFunction(()=>!!window.vex);
+    assert.equal(await p.locator('#pMem').inputValue(),'');
   });
   await test('single preference object across form, layout and devices; no lost legacy text',async()=>{
     const p=await setup();

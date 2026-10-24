@@ -2,7 +2,7 @@
  * Birbirini iptal eden istek/ses kimlikleri birlikte tutulur; ikinci oturum veya
  * mikrofon sahibi kurulmaz. DOM kabuğu shell.js, PCM I/O mevcut adaptörlerdedir. */
 import { emit, addLog, setConnectionStatus, isBackendAvailable, sanitizeError, createPendingOperation } from './api.js';
-import { streamReset, msg, say, user, shutdown } from './shell.js';
+import { msg, say, user, shutdown } from './shell.js';
 import { uniqueRecordId } from './schema.js';
 import { sfx } from './sfx.js';
 import { liveAudio } from './live_audio.js';
@@ -537,7 +537,7 @@ export async function sendText(text = null, audio = null, notification = null) {
     if (v.length > 20000) { addLog('Message is too long (maximum 20000 characters).', true); return; }
     textBusy = true;
     setNotesChatLock(true); setClocksChatLock(true);
-    const controls = ['inp', 'send', 'stopTask', 'liveLatencyTest', 'newChat', 'sleep'].map(id => document.getElementById(id)).filter(Boolean);
+    const controls = ['inp', 'send', 'stopTask', 'liveLatencyTest', 'sleep'].map(id => document.getElementById(id)).filter(Boolean);
     controls.forEach(el => { el.disabled = true; });
     const liveStop = document.getElementById('stopTask');
     const originalStopLabel = liveStop?.textContent;
@@ -824,36 +824,6 @@ export function initAssistantControls() {
       }
     });
   }
-
-  // Yeni sohbet yalnız kesin host onayında ekran/RAM bağlamını temizler;
-  // kayıtlı notlar ve unknown işlem kilidi bu düğmeyle sıfırlanmaz.
-  document.getElementById('newChat')?.addEventListener('click', async () => {
-    if (textBusy || sleepPending || textOperation.uncertain) return;
-    if (!isBackendAvailable()) { addLog('New Chat requires the desktop backend.', true); return; }
-    if (!window.confirm('Start a new chat? Temporary conversation memory will be cleared. Saved notes will stay.')) return;
-    textBusy = true;
-    resetLiveAudio(false);
-    const controls = ['inp', 'send', 'newChat', 'liveLatencyTest'].map(id => document.getElementById(id));
-    controls.forEach(el => { el.disabled = true; });
-    const revision = textOperation.begin(15000);
-    const result = await emit('new_chat');
-    if (!textOperation.isCurrent(revision)) return;
-    if (!result.response || result.response.unknown || result.ok && result.response.completed !== true) {
-      textOperation.markUnknown(); return;
-    }
-    if (result.ok && result.response?.completed === true && result.response.memory_cleared === true) {
-      document.getElementById('msgs').replaceChildren(); streamReset();
-      automaticSleep = false; cancelAutoSleep();
-      sleeping = false; document.getElementById('sleep').textContent = 'Sleep';
-      document.getElementById('textStatus').textContent = 'New chat. Temporary conversation memory cleared; saved notes preserved.';
-      setConnectionStatus('offline', 'NEW CHAT');
-    } else {
-      addLog('New Chat was not confirmed: ' + sanitizeError(result.error || 'memory not cleared'), true);
-    }
-    textOperation.finish(); textBusy = false;
-    controls.forEach(el => { el.disabled = false; });
-    void listenAutomatically(null, true);
-  });
 
   // Disconnect button
   document.getElementById('sleep')?.addEventListener('click', async () => {

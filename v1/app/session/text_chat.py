@@ -8,6 +8,7 @@ kullanır. REST mesajları bağımsızdır; Live açık oturumda bağlamı koruy
 from threading import Lock
 from collections.abc import Callable
 from uuid import uuid4
+from hashlib import sha256
 
 from app.core.contracts import ContractError
 from app.session.gemini import DEFAULT_MODEL, FALLBACK_MODEL, GeminiText
@@ -17,6 +18,7 @@ from app.session.live_session import PersistentLive
 from app.session.live_input import LiveInput
 from app.session.speech import GeminiSpeech
 from app.session.conversation_memory import ConversationMemory
+from app.session.model_instruction import personal_memory
 
 
 # REST ve Live aynı yetki kataloğunu paylaşır; bildirim turları yine araçsızdır.
@@ -41,6 +43,21 @@ class TextChat:
         self._audio_sink = audio_sink
         self._transcript_sink = transcript_sink
         self._memory = ConversationMemory()
+        self._personal_memory_scope: bytes | None = None
+
+    def _prepare_personal_memory(self, profile: dict | None) -> bool:
+        """Yeni turda unutulan/düzeltilen bilgiyi eski Live/RAM'den geri getirme.
+
+        Model kilidi altındadır. Açık yanıt kesilmez; değişiklik sonraki turda
+        eski socket ve geçici sohbet bağlamını bırakır. Disk notlarına dokunmaz.
+        """
+        scope = sha256(personal_memory(profile).encode('utf-8')).digest()
+        if self._personal_memory_scope is not None and scope != self._personal_memory_scope:
+            if not self._live.close():
+                return False
+            self._memory.clear()
+        self._personal_memory_scope = scope
+        return True
 
     @property
     def busy(self) -> bool:
@@ -117,6 +134,9 @@ class TextChat:
                 self._speech_reply = None
             if self._closed:
                 return {"ok": False, "error": "Text session is closed; reopen the app"}
+            if not self._prepare_personal_memory(profile):
+                return {'ok': False, 'unknown': True, 'code': 'memory_reset_failed',
+                        'error': 'Previous memory context could not be closed. Reopen before continuing.'}
             allowed = BASE_MODEL_TOOLS
             if notification:
                 allowed = ()  # Host bildirimi konuşur; kullanıcı adına araç çalıştıramaz.
@@ -191,6 +211,9 @@ class TextChat:
                 self._speech_reply = None
             if self._closed:
                 return {"ok": False, "error": "Text session is closed; reopen the app"}
+            if not self._prepare_personal_memory(profile):
+                return {'ok': False, 'unknown': True, 'code': 'memory_reset_failed',
+                        'error': 'Previous memory context could not be closed. Reopen before continuing.'}
             # Not aktarımı bekliyor diye normal sohbet kapatılmaz. Aynı durum
             # backend'de araç kapsamını da daraltır; yalnız UI kilidine güvenmeyiz.
             allowed = BASE_MODEL_TOOLS
