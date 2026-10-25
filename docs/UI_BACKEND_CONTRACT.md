@@ -294,6 +294,37 @@ former visible media status is an off-screen aria-live announcement; failures
 remain in Engine log and control tooltips. No visible success text is added below
 the playback buttons.
 
+## Weather/location — 6.4
+
+One shared Weather owner supplies query_weather (no payload) and model tools
+weather.locations `{query}` / weather.current `{location_id?}`. Both tools require
+weather.read. Omitting location_id uses only the user-approved native location;
+an actual search ID queries another place without changing that preference. Empty
+or ambiguous results require clarification, never an invented location or first match.
+
+Native events are weather_search `{query}` and weather_location with exactly
+`{confirmed:true,location_id}` (actual searched ID), `{confirmed:true,latitude,longitude}`
+(explicit approximate Auto) or `{confirmed:true,clear:true}`. Search and polls do not
+write task records. Preferences use the existing settings store/lock; the UI never
+emits a second save. A successful preference response requires write/readback; an
+uncertain save is not retried automatically. Saved weatherLocation is a validated
+native-only object/null; generic UI saves/imports cannot grant location sharing.
+
+Snapshot status is ok/stale/unavailable/location_required/location_changed. Successful
+data contains place, temp/feels Celsius, hum percent, wind km/h, desc, modelled:true,
+source, UTC observed_at/fetched_at, age_seconds and monotonic sampled_at. Zero is valid.
+Only status ok yields verified model success; stale may retain old readings but must
+be labelled stale. No recent usable cache means no readings, not fabricated zero.
+No tomorrow/daily forecast or station-observation claim is supported in this slice.
+
+The ten-minute cache, one-minute failed-refresh backoff, one-hour stale ceiling and
+32-entry bounds belong to Weather. UI queries at most once per minute and clears
+disconnected or two-minute-unrefreshed views. Changing location invalidates old query
+responses; pure weather setters do not trigger save/commands. Search text is retained
+on failure. Geolocation denial keeps manual selection available. Auto never runs at
+startup; saved coarse coordinates persist while provider cache/candidate IDs do not.
+The existing WebView2/Windows geolocation permission may still depend on OS policy.
+
 ## Verification boundary
 
 Temporary profiles and synthetic providers validate contracts, not real-account

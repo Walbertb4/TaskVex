@@ -37,6 +37,10 @@ It is a development project, not a production-ready general computer-use agent.
 - Player application volume from a themed range or model request, with Windows
   readback. It does not change system/master or Vex reply volume; browser scope
   covers that browser's audio, and ambiguous session mapping stays disabled.
+- Current weather from Open-Meteo, with manual place selection or explicit
+  approximate-location permission, saved location and a shared model/dashboard
+  cache. Source time and stale/unavailable states are shown; this is modelled
+  weather, not a local sensor or daily forecast. The dashboard needs no Gemini key.
 - Saved interface preferences, Live voice selection and separate reply volume,
   plus a limited set of active personalization fields.
 - Gemini API key storage in Windows Credential Manager and automatic Live model
@@ -60,11 +64,17 @@ A separate REST adapter remains available for development and future channels.
 Google Drive/Calendar/mail access, Telegram/Discord integration,
 general GUI automation and
 backend skill/routine scheduling are planned.
-Camera, screen inspection, location and weather are not connected.
+Camera, screen inspection and additional audio-input sources are not connected.
 CPU/GPU temperature and VRAM capacity are not available from the current sources.
 CPU sampling currently supports Windows processor groups with at most 64 logical processors;
 unsupported readings remain unavailable.
 Some saved legacy profile fields have no backend effect and are marked as planned.
+Stage 6 now focuses on weather and multimodal inputs; file/web/GUI work belongs
+to stage 7, routines/maintenance to stage 8, external accounts/channels to stage 9.
+
+Weather uses the provider's non-commercial public endpoint with attribution;
+commercial deployment needs a provider-terms/configuration review. Approximate
+coordinates remain native settings and are excluded from legacy UI JSON backups.
 
 ## Run from source
 

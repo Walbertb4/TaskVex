@@ -41,6 +41,21 @@ Runtime dependencies are declared in v1/pyproject.toml; the exact tested develop
   environment is requirements-dev.lock.txt. Preserve upstream notices in packaging.
 
 
+## Weather and place data — 6.4
+
+- Open-Meteo forecast/geocoding are external public services, not copied source
+  code or an installed dependency. TaskVex source remains MIT; no AGPL server code
+  is imported. Weather data is CC BY 4.0 with attribution; place data originates
+  from GeoNames. UI links credit Open-Meteo and GeoNames.
+- The default public API is for non-commercial use under provider request limits;
+  commercial deployment needs a provider arrangement/configuration review. Do not
+  claim the free endpoint permits every distribution or unlimited service use.
+- [Terms](https://open-meteo.com/en/terms),
+  [forecast API](https://open-meteo.com/en/docs),
+  [geocoding/source attribution](https://open-meteo.com/en/docs/geocoding-api).
+- Explicit weather setup sends place searches or approximate coordinates to these
+  services. No Gemini key or personal account is used for weather requests.
+
 ## Demo packaging tools
 
 PyInstaller 6.22.3 and hooks-contrib 2026.9 are pinned in the separate build lock;

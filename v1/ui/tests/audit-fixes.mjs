@@ -567,5 +567,72 @@ try {
     });
     assert.equal(await slider.isDisabled(),true);assert.equal(await p.locator('#mediaVolumeValue').innerText(),'—');
   });
+  await test('weather search requires explicit place selection, shares native data and distinguishes zero/stale/missing',async()=>{
+    const p=await setup();
+    await p.evaluate(async()=>{
+      window.weatherCalls=[];window.weatherPlace=null;
+      window.pywebview={api:{event:async(name,data)=>{
+        weatherCalls.push({name,data});
+        if(name==='weather_search')return {ok:true,completed:true,locations:[{id:'a'.repeat(24),label:'<img src=x> City, Country A'},{id:'b'.repeat(24),label:'City, Country B'}]};
+        if(name==='weather_location'){weatherPlace=data.clear?null:'City, Country B';return {ok:true,completed:true,location:weatherPlace?{label:weatherPlace}:null};}
+        if(name==='query_weather')return {ok:true,completed:true,data:weatherPlace?{status:'ok',temp:0,feels:0,hum:0,wind:0,
+          place:weatherPlace,desc:'Clear sky',observed_at:'2026-10-25T12:00:00+00:00'}:{status:'location_required'}};
+        return {ok:true,completed:true};
+      }}};
+      (await import('/js/weather_view.js')).startWeatherView();
+      (await import('/js/panels.js')).openM('mSet');(await import('/js/settings.js')).switchTab('connection');
+    });
+    await p.locator('#locIn').fill('City');await p.locator('#locSaveB').click();
+    await p.waitForFunction(()=>document.querySelectorAll('#locChoices button').length===2);
+    assert.equal(await p.locator('#locChoices img').count(),0);
+    assert.equal(await p.evaluate(()=>weatherCalls.filter(c=>c.name==='weather_location').length),0);
+    await p.locator('#locChoices button').nth(1).click();
+    await p.waitForFunction(()=>document.getElementById('wD').textContent.includes('Country B'));
+    assert.equal(await p.locator('#wT').innerText(),'0°');
+    assert.match(await p.locator('#wM').innerText(),/Humidity 0%.*Wind 0 km\/h/);
+    assert.equal(await p.evaluate(()=>weatherCalls.some(c=>c.name==='save')),false);
+    const result=await p.evaluate(async()=>{
+      const view=await import('/js/weather_view.js');
+      const packet={status:'stale',temp:0,feels:0,hum:0,wind:0,place:'Old city',desc:'Clear sky',observed_at:'2026-10-25T12:00:00+00:00'};
+      view.applyWeatherSample(packet);
+      return view.applyWeatherSample({...packet,temp:null});
+    });
+    assert.equal(result,false);assert.match(await p.locator('#weatherStatus').innerText(),/STALE/);
+    await p.evaluate(async()=>{(await import('/js/weather_view.js')).applyWeatherSample({status:'unavailable'});});
+    assert.equal(await p.locator('#wT').innerText(),'—°');
+    await p.locator('#locClearB').click();await p.waitForFunction(()=>document.getElementById('locMsg').textContent.includes('cleared'));
+    assert.equal(await p.locator('#w_weather .weather-credit').getAttribute('href'),'https://open-meteo.com/');
+  });
+  await test('weather Auto never runs at startup, preserves manual fallback on denial and shares only coarse coordinates',async()=>{
+    const p=await setup();p.on('dialog',dialog=>dialog.accept());
+    await p.evaluate(async()=>{
+      window.geoCalls=0;window.geoDeny=true;window.geoPayloads=[];
+      Object.defineProperty(navigator,'geolocation',{configurable:true,value:{getCurrentPosition:(success,failure)=>{
+        geoCalls++;if(geoDeny==='hang'){window.lateGeo=success;return;}if(geoDeny)failure({code:1});else success({coords:{latitude:41.123456,longitude:29.987654}});
+      }}});
+      window.pywebview={api:{event:async(name,data)=>{
+        if(name==='weather_location'){geoPayloads.push(data);return {ok:true,completed:true,location:{label:'Current location'}};}
+        return {ok:true,completed:true,data:{status:'location_required'}};
+      }}};
+      (await import('/js/weather_view.js')).startWeatherView();
+      (await import('/js/panels.js')).openM('mSet');(await import('/js/settings.js')).switchTab('connection');
+    });
+    assert.equal(await p.evaluate(()=>geoCalls),0);
+    await p.locator('#locAutoB').click();await p.waitForFunction(()=>document.getElementById('locMsg').textContent.includes('denied'));
+    assert.equal(await p.locator('#locIn').isDisabled(),false);
+    assert.equal(await p.evaluate(()=>geoPayloads.length),0);
+    await p.evaluate(()=>{geoDeny=false;});await p.locator('#locAutoB').click();
+    await p.waitForFunction(()=>geoPayloads.length===1);
+    assert.deepEqual(await p.evaluate(()=>geoPayloads[0]),{confirmed:true,latitude:41.12,longitude:29.99});
+    await p.waitForFunction(()=>!document.getElementById('locAutoB').disabled);
+    await p.evaluate(()=>{
+      geoDeny='hang';const nativeTimeout=window.setTimeout;
+      window.setTimeout=(fn,ms,...args)=>ms===12000?(window.expireGeo=fn,1):nativeTimeout(fn,ms,...args);
+    });
+    await p.locator('#locAutoB').click();
+    await p.evaluate(()=>{expireGeo();lateGeo({coords:{latitude:1,longitude:2}});});
+    assert.equal(await p.locator('#locIn').isDisabled(),false);
+    assert.equal(await p.evaluate(()=>geoPayloads.length),1);
+  });
   console.log(`${results.length} browser cleanup groups passed`);
 } finally { await browser.close(); await new Promise(resolve=>server.close(resolve)); }

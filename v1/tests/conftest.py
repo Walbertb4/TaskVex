@@ -38,3 +38,11 @@ def isolate_media(monkeypatch):
     monkeypatch.setattr('app.tools.local.media._read_windows',lambda manager=None:{'status':'no_session'})
     def unavailable():raise OSError('Synthetic unavailable application audio')
     monkeypatch.setattr('app.tools.local.media_volume._load_audio',unavailable)
+
+
+@pytest.fixture(autouse=True)
+def isolate_weather(monkeypatch):
+    """Weather tests inject public-provider transport; the suite never shares real locations."""
+    from app.tools.services.weather import WeatherError
+    def unavailable(*args):raise WeatherError('Synthetic unavailable weather')
+    monkeypatch.setattr('app.tools.services.weather._request_json',unavailable)

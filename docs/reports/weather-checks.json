@@ -1,0 +1,87 @@
+{
+  "step": "6.4 weather/location after stage-6 scope revision",
+  "status": "accepted after user reported successful tests; specific OS/provider coverage not separately enumerated",
+  "previous_accepted_commit": "5237c0e",
+  "plan_moves": {
+    "files": "7.0",
+    "web_search": "7.3",
+    "external_service_safeguards": "9.1 before any 9.2/9.3 writes",
+    "google": "9.2",
+    "telegram_discord": "9.3",
+    "remaining_stage6": [
+      "6.4 weather",
+      "6.8.1 camera",
+      "6.8.2 screen",
+      "6.8.3 explicitly scoped extra audio inputs",
+      "closure"
+    ]
+  },
+  "ownership": "Weather in app/tools/services/weather.py; same instance/store from main to core/NativeBridge; model weather.locations/current through registry/policy/TaskManager; native dashboard polls the same cache without journal tasks",
+  "location": {
+    "manual": "Explicit selection among up to five labelled provider candidates; no implicit first match",
+    "auto": "Only a user click and sharing confirmation request browser geolocation; rounded to two decimals before transfer/persistence",
+    "startup": "Reuse approved saved place; never request geolocation automatically",
+    "preferences": "weatherLocation in the existing native JsonStore, same lock and write/readback; generic UI save/import cannot grant consent",
+    "privacy": "Coarse coordinates remain local preferences and provider request parameters, not model results/poll logs; city queries may remain in task history"
+  },
+  "provider": {
+    "name": "Open-Meteo, place data via GeoNames",
+    "kind": "modelled current conditions; not a local sensor or daily forecast",
+    "units": "Celsius, humidity percent, km/h; explicit UTC observation/fetch timestamps",
+    "transport": "fixed HTTPS URLs, no redirects/keys, connect/read timeouts, streaming budget and 64 KiB response limit; no automatic retries",
+    "cache": "600 seconds fresh, 60-second failed-refresh backoff, at most 3600 seconds retained stale, 32 entries",
+    "terms": "default public endpoint is non-commercial; attribution links in UI/docs; no upstream server source imported"
+  },
+  "validation": {
+    "full_pytest": 1252,
+    "full_pytest_seconds": 110.79,
+    "targeted_tests": 142,
+    "targeted_seconds": 15.52,
+    "weather_tests": 22,
+    "javascript_suites": 9,
+    "browser_groups": 21,
+    "native_phases": 10,
+    "native_weather_selection_persistence_zero": true,
+    "native_location_restored_without_geolocation": true,
+    "pyright_scope": "app and test_weather.py",
+    "pyright_errors": 0,
+    "pip_check": "No broken requirements found",
+    "compileall": true,
+    "diff_check": true,
+    "visual_preview_reviewed": true
+  },
+  "covered": [
+    "no configured location means no provider request",
+    "same cache/real zero values across model and dashboard",
+    "ambiguous location search does not silently change a preference; actual candidate IDs required",
+    "invalid/missing/range/unit/time/provider data never becomes current success",
+    "failed refresh becomes stale, backs off, eventually clears, then recovers",
+    "coarse Auto storage, persistence/restart, Clear and generic-save consent isolation",
+    "Stop before provider calls, cancelled read completion and location-change stale-response rejection",
+    "invalid search/corrupt settings are failed read results, not a persistent unknown core lock",
+    "both real conversational SDK transports with synthetic provider responses and no note-consent dependency",
+    "public HTTP transport fixed endpoints, response limits, status/error redaction and invalid JSON handling",
+    "browser manual selection/XSS-safe labels, zero/stale/unavailable, no second save, no startup GPS",
+    "denied/hung browser location preserves manual fallback; late permission callback cannot save after timeout",
+    "real WebView2 selection -> persisted native location -> zero-valued weather rendering -> separate-process restoration"
+  ],
+  "initial_failures_and_corrections": [
+    "New weather dispatch pushed NativeBridge.event beyond Pyright complexity analysis. Only the cohesive weather dispatch was extracted into _weather_event; final app type check passed without suppression.",
+    "Initial weather browser test tried editing a field in a closed Settings modal; fixture now explicitly opens Settings/Connection.",
+    "Adding both provider credits made an unscoped credit selector match two links; browser assertion is now scoped to the weather widget.",
+    "A public-transport test initially called the autouse isolated weather helper instead of the native helper; it now retains the original request function while mocking only HTTP transport.",
+    "Datetime offset type narrowing was made explicit after Pyright reported an optional timedelta access.",
+    "Source validation was hardened to reject empty place labels and validate the full candidate before persistence; focused and full regression passed."
+  ],
+  "public_probe": "weather-public-probe.json; successful fixed public London coordinate, not user geolocation",
+  "native_report": "weather-native.json",
+  "limits": [
+    "User reported successful tests; specific OS/browser geolocation and provider coverage was not separately enumerated.",
+    "WeatherLocation is intentionally native-only and excluded from legacy UI JSON import/export; generic save/import cannot silently enable location sharing.",
+    "Provider current conditions are weather-model data. Unsupported/stale/missing responses are not local observations or tomorrow's forecast.",
+    "Previous persistent-unknown reconciliation and intermittent pythonnet/native-smoke complexity boundaries remain open; no claim they were fixed here.",
+    "No paid API, real user location, notes or account were used in automatic checks. Portable demo was not rebuilt."
+  ],
+  "new_dependencies": [],
+  "commit": "accepted weather work committed before subsequent UI cleanup"
+}

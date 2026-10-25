@@ -5,6 +5,22 @@ The state is in ARCHITECTURE.md, the work to be done is in PLAN.md. The version 
 
 ## Unreleased
 
+### Narrow stage 6 and connect weather — 6.4
+
+- Restricted remaining stage 6 to weather/location, then camera, screen sharing,
+  scoped additional audio inputs and closure checks. Moved file/context work to
+  7.0, web search to 7.3, external-service safeguards to 9.1, Google to 9.2 and
+  Telegram/Discord to 9.3. Existing stage 7/8 IDs and mandatory safeguards remain.
+- Added one Weather service owner shared by UI and weather.locations/current
+  model tools through the existing registry/policy/TaskManager. No new dependency.
+- Added explicit manual place selection, opt-in approximate browser location,
+  persistent native preferences and Clear. Geolocation never runs at startup;
+  generic preference save/import cannot grant location sharing.
+- Added validated public Open-Meteo reads, bounded cache/backoff, visible source
+  time/stale state and attribution. Provider failure does not fabricate weather
+  or change independent local telemetry. Paid Gemini requests were not used.
+- User reported successful weather tests; specific OS/provider coverage was not separately enumerated. Camera, screen,
+  system-audio capture, web search and external accounts were not implemented.
 ### Player application volume and quiet media controls — 6.2.5c
 
 - Replaced visible playback-operation text with an accessible off-screen status;

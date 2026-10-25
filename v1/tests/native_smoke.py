@@ -52,6 +52,14 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
     network_module.wifi_signal=lambda _:{'network_wifi_signal':75,'network_wifi_status':'ok'}
     from app.tools.local import media as media_module
     media_module._read_windows=lambda manager=None:{'status':'available','title':'Native synthetic track','artist':'Synthetic artist','state':'paused'}
+    from app.tools.services import weather as weather_module
+    def synthetic_weather(kind,params):
+        from datetime import datetime, timezone
+        if kind=='locations':return {'results':[{'name':'Native Test City','country':'Test Country','latitude':41.12,'longitude':29.99}]}
+        return {'utc_offset_seconds':0,'current_units':{'temperature_2m':'°C','apparent_temperature':'°C',
+            'relative_humidity_2m':'%','wind_speed_10m':'km/h'},'current':{'time':datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
+            'temperature_2m':0,'apparent_temperature':-2,'relative_humidity_2m':0,'wind_speed_10m':0,'weather_code':0}}
+    weather_module._request_json=synthetic_weather
     from app.main import main
     from app.storage.json_store import StoreError
 
@@ -441,7 +449,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                         "args": {"text": "Must not be saved after REST Stop"}}}]}}]})
             if len(text_requests) == 1:
                 body = json.loads(request.content)
-                assert {item["name"] for item in body["tools"][0]["functionDeclarations"]} == {"apps.catalog", "system.status", "media.status", "media.control", "assistant.request_sleep_mode", "assistant.request_shutdown", "clocks.create", "clocks.control", "clocks.list"}
+                assert {item["name"] for item in body["tools"][0]["functionDeclarations"]} == {"apps.catalog", "system.status", "media.status", "media.control", "weather.current", "weather.locations", "assistant.request_sleep_mode", "assistant.request_shutdown", "clocks.create", "clocks.control", "clocks.list"}
                 text_started.set()
                 assert release_text.wait(20)
             assert responses, "Unexpected model retry"
@@ -606,6 +614,17 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
             outcome['native_read_only_media_view']=True
             if phase == 'save':
                 check_native_media(window,api,js,wait_until,outcome)
+                js("const p=await import('./js/panels.js');const s=await import('./js/settings.js');p.openM('mSet');s.switchTab('connection');document.getElementById('locIn').value='Native Test City';document.getElementById('locSaveB').click();return true;")
+                wait_until(lambda:window.evaluate_js("document.querySelectorAll('#locChoices button').length")>0)
+                js("document.querySelector('#locChoices button').click();return true;")
+                wait_until(lambda:window.evaluate_js("document.getElementById('wT').textContent")=='0°')
+                assert api._store.read()['weatherLocation']['label']=='Native Test City, Test Country'
+                assert '0 km/h' in window.evaluate_js("document.getElementById('wM').textContent")
+                js("const p=await import('./js/panels.js');p.closeM();return true;")
+                outcome['native_weather_selection_persistence_zero_and_dashboard']=True
+            if phase=='reopen':
+                wait_until(lambda:window.evaluate_js("document.getElementById('wT').textContent")=='0°')
+                outcome['native_weather_location_restored_without_geolocation']=True
             if phase == "chat":
                 # The new autostart should never reach the physical microphone.
                 # Each permission call receives a fresh, quiet synth track.

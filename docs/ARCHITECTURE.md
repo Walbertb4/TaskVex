@@ -56,6 +56,7 @@ microphone On/Off and Stop remain local lifecycle operations.
 | Notes | `app/tools/local/notes.py`; stable IDs, dates, selection snapshots and atomic writes |
 | Timers and stopwatches | `app/tools/local/clocks.py`; shared process-memory state and monotonic time |
 | Current media and controls | `app/tools/local/media.py`; same Media instance in core/bridge; media_view.js renders it |
+| Weather/location | `app/tools/services/weather.py`; shared Weather owner, bounded public-service reads and explicit native preference consent |
 | System/network measurements | `app/tools/local/telemetry.py`; same Telemetry instance in core/bridge |
 | Credentials | `app/storage/credentials.py`; Windows Credential Manager, no key in UI snapshots/backups |
 | JSON persistence | `app/storage/json_store.py`; schema envelope, atomic replacement, corrupt-file preservation |
@@ -346,6 +347,38 @@ commits once on change and shows confirmed values; its status remains screen-rea
 accessible without visible dashboard text. Controls and range use the saved UI theme.
 [Session volume API](https://learn.microsoft.com/en-us/windows/win32/api/audioclient/nn-audioclient-isimpleaudiovolume).
 
+## Weather and approved location
+
+main shares one Weather instance and settings JsonStore between core and bridge.
+weather.locations/current use weather.read through ModelTools/registry/policy/
+TaskManager. query_weather reads the same cache without journaling each dashboard
+poll. Open-Meteo is a public L0 service adapter, independent of Gemini connectivity.
+No provider request occurs before a saved location or an explicit place search.
+
+Manual search returns up to five actual place IDs/labels. Neither UI nor model may
+silently choose the first ambiguous result. The UI's explicit selection saves a
+default location. Auto requests browser geolocation only after a user click and
+sharing confirmation; coordinates are rounded to two decimal places before transfer
+and persistence. Startup reuses the approved place without asking for geolocation.
+Clear removes it. Model reads/searches cannot change this preference or request GPS.
+The setting uses JsonStore's existing lock and write/readback, preserving other
+preferences; generic save/import cannot grant or replace location consent.
+
+Forecast and geocoding URLs are fixed HTTPS endpoints, without redirects, keys,
+arbitrary URLs or automatic retries. Responses are size/time bounded and validated
+for units/ranges/timestamps. Data is modelled current weather, not a local sensor
+or a future forecast. A ten-minute cache avoids continuous provider calls; failed
+refreshes back off for one minute. Cached values remain explicitly stale for at
+most one hour, then clear. Missing measurements never become zero. UI polling uses
+the existing tick once per minute; late responses from a former selection cannot
+replace the current view. Source/model time and attribution remain visible.
+
+Location preferences are native-only and currently excluded from the legacy UI JSON
+backup, avoiding silent geolocation consent through imports. City/provider data in
+tool results is untrusted content; saved coarse coordinates stay out of model results
+and polling logs, but remain ordinary local settings, not credential storage.
+Provider terms/attribution are recorded in THIRD_PARTY_NOTES.md.
+
 ## Target L0 and four GUI layers — planned
 
 - L0: API/local-tool/plugin capabilities; Drive/Calendar/mail/messaging are service
@@ -363,7 +396,7 @@ integrations; they are not all implemented today.
 
 ## Not implemented
 
-Google service integrations, location/weather, camera/screen inspection, system
+Google service integrations, camera/screen inspection, system
 audio control, file attachments, base-instruction override/greetings, backend
 skill/routine execution/scheduling, GUI L1–L4 and external messaging channels.
 Media metadata and bounded current-session playback controls are implemented. Preserve existing

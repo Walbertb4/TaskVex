@@ -1,6 +1,42 @@
 # TaskVex — Current plan
 
-## Now: 6.2.5c accepted; next planned slice is 6.3 file reading
+## Now: 6.4 weather/location — accepted; UI copy cleanup requested
+
+The user narrowed remaining stage 6 to weather and multimodal input. No file,
+Google, Telegram, Discord or web-search integration belongs to the current step.
+Weather is 6.4; next is 6.8.1 camera, then 6.8.2 screen sharing, 6.8.3 additional
+audio sources after defining their exact scope, and stage 6 closure checks.
+
+| Previous scope | Current destination | Dependency |
+|---|---|---|
+| 6.3 file attachment/read/change | 7.0 local files and task context | Permission/target/content boundaries before sending file contents to a model |
+| Web search formerly in 6.4 | 7.3 browser/web tools | Read-only service adapter and untrusted-content handling, then GUI browser interaction |
+| 6.5 Google Calendar/Drive/mail | 9.2 external services | 9.1 risk/channel/unknown protections before external writes |
+| 6.6 Telegram/Discord | 9.3 channels | 9.1 plus explicit destination/principal and delivery evidence |
+| 6.7 external-write safeguards | 9.1 service prerequisites | Required before 9.2/9.3 writes; local file/GUI safeguards stay in stage 7 |
+| Remaining 5.F8.3 profile fields | Relevant 6.8/7/8.4/9 slices | Audio/visual preferences with 6.8; browser/apps with 7; bounded greeting/instructions with profile/schema work; service preferences with 9 |
+
+These are moves, not completed capabilities. Existing 7.x and 8.x IDs remain;
+stage 9 adds external services after the core desktop/automation milestones.
+Weather source/settings/cache/tools/UI are implemented in this step; validation
+and manual acceptance remain distinct. Evidence: reports/weather-checks.json.
+
+- [x] Shared Weather owner, weather.read capability and REST/Live tools.
+- [x] Explicit manual place selection, approximate Auto consent, persistence and Clear.
+- [x] Cache/backoff, source time, stale/unavailable states, validation and attribution.
+- [x] 1,252 full pytest, 142 targeted tests (22 weather), 9 JS suites,
+  21 browser groups, 10 sequential native phases, app/focused-test Pyright 0.
+- [x] Real public-service probe succeeded for a fixed public reference coordinate;
+  no user location or paid conversational provider was used.
+- [x] User reported successful tests; specific OS/provider coverage was not separately enumerated.
+
+Weather uses the non-commercial public Open-Meteo endpoint; commercial service
+terms require review. The native weather location is not in legacy UI backups.
+Cached conditions are modelled current weather, not a station reading or daily
+forecast. Camera/screen/additional audio, web search and external accounts remain
+outside this step; the portable EXE was not rebuilt. Accepted weather work is committed before the requested UI cleanup.
+
+## 6.2.5c Player volume and quiet media UI — accepted
 
 User accepted 6.2.5b after the identity fix; committed as c8d159d before this step.
 The requested new scope is application volume, explicitly excluding Windows master
@@ -25,27 +61,21 @@ Native and aggregate evidence: reports/media-volume-native.json and
 reports/media-volume-checks.json. Existing persistent-unknown and native-test
 teardown/type-complexity limits remain unchanged. The portable demo was not rebuilt.
 
-## Remaining stage 6 work — current summary
+## Remaining stage 6 — approved execution order
 
-- 6.2's implemented telemetry/network/token/media slices are accepted. Sensor
-  temperatures/VRAM and a real API transport-latency metric remain explicit source
-  limits, not silently completed functionality.
-- 6.3: file attachment/reading first, then authorized modification with exact
-  targets, bounded reads, readback and cancellation/replay protection.
-- 6.4: weather/location and web search; permission/manual location, caching,
-  freshness and untrusted external-content boundaries.
-- 6.7 prerequisites: approve risky external writes, enforce channel/principal
-  authority, handle untrusted content and reconcile unknown delivery outcomes.
-  These relevant protections must precede 6.5/6.6 writing, despite their numbering.
-- 6.5: Google OAuth and Calendar/Drive/mail in separately verified slices.
-- 6.6: Telegram/Discord channels with real destination IDs and delivery evidence.
-- 6.8 remains a scope recommendation: camera, Live screen sharing and additional
-  audio sources, each with permission/cleanup; separate from GUI automation.
-- Remaining 5.F8.3 profile fields (greeting, bounded personal instructions,
-  browser/application preferences and shortcuts) attach to their relevant slices.
-- Stage 6 closure needs current regression and accurate documentation of remaining
-  limits. Skill execution and GUI layers remain stage 7; routines/reminders and
-  the single backend scheduler remain stage 8.
+1. **6.4 Weather/location:** explicit manual place selection or user-triggered
+   approximate geolocation, saved consent, modelled current conditions, shared
+   model/UI cache, timestamps and real failure/stale states. Web search is excluded.
+2. **6.8.1 Camera:** permission, device selection, Live frames and cleanup.
+3. **6.8.2 Screen sharing:** explicit source selection, start/stop and Live frames.
+4. **6.8.3 Additional audio inputs:** define required source scope first; separate
+   permissions/resource cleanup, without silently recording system audio.
+5. **Stage 6 closure:** regression, manual acceptance and accurate remaining limits.
+
+Camera/screen understanding is not L4 clicking/GUI automation. Sensor temperature,
+VRAM and actual API transport latency remain documented source limits, not new
+mandatory integrations secretly added to stage 6. Skills/GUI remain stage 7,
+routines/scheduler stage 8, external services/channels stage 9.
 
 ## 6.2.5b Windows media controls — accepted by the user
 
@@ -116,9 +146,10 @@ It is not shown as if it is working today.
 | 3 | OK/accept was | Backend note CRUD/transfer/backup and real IDs |
 | 4 | First plugin ok | Allowlist Notepad catalog/status/open; not general GUI automation |
 | 5 | Functional basic acceptance; remaining limits saved, user requested to move to stage 6 | Gemini REST/Live, sound, Stop/interrupt, resume, temporary memory, sleep, note/counter/shutdown |
-| 6 | 6.1 memory slices accepted by the user; next 6.2 | Persistent user memory, L0 capabilities, Google/Telegram/Discord and profile fields |
-| 7 | Did not start | GUI resolver, L1 recipe, L2 DOM, L3 UIA, L4 vision and skill execution |
-| 8 | Didn't start | Single backend routine/scheduler, services, distribution/packaging |
+| 6 | Memory/telemetry/media accepted; weather now, multimodal inputs next | Weather/location, camera, screen and scoped additional audio inputs |
+| 7 | Not started | Local files/context, web/browser tools, GUI L1-L4 and skill execution |
+| 8 | Not started | Single backend routine/scheduler, background lifecycle, maintenance and core packaging |
+| 9 | Deferred by user | External-service safeguards, Google integrations and Telegram/Discord channels |
 
 Current architecture ARCHITECTURE.md, modifications CHANGELOG.md. Old detailed acceptance and
 step numbers are historically preserved in docs/archive/stages.md.
@@ -151,11 +182,11 @@ They have not yet been implemented; The desired single slice in each prompt is a
 |---|---|
 | 6.1 | Manual/from the model memory, suggestion, ask and button/talk decision accepted by the user; last commit 6f52b4c |
 | 6.2 | Telemetry/app/media tools; each measurement/process with real source and verification |
-| 6.3 | File reading, then controlled modification; target/permission and readback |
-| 6.4 | Weather/location permission and web search; approval and external content limit |
-| 6.5 | Google Drive/Calendar/mail; OAuth scope, renewal, connection and transaction proof |
-| 6.6 | Telegram/Discord input-output; principal/target authorization, no replay on indefinite delivery |
-| 6.7 | External data taint/risk approval/channel authorization and unknown reconciliation on the current task log; 6.5/6.6 writing prerequisite |
+| 7.0 (moved from 6.3) | Local file reading/context, then controlled modification; target/permission and readback |
+| 6.4 | Weather/location permission, manual selection, shared cache and freshness; web search moved to 7.3 |
+| 9.2 (moved from 6.5) | Google Drive/Calendar/mail; OAuth scope, renewal, connection and transaction proof |
+| 9.3 (moved from 6.6) | Telegram/Discord input-output; principal/target authorization, no replay on uncertain delivery |
+| 9.1 (moved from 6.7) | External-data/risk/channel authorization and unknown reconciliation; prerequisite for 9.2/9.3 writes |
 | 7.1 | L3 UIA target and result verification in one application |
 | 7.2 | L1 verified prescription; old target not used in context switch |
 | 7.3 | Browser L2 DOM, budget L4 when needed vision/OCR |
@@ -395,18 +426,17 @@ This type of new feature was not coded; The following tranches have not started 
 | 6.2.3 | Network/Wi-Fi, instantaneous sending/receiving speed, link and latency; distinction between transfer speed and internet speed test; offline does not delete local CPU meter |
 | 6.2.4 | Token counter from provider's actual usage data; turn/session and context boundary are separate; unknown account quota or estimated usage will not be shown as exact value |
 | 6.2.5 | Current Windows media session: track info, play/pause/previous/next; UI and model have the same tool/area |
-| 6.3 | File attachment/file reading followed by controlled modification; target/permission/readback |
-| 6.4 | Weather, manual/permitted automatic location and web search; cache/last update and actual error status |
-| 6.5 | Google link, Calendar/Drive/mail; before 6.7's relevant risk/channel/write protections |
-| 6.6 | Telegram/Discord; again relevant protections of 6.7 prerequisite |
-| 6.8 — scope recommendation | Separate slices for camera, Live screen sharing, and non-microphone audio sources in the UI; permission, visual/audio stream and resource cleanup; Separate from GUI click automation |
+| 7.0 | Moved from 6.3: file attachment/read/context and controlled modification |
+| 6.4 | Weather, manual/permitted automatic location, cache/freshness; web search moved to 7.3 |
+| 9.2 | Moved from 6.5: Google services after 9.1 safeguards |
+| 9.3 | Moved from 6.6: Telegram/Discord after 9.1 safeguards |
+| 6.8 — approved remaining scope | Separate slices for camera, Live screen sharing, and non-microphone audio sources in the UI; permission, visual/audio stream and resource cleanup; Separate from GUI click automation |
 | 5.F8.3 remaining profile areas | The initial greeting, browser/tab/application preferences, and shortcut fields are linked to the corresponding application/file/browser slice; personal instruction will not base override beyond safety limits |
 | 8.1 | The only backend scheduler available for true local reminders; The second timer is not written, although it is separate from the skill/routine execution |
 
 Timeline/log remains the current local view; new data producers are only real
 feeds events. Inspect/Create Skill, skill execution and routine scope are in this UI
-It is outside the desire to prioritize. 6.8 approval or completion of a new application
-It is not a claim; It is the proposed location of missing multimodal coverage in the current plan.
+It is outside the desire to prioritize. 6.8 is now approved scope; its camera/screen/audio slices remain unimplemented until their own steps.
 
 
 ### 6.2.4 first tranche — final provider token notification

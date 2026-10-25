@@ -14,6 +14,11 @@ _TEXT = {"type": "string", "maxLength": 16_000}
 _COLOR = {"type": "string", "pattern": "^#[0-9a-fA-F]{6}$"}
 _WIDGETS = ["time", "system", "timer", "weather", "calendar", "remind", "notes", "media", "net", "log"]
 _FIELDS = {
+    'weatherLocation':{'type':['object','null'],'properties':{
+        'label':{'type':'string','minLength':1,'maxLength':240},
+        'latitude':{'type':'number','minimum':-90,'maximum':90},
+        'longitude':{'type':'number','minimum':-180,'maximum':180},'source':{'enum':['manual','auto']}},
+        'required':['label','latitude','longitude','source'],'additionalProperties':False},
     "theme": _COLOR,
     "colors": {"type": "object", "properties": {k: _COLOR for k in
                ["idle", "sleeping", "listening", "thinking", "speaking", "executing", "activating"]}, "additionalProperties": False},
@@ -56,7 +61,8 @@ def validate_settings(data: dict, *, from_ui: bool = False) -> dict:
     """
     if type(data) is not dict:
         raise ContractError("Expected settings object")
-    candidate = copy_json({k: v for k, v in data.items() if k in _FIELDS} if from_ui else data)
+    # Location consent is owned by the explicit weather selection flow, never a generic save/import.
+    candidate = copy_json({k: v for k, v in data.items() if k in _FIELDS and k!='weatherLocation'} if from_ui else data)
     try:
         _VALIDATOR.validate(candidate)
     except ValidationError:

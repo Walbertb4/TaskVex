@@ -549,6 +549,25 @@ level; TaskVex does not save a second preference. Operation results stay in the
 accessible status/Engine log rather than visible text below the buttons.
 
 
+## Weather
+
+| Say or type → | What Vex does |
+|---|---|
+| “What is the weather here?” | Reads modelled current weather for the approved saved location. If unset, asks you to configure one. |
+| “What is the weather in London?” | Searches real place candidates; clarifies ambiguous places, then queries the selected actual ID without changing the dashboard's saved place. |
+
+Settings → Connection → Weather Location: enter a city/district, Search, then
+explicitly choose its labelled result. Auto asks for sharing consent and browser
+location permission, saves only approximate coordinates, and is never triggered
+automatically at startup. Clear stops future saved-location requests. The saved
+location survives restart; the cache and unsaved search IDs do not.
+
+No Gemini/API key is required for the weather dashboard. Open-Meteo supplies
+modelled current conditions in Celsius/km/h, not a local measurement or tomorrow's
+forecast. Model requests still use the configured conversational provider. The UI
+shows source time and STALE on failed refresh; unavailable values are not zero.
+Location consent is native-only and is not imported/exported by legacy UI backups.
+
 ## Portable Windows demo
 
 - Extract the entire `TaskVexDemo-Windows-x64.zip`, then open `TaskVexDemo.exe`.

@@ -1,0 +1,7 @@
+{
+  "reference": "public fixed London coordinate; not user location",
+  "status": "ok",
+  "valid_measurements": true,
+  "source": "Open-Meteo",
+  "personal_location_used": false
+}

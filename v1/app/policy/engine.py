@@ -17,6 +17,8 @@ from app.core.contracts import ContractError, ToolRequest, ToolSpec
 # Tool -> core determines the required authorization mapping. Plugin from its own declaration
 # cannot derive authority; An empty or different required_capabilities declaration is also rejected.
 _TOOL_CAPABILITIES = MappingProxyType({
+    'weather.current':frozenset({'weather.read'}),
+    'weather.locations':frozenset({'weather.read'}),
     "assistant.request_sleep_mode": frozenset({"assistant.control"}),
     "assistant.request_shutdown": frozenset({"assistant.control"}),
     "apps.catalog": frozenset({"apps.read"}),

@@ -1596,3 +1596,6 @@ input[type=color] {
 .media-volume input {grid-column:1 / -1;}
 .media-volume input:disabled {opacity:.35; cursor:not-allowed;}
 .media-volume input:focus-visible {outline:1px solid var(--gold); outline-offset:4px;}
+.weather-credit {display:block; margin-top:6px; color:var(--mut); font:8px var(--mono);}
+.weather-choices {display:flex; flex-direction:column; align-items:stretch; gap:5px; margin-top:6px;}
+.weather-choices .cb {white-space:normal; text-align:left;}

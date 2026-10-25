@@ -6,6 +6,7 @@ import { initCredentials } from './credentials.js';
 import { liveMic } from './live_mic.js';
 import { refreshSystem, startSystemView } from './system_view.js';
 import { refreshMedia, startMediaView } from './media_view.js';
+import { refreshWeather, startWeatherView } from './weather_view.js';
 import { liveTranscript } from './live_transcript.js';
 import { initReactor, setState, setLevel, setMicLevel, attachAudio, detachAudio, wakeAnimation } from './reactor.js';
 import { initSettings, store, saveAll, saveSettingsConfirmed, setDevices, queryDevices, loadStore, validateAndNormalizeSnapshot, registerCollectionGetters, setBackupImportHandler } from './settings.js';
@@ -179,7 +180,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!result.ok) {
           const message = document.getElementById('nativeIssueText');
           if (message) message.textContent = sanitizeError(result.error);
-        } else if (result.response?.completed === true) {startSystemView(); startMediaView(); await connectNativeNotes();}
+        } else if (result.response?.completed === true) {startSystemView(); startMediaView(); startWeatherView(); await connectNativeNotes();}
       } finally { buttons.forEach(button => { button.disabled = false; }); }
     });
   }
@@ -188,7 +189,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 9. API & Bridge bindings
   initApi({
-    nativeReady: async () => { startSystemView(); startMediaView(); queryDevices(); await connectTimers(); await connectNativeNotes(); assistantReady(); void loadLiveModels(); },
+    nativeReady: async () => { startSystemView(); startMediaView(); startWeatherView(); queryDevices(); await connectTimers(); await connectNativeNotes(); assistantReady(); void loadLiveModels(); },
     initApp: (s) => applySnapshot(s, { emitSave: false }),
     startupStatus,
     loadStore: (s) => applySnapshot(s, { emitSave: false }),
@@ -320,6 +321,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Start clock and start app
   tick();
-  setInterval(() => {tick(); void refreshSystem(); void refreshMedia();}, 1000);
+  setInterval(() => {tick(); void refreshSystem(); void refreshMedia(); void refreshWeather();}, 1000);
   start();
 });

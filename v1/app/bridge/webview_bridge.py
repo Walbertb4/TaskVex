@@ -29,6 +29,7 @@ from app.session.wake_word import WakeWord, WakeAlignmentError
 from app.tools.local.clocks import Clocks
 from app.tools.local.telemetry import Telemetry
 from app.tools.local.media import Media
+from app.tools.services.weather import Weather, WeatherError
 from app.tools.local.personal_memory import memory_base
 
 
@@ -40,11 +41,12 @@ class NativeBridge:
     The trusted host selects the location of the repository.
     """
 
-    def __init__(self, core, store, *, clocks: Clocks | None = None, telemetry: Telemetry | None = None, media: Media | None = None) -> None:
+    def __init__(self, core, store, *, clocks: Clocks | None = None, telemetry: Telemetry | None = None, media: Media | None = None, weather: Weather | None = None) -> None:
         self._core, self._store = core, store
         self._clocks = clocks
         self._telemetry = telemetry
         self._media = media
+        self._weather = weather
         self._clock_uncertain = False
         self._media_uncertain = False
         self._memory_uncertain = False
@@ -415,6 +417,24 @@ class NativeBridge:
             self._media_uncertain = submitted
             return {'ok':False,'unknown':submitted,'completed':not submitted,'error':'Media action could not be confirmed'}
 
+    def _weather_event(self, name, data):
+        """Weather preference/read dispatch; provider waits never hold the bridge lock."""
+        if not self._ready or self._weather is None:
+            return {'ok':False,'completed':True,'error':'Weather is not ready'}
+        try:
+            if name=='query_weather' and data is None:
+                return {'ok':True,'completed':True,'data':self._weather.snapshot()}
+            if name=='weather_search' and type(data) is dict and set(data)=={'query'}:
+                return {'ok':True,'completed':True,'locations':self._weather.search(data['query'])}
+            if name=='weather_location':
+                return {'ok':True,'completed':True,'location':self._weather.select(data)}
+            raise ContractError('Invalid weather request')
+        except ContractError:
+            return {'ok':False,'completed':True,'error':'Invalid weather location request'}
+        except (WeatherError,StoreError):
+            return {'ok':False,'completed':name!='weather_location','unknown':name=='weather_location',
+                    'error':'Weather request could not be verified'}
+
     def event(self, name: str, data=None) -> dict:
         """Give exact result to UI request; return secret payload/error detail.
 
@@ -422,6 +442,8 @@ class NativeBridge:
         does not reapply. save just saves the settings and reads them back. unsupported
         The event is not presented as completed. The error becomes visible to the UI emit.
         """
+        if name in ('query_weather','weather_search','weather_location'):
+            return self._weather_event(name,data)
         if name == 'query_media':
             # Same pure example; UI polling worker/journal does not open the record.
             if data is not None or not self._ready or self._media is None:

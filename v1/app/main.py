@@ -53,6 +53,7 @@ def main() -> None:
     from app.tools.local.clocks import Clocks
     from app.tools.local.telemetry import Telemetry
     from app.tools.local.media import Media
+    from app.tools.services.weather import Weather
     from app.bootstrap import create_core
     from app.bridge.webview_bridge import NativeBridge
     from app.storage.json_store import JsonStore
@@ -78,8 +79,9 @@ def main() -> None:
         clocks = Clocks()
         media = Media()
         settings_store = JsonStore(home / "settings.json")
-        with closing(Telemetry()) as telemetry, create_core(clocks=clocks, settings_store=settings_store, telemetry=telemetry, media=media) as core:
-            bridge = NativeBridge(core, settings_store, clocks=clocks, telemetry=telemetry, media=media)
+        weather = Weather(settings_store)
+        with closing(Telemetry()) as telemetry, create_core(clocks=clocks, settings_store=settings_store, telemetry=telemetry, media=media, weather=weather) as core:
+            bridge = NativeBridge(core, settings_store, clocks=clocks, telemetry=telemetry, media=media, weather=weather)
             window = webview.create_window("TaskVex", _ui_app(ui), js_api=bridge,
                                            http_port=webview.settings["DEFAULT_HTTP_PORT"],
                                            width=1280, height=800, min_size=(900, 600),

@@ -22,7 +22,7 @@ from app.session.model_instruction import personal_memory
 
 
 # REST and Live share the same authorization catalog; Reporting turns are again tool-free.
-BASE_MODEL_TOOLS = ("apps.catalog", "system.status", "media.status", "media.control", "assistant.request_sleep_mode",
+BASE_MODEL_TOOLS = ("apps.catalog", "system.status", "media.status", "media.control", "weather.current", "weather.locations", "assistant.request_sleep_mode",
                     "assistant.request_shutdown", "clocks.create", "clocks.control", "clocks.list")
 MEMORY_MODEL_TOOLS = ("memory.read", "memory.patch")
 NOTE_MODEL_TOOLS = ("notes.add", "notes.list", "notes.select", "notes.update",
