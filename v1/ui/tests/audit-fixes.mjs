@@ -44,6 +44,30 @@ async function setup() {
 const results = [];
 async function test(name, fn) { await fn(); assert.deepEqual(pageErrors, [], 'uncaught browser errors'); results.push(name); console.log('PASS '+name); }
 try {
+  await test('startup unknown review requires confirmation and sends only displayed task IDs',async()=>{
+    const p=await setup();
+    await p.evaluate(async()=>{
+      window.recoveryCalls=[];
+      window.pywebview={api:{event:async(name,data)=>{recoveryCalls.push({name,data});return {ok:false,error:'Synthetic review failure'};}}};
+      window.vex.startupStatus({ok:false,code:'uncertain_state',message:'Previous effect is unconfirmed.',recoverable:false,
+        unknown_tasks:[{task_id:'synthetic-unknown',tool:'media.control',arguments:'do not display'}]});
+    });
+    assert.equal(await p.locator('#recoverSettings').isVisible(),false);
+    assert.equal(await p.locator('#acknowledgeTasks').isVisible(),true);
+    assert.equal(await p.locator('#nativeIssueTasks').textContent(),'media.control · synthetic-unknown');
+    await p.evaluate(()=>{window.confirm=()=>false;document.getElementById('acknowledgeTasks').click();});
+    assert.deepEqual(await p.evaluate(()=>recoveryCalls),[]);
+    await p.evaluate(()=>{window.confirm=()=>true;document.getElementById('acknowledgeTasks').click();});
+    await p.waitForFunction(()=>recoveryCalls.length===1&&!document.getElementById('acknowledgeTasks').disabled);
+    assert.deepEqual(await p.evaluate(()=>recoveryCalls),[{name:'acknowledge_tasks',data:{confirmed:true,task_ids:['synthetic-unknown']}}]);
+    assert.equal(await p.locator('#nativeIssueText').textContent(),'Synthetic review failure');
+    await p.evaluate(()=>window.vex.startupStatus({ok:false,code:'settings_invalid',message:'Invalid preferences.',recoverable:true}));
+    assert.equal(await p.locator('#acknowledgeTasks').isVisible(),false);
+    assert.equal(await p.locator('#nativeIssueTasks').isVisible(),false);
+    assert.equal(await p.locator('#recoverSettings').isVisible(),true);
+    await p.evaluate(()=>window.vex.startupStatus({ok:true}));
+    assert.equal(await p.locator('#nativeIssue').isVisible(),false);
+  });
   await test('reply volume is separate, persists and follows snapshots without changing mute',async()=>{
     const p=await setup();
     const state=()=>p.evaluate(async()=>{
@@ -115,6 +139,111 @@ try {
     });
     assert.deepEqual(state,{stops:1,active:false,denied:false,device:'chosen-camera',audio:false});
   });
+  await test('screen picker uses user activation, shares bounded frames through the same Live owner and stops independently',async()=>{
+    const p=await setup();
+    await p.locator('#btnOpenScreen').click();
+    await p.locator('#scrT').click(); // Offline startup cannot open a source picker.
+    assert.equal(await p.locator('#scrT').isChecked(),false);
+    await p.evaluate(async()=>{
+      window.screenCalls=[];window.screenRequests=[];window.screenStreams=[];
+      navigator.mediaDevices.getDisplayMedia=async options=>{
+        screenRequests.push({options,activation:navigator.userActivation.isActive});
+        const canvas=document.createElement('canvas');canvas.width=1920;canvas.height=1080;
+        canvas.getContext('2d').fillRect(0,0,1920,1080);
+        const stream=canvas.captureStream(1);screenStreams.push(stream);return stream;
+      };
+      window.pywebview={api:{event:async(name,data)=>{screenCalls.push({name,data});return {ok:true,ready:true,closed:false,completed:true};}}};
+      const {assistantReady}=await import('/js/assistant_session.js');assistantReady();
+      document.getElementById('mSel').replaceChildren(new Option('Synthetic Live','synthetic-live'));
+      window.screenModule=(await import('/js/live_video.js')).liveVideo;
+    });
+    await p.locator('#scrT').click();
+    await p.waitForFunction(()=>screenModule.active);
+    assert.deepEqual(await p.evaluate(()=>screenRequests),[{options:{audio:false,video:{frameRate:{ideal:1,max:1}}},activation:true}]);
+    assert.equal(await p.locator('#camB').getAttribute('aria-pressed'),'false');
+    assert.equal(await p.locator('#scr video').count(),1);
+    assert.equal(await p.evaluate(()=>screenCalls.some(c=>c.name==='live_video_feed')),false); // Idle pixels stay local.
+    await p.locator('#camB').click();
+    assert.equal(await p.evaluate(()=>screenModule.source),'screen');
+    await p.evaluate(()=>document.getElementById('dCam').dispatchEvent(new Event('change')));
+    assert.equal(await p.evaluate(()=>screenModule.source),'screen');
+    await p.evaluate(()=>{
+      window.screenCameraProbe=null;window.screenCameraProbeStopped=false;
+      window.originalScreenCameraProbe=navigator.mediaDevices.getUserMedia;
+      navigator.mediaDevices.getUserMedia=async options=>{screenCameraProbe=options;return {getTracks:()=>[{stop(){screenCameraProbeStopped=true;}}]};};
+      document.querySelector('[data-request-permission="camera"]').click();
+    });
+    await p.waitForFunction(()=>screenCameraProbeStopped);
+    assert.deepEqual(await p.evaluate(()=>screenCameraProbe),{audio:false,video:true});
+    assert.equal(await p.evaluate(()=>screenModule.source),'screen'); // Screen access is not camera permission.
+    await p.evaluate(()=>navigator.mediaDevices.getUserMedia=originalScreenCameraProbe);
+    await p.evaluate(()=>{
+      window.screenReply=new Promise(resolve=>window.finishScreenReply=resolve);
+      window.screenTurn=screenModule.withInput('screen-request',visual=>{window.initialScreen=visual;return screenReply;});
+    });
+    assert.equal(await p.evaluate(()=>initialScreen.video.startsWith('/9j/')&&initialScreen.video.length<=349528),true);
+    assert.deepEqual(await p.evaluate(async()=>{
+      const image=new Image();image.src='data:image/jpeg;base64,'+initialScreen.video;await image.decode();
+      return [image.width,image.height];
+    }),[1280,720]);
+    await p.waitForFunction(()=>screenCalls.some(c=>c.name==='live_video_feed'&&c.data.data),{timeout:6000});
+    await p.locator('#scrT').click();
+    await p.waitForFunction(()=>screenCalls.some(c=>c.data?.data===null));
+    assert.equal(await p.evaluate(()=>screenStreams[0].getTracks().every(t=>t.readyState==='ended')),true);
+    assert.equal(await p.locator('#scr video').count(),0);
+    assert.equal(await p.evaluate(()=>screenCalls.some(c=>c.name==='stop_task')),false);
+    await p.evaluate(async()=>{finishScreenReply({ok:true});await screenTurn;});
+    await p.locator('#scrT').click();await p.waitForFunction(()=>screenModule.active);
+    assert.equal(await p.evaluate(()=>screenRequests.length),2); // No remembered capture grant.
+    await p.evaluate(()=>screenStreams[1].getVideoTracks()[0].dispatchEvent(new Event('ended')));
+    assert.equal(await p.locator('#scrT').isChecked(),false);
+    assert.equal(await p.evaluate(()=>screenStreams[1].getTracks().every(t=>t.readyState==='ended')),true);
+    await p.reload();await p.waitForFunction(()=>!!window.vex);
+    assert.equal(await p.locator('#scrT').isChecked(),false);
+    assert.equal(await p.locator('#scr video').count(),0);
+  });
+  await test('screen cancellation, unsupported capture, unexpected audio and late permission release all resources',async()=>{
+    const p=await setup();
+    const state=await p.evaluate(async()=>{
+      const {liveVideo}=await import('/js/live_video.js');
+      navigator.mediaDevices.getDisplayMedia=async()=>{throw new DOMException('cancelled','NotAllowedError');};
+      const denied=await liveVideo.start('','screen');
+      navigator.mediaDevices.getDisplayMedia=undefined;
+      const unsupported=await liveVideo.start('','screen');
+      let stops=0,resolvePermission;
+      const track={stop(){stops++;}};
+      navigator.mediaDevices.getDisplayMedia=()=>new Promise(resolve=>resolvePermission=resolve);
+      const opening=liveVideo.start('','screen');liveVideo.stop();
+      resolvePermission({getTracks:()=>[track]});await opening;
+      navigator.mediaDevices.getDisplayMedia=async()=>({getVideoTracks:()=>[track],getAudioTracks:()=>[track],getTracks:()=>[track,track]});
+      const audioRejected=await liveVideo.start('','screen');
+      const set=window.setTimeout;window.setTimeout=(fn,ms,...args)=>set(fn,ms===15000?10:ms,...args);
+      navigator.mediaDevices.getDisplayMedia=()=>new Promise(resolve=>resolvePermission=resolve);
+      const timeout=await liveVideo.start('','screen');resolvePermission({getTracks:()=>[track]});
+      await Promise.resolve();window.setTimeout=set;
+      return {denied,unsupported,audioRejected,timeout,stops,active:liveVideo.active,opening:liveVideo.opening,checked:document.getElementById('scrT').checked};
+    });
+    assert.deepEqual(state,{denied:false,unsupported:false,audioRejected:false,timeout:false,stops:4,active:false,opening:false,checked:false});
+  });
+  await test('screen capture closes on model/key/Disconnect lifecycle changes without automatic reacquisition',async()=>{
+    const p=await setup();
+    const result=await p.evaluate(async()=>{
+      const {liveVideo}=await import('/js/live_video.js');let opened=0;
+      navigator.mediaDevices.getDisplayMedia=async()=>{
+        opened++;const canvas=document.createElement('canvas');canvas.width=320;canvas.height=240;
+        canvas.getContext('2d').fillRect(0,0,320,240);return canvas.captureStream(1);
+      };
+      window.pywebview={api:{event:async()=>({ok:true,completed:true})}};
+      const closed=[];
+      for(const reset of [()=>document.getElementById('mSel').dispatchEvent(new Event('change')),
+        ()=>window.dispatchEvent(new Event('taskvex-key-saved')),()=>document.getElementById('disc').click()]){
+        await liveVideo.start('','screen');const stream=document.querySelector('#scr video').srcObject;
+        reset();closed.push(!liveVideo.active&&!document.getElementById('scrT').checked&&stream.getTracks().every(t=>t.readyState==='ended'));
+      }
+      return {opened,closed};
+    });
+    assert.deepEqual(result,{opened:3,closed:[true,true,true]});
+  });
   await test('System permissions request default devices without starting capture or sharing location',async()=>{
     const p=await setup();
     await p.evaluate(async()=>{
@@ -168,7 +297,7 @@ try {
   });
   await test('planned controls stay disabled and do not claim connected actions',async()=>{
     const p=await setup();
-    for(const id of ['audioModeB','attB','gConnB','locSaveB','locAutoB','vSel','pSys','pGreet','pSc','scrT','inspectBtn'])
+    for(const id of ['audioModeB','attB','gConnB','locSaveB','locAutoB','vSel','pSys','pGreet','pSc','inspectBtn'])
       assert.equal(await p.locator('#'+id).isDisabled(),true,id);
     assert.equal(await p.evaluate(()=>[...intervals.values()].filter(x=>[15000,30000].includes(x.ms)).length),0);
   });

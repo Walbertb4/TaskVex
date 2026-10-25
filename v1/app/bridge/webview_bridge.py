@@ -92,14 +92,14 @@ class NativeBridge:
             return {'ok': False, 'error': 'Windows privacy settings could not be opened'}
         return {'ok': True, 'completed': True, 'opened': True}
 
-    def _camera_data(self, data) -> bytes:
-        """Bound and decode trusted native camera transport; never store the pixels."""
+    def _visual_data(self, data) -> bytes:
+        """Bound and decode native visual transport; never store the pixels."""
         if not isinstance(data, str) or len(data) > 349528:
-            raise ContractError('Invalid camera encoding')
+            raise ContractError('Invalid visual encoding')
         try:
             return validate_frame(b64decode(data, validate=True))
         except (Base64Error, ValueError) as error:
-            raise ContractError('Invalid camera encoding') from error
+            raise ContractError('Invalid visual encoding') from error
 
     def _video_event(self, data) -> dict:
         """Short request-scoped input; closing video does not cancel model or microphone."""
@@ -109,11 +109,11 @@ class NativeBridge:
         if set(data) == {'request_id'}:
             return self._chat.video_input(data['request_id'])
         if set(data) != {'request_id', 'sequence', 'data'} or type(data['sequence']) is not int or data['sequence'] < 0:
-            return {'ok': False, 'error': 'Invalid camera packet'}
+            return {'ok': False, 'error': 'Invalid visual packet'}
         try:
-            chunk = self._camera_data(data['data']) if data['data'] is not None else None
+            chunk = self._visual_data(data['data']) if data['data'] is not None else None
         except ContractError:
-            return {'ok': False, 'error': 'Invalid camera JPEG'}
+            return {'ok': False, 'error': 'Invalid visual JPEG'}
         return self._chat.video_input(data['request_id'], data['sequence'], chunk)
 
     def _audio_chunk(self, request_id: str, data: bytes, mime: str) -> bool:
@@ -216,8 +216,11 @@ class NativeBridge:
     def _startup_error(self, error: Exception) -> dict:
         """Show safe, actionable errors to the user; There is no raw file content."""
         self._ready = False
-        code = error.code if isinstance(error, StoreError) else "settings_invalid" if isinstance(error, ContractError) else "startup_failed"
+        code = error.code if isinstance(error, (StoreError, TaskManagerError)) else "settings_invalid" if isinstance(error, ContractError) else "startup_failed"
         messages = {
+            "uncertain_state": "A previous action has an unconfirmed result. Check its effect, then review it below to continue without repeating it. Your settings are not damaged.",
+            "journal_unavailable": "Task history cannot be verified. Settings repair cannot fix this. Close and reopen; keep your data folder if the problem persists.",
+            "capacity_exceeded": "Previous tasks are still active. Wait before retrying startup; settings repair is not needed.",
             "corrupt_data": "The saved settings file is damaged. The original has not been changed.",
             "settings_invalid": "Some saved settings are invalid. The original has not been changed.",
             "unsupported_version": "These settings require a different app version. Use a compatible version; this file will not be reset.",
@@ -228,13 +231,29 @@ class NativeBridge:
         message = messages.get(code, "Native startup could not be completed. Retry, or close and reopen the app.")
         status = {"ok": False, "code": code, "message": message,
                   "recoverable": code in {"corrupt_data", "settings_invalid"}}
+        if code == 'uncertain_state':
+            try:
+                status['unknown_tasks'] = self._core.unresolved_tasks()
+            except TaskManagerError:
+                status['message'] = 'Task history could not be read safely. Review is unavailable; settings were not changed.'
         try:
             self._push("startupStatus", status)
         except Exception:
             # If the UI is not accessible at all, event response/log carries the error; notification
             # The error should not hide the real reason for the boot with a second traceback.
             pass
-        return {**status, "error": message}
+        return {**status, "error": status['message']}
+
+    def _acknowledge_tasks(self, data) -> dict:
+        """Explicit local review; keep original unknown results and never run old handlers."""
+        if (self._chat.busy or type(data) is not dict or set(data) != {'confirmed', 'task_ids'}
+                or data['confirmed'] is not True):
+            return {'ok': False, 'error': 'Review requires explicit confirmation and task IDs'}
+        try:
+            self._core.acknowledge_unknown(data['task_ids'])
+        except TaskManagerError as error:
+            return self._startup_error(error)
+        return self._initialize()
 
     def _recover_settings(self, data) -> dict:
         """Repair only with open UI confirmation, preserving only the settings file.
@@ -482,6 +501,9 @@ class NativeBridge:
         does not reapply. save just saves the settings and reads them back. unsupported
         The event is not presented as completed. The error becomes visible to the UI emit.
         """
+        if name == 'acknowledge_tasks':
+            with self._lock:
+                return self._acknowledge_tasks(data)
         if name in ('query_weather','weather_search','weather_location'):
             return self._weather_event(name,data)
         if name == 'query_media':
@@ -615,9 +637,9 @@ class NativeBridge:
                 if name not in {'live_text', 'live_audio_start', 'live_audio'}:
                     return {'ok': False, 'error': 'Camera requires a user Live turn'}
                 try:
-                    visual = {'video_input': LiveVideo(self._camera_data(data['video']))}
+                    visual = {'video_input': LiveVideo(self._visual_data(data['video']))}
                 except ContractError:
-                    return {'ok': False, 'error': 'Invalid initial camera JPEG'}
+                    return {'ok': False, 'error': 'Invalid initial visual JPEG'}
                 data = {key: value for key, value in data.items() if key != 'video'}
             if name == 'live_audio_start':
                 if (type(data) is not dict or set(data) != {'request_id'}

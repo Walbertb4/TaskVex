@@ -48,7 +48,7 @@ async function requestPermission(name) {
     if(name==='geolocation'){
       probe=new Promise((resolve,reject)=>navigator.geolocation.getCurrentPosition(
         ()=>resolve(), error=>reject(error), {enableHighAccuracy:false,timeout:10000,maximumAge:300000}));
-    }else if(name==='camera' && liveVideo.active || name==='microphone' && liveMic.hasDeviceAccess){
+    }else if(name==='camera' && liveVideo.active && liveVideo.source==='camera' || name==='microphone' && liveMic.hasDeviceAccess){
       probe=Promise.resolve(); // Do not open a second capture when the owner already has access.
     }else{
       probe=navigator.mediaDevices.getUserMedia({audio:name==='microphone',video:name==='camera'}).then(stream=>{

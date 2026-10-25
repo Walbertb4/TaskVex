@@ -791,19 +791,22 @@ export function receiveAudioChunk(packet) {
 export function initAssistantControls() {
   const stopTask = document.getElementById('stopTask');
   const stopLabel = stopTask?.textContent;
-  const camB = document.getElementById('camB');
-  if (camB) camB.addEventListener('click', async () => {
+  for (const [id, source] of [['camB','camera'], ['scrT','screen']]) document.getElementById(id)?.addEventListener('click', async () => {
     sfx.blip();
-    if (liveVideo.active || liveVideo.opening) { liveVideo.stop(); return; }
+    if (liveVideo.source === source) { liveVideo.stop(); return; }
+    if (source === 'screen') document.getElementById('scrT').checked = false;
+    if (liveVideo.active || liveVideo.opening) {
+      addLog('Turn off the current camera or screen source before selecting another.', true); return;
+    }
     if (textBusy || sleepPending || sleeping || textOperation.uncertain || !isBackendAvailable() ||
         !nativeInitialized || !document.getElementById('liveLatencyTest')?.checked || !document.getElementById('mSel')?.value) {
-      addLog('Camera requires an awake, ready Live model. Wait for the current reply first.', true); return;
+      addLog('Visual input requires an awake, ready Live model. Wait for the current reply first.', true); return;
     }
     try {
-      if (await liveVideo.start(getAudioDeviceId('dCam'))) void queryDevices();
-    } catch { addLog('Choose an available camera in Audio settings.', true); }
+      if (await liveVideo.start(source === 'camera' ? getAudioDeviceId('dCam') : '', source) && source === 'camera') void queryDevices();
+    } catch { addLog('Visual source could not be opened. Select it again after checking permissions.', true); }
   });
-  document.getElementById('dCam')?.addEventListener('change', () => liveVideo.stop());
+  document.getElementById('dCam')?.addEventListener('change', () => { if (liveVideo.source === 'camera') liveVideo.stop(); });
   // Microphone toggle button
   const micB = document.getElementById('micB');
   if (micB) {

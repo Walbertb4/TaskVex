@@ -5,6 +5,88 @@ The state is in ARCHITECTURE.md, the work to be done is in PLAN.md. The version 
 
 ## Unreleased
 
+### Stage 7 user-selected scope and revised sequence
+
+- Replaced the initial narrow-app draft with general task-scoped desktop operation,
+  shared L0-L4 execution, common-format file work and verified dynamic per-app skills.
+- Recorded task-only input approval, relevant visual consent, dependency-aware
+  failures/queuing, human intervention and manual continuation after restart.
+- Put journal privacy/replay-preserving migration and shared authorization/target/
+  logical-task prerequisites before broader file and GUI handling. Existing raw
+  journal content and native bootstrap instability remain open, not fixed.
+- Added the requested separate read-only Plugins screen to the plan: existing
+  System default capabilities, no removal/toggles or external plugin installation.
+- Kept GUI communication in stage 7, official integrations in 9, and deferred
+  local OCR with an explicit reminder to propose it if visual text handling needs it.
+- Actual libraries and operation limits remain user decisions before their slices.
+  Documentation only; no runtime edits, dependency installs, provider calls,
+  regression run, commit or push. The next implementation slice is 7.P1.
+
+### Stage 7 implementation breakdown
+
+- Expanded existing 7.0–7.5 into testable slices for selected files/context/editing,
+  UIA app control, verified procedure memory, read-only web tools, DOM/visual
+  target resolution and shared skill definitions/execution/teaching.
+- Preserved the common execution path, provider isolation, target freshness,
+  verification and unknown/replay rules. Retained the native bootstrap defect
+  and actual supported-app/format acceptance boundaries.
+- Next feature slice is 7.0a. This is documentation only: no runtime implementation,
+  new dependency, provider call, new test run, commit or push.
+
+### Stage 6 functional closure and audio deferral
+
+- Recorded the user's successful screen-sharing tests and explicit closure of
+  stage 6's agreed functional scope. Exact OS/device/provider coverage was not
+  independently enumerated; existing automatic evidence is preserved, not rerun.
+- Moved former 6.8.3 additional audio-source/recording sharing to planned 9.4,
+  with source scope, consent, retention and cleanup still to be defined.
+- Next feature slice is 7.0 local files/task context. The full-native chat bootstrap
+  timeout, earlier intermittent startup/teardown instability and release boundaries
+  remain open; this is not a production-readiness claim. No runtime changes,
+  stage 7 implementation, demo rebuild, commit or push in this documentation update.
+
+### Screen sharing on the existing Live visual path — 6.8.2
+
+- Enabled explicit screen/window selection and local preview in the screen drawer,
+  sharing one resource/Live input owner with camera. Camera and screen are exclusive;
+  no second connection, provider SDK dependency or tool executor was added.
+- Video-only capture, fresh picker each time, no saved grant, idle pixels kept local,
+  request-scoped JPEGs up to 1280-pixel screen edge/256 KiB at most once per second.
+- Off, platform end, late grants, denial, setup timeout and existing lifecycle
+  cleanup preserve microphone/reply semantics. Screen content remains untrusted data.
+- Updated camera/permissions/startup acceptance from the user's successful tests.
+  Commit remains deferred by explicit instruction. See reports/screen-sharing-checks.json
+  for actual validation and open full-native/manual limits. The demo was not rebuilt.
+- Validation: 1,279 pytest, 128 focused tests, nine JS suites, 29 browser groups,
+  Pyright 0 and targeted native save/reopen passed. The full native attempt timed
+  out at chat-phase window bootstrap; do not count it as an eleven-phase pass.
+
+### Provider isolation decision and deferred migration plan
+
+- Recorded the requirement to keep new Gemini-specific details in provider-facing
+  modules and avoid new SDK dependencies in shared core/domain features.
+- Documented current coupling honestly and planned final provider-adapter migration
+  after functional stages, with explicit capability differences and unchanged
+  tool, cancellation, replay and lifecycle ownership. No adapter implementation,
+  runtime change or new feature stage was started in this documentation update.
+
+### Startup recovery without resetting valid settings
+
+- Fixed TaskManagerError being misclassified as settings_invalid because it
+  inherits ContractError. An unknown media action could block every startup while
+  Retry and valid-settings repair repeatedly hit the same safety latch.
+- Added explicit local review of unknown task IDs/tool names. Durable separate
+  acknowledgements unlock future work while preserving original UNKNOWN results,
+  request identities and replay protection. No automatic acknowledgement or retry.
+- Reused normal startup completion after Retry/repair/review so clocks, approved
+  notes, assistant controls and catalog loading reconnect consistently.
+- Evidence and remaining limits: reports/startup-recovery-checks.json and
+  reports/startup-recovery-native.json. Actual profile/settings/history were not
+  repaired or acknowledged; portable demo was not rebuilt. Manual acceptance pending.
+- Validation: 1,278 full pytest tests plus 119 subsequent focused tests, nine JS
+  suites, 26 browser groups, Pyright 0 and eleven native phases passed. This clean
+  run does not close earlier intermittent native startup/teardown failures.
+
 ### Publish camera and permissions status
 
 - Updated README with current camera/permission behavior, actual validation and

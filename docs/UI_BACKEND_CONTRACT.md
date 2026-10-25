@@ -20,6 +20,7 @@ remain blocked until initialization; corrupt settings require explicit recovery.
 | Events | Meaning and boundary |
 |---|---|
 | ui_ready, retry_startup, recover_settings | Startup snapshot; recovery requires explicit approval |
+| acknowledge_tasks | Local explicit unknown-result review: `{confirmed:true,task_ids:[actual IDs]}`; no model tool, replay, result rewrite or settings repair |
 | save, reset, ontop | Allowed preferences, not secrets or note/skill/routine mutations |
 | query_apikey, apikey | Secret-free status / explicit credential storage; no key returned |
 | query_catalog, model | API-discovered Live catalog and allowed selection; no fabricated list |
@@ -39,8 +40,9 @@ remain blocked until initialization; corrupt settings require explicit recovery.
 | media_command | Versioned UI mutation submitted to the same media.control tool used by the model |
 | fullscreen, shutdown, restart | Window lifecycle without abandoning active work |
 
-Google, skill/routine execution, inspect and screen_share
-commands are not implemented. Local timeline/drawer controls do not imply
+Google, skill/routine execution, inspect and legacy screen_share
+events are not implemented. Explicit local screen capture uses the existing visual
+envelopes below, not a new model tool. Local timeline/drawer controls do not imply
 external execution or verified success.
 
 ## Native -> UI and ownership
@@ -76,7 +78,16 @@ Persistent `(principal,request_id)` and matching payload retrieve the old result
 even after restart. New intended observations/actions need new IDs. Evicted RAM
 records remain queryable on disk. Clocks/conversation RAM are not reconstructed by
 replaying historical success. Journal failure/unknown blocks new tools; domain
-side effects and journal commits are not one transaction.
+side effects and journal commits are not one transaction. Startup preserves
+TaskManager error codes rather than classifying their ContractError base as
+settings_invalid. For uncertain_state, startupStatus adds unknown_tasks containing
+only task_id/tool; settings repair is hidden. Review requires explicit confirmation
+and 1–256 unique actual UNKNOWN task IDs; active work/storage failure prevents it.
+Acknowledgements are durable, separate from results and replay keys. Reviewing
+old IDs cannot approve newly unknown tasks. If more remain, startup remains blocked
+and presents the next bounded page. Unknown effects are not claimed resolved.
+Successful Retry, settings repair and task review all finish the normal native
+startup path, including shared clocks, approved notes and model catalog loading.
 
 Mic Off stops input only; Mute silences output only. Sleep requests are pending
 until Vex's response/playback finishes. One-time sleep, return-to-sleep and idle
@@ -331,11 +342,15 @@ Temporary profiles and synthetic providers validate contracts, not real-account
 availability, quota, every player or microphone accuracy. Provider resume/GoAway
 acceptance remains separate. See [AUDIT](AUDIT.md) and reports/ for actual evidence.
 
-## Camera input — 6.8.1
+## Visual input — camera 6.8.1 and screen 6.8.2
 
 `live_text`, `live_audio_start` and `live_audio` optionally accept `video`, a base64
 JPEG without a data-URL prefix, along with their existing request fields. REST,
 timer notifications and other event envelopes cannot attach camera input.
+Screen selection supplies the same optional video field and live_video_feed
+envelopes. No source name, window title, screen grant, frame or display identifier
+enters settings, task records or text memory. Camera and screen cannot be enabled
+simultaneously in this slice. No provider-specific SDK types enter the UI contract.
 `live_video_feed` accepts `{request_id}` for input status or exactly
 `{request_id,sequence,data}`. Sequences start at zero; data is base64 JPEG or null
 to close video only. Maximum decoded image: 262144 bytes; JPEG start/end markers
@@ -350,6 +365,15 @@ Stop closes this input immediately; an image already sent cannot be withdrawn.
 The result may include video_frames_sent and video_error, never image data.
 Camera frames are absent from settings/backups, task records and RAM text summaries.
 Camera Off is independent of Stop, microphone On/Off and audio playback.
+Screen sharing Off has the same semantics: release capture, clear preview and close
+only visual input. Stop ends transmission for this turn but can leave the source
+locally ready for a future user message. Sleep, Disconnect, unknown, model/key/mode
+change and page close release both source types. A fresh user click/source picker
+is required to enable screen capture again. Drawer close does not revoke capture.
+getDisplayMedia requests video only; capture/setup has a 15-second bound and late
+grants are released. Screen snapshots scale to 1280 pixels maximum longest edge;
+camera uses 640. Byte, sequence, expiry and socket cadence bounds are unchanged.
+The platform picker is the permission boundary; no saved checkbox grants screen access.
 
 ## Permission settings — 6.8.1a
 

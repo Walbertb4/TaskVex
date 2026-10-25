@@ -203,7 +203,7 @@ For "sleep after another task", that task must finish successfully first.
 No speaker identification separates simultaneous background speakers.
 
 **Source: Mic** remains a disabled audio-source placeholder; microphone is the only
-audio input. Camera is a separate opt-in Live visual input. Screen inspection and
+audio input. Camera/screen sharing are separate opt-in Live visual inputs. GUI inspection and
 Google services remain planned; weather/location is available through its own controls. Skill/routine definitions
 can be edited locally; Run reports that execution is not connected.
 
@@ -346,7 +346,18 @@ running again. Unfinished started actions become unknown and block new tools;
 restarting does not clear that uncertainty. This is separate from conversation
 memory and does not restore timers. There is no lifetime 256-task limit in the
 native app; active work and in-memory records remain bounded. Do not delete the
-journal to bypass a lock. Manual unknown reconciliation is not available yet.
+journal to bypass a lock.
+
+- **Retry** → Retry native initialization after a transient failure; does not
+  reset settings or approve uncertain actions.
+- **Back up and repair settings** → Offered for invalid/damaged settings only.
+  Confirmation preserves the original file, keeps valid fields and leaves task
+  history and backend notes intact. Unsupported versions/access failures are not reset.
+- **Review previous actions and continue** → Startup lists unknown tool/task IDs.
+  Check their effects first, then confirm accepting uncertainty. This permits new
+  work without retrying or rewriting old results. Acknowledgement survives restart;
+  newly unknown actions need separate review. It does not verify success or undo
+  anything. Cancel keeps work blocked. Storage failure cannot be bypassed here.
 
 
 ## Personal memory — manual Personalization controls
@@ -594,9 +605,31 @@ Location consent is native-only and is not imported/exported by legacy UI backup
   manually after wake/reconnect. Device selection persists through Save Settings;
   camera On does not persist, and no permission is silently re-requested.
 
-No REST camera input, screen sharing, image file attachment or model-controlled
+No REST visual input, image file attachment or model-controlled
 camera activation is included. Images are bounded JPEGs; real camera permissions,
 lighting and provider understanding require separate manual acceptance.
+
+## Screen sharing — Live input
+
+- **Screen sharing controls (bottom-right information button) -> Share screen** ->
+  with an awake, ready Live model and no reply running, choose a screen/window
+  through the platform picker. Camera must be Off first. Cancelling leaves sharing Off.
+- Say or type **"Describe the window I am sharing"** -> the current Live message
+  receives bounded screen images on the existing connection. Idle images and the
+  preview stay local; no system audio is captured. Small text may be unreadable.
+- **Share screen Off / platform Stop sharing** -> release capture and clear the
+  preview without stopping the microphone or current reply. Already sent images
+  cannot be recalled. Closing the drawer only hides it; sharing remains enabled.
+- **Stop Task** -> ends this turn and its frame transmission. The source may stay
+  locally ready; sleep/Disconnect/model or key change/page close releases it.
+- **Enable sharing again** -> choose the source again. A screen grant/selection is
+  not saved, restored at launch or acquired automatically after sleep/reconnect.
+
+One camera or screen source at a time. Video-only JPEG frames are sent at most
+once per second, with 1280-pixel screen edge and 256 KiB frame limits. This is
+visual understanding, not GUI clicking or skill creation. The user reported successful
+tests; exact platform/provider coverage was not independently enumerated. Additional
+audio-source/recording sharing is deferred to stage 9.4 and is not available today.
 
 ## Permissions settings
 

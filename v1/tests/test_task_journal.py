@@ -15,7 +15,7 @@ from threading import Event
 
 import pytest
 
-from app.core.contracts import Task, TaskStatus, ToolError, ToolRequest
+from app.core.contracts import Task, TaskStatus, ToolError, ToolRequest, ToolResult
 from app.storage.instance_lock import AlreadyRunningError
 from app.storage.task_journal import JournalError, TaskJournal
 from app.tasks.manager import TaskManager, TaskManagerError
@@ -26,6 +26,91 @@ def manager(home, handler=None, capacity=4):
     """Install administrator with real disk logger, fake handler and small RAM limit."""
     return TaskManager(registry_with(handler or (lambda a, c: done(c))),
                        authorize=allow, capacity=capacity, journal_home=home)
+
+
+def test_acknowledgement_survives_restart_without_changing_unknown_or_replaying(tmp_path):
+    """Review permits future work but preserves the original result and replay identity."""
+    calls = []
+    def unknown(arguments, context):
+        calls.append(context.task_id)
+        return ToolResult(task_id=context.task_id, status=TaskStatus.UNKNOWN,
+                          error=ToolError(code='synthetic_unknown', message='Effect unconfirmed'))
+    with manager(tmp_path, unknown) as core:
+        task = core.submit(request())
+        original = core.wait(task.task_id, 5)
+        assert core.uncertain
+    with manager(tmp_path) as core:
+        assert core.unresolved_tasks() == [{'task_id': task.task_id, 'tool': 'test.run'}]
+        with pytest.raises(TaskManagerError, match='unknown outcome'):
+            core.submit(request('new'))
+        with closing(sqlite3.connect(core._journal.path)) as db:
+            document = db.execute('SELECT document FROM tasks WHERE task_id=?', (task.task_id,)).fetchone()[0]
+        core.acknowledge_unknown([task.task_id])
+        assert not core.uncertain and core.unresolved_tasks() == []
+        assert core.get(task.task_id) == original
+        assert core.submit(request()) == original
+        with closing(sqlite3.connect(core._journal.path)) as db:
+            assert db.execute('SELECT document FROM tasks WHERE task_id=?', (task.task_id,)).fetchone()[0] == document
+        new = core.submit(request('new'))
+        assert core.wait(new.task_id, 5).status == TaskStatus.SUCCEEDED
+    with manager(tmp_path, unknown) as core:
+        assert not core.uncertain and core.submit(request()) == original
+        with pytest.raises(TaskManagerError) as error:
+            core.submit(request(value='changed'))
+        assert error.value.code == 'request_conflict'
+        second = core.submit(request('second-unknown'))
+        assert core.wait(second.task_id, 5).status == TaskStatus.UNKNOWN
+        core.acknowledge_unknown([task.task_id])
+        assert core.uncertain  # A stale review cannot approve a new unknown.
+        assert core.unresolved_tasks() == [{'task_id': second.task_id, 'tool': 'test.run'}]
+    assert calls == [task.task_id, second.task_id]
+
+
+@pytest.mark.parametrize('ids', [None, [], ['a', 'a'], [''], [1], ['a'] * 257])
+def test_acknowledgement_rejects_invalid_ids(tmp_path, ids):
+    with manager(tmp_path) as core:
+        with pytest.raises(TaskManagerError) as error:
+            core.acknowledge_unknown(ids)
+        assert error.value.code == 'invalid_recovery'
+
+
+def test_acknowledgement_storage_failure_keeps_safety_latch(tmp_path, monkeypatch):
+    task = Task(task_id='synthetic-unknown', request=request(), status=TaskStatus.UNKNOWN,
+                result=ToolResult(task_id='synthetic-unknown', status=TaskStatus.UNKNOWN,
+                    error=ToolError(code='synthetic_unknown', message='Effect unconfirmed')))
+    with closing(TaskJournal(tmp_path)) as journal:
+        journal.save(task)
+    with manager(tmp_path) as core:
+        def fail(ids):
+            raise JournalError('Synthetic storage failure')
+        monkeypatch.setattr(core._journal, 'acknowledge', fail)
+        with pytest.raises(TaskManagerError) as error:
+            core.acknowledge_unknown([task.task_id])
+        assert error.value.code == 'journal_unavailable' and core.uncertain
+        assert core.get(task.task_id) == task
+    with manager(tmp_path) as core:
+        assert core.uncertain and core.unresolved_tasks()
+
+
+def test_review_cannot_run_during_active_work_or_approve_a_success(tmp_path):
+    entered, release = Event(), Event()
+    def handler(arguments, context):
+        entered.set()
+        assert release.wait(5)
+        return done(context)
+    with manager(tmp_path, handler) as core:
+        task = core.submit(request())
+        assert entered.wait(5)
+        try:
+            with pytest.raises(TaskManagerError) as error:
+                core.acknowledge_unknown([task.task_id])
+            assert error.value.code == 'task_active'
+        finally:
+            release.set()
+        assert core.wait(task.task_id, 5).status == TaskStatus.SUCCEEDED
+        with pytest.raises(TaskManagerError) as error:
+            core.acknowledge_unknown([task.task_id])
+        assert error.value.code == 'invalid_recovery'
 
 
 @pytest.mark.parametrize('capacity', [4, 256])

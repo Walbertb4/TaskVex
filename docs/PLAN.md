@@ -1,11 +1,96 @@
 # TaskVex — Current plan
 
-## Now: 6.8.1a Permissions settings — implemented; manual acceptance/native stability open
+## Forward rule: provider details stay isolated; final migration after features
+
+From this decision onward, new provider-specific SDK/configuration/parsing code
+stays in provider-facing modules. Existing Gemini coupling is not claimed removed.
+The functional order below remains unchanged; the user requested the final
+provider-adapter migration after the planned application capabilities are complete.
+This rule does not authorize immediate adapter implementation or automatic commits.
+
+## Now: stage 6 scope closed; stage 7 choices recorded, implementation not started
+
+The user reported successful screen-sharing tests, explicitly deferred additional
+audio sharing to stage 9, and authorized closing stage 6. This closes the agreed
+functional scope, not every quality/release boundary. No stage 7 implementation
+has started, and commit/push remain deferred by explicit user instruction.
+
+- [x] Personal memory, telemetry/network/token views, media/volume and weather accepted.
+- [x] Camera/permissions and screen sharing accepted as reported; exact OS/device/
+  provider coverage was not independently enumerated.
+- [x] Former 6.8.3 additional audio inputs moved to 9.4, unimplemented and scope pending.
+- [x] Latest automatic evidence retained: 1,279 pytest, nine JS suites, 29 browser
+  groups, Pyright 0 and two targeted native phases; no new test run in this closure.
+- [ ] Carry-forward defect: full native chat bootstrap timed out. Earlier intermittent
+  startup/teardown stability remains unresolved; targeted success is not full acceptance.
+- [ ] Release boundaries: updated demo rebuild, clean-machine/device coverage,
+  provider quota/resume coverage and existing source limits remain open as documented.
+
+Next implementation slice: **7.P1 private task journal**, before expanding file
+or GUI content handling. The previous 7.0a-first draft is superseded by the
+user-selected stage 7 sequence below. Dependency/library choices still marked
+pending must be presented to the user before installation or implementation.
+Resolve the native instability before claiming full native reliability/distribution
+readiness; stage closure does not waive or hide this defect.
+
+## 6.8.2 Screen sharing — accepted by the user; commit deferred
+
+The user confirmed successful tests, clarified that 6.8.1 was already implemented,
+and authorized the next slice. Camera/permissions and startup recovery are accepted
+as reported; exact hardware/provider coverage was not independently enumerated.
+Commit is explicitly deferred by the user.
+
+- [x] Explicit source picker in Live Screen; no automatic selection or saved grant.
+- [x] Same visual owner as camera, one source at a time, video only and local preview.
+- [x] Existing request-scoped Live JPEG path; screen longest edge 1280 pixels,
+  camera 640, shared 256 KiB and one-frame-per-second transmission bounds.
+- [x] Off/OS end/denial/timeout/late grant cleanup; Off does not interrupt a reply.
+- [x] Existing Stop, sleep, Disconnect, model/key/mode and unknown cleanup ownership.
+- [x] Synthetic browser source/consent/lifecycle checks; screen content is untrusted data.
+- [x] 1,279 full pytest tests, 128 focused tests, 9 JS suites, 29 browser groups,
+  Pyright 0 and 2 targeted native phases. See reports/screen-sharing-checks.json
+  and reports/screen-sharing-native.json.
+- [ ] Full native regression: the chat-phase window bootstrap timed out before
+  its assertions. The clean preceding startup-fix run does not close this recurrence.
+- [x] User reported successful screen-sharing tests; exact picker/device/provider
+  coverage was not independently enumerated.
+
+No system audio, simultaneous camera/screen, image history, new model connection,
+GUI clicks/inspection tools, file attachments or provider-adapter migration.
+Additional audio inputs are deferred to **9.4** by the user; next is **7.P1**.
+
+## Startup recovery correction — accepted by the user; commit deferred
+
+Valid settings plus a persisted UNKNOWN media task reproduced the reported
+startup lock. TaskManagerError inherited ContractError and was incorrectly shown
+as settings_invalid. Retrying/repairing valid settings could not clear that latch.
+
+- [x] Preserve TaskManager error codes; never propose settings reset for uncertainty.
+- [x] Explicit local review of actual UNKNOWN IDs, without exposing arguments/results.
+- [x] Durable acknowledgement separate from results/replay keys; restart retains
+  review, old UNKNOWN remains unchanged and newly unknown tasks still block work.
+- [x] Reject unconfirmed/invalid review, active work and unavailable task storage.
+- [x] Same complete UI readiness after initial startup, Retry, repair and review.
+- [x] Synthetic restart/replay, failure and browser/native recovery checks;
+  see reports/startup-recovery-checks.json and startup-recovery-native.json.
+- [x] 1,278 full pytest tests, 119 subsequent focused tests, 9 JS suites,
+  26 browser groups, Pyright 0 and 11/11 native phases. A clean run does not
+  establish that earlier intermittent native startup/teardown failures are fixed.
+- [x] User reported successful tests and authorized continuation; specific review/
+  restart coverage was not separately enumerated. Do not delete settings/history.
+- [ ] Portable demo rebuild is not part of this correction; old EXEs lack the fix.
+
+No real account/provider call, real-data mutation, automatic acknowledgement,
+commit or push. Earlier general native startup/teardown instability and camera
+manual acceptance remain open; this confirmed root cause does not close them.
+
+## 6.8.1a Permissions settings — accepted by the user; native stability boundary open
 
 The user could not grant camera access from the default-device selector. Selecting
 a device does not request access; Camera On also waits for a ready Live session.
 This correction adds Settings > System > Permissions independently of model readiness.
-Camera acceptance stays open. The user explicitly authorized README publication
+The user subsequently confirmed successful tests and continuation. The earlier
+publication request explicitly authorized README publication
 and committing/pushing this work; that authorization does not imply manual camera
 acceptance or advancement to screen sharing.
 
@@ -19,13 +104,14 @@ acceptance or advancement to screen sharing.
   and reports/permissions-native.json.
 - [ ] Full native regression: startup timeout and WinForms/Python.NET teardown
   failures remain unresolved; do not treat targeted success as full closure.
-- [ ] User test: default-camera permission, Camera On and actual Live understanding.
+- [x] User accepted camera/permissions tests; exact OS/device/provider coverage
+  was not independently enumerated, and automatic checks use synthetic capture.
 
 Browser/Windows remain the authorities. Save Settings does not grant/revoke access.
 A blocked OS/browser policy cannot be overridden by an application checkbox.
 No new model connection, provider call or feature stage is introduced.
 
-## 6.8.1 Camera — implemented; manual acceptance pending
+## 6.8.1 Camera — accepted by the user
 
 The preceding UI cleanup was accepted and committed as `6e18e99`.
 This step connects explicit camera input to the existing Live conversation owner.
@@ -40,13 +126,14 @@ It does not start screen sharing, additional audio capture or GUI automation.
 - [x] 1,265 pytest, 13 camera tests, 9 JS suites, 23 browser groups,
   10 native phases, Pyright 0 errors/warnings and clean dependency/diff checks.
   Evidence: reports/camera-checks.json and reports/camera-native.json.
-- [ ] User acceptance with a real camera/provider; no paid API or real camera was used in automatic checks.
+- [x] User reported successful tests and authorized screen sharing. No paid API or
+  real camera was used in automatic checks; exact manual coverage was not enumerated.
 
 Camera defaults Off on every launch and after sleep/disconnect; its selected device
 can persist through Save Settings. Idle capture stays local; visual data is sent
 only inside a Live user turn. Previously sent frames cannot be recalled and may
 remain in the provider session context. The portable demo has not been rebuilt.
-Next step after acceptance: **6.8.2 screen sharing**.
+Current following slice: **6.8.2 screen sharing**; camera is not being reimplemented.
 
 ## 6.4 weather/location — accepted; UI cleanup accepted
 
@@ -56,8 +143,9 @@ passed. The user accepted the cleanup; it is committed before starting camera wo
 
 The user narrowed remaining stage 6 to weather and multimodal input. No file,
 Google, Telegram, Discord or web-search integration belongs to the current step.
-Weather is 6.4; next is 6.8.1 camera, then 6.8.2 screen sharing, 6.8.3 additional
-audio sources after defining their exact scope, and stage 6 closure checks.
+Weather (6.4), camera (6.8.1) and screen sharing (6.8.2) are now accepted.
+The user moved additional audio sources (former 6.8.3) to 9.4 and closed stage 6
+within the remaining agreed scope, retaining the recorded native/release limits.
 
 | Previous scope | Current destination | Dependency |
 |---|---|---|
@@ -66,6 +154,7 @@ audio sources after defining their exact scope, and stage 6 closure checks.
 | 6.5 Google Calendar/Drive/mail | 9.2 external services | 9.1 risk/channel/unknown protections before external writes |
 | 6.6 Telegram/Discord | 9.3 channels | 9.1 plus explicit destination/principal and delivery evidence |
 | 6.7 external-write safeguards | 9.1 service prerequisites | Required before 9.2/9.3 writes; local file/GUI safeguards stay in stage 7 |
+| 6.8.3 additional audio sharing | 9.4 additional audio sources | Agree source/recording scope, explicit consent, retention and cleanup; no implicit system audio capture |
 | Remaining 5.F8.3 profile fields | Relevant 6.8/7/8.4/9 slices | Audio/visual preferences with 6.8; browser/apps with 7; bounded greeting/instructions with profile/schema work; service preferences with 9 |
 
 These are moves, not completed capabilities. Existing 7.x and 8.x IDs remain;
@@ -113,16 +202,16 @@ Native and aggregate evidence: reports/media-volume-native.json and
 reports/media-volume-checks.json. Existing persistent-unknown and native-test
 teardown/type-complexity limits remain unchanged. The portable demo was not rebuilt.
 
-## Remaining stage 6 — approved execution order
+## Stage 6 multimodal sequence — accepted scope closed
 
-1. **6.4 Weather/location:** explicit manual place selection or user-triggered
+1. **6.4 Weather/location — accepted:** explicit manual place selection or user-triggered
    approximate geolocation, saved consent, modelled current conditions, shared
    model/UI cache, timestamps and real failure/stale states. Web search is excluded.
-2. **6.8.1 Camera:** permission, device selection, Live frames and cleanup.
-3. **6.8.2 Screen sharing:** explicit source selection, start/stop and Live frames.
-4. **6.8.3 Additional audio inputs:** define required source scope first; separate
-   permissions/resource cleanup, without silently recording system audio.
-5. **Stage 6 closure:** regression, manual acceptance and accurate remaining limits.
+2. **6.8.1 Camera — accepted:** permission, device selection, Live frames and cleanup.
+3. **6.8.2 Screen sharing — accepted:** explicit source selection, start/stop and Live frames.
+4. **Former 6.8.3 additional audio inputs — moved to 9.4:** not required for stage 6 closure.
+5. **Stage 6 closure — authorized by the user:** functional acceptance recorded;
+   full-native bootstrap instability and release limits remain explicitly open above.
 
 Camera/screen understanding is not L4 clicking/GUI automation. Sensor temperature,
 VRAM and actual API transport latency remain documented source limits, not new
@@ -198,10 +287,11 @@ It is not shown as if it is working today.
 | 3 | OK/accept was | Backend note CRUD/transfer/backup and real IDs |
 | 4 | First plugin ok | Allowlist Notepad catalog/status/open; not general GUI automation |
 | 5 | Functional basic acceptance; remaining limits saved, user requested to move to stage 6 | Gemini REST/Live, sound, Stop/interrupt, resume, temporary memory, sleep, note/counter/shutdown |
-| 6 | Memory/telemetry/media/weather accepted; camera awaiting user acceptance | Screen sharing, scoped additional audio inputs and closure |
-| 7 | Not started | Local files/context, web/browser tools, GUI L1-L4 and skill execution |
+| 6 | Agreed functional scope closed by the user; native/release limits carried forward | Memory, measurements, media/weather, camera and screen sharing; additional audio moved to 9.4 |
+| 7 | User-selected scope recorded; implementation not started | Private journal and task authorization/lifecycle, general L0-L4 desktop/file/browser operation, read-only Plugins and learned skills |
 | 8 | Not started | Single backend routine/scheduler, background lifecycle, maintenance and core packaging |
-| 9 | Deferred by user | External-service safeguards, Google integrations and Telegram/Discord channels |
+| 9 | Deferred by user | External-service safeguards, Google integrations, Telegram/Discord channels and additional audio sharing |
+| 10 | Planned after functional stages | Provider-adapter separation; remove Gemini assumptions from shared orchestration without changing tool execution ownership |
 
 Current architecture ARCHITECTURE.md, modifications CHANGELOG.md. Old detailed acceptance and
 step numbers are historically preserved in docs/archive/stages.md.
@@ -217,9 +307,10 @@ step numbers are historically preserved in docs/archive/stages.md.
   could not be retested due to Synthetic success is not proof of real provider.
 - In persistent core, 256 is now the work limit of RAM/active; disk history is preserved.
   The logless isolated TaskManager retains the old safe total limit.
-- Restart log does not replay what has been completed; started half job unknown, queue
-  will be cancelled. Unknown has no mediation screen; The lock is not removed with a restart. disc
-  history grows and can keep old note contents; There is no automatic cleaning.
+- Restart log does not replay completed actions; interrupted started work becomes
+  unknown and queued work is cancelled. Explicit startup review can acknowledge
+  uncertainty without changing old results/replay keys; restart alone cannot.
+  Disk history grows and can keep old note contents; there is no automatic cleaning.
 - Native single-instance lock implemented in 5.F7.1; direct script writers are the same
   Must use host lock agreement. Third party/entity packaging licenses before distribution.
 - Short user acceptance for 5.F7.2/3 → commit; before these conditions are considered resolved
@@ -227,6 +318,159 @@ step numbers are historically preserved in docs/archive/stages.md.
   The decision to continue and the next single step is determined by the user.
 
 ## Substeps of subsequent stages
+
+### 7 — General desktop operation, local files and learned skills
+
+**Status: user-selected scope recorded; every implementation slice is planned.**
+This replaces the earlier narrow-app/format draft. The goal is operation and
+learning across previously unknown applications, not a fixed supported-app list.
+Netflix, WhatsApp, YouTube, Discord and music playlists were illustrative tasks,
+not instructions to hardcode app-specific commands or promise universal success.
+Representative test applications establish evidence, not a product allowlist.
+
+#### Confirmed choices
+
+- General desktop application discovery and switching are allowed within the
+  requested task. All routes retain ModelTools -> registry/policy/TaskManager.
+  L0 direct tools, L1 learned procedures, L2 DOM, L3 UIA and L4 visual control
+  share execution, authorization, cancellation and verification; there is no
+  less-controlled executor for unknown applications or phrase-based intent router.
+- Explicit tasks proceed directly; irreversible/high-impact steps require one
+  confirmation for the concrete operation/scope. Approval is not blanket permission
+  for changed targets or effects. File access is limited to task-selected or
+  specified files/folders; expansion requires permission.
+- Background-capable steps may continue. Physical keyboard/mouse handover asks
+  by default, with a user-requested setting to disable that question. A grant
+  lasts only for its task and never replaces high-impact confirmation. Check
+  focus/user interaction and fresh targets before physical input.
+- The task authorizes provider images of the relevant window/area only while
+  needed for that task. Stop sending at task completion. No unrelated desktop
+  upload or persistent screenshot history; explicit source/scope remains required.
+- Visual-only evidence may support continuation when clear; record its evidence
+  type without storing the screenshot. Unclear outcomes require clarification,
+  never a fabricated verified result or a retry of an uncertain effect.
+- Tasks continue until finished or stopped, with bounded operation waits/retries
+  and a no-progress stop/explanation rather than an arbitrary total task timeout.
+  A Live conversation turn is not the whole logical task.
+- While a task runs, answer immediate questions, queue independent application
+  tasks, and apply task-related corrections to the current task. Stop has priority.
+  Definite failure blocks dependent steps; independent steps may continue and
+  receive separate results. UNKNOWN retains existing safety locks; it is not a
+  definite failure that permits unrelated mutations to bypass the lock.
+- Login, CAPTCHA, two-factor authentication and elevation wait for human
+  intervention. Independent work may continue if safe. Reobserve before resuming
+  after the user says intervention is complete; do not bypass these boundaries.
+- After restart, show interrupted tasks. Only an explicit Continue triggers fresh
+  observation and planning of remaining work; completed/uncertain effects are
+  never blindly replayed. Permission scope must be revalidated, not inferred from
+  a stale target or an old physical-control grant.
+- Persist task/result summaries and durable replay protection, not screenshots,
+  file bodies or message text. Deliberately saved user files/notes and parameterized
+  skills are separate records. The current journal still stores full arguments/
+  results; privacy migration is required, not already implemented.
+- Both existing browser sessions and a Vex-specific profile are desired, selected
+  by the user. Technical access limitations must be shown; do not copy credentials
+  or assume every existing session permits DOM attachment.
+- Common text/code, CSV/spreadsheet, PDF, Word and image formats are in scope for
+  reading/creation/editing where meaningful. Use the actual application when complex
+  format-preserving edits require it. Publish exact operation/fidelity limits; do
+  not promise lossless editing of every file or treat images as text documents.
+- Automatically save only verified, parameterized learned methods without a
+  confirmation prompt. Group capabilities dynamically per application: a later
+  method extends that application's skill. Users can delete learned skills.
+  Do not save passwords/private message bodies or literal old target coordinates.
+- Command-driven GUI messages/calls are in stage 7. Automatic replying requires
+  explicit person/task activation and ends with that task. Official service/API/bot
+  integrations stay in stage 9; persistent scheduled/background lifecycle stays in 8.
+- Add a separate **Plugins** screen. Existing built-in domain capabilities such as
+  notes/clocks appear as **System default**, read-only, not deletable or toggleable.
+  Skills remains the learned-method screen. This does not move every module or
+  create a second registry. Frequent-app code plugins can be added in later stages;
+  no external plugin installation/import mechanism is authorized in stage 7.
+- Maintained dependencies are allowed when needed; reliability takes priority over
+  minimum package size. Select actual libraries with the user before adding them.
+  Start L4 with the existing visual provider; **propose local OCR to the user if
+  text localization/recognition proves inadequate**, rather than silently adding
+  it or forgetting this option. OCR does not establish successful action execution.
+
+#### Implementation order and acceptance
+
+Rows are in dependency order; existing 7.0–7.5 IDs are retained and new prerequisites
+use 7.P. Each row is reviewable separately; split further only when actual scope
+requires it. Tests accompany every slice, not only stage closure.
+
+| Slice | Deliverable | Acceptance and boundary | Status |
+|---|---|---|---|
+| 7.P1 | Private persistent task journal | Migrate raw arguments/results to content-free summaries and safe replay metadata; old request IDs/conflict detection/UNKNOWN protection survive migration and restart. Test historical records and interrupted/failed migration with temporary journals; no deletion of replay history | Planned; next implementation slice |
+| 7.P2 | Shared task authorization | File/window/browser/person scope, high-impact confirmation, relevant image grants and task-duration physical-control approval; UI preference for asking about handover. Same policy regardless of layer | Planned |
+| 7.P3 | Shared observations and fresh target references | Real application/window/tab/document IDs and generation, focus, display/DPI/frame geometry; distinguish no match, unsupported, denied, stale and uncertain dispatch. Fallback never retries unknown effects | Planned |
+| 7.P4a | Logical tasks and dependency-aware progress | Task/step identities separate from Live turns; existing execution authority, cancellation, queued independent tasks, corrections and immediate questions. Definite failures block dependents only; no worker self-wait or competing executor | Planned |
+| 7.P4b | Human intervention, recovery and progress limits | Pending human actions and reobservation; manual Continue after restart; bounded per-operation retries/no-progress detection, without a total task-duration cutoff. Preserve UNKNOWN locks and completed effects | Planned |
+| 7.P5 | Read-only Plugins screen | Built-in capability metadata from existing registration/owners; System default badge, no delete/toggle, separate from learned Skills. No runtime auto-import or speculative third-party plugin framework | Planned |
+| 7.0a | Selected local files and text/code/CSV reading | Real scoped file references, type/size/path/link checks, encoding and changed-file detection; temporary files first, no unrestricted filesystem exploration | Planned |
+| 7.0b | File context and controlled text/code/CSV writes | Deliberately supplied context is untrusted and bounded; explicit destination, expected original snapshot, atomic write/readback and recoverable original where applicable. No silent scope expansion or blind overwrite | Planned |
+| 7.0d | PDF, Word, spreadsheet and image reading | Choose necessary libraries first; extract meaningful content with explicit type/size/fidelity limits. No macros/scripts or embedded instruction execution; test malformed and unsupported documents | Planned |
+| 7.0e | Common document creation and editing | Verify content/formulas/structure as applicable; preserve recoverable originals. Complex edits requiring the application route depend on 7.1/7.3, rather than silently damaging unsupported layout/features | Planned |
+| 7.1a | General Windows application/window observation (L3) | Discovery beyond the current Notepad fixture, trusted process/window identity and UIA targets; select the UIA library/thread owner with the user first | Planned |
+| 7.1b | Application launch, switching and UIA actions | Generic fresh-target invoke/edit and post-action verification through the core. Representative apps are fixtures, not app-specific intent commands. Respect focus, physical handover and manual intervention | Planned |
+| 7.3a | Read-only web search/page context (L0) | Bounded untrusted source content and source links; select source/access constraints with the user. No new conversation connection or hidden external writes | Planned |
+| 7.3b | Browser profiles and DOM actions (L2) | User selects daily session or Vex profile, with truthful attach/launch limitations. Choose browser library/connection approach before implementation; fresh tabs/documents, scoped actions, protected session data | Planned |
+| 7.3c | Task-scoped visual fallback (L4) | Relevant fresh window/area capture, known frame/DPI geometry, safe physical input and post-action evidence. Distinguish visual verification; ask on unclear results. Existing passive JPEG sharing is not coordinate automation | Planned |
+| 7.4a | One backend skill/procedure store | Stable skill IDs, schema/parameter validation, per-app capability grouping, UI inspection/deletion and safe handling of old UI definitions. Unsupported definitions never become executable by import | Planned |
+| 7.2a | Automatic verified procedure learning (L1) | Verified methods saved without prompting, per-app extensions rather than duplicate skills. No secrets/private payloads or success inferred from spoken claims; reuse the 7.4a store | Planned |
+| 7.2b | Fresh procedure reuse and invalidation | Bind current task parameters, resolve current targets, recheck context/version and policy; changed interfaces invalidate/relearn methods without replaying old effects | Planned |
+| 7.4b | Skill execution and task integration | Use the 7.P task lifecycle and shared core for each step; no second skill runner/queue/authority. Stop, dependency failures, uncertainty and durable replay remain intact | Planned |
+| 7.4c | Inspect/teach and generic communication workflows | User-guided observations extend verified methods in the same store. GUI messaging/calls and explicitly activated person/task automatic replies use common target/authorization/verification rules, not per-phrase or per-app intent routers | Planned |
+| 7.5 | Integration acceptance and closure | Temporary-data file/app/browser/learning tasks, malicious content, human focus changes, DPI/monitors, Stop, partial failures, restart and UNKNOWN. Verify task-scoped image/input/auto-reply cleanup and private journals; document actual app/format/provider limits | Planned |
+
+The old 7.0c write slice is superseded by 7.0b/7.0e; it is not completed or a
+separate duplicate write engine. 7.0e's application-dependent cases can only be
+accepted after the corresponding automation route is available.
+
+#### Decisions still requiring user selection before their implementation slice
+
+- Actual UIA/browser/document libraries, licenses, Python/runtime compatibility,
+  browser attachment approach and packaging impact: propose verified alternatives
+  with their tradeoffs; no library has been chosen or installed by this plan.
+- Concrete per-operation timeout/retry/no-progress values for 7.P4b, not an
+  arbitrary cutoff for the entire logical task.
+- Web-search source and any account/cost requirements before 7.3a.
+- Exact built-in metadata grouping and format-operation fidelity matrix when
+  implementing their UI/format slices. No universal format-support claim.
+
+#### Gates and deferred scope
+
+Before accepting native GUI control, reproduce the open WebView2 chat-bootstrap
+timeout and fix the cause or report the remaining blocker. File/unit checks do
+not close native startup/teardown instability; full native checks cannot be
+reported passed after a timeout. Use synthetic transport/temporary data first;
+real-provider/user acceptance is separate and must be reported honestly.
+
+Every implemented slice updates the current contract/architecture only where
+changed, COMMANDS for working capabilities, PLAN for status and CHANGELOG for
+changes. No future directory tree, dependency set or provider framework is created
+in advance. Commit/push remain deferred by the user's instruction.
+
+Out of stage 7: persistent routine triggers/scheduler/background lifecycle (8),
+new frequent-app code plugins in later agreed slices, official Google/channel API
+integrations and additional audio sharing (9), and final provider migration (10).
+Pull route-independent risk protections forward into 7.P2 rather than allowing
+GUI actions to bypass the safeguards planned for service APIs. Nothing here is
+implemented merely by recording these decisions.
+
+### 10 — Final provider-adapter migration (planned, not started)
+
+1. Inventory actual dependencies and define the smallest shared request/event,
+   error, usage and capability contracts; retain real request/tool IDs.
+2. Put existing Gemini transport, catalogs, voice, usage and resume handling behind
+   its adapter. Compose it into Vex rather than constructing it in shared orchestration.
+3. Remove remaining Gemini assumptions from shared session/bridge/UI contracts;
+   preserve single lifecycle ownership, Stop, unknown outcomes, wake/sleep and playback completion.
+4. Verify with a synthetic second provider and full regression. Real second-provider
+   acceptance needs an explicitly selected provider/account; do not claim all models
+   support Live audio, video, tools or resume. Keep the migration behavior-preserving.
+
+These steps follow stages 6–9; they are not a dependency for the next local-file slice.
 
 They have not yet been implemented; The desired single slice in each prompt is also narrowed down.
 
@@ -239,9 +483,10 @@ They have not yet been implemented; The desired single slice in each prompt is a
 | 9.2 (moved from 6.5) | Google Drive/Calendar/mail; OAuth scope, renewal, connection and transaction proof |
 | 9.3 (moved from 6.6) | Telegram/Discord input-output; principal/target authorization, no replay on uncertain delivery |
 | 9.1 (moved from 6.7) | External-data/risk/channel authorization and unknown reconciliation; prerequisite for 9.2/9.3 writes |
-| 7.1 | L3 UIA target and result verification in one application |
+| 9.4 (moved from 6.8.3) | Additional audio-source/recording sharing beyond the existing microphone; agree source scope, consent, retention, bounds, Stop and cleanup before implementation |
+| 7.1 | General L3 UIA discovery/actions; representative apps validate shared target and result contracts |
 | 7.2 | L1 verified prescription; old target not used in context switch |
-| 7.3 | Browser L2 DOM, budget L4 when needed vision/OCR |
+| 7.3 | Browser L2 DOM and bounded L4 vision; propose local OCR to the user if a concrete need emerges |
 | 7.4 | Skill JSON execution; same registry/policy/TaskManager, no free eval |
 | 7.5 | DPI/window/old target/permission/unknown regression |
 | 8.1 | Single backend scheduler; no second UI player |
@@ -482,13 +727,14 @@ This type of new feature was not coded; The following tranches have not started 
 | 6.4 | Weather, manual/permitted automatic location, cache/freshness; web search moved to 7.3 |
 | 9.2 | Moved from 6.5: Google services after 9.1 safeguards |
 | 9.3 | Moved from 6.6: Telegram/Discord after 9.1 safeguards |
-| 6.8 — approved remaining scope | Separate slices for camera, Live screen sharing, and non-microphone audio sources in the UI; permission, visual/audio stream and resource cleanup; Separate from GUI click automation |
+| 6.8 | Camera/screen sharing accepted; non-microphone audio moved to 9.4; visual understanding remains separate from GUI click automation |
 | 5.F8.3 remaining profile areas | The initial greeting, browser/tab/application preferences, and shortcut fields are linked to the corresponding application/file/browser slice; personal instruction will not base override beyond safety limits |
 | 8.1 | The only backend scheduler available for true local reminders; The second timer is not written, although it is separate from the skill/routine execution |
 
 Timeline/log remains the current local view; new data producers are only real
 feeds events. Inspect/Create Skill, skill execution and routine scope are in this UI
-It is outside the desire to prioritize. 6.8 is now approved scope; camera input is implemented in 6.8.1; screen/audio slices remain unimplemented.
+It is outside that UI scope. Camera 6.8.1 and screen sharing 6.8.2 are implemented
+and accepted; additional audio is deferred to 9.4 and remains unimplemented.
 
 
 ### 6.2.4 first tranche — final provider token notification

@@ -1,0 +1,45 @@
+{
+  "date": "2026-10-25",
+  "scope": "Startup lock caused by a persisted UNKNOWN task misclassified as invalid settings",
+  "diagnosis": "TaskManagerError inherits ContractError. Valid preferences loaded, but the system.status task was rejected by the existing uncertainty latch; Retry and valid-settings repair reentered the same failure.",
+  "implemented": [
+    "Preserve TaskManager error codes and distinguish unknown tasks, unavailable history and active capacity from invalid settings.",
+    "Explicit local confirmation acknowledges selected actual UNKNOWN IDs without replay, compensation, result edits or private argument/result disclosure.",
+    "Additive SQLite acknowledgement metadata survives restart; original task documents, IDs, replay conflicts and unknown truth remain intact.",
+    "Unconfirmed/invalid review, active work, failed persistence and unseen new unknowns cannot unlock work.",
+    "Retry, settings repair and review share complete native startup including clocks, approved notes, assistant readiness and catalog loading."
+  ],
+  "validation": {
+    "pytest_full_passed": 1278,
+    "pytest_subsequent_focused_passed": 119,
+    "pytest_note": "One additional active-task/review guard test was added after full-suite collection and passed in the subsequent focused run.",
+    "javascript_suites_passed": 9,
+    "browser_groups_passed": 26,
+    "focused_native_unknown_phase_passed": true,
+    "full_native_phases_passed": 11,
+    "full_native_phases": ["save", "reopen", "notes", "persistence", "export_cancel", "credentials", "chat", "unknown", "corrupt", "schema_invalid", "future"],
+    "pyright_errors": 0,
+    "pyright_warnings": 0,
+    "compileall": true,
+    "pip_check": "No broken requirements found",
+    "real_settings_unchanged_read_only_check": true,
+    "real_unknown_not_acknowledged_or_deleted": true
+  },
+  "native_evidence": ["startup-recovery-native.json", "startup-recovery-native-full.json"],
+  "native_fixture_note": "The initial focused native fixture reached ready startup but awaited unapproved note migration. The fixture now seeds an empty, already-migrated synthetic notes store; it verifies preserved bytes and readiness without bypassing production transfer approval.",
+  "manual_test": [
+    "Close the app and run the updated source build. Old portable EXEs do not include this correction.",
+    "For an unknown-action banner, inspect the previous effect, then choose Review previous actions and continue. Declining must keep work blocked.",
+    "Confirm only after review. The app should finish startup, populate native controls and allow new intended work without repeating the old action.",
+    "Close and reopen. The same acknowledged unknown must not block startup again; newly unknown actions require their own review.",
+    "Do not damage real settings or delete task history to test recovery. Actual damaged-settings cases were tested in temporary native profiles."
+  ],
+  "limits": [
+    "Acknowledgement accepts uncertainty; it does not establish success, undo an effect or retry it.",
+    "Unavailable/corrupt/future-version task storage remains blocked; clearing history is not a recovery procedure.",
+    "Older app versions ignore acknowledgement metadata and conservatively block original UNKNOWN records again.",
+    "Earlier intermittent native startup/teardown failures remain open despite this clean eleven-phase run.",
+    "No paid API, real media action or real-profile mutation/acknowledgement. User manual acceptance remains pending.",
+    "No portable demo rebuild, commit or push in this correction."
+  ]
+}

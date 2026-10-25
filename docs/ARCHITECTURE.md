@@ -13,6 +13,27 @@ UI, a PyWebView/WebView2 host and a Python core. Gemini Live is the main desktop
 conversation path. A REST adapter remains for development and future channels.
 Opening the UI in an ordinary browser does not grant native tool permissions.
 
+## Provider boundary — approved target, migration deferred
+
+TaskVex owns tools, authorization, task execution, domain state and conversation
+lifecycle; a provider adapter translates SDK requests/events into TaskVex contracts.
+New Gemini details stay in provider-facing modules: SDK types, wire events,
+model/voice catalogs, usage interpretation, credentials lookup and error mapping.
+Core/domain features must not acquire new Gemini SDK dependencies.
+
+This separation is partial today. ModelTools already accepts provider-neutral
+id/name/arguments, and registry/policy/TaskManager are independent of google-genai.
+TextChat still constructs Gemini implementations, while Live transport, speech,
+catalog and bridge configuration retain provider assumptions. The final migration
+must remove those dependencies through the composition boundary and shared
+contracts, preserving existing lifecycle ownership. It is not implemented merely
+by moving files or renaming classes. See the final provider-adapter step in PLAN.md.
+
+Providers advertise supported text/audio/video, tools and resumption capabilities;
+unsupported features are explicit, never silently simulated. A separate speech
+provider can reuse the existing playback path if selected; it does not own tools
+or create a competing conversation lifecycle. No universal framework is required.
+
 ## Shared execution path
 
 ```mermaid
@@ -42,7 +63,7 @@ microphone On/Off and Stop remain local lifecycle operations.
 | Native host, process, restart and shutdown | `v1/app/main.py` |
 | UI startup and snapshots | `ui/js/app.js`; connects modules without a second domain state |
 | Conversation, microphone, sleep and Stop | `ui/js/assistant_session.js`; request and audio IDs stay together |
-| Camera capture | `ui/js/live_video.js`; opt-in device resource, RAM JPEG capture and request-scoped sending under assistant_session.js |
+| Camera/screen capture | `ui/js/live_video.js`; one opt-in visual source, RAM JPEG capture and request-scoped sending under assistant_session.js |
 | Live visual input | `app/session/live_video.py`; one latest-frame slot on the existing PersistentLive socket, no task executor or disk records |
 | Visual shell and startup effects | `ui/js/shell.js`; does not execute model actions |
 | Preference object | `ui/js/preferences.js`; settings/devices/layout share it |
@@ -219,7 +240,16 @@ The local journal is unencrypted and can retain deleted note text and personal
 proposal/source data. It is not secret storage and is excluded from JSON backup.
 Disk history is retained indefinitely; validation cost grows with it, while RAM
 does not load every record. Domain writes and journal writes are not one atomic
-transaction. Unknown reconciliation has no UI yet; restart does not clear it.
+transaction. Unknown outcomes block new work until explicit local review. The
+startup bridge distinguishes TaskManager errors from invalid settings and exposes
+only unknown task IDs/tool names. The local review button requires confirmation;
+TaskManager rejects active work and validates each actual UNKNOWN ID. SQLite's
+additive `task_acknowledgements` table records review separately from immutable
+task results and replay keys. Restart honors these acknowledgements; a new unknown
+still blocks work. This is acceptance of uncertainty, not outcome reconciliation,
+verified success, compensation or replay. Older app versions ignore the additive
+metadata and conservatively block UNKNOWN again; the v1 task document is unchanged.
+Storage errors remain locked and are never repaired by clearing history.
 Deleting the journal removes replay protection and is not a recovery procedure.
 Tests use temporary profiles and synthetic transports.
 
@@ -398,9 +428,12 @@ integrations; they are not all implemented today.
 
 ## Not implemented
 
-Google service integrations, screen inspection, system
+Google service integrations, GUI screen targeting/automation, system
 audio control, file attachments, base-instruction override/greetings, backend
 skill/routine execution/scheduling, GUI L1–L4 and external messaging channels.
+Additional audio-source/recording sharing beyond the existing microphone is deferred
+to planned stage 9.4. Source scope, explicit consent, retention and resource cleanup
+must be defined before implementation; no system audio is silently captured today.
 Media metadata and bounded current-session playback controls are implemented. Preserve existing
 definitions/user text and clearly mark controls without executors as planned/disabled.
 
@@ -437,6 +470,18 @@ retaining only the latest frame and dropping queued images older than two second
 Images are capped at 256 KiB; browser capture scales the longest edge to 640 pixels.
 JPEG framing/size are checked at the boundary; actual image decoding is the provider's
 responsibility. No second connection, tool executor, audio player or frame history exists.
+
+Screen sharing reuses this same owner and Live path. getDisplayMedia is invoked
+synchronously from the explicit user click so browser activation/source selection
+remains authoritative. The screen and camera are mutually exclusive; switching
+requires turning the current source off. No display identity/grant is saved and
+there is no automatic reacquisition. A local muted preview shows the selected
+screen/window. Screen frames are downscaled to a longest edge of 1280 pixels;
+camera retains 640. Both retain the same 256 KiB, expiry and cadence limits.
+Only video is requested; unexpected audio tracks reject and release the stream.
+Browser/OS Stop sharing, permission cancellation, timeout and late-grant cleanup
+use the same release path. Closing the drawer only hides controls/preview, not capture.
+Screen content is untrusted input, never authority for tools or user instructions.
 Provider contract: [Live video input](https://ai.google.dev/gemini-api/docs/live-api/capabilities#sending-video).
 
 Idle camera frames stay local. Camera Off releases the device and closes only the

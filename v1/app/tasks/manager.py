@@ -106,6 +106,7 @@ class TaskManager:
         self._condition = Condition()
         self._closing = False
         self._journal = TaskJournal(journal_home) if journal_home is not None else None
+        self._acknowledged_unknowns: set[str] = set()
         self._journal_failed = False
         self._uncertain = self._journal.uncertain if self._journal else False
         self._worker = Thread(target=self._run, name="taskvex-worker", daemon=False)
@@ -121,6 +122,45 @@ class TaskManager:
         """Expose the existing journal/worker safety latch without granting reset authority."""
         with self._condition:
             return self._uncertain
+
+    def unresolved_tasks(self) -> list[dict]:
+        """Expose IDs/tool names for local review, without private arguments/results."""
+        with self._condition:
+            if self._journal_failed:
+                self._journal_error()
+            try:
+                tasks = self._journal.unresolved() if self._journal else [entry.task for entry in self._entries.values()
+                    if entry.task.status == TaskStatus.UNKNOWN and entry.task.task_id not in self._acknowledged_unknowns]
+            except JournalError:
+                self._journal_error()
+            return [{'task_id': task.task_id, 'tool': task.request.tool} for task in tasks]
+
+    def acknowledge_unknown(self, task_ids: list[str]) -> None:
+        """Local recovery retains UNKNOWN and dedup records; no handler is rerun.
+
+        No worker may be active. Failed storage or an unseen new unknown still
+        blocks work. Acknowledgement does not infer whether the old action happened.
+        """
+        if (type(task_ids) is not list or not 1 <= len(task_ids) <= 256
+                or any(type(item) is not str or not item.strip() or len(item) > 128 for item in task_ids)
+                or len(set(task_ids)) != len(task_ids)):
+            raise TaskManagerError('invalid_recovery', 'Select valid task IDs for review')
+        with self._condition:
+            if self._closing or self._journal_failed:
+                raise TaskManagerError('recovery_unavailable', 'Task history must be available before review')
+            if any(not entry.task.status.terminal for entry in self._entries.values()):
+                raise TaskManagerError('task_active', 'Wait for active tasks before review')
+            for task_id in task_ids:
+                if self._entry(task_id).task.status != TaskStatus.UNKNOWN:
+                    raise TaskManagerError('invalid_recovery', 'Only unknown results can be acknowledged')
+            try:
+                if self._journal:
+                    self._journal.acknowledge(task_ids)
+                else:
+                    self._acknowledged_unknowns.update(task_ids)
+                self._uncertain = bool(self.unresolved_tasks())
+            except JournalError:
+                self._journal_error()
 
     def describe_tools(self) -> list[dict]:
         """Notify model adapter only; grant handler and authorization object.

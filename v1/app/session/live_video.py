@@ -1,4 +1,4 @@
-"""Bounded, request-scoped camera input for the existing Live socket owner.
+"""Bounded, request-scoped camera/screen input for the existing Live socket owner.
 
 Only the latest JPEG is retained in RAM. This is media input, not a tool executor;
 frames never enter task history, conversation summaries or files.

@@ -1,7 +1,7 @@
 /** Module startup, snapshot coordination and general UI bindings.
  * The sole owner of the talk/wake/Stop lifecycle is the assistant_session.js file. */
 import { initApi, emit, addLog, isBackendAvailable, sanitizeError } from './api.js';
-import { startupStatus, streamReset, streamMsg, msg, say, user, task, taskDone, start, tick } from './shell.js';
+import { startupStatus, getStartupTasks, streamReset, streamMsg, msg, say, user, task, taskDone, start, tick } from './shell.js';
 import { initCredentials } from './credentials.js';
 import { liveMic } from './live_mic.js';
 import { refreshSystem, startSystemView } from './system_view.js';
@@ -168,19 +168,29 @@ document.addEventListener('DOMContentLoaded', () => {
     sendText: t => sendText(t),
   });
 
-  for (const [id, event] of [['retryStartup', 'retry_startup'], ['recoverSettings', 'recover_settings']]) {
+  const finishNativeStartup = async () => {
+    startSystemView();startMediaView();startWeatherView();queryDevices();
+    await connectTimers();await connectNativeNotes();assistantReady();void loadLiveModels();
+  };
+  for (const [id, event] of [['retryStartup', 'retry_startup'], ['recoverSettings', 'recover_settings'], ['acknowledgeTasks','acknowledge_tasks']]) {
     document.getElementById(id)?.addEventListener('click', async () => {
       if (event === 'recover_settings' && !confirm(
         'Back up the original settings file and repair saved preferences? Valid fields will be kept. Local notes, skills, routines and profile data will not be deleted.'
       )) return;
-      const buttons = [document.getElementById('retryStartup'), document.getElementById('recoverSettings')];
+      const reviewed = getStartupTasks();
+      if(event==='acknowledge_tasks' && (!reviewed.length || !confirm(
+        'These actions may already have happened. Check their effects before continuing:\n' +
+        reviewed.map(task=>task.tool+' · '+task.task_id).join('\n') +
+        '\nContinue without repeating them? Their results will remain unknown in history.')))return;
+      const buttons = ['retryStartup','recoverSettings','acknowledgeTasks'].map(id=>document.getElementById(id));
       buttons.forEach(button => { button.disabled = true; });
       try {
-        const result = await emit(event, event === 'recover_settings' ? { confirmed: true } : null);
+        const result = await emit(event, event === 'recover_settings' ? {confirmed:true} : event==='acknowledge_tasks'
+          ? {confirmed:true,task_ids:reviewed.map(task=>task.task_id)} : null);
         if (!result.ok) {
           const message = document.getElementById('nativeIssueText');
           if (message) message.textContent = sanitizeError(result.error);
-        } else if (result.response?.completed === true) {startSystemView(); startMediaView(); startWeatherView(); await connectNativeNotes();}
+        } else if (result.response?.completed === true) {await finishNativeStartup();}
       } finally { buttons.forEach(button => { button.disabled = false; }); }
     });
   }
@@ -189,7 +199,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 9. API & Bridge bindings
   initApi({
-    nativeReady: async () => { startSystemView(); startMediaView(); startWeatherView(); queryDevices(); await connectTimers(); await connectNativeNotes(); assistantReady(); void loadLiveModels(); },
+    nativeReady: finishNativeStartup,
     initApp: (s) => applySnapshot(s, { emitSave: false }),
     startupStatus,
     loadStore: (s) => applySnapshot(s, { emitSave: false }),

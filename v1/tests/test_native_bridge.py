@@ -55,6 +55,40 @@ def ready(bridge):
     return bridge.event("ui_ready", {"version": "1.0"})
 
 
+def test_valid_settings_with_unknown_task_require_review_not_settings_repair(bridge):
+    """A TaskManagerError is a ContractError, but it is not invalid settings."""
+    from app.core.contracts import Task, TaskStatus, ToolRequest, ToolResult, ToolError
+    task = Task(task_id='synthetic-media-unknown',
+        request=ToolRequest(request_id='synthetic-previous-action', source='desktop',
+            principal='local-user', tool='media.control', arguments={'action': 'pause', 'target_id': 'a' * 32}),
+        status=TaskStatus.UNKNOWN,
+        result=ToolResult(task_id='synthetic-media-unknown', status=TaskStatus.UNKNOWN,
+            error=ToolError(code='synthetic_unknown', message='Effect unconfirmed')))
+    bridge._store.write({'theme': '#a78bfa', 'prof': {'pIns': 'Synthetic preserved profile'}})
+    original = bridge._store.path.read_bytes()
+    bridge._core._journal.save(task)
+    bridge._core._uncertain = True
+    for result in [ready(bridge), bridge.event('retry_startup'),
+                   bridge.event('recover_settings', {'confirmed': True})]:
+        assert not result['ok'] and result['code'] == 'uncertain_state'
+        assert not result['recoverable']
+        assert result['unknown_tasks'] == [{'task_id': task.task_id, 'tool': 'media.control'}]
+        assert 'not damaged' in result['message']
+    assert bridge._store.path.read_bytes() == original
+    assert not list(bridge._store.path.parent.glob('settings.json.*.corrupt'))
+    for payload in [None, {}, {'confirmed': False, 'task_ids': [task.task_id]},
+                    {'confirmed': 1, 'task_ids': [task.task_id]},
+                    {'confirmed': True, 'task_ids': []}]:
+        assert not bridge.event('acknowledge_tasks', payload)['ok']
+        assert bridge._core.uncertain
+    result = bridge.event('acknowledge_tasks', {'confirmed': True, 'task_ids': [task.task_id]})
+    assert result == {'ok': True, 'completed': True} and bridge._ready
+    assert bridge._store.path.read_bytes() == original
+    assert bridge._core.get(task.task_id) == task
+    assert bridge._core.submit(task.request) == task
+    assert bridge.event('retry_startup')['ok']
+
+
 def test_new_chat_clears_memory_only_after_ready_and_preserves_notes(bridge):
     """New chat does not delete on wrong payload; explicit confirmation is separate UI work."""
     bridge._chat._memory.remember('Synthetic fact', {'ok':True, 'text':'Understood'})

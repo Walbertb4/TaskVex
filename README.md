@@ -64,7 +64,16 @@ Camera input is available through explicit Camera On/Off and the selected device
 Images stay local while idle and are shared only during Live user messages, using
 the existing connection: bounded JPEG frames at most once per second, rather than
 a full-frame-rate video stream. Sleep/disconnect release capture; Camera Off preserves
-microphone and reply. Real camera/provider acceptance for this step is pending.
+microphone and reply. The user reported successful camera tests; exact hardware/
+provider coverage was not separately enumerated.
+
+Screen sharing uses the bottom-right screen controls and an explicit platform
+screen/window picker. It shares the same Live visual path as camera, one source
+at a time, with video-only capture and a local preview. No selection/grant is
+restored at launch. Screen Off preserves the microphone/reply; sleep/disconnect
+release the source. Frames are capped at 1280 pixels longest edge and 256 KiB.
+This is visual understanding, not desktop control. The user reported successful
+screen-sharing tests; exact picker/device/provider coverage was not separately recorded.
 
 A small allowlisted application plugin exists in the core. The conversational
 model currently sees its catalog, not unrestricted app-launch or desktop control.
@@ -76,13 +85,15 @@ A separate REST adapter remains available for development and future channels.
 Google Drive/Calendar/mail access, Telegram/Discord integration,
 general GUI automation and
 backend skill/routine scheduling are planned.
-Screen inspection and additional audio-input sources are not connected.
+GUI inspection/clicking and additional audio-input sources are not connected.
 CPU/GPU temperature and VRAM capacity are not available from the current sources.
 CPU sampling currently supports Windows processor groups with at most 64 logical processors;
 unsupported readings remain unavailable.
 Some saved legacy profile fields have no backend effect and are marked as planned.
-Stage 6 now focuses on weather and multimodal inputs; file/web/GUI work belongs
-to stage 7, routines/maintenance to stage 8, external accounts/channels to stage 9.
+Stage 6's agreed functional scope is accepted. File/web/GUI work belongs to stage 7,
+routines/maintenance to stage 8, and external accounts/channels plus deferred
+additional audio sharing to stage 9. Native startup/teardown and release limits
+remain open; functional acceptance does not establish production readiness.
 
 Weather uses the provider's non-commercial public endpoint with attribution;
 commercial deployment needs a provider-terms/configuration review. Approximate
@@ -138,15 +149,18 @@ are local files. Skill/routine definitions use browser storage. Timers and
 conversation context do not survive application exit. User-edited personal memory
 is saved separately in the profile and sent to the model only when explicitly enabled.
 
-Camera frames are not saved to disk, task records or text conversation summaries.
+Camera/screen frames are not saved to disk, task records or text conversation summaries.
 Already sent images can remain in the provider session context; Camera Off does
 not recall them. Location permission checks do not set the saved weather location.
 
 Native tool requests and results are kept in a local SQLite journal. Reusing
 the same request ID does not run the action again, including after restart.
 The 256-record limit bounds active work and RAM records, rather than lifetime
-usage; historical records stay on disk. Unknown outcomes block new tools and
-currently require manual investigation; there is no reconciliation UI yet.
+usage; historical records stay on disk. Unknown outcomes block new tools until
+explicit local review. Startup lists the affected tool/task IDs; after checking
+the effects, users can acknowledge uncertainty and continue. This does not turn
+an unknown result into success, undo it or repeat the old action. Settings repair
+is offered for damaged preferences, not unknown tasks.
 The journal is not encrypted, can retain deleted note content and proposed
 personal facts/source messages even after profile memory is cleared, and grows with
 usage. It is not an exactly-once guarantee for external services. Native and
@@ -164,11 +178,11 @@ probe cleanup and restart persistence with temporary profiles and synthetic inpu
 [Current validation](docs/reports/permissions-checks.json) ·
 [Targeted native evidence](docs/reports/permissions-native.json).
 
-**The full native regression did not complete cleanly.** Runs encountered a UI
+**Earlier camera/permission native runs did not complete cleanly.** They encountered a UI
 startup timeout and a Python.NET/WinForms teardown failure, including a process
 failure after successful chat assertions. Their root causes are not established;
-targeted successes do not close these issues. Actual camera/microphone/location
-permissions and real Live camera understanding still require manual acceptance.
+targeted successes do not close these issues. Camera/permission tests were later
+accepted by the user; exact OS/device/provider coverage was not independently recorded.
 Automatic checks used no paid API or real camera/user content.
 
 Weather and media controls were reported working by the user; precise hardware
@@ -178,7 +192,17 @@ and provider coverage was not separately enumerated. Historical evidence is in
 [camera checks](docs/reports/camera-checks.json). These checks do not establish
 production readiness, all-player/hardware support or real-account availability.
 
-Unknown tool outcomes still require investigation and do not clear on restart.
+Startup recovery now distinguishes unknown tasks from invalid settings. Synthetic
+restart tests preserve old results/replay keys, and a focused native test verifies
+explicit review plus notes/clocks readiness. See
+[startup recovery checks](docs/reports/startup-recovery-checks.json).
+This correction passed 1,278 Python tests, 119 subsequent focused tests, nine JS
+suites, 26 browser groups, Pyright with zero errors and all eleven native phases.
+The clean native run does not prove earlier intermittent startup/teardown issues
+are eliminated. [Native recovery regression](docs/reports/startup-recovery-native-full.json).
+Unknown tool outcomes still require review and do not clear merely on restart.
+Screen-sharing validation and remaining native/manual limits are recorded in
+[screen sharing checks](docs/reports/screen-sharing-checks.json).
 API latency is not measured. The existing portable demo predates these camera
 and permissions changes; it was not rebuilt for this update.
 

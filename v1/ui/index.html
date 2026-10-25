@@ -11,9 +11,11 @@
 <section class="native-issue" id="nativeIssue" role="alert" hidden>
   <strong>Native startup needs attention</strong>
   <p id="nativeIssueText"></p>
+  <p id="nativeIssueTasks" hidden></p>
   <div class="fx" style="gap:8px;flex-wrap:wrap">
     <button class="cb" id="retryStartup">Retry</button>
     <button class="cb" id="recoverSettings" hidden>Back up and repair settings</button>
+    <button class="cb" id="acknowledgeTasks" hidden>Review previous actions and continue</button>
   </div>
 </section>
 <div class="ov hid" id="off"><div><div class="mono" style="color:var(--mut);margin-bottom:18px">Offline</div><button class="cb" id="restart">⏻ Restart</button></div></div>
@@ -134,12 +136,13 @@
 </div>
 
 <div class="corner fx" style="left:28px"><button class="cb" id="btnOpenProf" title="Personalization">★</button></div>
-<div class="corner fx" style="right:28px"><button class="cb" id="btnOpenScreen" title="Live screen">ⓘ</button><button class="cb w" id="shut">⏻ Shut Down</button></div>
+<div class="corner fx" style="right:28px"><button class="cb" id="btnOpenScreen" title="Screen sharing controls" aria-label="Screen sharing controls" aria-pressed="false">ⓘ</button><button class="cb w" id="shut">⏻ Shut Down</button></div>
 
 <div class="drawer" id="drawer">
   <div class="h2"><span>LIVE SCREEN</span><button class="ib" id="btnCloseDrawer">✕</button></div>
-  <div class="scr mono" id="scr">Live screen preview</div>
-  <div class="row"><span>Live screen sharing</span><input type="checkbox" id="scrT" disabled title="Screen sharing is not connected yet"></div>
+  <div class="scr mono" id="scr">Screen sharing is off.</div>
+  <div class="row"><label for="scrT">Share screen (video only)</label><input type="checkbox" id="scrT" title="Choose a screen or window for Live messages. Never starts automatically."></div>
+  <p class="sub" id="screenStatus" role="status">Screen sharing is off. Select a source each time.</p>
   <button class="cb" id="inspectBtn" disabled title="Skill capture is not connected yet" style="width:100%">⌕ Inspect &amp; Create Skill</button>
 </div>
 

@@ -45,6 +45,13 @@ bypassing the architecture.
 - Domain logic and service adapters stay in their modules and use shared execution
   rules. Do not replace them with unrestricted tools, arbitrary code execution or
   a new general framework.
+- Keep new Gemini-specific SDK objects, connection options, model/voice catalogs,
+  usage parsing and provider errors inside provider-facing session modules.
+  Shared core/domain tools must use TaskVex contracts rather than import the SDK.
+  Do not extend existing provider coupling into new features. Existing coupling
+  is migrated in the planned final provider-adapter step, not by a speculative
+  framework or unrelated rewrite during feature work. Preserve a single turn,
+  connection and playback owner, explicit capability differences and replay/Stop rules.
 - Actions deferred until response/audio completion belong to the existing lifecycle
   owner and request ID. Distinguish acceptance, waiting and real completion.
   Stop, connection changes, late results and unknown outcomes retain their safety

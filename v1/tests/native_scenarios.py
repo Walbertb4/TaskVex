@@ -9,6 +9,31 @@ import os
 from pathlib import Path
 import time
 
+def check_native_screen(window, js, outcome):
+    """Real WebView2 capture lifecycle with a synthetic display, never the user's desktop."""
+    result = js("const {liveVideo}=await import('./js/live_video.js');"
+        "const devices=navigator.mediaDevices,original=devices.getDisplayMedia;"
+        "let options=null,stream=null,selections=0;const supported=typeof original==='function';"
+        "devices.getDisplayMedia=async value=>{options=value;selections++;"
+        "const canvas=document.createElement('canvas');canvas.width=1920;canvas.height=1080;"
+        "canvas.getContext('2d').fillRect(0,0,1920,1080);stream=canvas.captureStream(1);return stream;};"
+        "try{const ready=await liveVideo.start('','screen');const image=liveVideo.snapshot();"
+        "const source=liveVideo.source,preview=!!document.querySelector('#scr video');"
+        "const checked=document.getElementById('scrT').checked;document.getElementById('scrT').click();"
+        "const off=!liveVideo.active&&!document.getElementById('scrT').checked&&stream.getTracks().every(t=>t.readyState==='ended');"
+        "await liveVideo.start('','screen');stream.getVideoTracks()[0].dispatchEvent(new Event('ended'));"
+        "return {supported,ready,source,preview,checked,off,selections,jpeg:image?.startsWith('/9j/'),"
+        "bounded:image?.length<=349528,videoOnly:options.audio===false,"
+        "ended:!liveVideo.active&&stream.getTracks().every(t=>t.readyState==='ended'),"
+        "cameraOff:document.getElementById('camB').getAttribute('aria-pressed')==='false',"
+        "previewCleared:document.querySelector('#scr video')===null};}"
+        "finally{liveVideo.stop();devices.getDisplayMedia=original;}")
+    assert result == {'supported': True, 'ready': True, 'source': 'screen', 'preview': True,
+        'checked': True, 'off': True, 'selections': 2, 'jpeg': True, 'bounded': True,
+        'videoOnly': True, 'ended': True, 'cameraOff': True, 'previewCleared': True}, result
+    outcome['native_screen_capture_supported_and_synthetic_lifecycle'] = True
+
+
 def check_native_media(window, api, js, wait_until, outcome):
     """Real WebView2 buttons/bridge/core with a synthetic player, never user media."""
     meter = api._media

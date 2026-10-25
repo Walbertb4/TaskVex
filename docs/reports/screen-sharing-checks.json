@@ -1,0 +1,65 @@
+{
+  "date": "2026-10-25",
+  "stage": "6.8.2",
+  "scope": "Explicit screen/window capture through the existing Live visual input owner",
+  "implementation": [
+    "Share screen in the existing drawer invokes getDisplayMedia synchronously from an explicit user click, with audio:false.",
+    "Camera and screen share live_video.js and the existing LiveVideo/request-scoped bridge; one source at a time and no additional model connection or executor.",
+    "Local muted preview, fresh selection on each enable, no saved display ID/grant/frame and no automatic reacquisition.",
+    "Screen frames scale to at most 1280 pixels longest edge, camera remains 640; both retain 256 KiB JPEG, latest-only, expiry, sequence and socket cadence limits.",
+    "Off and platform end release tracks and clear preview without cancelling the microphone/reply. Stop closes this turn's transmission; existing sleep/Disconnect/scope/unknown cleanup releases capture.",
+    "Camera permission probes do not mistake screen capture for camera access. Screen content is untrusted data in the shared model instruction."
+  ],
+  "validation": {
+    "pytest_full_passed": 1279,
+    "pytest_focused_passed": 128,
+    "javascript_suites_passed": 9,
+    "browser_groups_passed": 29,
+    "screen_browser_coverage": [
+      "Native readiness guard and actual browser user activation at picker invocation",
+      "Video-only constraints, one source, bounded 1280x720 JPEG from a 1920x1080 canvas and local preview",
+      "No idle frame transport; shared request envelopes, visual Off closure and reply preserved",
+      "New selection on re-enable, platform end and reload cleanup",
+      "Denied/cancelled/unsupported capture, unexpected audio rejection, timed-out and late grant cleanup",
+      "Model/key/Disconnect cleanup; camera device changes preserve the active screen",
+      "Camera permission probe remains independent while the screen is active"
+    ],
+    "targeted_native_phases_passed": 2,
+    "targeted_native_phases": ["save", "reopen"],
+    "native_display_api_present": true,
+    "native_synthetic_screen_capture_preview_off_platform_end_and_restart": true,
+    "pyright_errors": 0,
+    "pyright_warnings": 0,
+    "compileall": true,
+    "pip_check": "No broken requirements found"
+  },
+  "native_evidence": "screen-sharing-native.json (targeted save/reopen only)",
+  "full_native_attempt": {
+    "status": "failed; not a clean full regression",
+    "phase": "chat",
+    "failure": "Native child process exceeded 60 seconds during WebView2/WinForms window bootstrap before chat assertions.",
+    "root_cause": "Not established. Earlier intermittent native startup/teardown instability remains open; no assertion that this feature caused or fixed it."
+  },
+  "initial_regression_correction": "The first expanded visual-input instruction exceeded the existing combined prompt bound by nine characters. The wording was shortened without relaxing validation; focused and subsequent full pytest passed.",
+  "provider_contracts_reviewed": [
+    "https://learn.microsoft.com/en-us/dotnet/api/microsoft.web.webview2.core.corewebview2.screencapturestarting",
+    "https://ai.google.dev/gemini-api/docs/live-api/capabilities"
+  ],
+  "manual_test": [
+    "Use the updated source app and an awake, ready Live model; turn Camera Off.",
+    "Open the bottom-right Screen sharing controls, enable Share screen and choose a non-sensitive window. Check the local preview; cancel once and confirm sharing remains Off.",
+    "Ask Describe the window I am sharing. Confirm the answer matches visible content.",
+    "While Vex replies, turn Share screen Off. Preview/capture should stop while the microphone/reply continues.",
+    "Enable again and use the platform Stop sharing control; the app should show Off. Sleep/Disconnect should also release capture, without automatically reopening after wake/reconnect."
+  ],
+  "limits": [
+    "Actual source-picker interaction and real-provider screen understanding require user acceptance. Synthetic tests capture canvas streams, never the user's desktop.",
+    "No system audio, simultaneous camera/screen sources, GUI clicking/inspection tools or file attachments in this slice.",
+    "Drawer close hides the preview but does not turn sharing Off. Idle pixels stay local; sent images may remain in provider context and cannot be recalled.",
+    "Small text, protected/minimized windows and OS/browser policy can limit capture/understanding; do not claim universal content support.",
+    "The full native attempt failed at chat bootstrap; targeted success does not close native startup/teardown stability.",
+    "Provider separation remains partial and planned. No new SDK dependency was added to core/domain tools.",
+    "No paid API, real desktop/camera capture or real-profile mutation. No demo rebuild, commit or push."
+  ],
+  "new_dependencies": []
+}

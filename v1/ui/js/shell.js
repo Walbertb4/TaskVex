@@ -7,6 +7,8 @@ import {closeM,addTL} from './panels.js';
 let curStreamEl = null;
 let curStreamRole = null;
 let sayTimer = null;
+let startupTasks = [];
+export function getStartupTasks() { return startupTasks.map(task => ({...task})); }
 
 export function startupStatus(status) {
   // The backend message is not interpreted as HTML. Recovery only from backend
@@ -19,6 +21,12 @@ export function startupStatus(status) {
   panel.hidden = status?.ok !== false;
   message.textContent = panel.hidden ? '' : sanitizeError(status.message);
   recover.hidden = status?.recoverable !== true;
+  startupTasks = !panel.hidden && status?.code === 'uncertain_state' && Array.isArray(status.unknown_tasks)
+    ? status.unknown_tasks.filter(task => task && typeof task.task_id === 'string' && typeof task.tool === 'string')
+      .map(task => ({task_id:task.task_id,tool:task.tool})) : [];
+  const review = document.getElementById('acknowledgeTasks'), details = document.getElementById('nativeIssueTasks');
+  if(review)review.hidden = !startupTasks.length;
+  if(details){details.hidden = !startupTasks.length;details.textContent = startupTasks.map(task => task.tool + ' · ' + task.task_id).join('\n');}
   if (panel.hidden && hadFocus) document.getElementById('btnOpenSet')?.focus();
 }
 

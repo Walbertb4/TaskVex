@@ -36,13 +36,18 @@ fonts fall back to system fonts.
 | panels.js | Modals, command palette, drawer and local timeline |
 | reactor.js / sfx.js | Visual states/animation and local effects |
 | live_mic.js / pcm_worklet.js | One AudioWorklet PCM source, VAD and level |
+| live_video.js | One opt-in camera or screen source, local preview, bounded JPEGs and request-scoped Live input |
+| permissions.js | Explicit short camera/microphone/location probes; no saved grants |
 | live_audio.js / live_transcript.js | Request-scoped playback and transcript rendering |
 | clocks.js / timers.js | Native multi-clock view / separate standalone fallback |
 
 After native initialization, bridge loss cannot create a second note/clock owner.
-Setters never send a second backend save/command. Planned Google/location/camera/
-screen/media-control integrations remain disabled; saved definitions/text are preserved.
-Media metadata is already read-only; it does not authorize playback controls.
+Setters never send a second backend save/command. Camera and screen use the same
+visual owner, one source at a time. Screen selection always uses a fresh platform
+picker; there is no system-audio capture or saved screen grant. Media controls,
+weather and explicit location settings are connected to their shared native owners.
+Google, GUI inspection, attachments and skill/routine execution remain planned;
+saved definitions/text are preserved.
 
 [Contract](../../docs/UI_BACKEND_CONTRACT.md), [commands](../../docs/COMMANDS.md),
 [tests](tests/README.md), [audit](../../docs/AUDIT.md).

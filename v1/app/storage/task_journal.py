@@ -69,6 +69,13 @@ class TaskJournal:
                     raise ValueError('Unsupported journal version')
                 if db.execute('PRAGMA quick_check').fetchone()[0] != 'ok':
                     raise ValueError('Corrupt journal')
+                # Additive metadata preserves results/replay keys; older apps still block UNKNOWN.
+                db.execute('CREATE TABLE IF NOT EXISTS task_acknowledgements '
+                           '(task_id TEXT PRIMARY KEY, acknowledged_at TEXT NOT NULL)')
+                if db.execute('SELECT 1 FROM task_acknowledgements a LEFT JOIN tasks t '
+                              'ON t.task_id=a.task_id WHERE t.task_id IS NULL OR t.status!=? LIMIT 1',
+                              (TaskStatus.UNKNOWN.value,)).fetchone():
+                    raise ValueError('Invalid task acknowledgement')
                 # Verify all records one by one; Loading the entire history into RAM.
                 self.uncertain = False
                 for row in db.execute('SELECT principal, request_id, task_id, status, document FROM tasks'):
@@ -82,7 +89,9 @@ class TaskJournal:
                         task = replace(task, status=status, result=result)
                         db.execute('UPDATE tasks SET status=?, document=? WHERE task_id=?',
                                    (status.value, _encode(task), task.task_id))
-                    self.uncertain |= task.status == TaskStatus.UNKNOWN
+                self.uncertain = db.execute('SELECT 1 FROM tasks t WHERE status=? AND NOT EXISTS '
+                    '(SELECT 1 FROM task_acknowledgements a WHERE a.task_id=t.task_id) LIMIT 1',
+                    (TaskStatus.UNKNOWN.value,)).fetchone() is not None
         except BaseException:
             self.close()
             raise
@@ -116,6 +125,24 @@ class TaskJournal:
             row = db.execute('SELECT principal, request_id, task_id, status, document FROM tasks '
                              'WHERE task_id=?', (task_id,)).fetchone()
             return _decode(row) if row else None
+
+    def unresolved(self) -> list[Task]:
+        """Return a bounded review page; never change original task documents."""
+        with self._connect() as db:
+            rows = db.execute('SELECT principal,request_id,t.task_id,status,document FROM tasks t '
+                'WHERE status=? AND NOT EXISTS (SELECT 1 FROM task_acknowledgements a '
+                'WHERE a.task_id=t.task_id) ORDER BY t.task_id LIMIT 256', (TaskStatus.UNKNOWN.value,))
+            return [_decode(row) for row in rows]
+
+    def acknowledge(self, task_ids: list[str]) -> None:
+        """Durably record explicit acceptance of uncertainty, never success or replay."""
+        with self._connect() as db:
+            for task_id in task_ids:
+                row = db.execute('SELECT status FROM tasks WHERE task_id=?', (task_id,)).fetchone()
+                if row is None or row[0] != TaskStatus.UNKNOWN.value:
+                    raise ValueError('Only unknown tasks can be acknowledged')
+                db.execute("INSERT OR IGNORE INTO task_acknowledgements VALUES (?,strftime('%Y-%m-%dT%H:%M:%fZ','now'))",
+                           (task_id,))
 
     def save(self, task: Task) -> None:
         """Atomic save single task state while preserving identities; commit error goes up."""

@@ -2,7 +2,7 @@
 
 not included in pytest; It requires a real native engine. The main process is a temporary
 creates TASKVEX_HOME; open/save, registration-import-export, cancellation and setting-error
-and note CRUD/identity runs store/text scenarios in ten separate processes. Windows are hidden. User
+and note CRUD/identity runs store/text scenarios in eleven separate processes. Windows are hidden. User
 data is not used; At the end of the test, the temporary profile/data directory is cleared.
 """
 
@@ -24,7 +24,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 
 from native_scenarios import (
-    check_native_note_ui, check_native_note_crud, check_native_note_batches, check_native_clocks, check_native_shutdown_request, check_local_sleep, check_wake_recovery, check_real_local_wake, check_native_media
+    check_native_note_ui, check_native_note_crud, check_native_note_batches, check_native_clocks, check_native_shutdown_request, check_local_sleep, check_wake_recovery, check_real_local_wake, check_native_media, check_native_screen
 )
 
 
@@ -465,6 +465,22 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
     def create(*args, **kwargs):
         kwargs["hidden"] = True
         captured["api"] = kwargs["js_api"]
+        if phase == 'unknown':
+            from app.core.contracts import Task, TaskStatus, ToolRequest, ToolResult, ToolError
+            from app.storage.json_store import JsonStore
+            api = captured['api']
+            api._store.write({'theme': '#a78bfa', 'prof': {'pIns': 'Synthetic preserved profile'}})
+            captured['original_settings'] = api._store.path.read_bytes()
+            JsonStore(home / 'notes.json').write({'notes': [], 'ui_migrated': True})
+            captured['original_notes'] = (home / 'notes.json').read_bytes()
+            task = Task(task_id='native-synthetic-unknown', status=TaskStatus.UNKNOWN,
+                request=ToolRequest(request_id='native-previous-action', source='desktop', principal='local-user',
+                    tool='media.control', arguments={'action':'pause','target_id':'a'*32}),
+                result=ToolResult(task_id='native-synthetic-unknown', status=TaskStatus.UNKNOWN,
+                    error=ToolError(code='synthetic_unknown', message='Effect unconfirmed')))
+            api._core._journal.save(task)
+            api._core._uncertain = True
+            captured['unknown_task'] = task
         if phase == "credentials":
             original_event = captured["api"].event
             queries = []
@@ -538,6 +554,31 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 setattr(edgechromium, "WinForms", original_forms)
 
         try:
+            if phase == 'unknown':
+                task = captured['unknown_task']
+                wait_until(lambda: window.evaluate_js("typeof window.vex==='object' && !document.getElementById('acknowledgeTasks').hidden"))
+                assert not api._ready and api._core.uncertain
+                assert window.evaluate_js("document.getElementById('recoverSettings').hidden")
+                assert 'not damaged' in window.evaluate_js("document.getElementById('nativeIssueText').textContent")
+                assert 'media.control' in window.evaluate_js("document.getElementById('nativeIssueTasks').textContent")
+                retry = js("return await window.pywebview.api.event('retry_startup');")
+                assert retry['code'] == 'uncertain_state'
+                js("window.confirm=()=>false;document.getElementById('acknowledgeTasks').click();return true;")
+                assert api._core.uncertain and not api._ready
+                js("window.confirm=()=>true;document.getElementById('acknowledgeTasks').click();return true;")
+                wait_until(lambda: api._ready and api._notes_ready)
+                wait_until(lambda: window.evaluate_js("document.getElementById('nativeIssue').hidden"))
+                wait_until(lambda: js("const t=await import('./js/clocks.js');return t.nativeClocksActive();"))
+                assert not api._core.uncertain
+                assert api._core.get(task.task_id) == task
+                assert api._core.submit(task.request) == task
+                assert api._store.path.read_bytes() == captured['original_settings']
+                assert (home / 'notes.json').read_bytes() == captured['original_notes']
+                assert not list(home.glob('settings.json.*.corrupt'))
+                outcome.update(ok=True, phase=phase, declined_review_preserved=True, review_completed=True,
+                    unknown_result_preserved=True, replay_protection_preserved=True, settings_preserved=True,
+                    post_recovery_notes_and_clocks_connected=True)
+                return
             if phase in {"corrupt", "schema_invalid", "future"}:
                 original = (home / "settings.json").read_bytes()
                 existing_backups = set(home.glob("settings.json.*.corrupt"))
@@ -648,7 +689,10 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                     "finally{devices.getUserMedia=original;stream.getTracks().forEach(t=>t.stop());(await import('./js/panels.js')).closeM();}")
                 assert permission == {'allowed':True,'videoOnly':True,'ended':True,'off':True}, permission
                 outcome['native_default_camera_permission_without_live_or_capture']=True
+                check_native_screen(window, js, outcome)
             if phase=='reopen':
+                assert window.evaluate_js("!document.getElementById('scrT').checked && document.querySelector('#scr video')===null")
+                outcome['native_screen_does_not_resume_on_restart']=True
                 wait_until(lambda:window.evaluate_js("document.getElementById('wT').textContent")=='0°')
                 outcome['native_weather_location_restored_without_geolocation']=True
             if phase == "chat":
@@ -1613,7 +1657,7 @@ def run() -> None:
     """Limit two separate native processes; Also write the result in the optional report."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--report", type=Path)
-    parser.add_argument("--phase", choices=["save", "reopen", "notes", "persistence", "export_cancel", "credentials", "chat", "corrupt", "schema_invalid", "future"])
+    parser.add_argument("--phase", choices=["save", "reopen", "notes", "persistence", "export_cancel", "credentials", "chat", "unknown", "corrupt", "schema_invalid", "future"])
     parser.add_argument("--home", type=Path)
     parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
@@ -1623,7 +1667,7 @@ def run() -> None:
     reports = []
     with tempfile.TemporaryDirectory(prefix="taskvex-native-", ignore_cleanup_errors=True) as directory:
         home = Path(directory)
-        for phase in ["save", "reopen", "notes", "persistence", "export_cancel", "credentials", "chat", "corrupt", "schema_invalid", "future"]:
+        for phase in ["save", "reopen", "notes", "persistence", "export_cancel", "credentials", "chat", "unknown", "corrupt", "schema_invalid", "future"]:
             if phase == "corrupt":
                 (home / "settings.json").write_bytes(b'{broken native settings')
             elif phase == "schema_invalid":
@@ -1635,7 +1679,7 @@ def run() -> None:
             # Only killing the launcher can leave the pipe open; own test
             # We close our tree together at timeout and read the error record from the file.
             log = home / f"{phase}.log"
-            phase_home = home / "chat-profile" if phase == "chat" else home
+            phase_home = home / (phase + '-profile') if phase in {'chat', 'unknown'} else home
             with log.open("wb") as output:
                 process = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), "--phase", phase,
                                             "--home", str(phase_home)], stdout=output, stderr=subprocess.STDOUT)
