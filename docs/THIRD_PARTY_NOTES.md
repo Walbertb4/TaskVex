@@ -46,7 +46,7 @@ Runtime dependencies are declared in v1/pyproject.toml; the exact tested develop
 - Open-Meteo forecast/geocoding are external public services, not copied source
   code or an installed dependency. TaskVex source remains MIT; no AGPL server code
   is imported. Weather data is CC BY 4.0 with attribution; place data originates
-  from GeoNames. UI links credit Open-Meteo and GeoNames.
+  from GeoNames. README links credit Open-Meteo and GeoNames.
 - The default public API is for non-commercial use under provider request limits;
   commercial deployment needs a provider arrangement/configuration review. Do not
   claim the free endpoint permits every distribution or unlimited service use.

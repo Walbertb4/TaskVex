@@ -371,7 +371,7 @@ or a future forecast. A ten-minute cache avoids continuous provider calls; faile
 refreshes back off for one minute. Cached values remain explicitly stale for at
 most one hour, then clear. Missing measurements never become zero. UI polling uses
 the existing tick once per minute; late responses from a former selection cannot
-replace the current view. Source/model time and attribution remain visible.
+replace the current view. Source/model time remains visible; provider attribution is in README.md and THIRD_PARTY_NOTES.md.
 
 Location preferences are native-only and currently excluded from the legacy UI JSON
 backup, avoiding silent geolocation consent through imports. City/provider data in

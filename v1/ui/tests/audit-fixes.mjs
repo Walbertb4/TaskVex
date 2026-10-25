@@ -538,7 +538,7 @@ try {
     assert.equal(await p.evaluate(()=>volumeCalls.length),0);
     await slider.dispatchEvent('change');
     await p.waitForFunction(()=>document.getElementById('mediaStatus').textContent==='Media action verified.');
-    assert.equal(await p.locator('#mediaVolumeValue').innerText(),'25%');
+    assert.equal(await p.locator('#mediaVolumeValue').textContent(),'25%');
     assert.deepEqual(await p.evaluate(()=>volumeCalls[0].arguments),{action:'set_volume',target_id:'c'.repeat(32),percent:25});
     assert.equal(await p.locator('#mediaStatus').evaluate(el=>getComputedStyle(el).position),'absolute');
     assert.equal(await p.locator('#mediaStatus').evaluate(el=>getComputedStyle(el).clipPath),'inset(50%)');
@@ -565,7 +565,7 @@ try {
       (await import('/js/media_view.js')).applyMediaSample({...volumeSample,sampled_at:112,
         controls:{...volumeSample.controls,set_volume:false},volume:{status:'ambiguous',percent:null,muted:null}});
     });
-    assert.equal(await slider.isDisabled(),true);assert.equal(await p.locator('#mediaVolumeValue').innerText(),'—');
+    assert.equal(await slider.isDisabled(),true);assert.equal(await p.locator('#mediaVolumeValue').textContent(),'—');
   });
   await test('weather search requires explicit place selection, shares native data and distinguishes zero/stale/missing',async()=>{
     const p=await setup();
@@ -601,7 +601,7 @@ try {
     await p.evaluate(async()=>{(await import('/js/weather_view.js')).applyWeatherSample({status:'unavailable'});});
     assert.equal(await p.locator('#wT').innerText(),'—°');
     await p.locator('#locClearB').click();await p.waitForFunction(()=>document.getElementById('locMsg').textContent.includes('cleared'));
-    assert.equal(await p.locator('#w_weather .weather-credit').getAttribute('href'),'https://open-meteo.com/');
+    assert.equal(await p.locator('.weather-credit').count(),0);
   });
   await test('weather Auto never runs at startup, preserves manual fallback on denial and shares only coarse coordinates',async()=>{
     const p=await setup();p.on('dialog',dialog=>dialog.accept());

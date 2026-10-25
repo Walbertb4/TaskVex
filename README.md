@@ -186,3 +186,9 @@ Original TaskVex contributions are [MIT licensed](LICENSE). This does not
 relicense dependencies, existing UI assets or downloaded model weights.
 See [third-party notes](docs/THIRD_PARTY_NOTES.md); asset provenance and release
 packaging review remain open.
+
+## Weather data attribution
+
+Weather data is provided by [Open-Meteo](https://open-meteo.com/) under
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); place data comes from
+[GeoNames](https://www.geonames.org/) via Open-Meteo.

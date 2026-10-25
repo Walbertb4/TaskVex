@@ -540,7 +540,7 @@ automatically retried. Same-title skips or a player restarting the same track ma
 be unknown. Restart does not clear the persistent safety lock. Real player/provider
 acceptance is separate from synthetic/native transport checks.
 
-The PLAYER VOLUME range below the buttons uses the same media.control action
+The volume slider below the Media buttons uses the same media.control action
 set_volume. It does not change Windows master volume or Vex reply/effects volume.
 Browser audio is application-wide, not a per-tab volume control. Unsupported or
 ambiguous audio-session mapping disables the range; it never targets another app

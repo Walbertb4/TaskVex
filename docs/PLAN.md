@@ -1,6 +1,10 @@
 # TaskVex — Current plan
 
-## Now: 6.4 weather/location — accepted; UI copy cleanup requested
+## Now: 6.4 weather/location — accepted; UI copy cleanup implemented
+
+Accepted weather work: commit `9910ae4`. Requested source-credit, media-label and
+memory-help cleanup is implemented; all 21 browser groups and git diff checks
+passed. The user accepted the cleanup; it is committed before starting camera work.
 
 The user narrowed remaining stage 6 to weather and multimodal input. No file,
 Google, Telegram, Discord or web-search integration belongs to the current step.

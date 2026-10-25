@@ -5,6 +5,14 @@ The state is in ARCHITECTURE.md, the work to be done is in PLAN.md. The version 
 
 ## Unreleased
 
+### Simplify weather, media and memory presentation
+
+- Moved visible weather/place source credits to README; retained location consent and weather freshness status.
+- Media controls show only the volume slider underneath; its accessible name and off-screen value remain.
+- Reduced personal memory help to one sentence. Domain and backend behavior are unchanged.
+- Validation: all 21 existing browser groups passed; git diff checks passed. Backend/native suites were not rerun for this presentation-only change.
+
+
 ### Narrow stage 6 and connect weather — 6.4
 
 - Restricted remaining stage 6 to weather/location, then camera, screen sharing,
