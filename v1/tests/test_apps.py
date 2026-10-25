@@ -1,7 +1,7 @@
-"""Uygulama kataloğunu gerçek registry/policy/worker hattında doğrula.
+"""Verify application catalog on actual registry/policy/worker line.
 
-Bu ilk adım uygulama başlatmaz. Testler geçici TASKVEX_HOME kullanır; katalog
-okunurken not/ayar dosyası veya başka yan etki oluşmaması beklenir.
+This first step does not launch an application. Tests use temporary TASKVEX_HOME; catalog
+It is expected that no not/setting file or other side effects will occur while reading it.
 """
 
 import pytest
@@ -14,7 +14,7 @@ from app.tools.local.apps import APP_CATALOG, app_catalog, app_status
 
 
 def request(**changes):
-    """Güvenilir masaüstü girişinin oluşturacağı parametresiz isteği kur."""
+    """Set up the parameterless request to be created by the trusted desktop login."""
     return ToolRequest(**{"request_id": "catalog", "source": "desktop",
                           "principal": "local-user", "tool": "apps.catalog", **changes})
 
@@ -27,7 +27,7 @@ def test_catalog_uses_core_and_does_not_claim_installed_or_running():
         assert finished.result.verified
         assert finished.result.data == {"apps": [{"id": "notepad", "name": "Notepad"}]}
         assert finished.result.evidence == {"source": "builtin_allowlist"}
-    # Core başlangıcı artık yalnız kalıcı görev günlüğünü oluşturur.
+    # Core startup now only creates the persistent task log.
     assert {p.name for p in get_data_home().iterdir()} == {'tasks'}
 
 
@@ -37,7 +37,7 @@ def test_catalog_requires_trusted_local_identity(identity):
         finished = core.wait(core.submit(request(**identity)).task_id, timeout=3)
         assert finished.status == TaskStatus.FAILED
         assert finished.result.error.code == "permission_denied"
-    # Core başlangıcı artık yalnız kalıcı görev günlüğünü oluşturur.
+    # Core startup now only creates the persistent task log.
     assert {p.name for p in get_data_home().iterdir()} == {'tasks'}
 
 
@@ -52,7 +52,7 @@ def test_catalog_rejects_parameters_before_handler(arguments, monkeypatch):
         with pytest.raises(RegistryError) as caught:
             core.submit(request(arguments=arguments))
     assert caught.value.code == "invalid_arguments"
-    # Core başlangıcı artık yalnız kalıcı görev günlüğünü oluşturur.
+    # Core startup now only creates the persistent task log.
     assert {p.name for p in get_data_home().iterdir()} == {'tasks'}
 
 
@@ -86,7 +86,7 @@ def test_status_uses_common_core_and_partial_read_does_not_halt_worker(monkeypat
         if not complete:
             assert result.error.code == "observation_incomplete"
         assert core.wait(core.submit(request(request_id="after-read")).task_id, 3).status == TaskStatus.SUCCEEDED
-    # Core başlangıcı artık yalnız kalıcı görev günlüğünü oluşturur.
+    # Core startup now only creates the persistent task log.
     assert {p.name for p in get_data_home().iterdir()} == {'tasks'}
 
 

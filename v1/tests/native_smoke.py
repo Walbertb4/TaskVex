@@ -1,9 +1,9 @@
-"""Gerçek Windows/WebView2 kabul kontrolü: python tests/native_smoke.py.
+"""Real Windows/WebView2 acceptance control: python tests/native_smoke.py.
 
-pytest'e dahil değildir; gerçek native motor gerektirir. Ana süreç geçici bir
-TASKVEX_HOME oluşturur; aç/kaydet, kayıt-import-export, iptal ve ayar-hatası
-ve not CRUD/kimlik deposu/metin senaryolarını on ayrı süreçte çalıştırır. Pencereler hidden'dır. Kullanıcı
-verisi kullanılmaz; test sonunda geçici profil/veri dizini temizlenir.
+not included in pytest; It requires a real native engine. The main process is a temporary
+creates TASKVEX_HOME; open/save, registration-import-export, cancellation and setting-error
+and note CRUD/identity runs store/text scenarios in ten separate processes. Windows are hidden. User
+data is not used; At the end of the test, the temporary profile/data directory is cleared.
 """
 
 import argparse
@@ -19,7 +19,7 @@ from threading import Event
 import time
 import traceback
 
-# Betik tests/ içinden doğrudan çalıştırıldığında app paketi de bulunmalıdır.
+# When the script is run directly from tests/ the app package should also be present.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 
@@ -29,12 +29,12 @@ from native_scenarios import (
 
 
 def child(home: Path, phase: str, debug: bool = False) -> None:
-    """Üretimdeki main() kurulumunu gerçek native motorla çalıştır."""
+    """Run main() installation in production with real native engine."""
     os.environ["TASKVEX_HOME"] = str(home)
     faulthandler.dump_traceback_later(30)
     import webview
-    # Açık kullanıcı uygulamasının 42001 sunucusuna bağlanma. Aynı test
-    # profilinin yeniden açılışlarında origin yine sabit kalmalıdır.
+    # Connecting to server 42001 of open user application. same test
+    # Origin must remain constant when the profile is reopened.
     home.mkdir(parents=True, exist_ok=True)
     port_file = home / 'test-http-port'
     if not port_file.exists():
@@ -50,6 +50,8 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
     network_module.read_gateway=lambda _:1
     network_module.ping_gateway=lambda _:{'network_ping_ms':0,'network_ping_status':'ok'}
     network_module.wifi_signal=lambda _:{'network_wifi_signal':75,'network_wifi_status':'ok'}
+    from app.tools.local import media as media_module
+    media_module._read_windows=lambda:{'status':'available','title':'Native synthetic track','artist':'Synthetic artist','state':'paused'}
     from app.main import main
     from app.storage.json_store import StoreError
 
@@ -61,21 +63,21 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
     text_requests = []
     wake_state = {'packets':0, 'detect':False, 'instances':0}
     speech_state = {'requests': [], 'fail': False, 'block': False, 'started': Event(), 'release': Event()}
-    text_payloads = []  # Yalnız geçici test profilinin SDK talimatını denetler.
+    text_payloads = []  # It only checks the SDK instruction of the temporary test profile.
     if phase != 'chat':
-        # Otomatik katalog yeni açılış davranışıdır; gerçek hesap/ağ kullanma.
+        # Automatic catalog loading is normal startup; keep real accounts and network out of this test.
         from app.bridge import webview_bridge as catalog_bridge
         catalog_bridge.load_live_catalog = lambda: {'ok':True,'completed':True,'models':[]}
     catalog_ready = Event()
     live_state: dict = {"opened": 0, "closed": False, "sent": [], "waiting": Event(), "stall": False,
                         "resumed": False}
     if phase == "chat":
-        # Gerçek SDK/core/native DOM; yalnız HTTP taşıması sentetiktir.
-        # Üretim anahtarı okunmaz ve dış ağa istek çıkmaz.
+        # Real SDK/core/native DOM; only HTTP transport is synthetic.
+        # The production key is not read and no requests are sent to the external network.
         import httpx
         from app.bridge import webview_bridge as bridge_module
         class SyntheticWake:
-            """Yalnız algılama sınırı sahte; gerçek PCM/bridge/Live devri denenir."""
+            """Only the detection limit is fake; actual PCM/bridge/Live cycle is attempted."""
             def __init__(self, word, sensitivity=50):
                 wake_state['instances'] += 1
                 self.id = 'native-local-wake-' + str(wake_state['instances'])
@@ -91,7 +93,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
         from google.genai import live
 
         def audio_reply(text, samples=2400):
-            """Gerçek Web Audio'ya sessiz PCM ver; fiziksel ses kabulü iddia etme."""
+            """Give silent PCM to true Web Audio; Claiming physical voice acceptance."""
             from base64 import b64encode
             return {"serverContent": {"modelTurn": {"role": "model", "parts": [{"inlineData": {
                 "data": b64encode(b'\x00\x00' * samples).decode(), "mimeType": "audio/pcm;rate=24000"}}]},
@@ -99,10 +101,10 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 "usageMetadata":{"totalTokenCount":10}}
 
         def crud_plan(text):
-            """Yalnız sentetik kullanıcı komutundan gerçek depodaki ID'yi seç.
+            """Just select the ID in the real repository from the synthetic user command.
 
-            Model taklidi yalnız taşıma sınırındadır; kayıt değişikliği yapmaz.
-            Liste/işlem/son yanıt üretim ModelTools ve TaskManager'dan geçer.
+            Model imitation is only at the limit of carrying; It does not change the record.
+            List/transaction/last response generation goes through ModelTools and TaskManager.
             """
             from app.storage.json_store import JsonStore
             from app.tools.local.notes import notes_snapshot
@@ -133,7 +135,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
             return [('notes.select', selector), ('notes.delete' if verb == 'delete' else 'notes.update', args)]
 
         def clock_plan(text):
-            """Yalnız sentetik sağlayıcı fixture'ı; üretim doğal dil parser'ı değildir."""
+            """Synthetic provider fixture only; production is not a natural language parser."""
             _, _, mode, action = text.split()
             if action in ('watch', 'timer1', 'timer2'):
                 args={'kind':'stopwatch' if action=='watch' else 'timer', 'start':True, 'label':mode+' '+action}
@@ -176,8 +178,8 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                         if 'activityEnd' in incoming:
                             live_state['input_ended'] = live_state.get('input_ended', 0) + 1
                             if live_state.get('hold_microphone_reply'):
-                                # Thinking görünümünü kısa bir zaman aralığını
-                                # şansla yakalamaya değil açık test bariyerine bağla.
+                                # Thinking view for a short period of time
+                                # Attach it to the open test barrier, not to luck catch.
                                 while live_state.get('hold_status_reply'):
                                     import asyncio
                                     await asyncio.sleep(.001)
@@ -188,8 +190,8 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                             self.media_answered = True
                             return
                         if 'audio' in incoming:
-                            # SDK'nin wire biçimi URL-safe base64'dür;
-                            # standart decoder '-'/'_' örneklerini bozabilir.
+                            # The SDK's wire format is URL-safe base64;
+                            # The standard decoder may corrupt '-'/'_' instances.
                             from base64 import urlsafe_b64decode
                             if live_state.get('hold_microphone_reply'):
                                 if any(urlsafe_b64decode(incoming['audio']['data'])):
@@ -209,8 +211,8 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                             self.media_answered = False
                             return
                         text = message["realtime_input"].get("text", "")
-                        # Yalnız sentetik sağlayıcının önceden belirlenmiş araç
-                        # seçimi; üretimde cümle kalıbı veya niyet parser'ı yok.
+                        # Only the synthetic provider's predetermined tool
+                        # selection; There is no sentence pattern or intent parser in production.
                         if text.startswith('Host event: the following timer has actually finished.'):
                             assert not self.setup_tools
                             live_state['timer_announcements']=live_state.get('timer_announcements',0)+1
@@ -226,8 +228,8 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                             frames.append({'toolCall': {'functionCalls': [{'id': 'shutdown-'+str(live_state['shutdown_calls']),
                                 'name': 'assistant.request_shutdown', 'args': {}}]}})
                             return
-                        mode = {'Lütfen, uyku moduna gir.': 'once',
-                            'Uyku moduna kalıcı olarak gir': 'persistent',
+                        mode = {'Please enter sleep mode.': 'once',
+                            'Enter sleep mode permanently': 'persistent',
                             'Disable persistent sleep mode': 'off'}.get(text)
                         if mode:
                             live_state['sleep_requests'] = live_state.get('sleep_requests', 0) + 1
@@ -275,8 +277,8 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                             frames.append(audio_reply('Native profile probe Live'))
                             return
                         if text == 'Native microphone rejected note':
-                            # Var olmayan hedef reddedilmeli; kayıt/izin hattı
-                            # üretim kodudur. Model hatası mikrofonu Off yapmaz.
+                            # The non-existent goal should be rejected; registration/permission line
+                            # is the production code. Model error does not turn the microphone Off.
                             frames.append({'toolCall':{'functionCalls':[{'id':'missing-note-call','name':'notes.delete',
                                 'args':{'id':'missing-synthetic-note'}}]}})
                             return
@@ -308,8 +310,8 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                             return
                         turns += 1
                         if turns >= 3:
-                            # Üçüncü ve dördüncü tur aynı çağrı kimliğini yollar:
-                            # gerçek core tek not yazmalı, UI her sonucu yenilemeli.
+                            # The third and fourth rounds send the same call ID:
+                            # The real core should write a single note, the UI should refresh every result.
                             frames.append({"toolCall": {"functionCalls": [{"id": "live-ui-note",
                                 "name": "notes.add", "args": {"text": "Live UI synthetic note"}}]}})
                         else:
@@ -330,13 +332,13 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                         if response['id'].startswith('clock-Native CLOCK '):return
                         if response['name'] == 'assistant.request_shutdown':
                             assert response['response']['result']['data']['applied'] is False
-                            frames.append(audio_reply('TaskVex kapanacak.', 12000))
+                            frames.append(audio_reply('TaskVex will close.', 12000))
                             return
                         if response['name'] == 'assistant.request_sleep_mode':
                             data = response['response']['result']['data']
                             assert data['applied'] is False
-                            frames.append(audio_reply('Tamam efendim, kalıcı uyku modunu kapatıyorum.' if data['mode'] == 'off'
-                                else 'Tamam efendim, geçiyorum.', 12000))
+                            frames.append(audio_reply("OK sir, I'm turning off permanent sleep mode." if data['mode'] == 'off'
+                                else "OK sir, I'm passing.", 12000))
                             return
                         if response["id"].startswith("native-crud-"):
                             return
@@ -348,8 +350,8 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                             return
                         frames.append(audio_reply(f"Live tool saved turn {turns}"))
                         if turns == 4 and live_state["opened"] == 1:
-                            # Biten turun güvenli checkpoint'i ve GoAway idle
-                            # kuyruğuna düşer; sonraki metin eski socket'e gitmez.
+                            # Secure checkpoint and GoAway idle of the completed turn
+                            # falls on its tail; The next text does not go to the old socket.
                             frames.extend([{"sessionResumptionUpdate": {"resumable": True,
                                 "newHandle": "NATIVE_SYNTHETIC_RESUME_HANDLE"}}, {"goAway": {"timeLeft": "10s"}}])
                 async def recv(self, **kwargs):
@@ -360,11 +362,11 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                             await asyncio.sleep(.001)
                     while not frames and not live_state["stall"]:
                         import asyncio
-                        await asyncio.sleep(.001)  # Akış göndericisinin eklediği yanıtı da uyandır.
+                        await asyncio.sleep(.001)  # Also evoke the response added by the stream sender.
                     if not frames and live_state["stall"]:
                         import asyncio
                         live_state["waiting"].set()
-                        await asyncio.sleep(3600)  # Stop gerçek SDK await'ini kesmeli.
+                        await asyncio.sleep(3600)  # Stop should interrupt the actual SDK await.
                     return json.dumps(frames.pop(0)).encode()
             try:
                 yield Socket()
@@ -415,7 +417,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 return httpx.Response(200,json={'candidates':[{'finishReason':'STOP','content':{'role':'model','parts':parts}}]})
             if prompt.startswith('Native SHUTDOWN '):
                 parts = ([{'functionCall': {'id':'shutdown-rest','name':'assistant.request_shutdown','args':{}}}]
-                    if len(body['contents']) == 1 else [{'text':'TaskVex kapanacak.'}])
+                    if len(body['contents']) == 1 else [{'text':'TaskVex will close.'}])
                 return httpx.Response(200, json={'candidates': [{'finishReason':'STOP','content':{'role':'model','parts':parts}}]})
             if prompt == 'Native profile probe':
                 return httpx.Response(200, json={'candidates': [{'finishReason': 'STOP', 'content': {
@@ -425,8 +427,8 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 if round_index == 2:
                     parts = [{"text": prompt + " confirmed"}]
                 else:
-                    # Sonraki HTTP turunda mutasyon zaten yapılmış olabilir;
-                    # planı yalnız liste ve mutasyon yanıtı üretirken çözeriz.
+                    # In the next round of HTTP the mutation may have already been made;
+                    # We solve the plan only when generating the list and mutation response.
                     name, arguments = crud_plan(prompt)[round_index]
                     parts = [{"functionCall": {"id": f"native-crud-{round_index}", "name": name, "args": arguments}}]
                 return httpx.Response(200, json={"candidates": [{"finishReason": "STOP", "content": {
@@ -439,7 +441,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                         "args": {"text": "Must not be saved after REST Stop"}}}]}}]})
             if len(text_requests) == 1:
                 body = json.loads(request.content)
-                assert {item["name"] for item in body["tools"][0]["functionDeclarations"]} == {"apps.catalog", "system.status", "assistant.request_sleep_mode", "assistant.request_shutdown", "clocks.create", "clocks.control", "clocks.list"}
+                assert {item["name"] for item in body["tools"][0]["functionDeclarations"]} == {"apps.catalog", "system.status", "media.status", "assistant.request_sleep_mode", "assistant.request_shutdown", "clocks.create", "clocks.control", "clocks.list"}
                 text_started.set()
                 assert release_text.wait(20)
             assert responses, "Unexpected model retry"
@@ -497,7 +499,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
             return value
 
         def export_backup(accept):
-            """Dosya seçimini taklit et; gerçek WebView2 download yazımını dene."""
+            """Emulate file selection; try the real WebView2 download script."""
             from webview.platforms import edgechromium
             original_forms = getattr(edgechromium, "WinForms")
             export_path = home / ("exported-backup.json" if accept else "cancelled-backup.json")
@@ -557,8 +559,8 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 after = js("const s=await import('./js/settings.js');return JSON.stringify([s.store.notes,s.store.skills,s.store.routines,s.store.prof]);")
                 expected = json.loads(before)
                 if phase == 'schema_invalid':
-                    # Onarılan geçerli backend profili hafıza içermiyor. Eski
-                    # UI profilinin açık izni/metni bu profile miras kalmamalı.
+                    # The current repaired backend profile does not contain memory. old
+                    # The vulnerability of UI profile permission/text should not be inherited from this profile.
                     expected[3]['pMem'] = ''
                     expected[3]['pMemory'] = False
                     expected[3]['pLearn'] = False
@@ -598,9 +600,13 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 assert window.evaluate_js("document.getElementById('nUp').textContent")=='0.00 Mbps'
             outcome['native_local_network_link_and_rates']=True
             outcome['native_gateway_ping_and_wifi_signal']=True
+            wait_until(lambda: window.evaluate_js("document.getElementById('mTitle2').textContent")=='Native synthetic track')
+            assert 'paused' in window.evaluate_js("document.getElementById('mArt').textContent")
+            assert window.evaluate_js("document.getElementById('mPlay').disabled && !document.getElementById('eq').classList.contains('on')")
+            outcome['native_read_only_media_view']=True
             if phase == "chat":
-                # Yeni otomatik başlangıç fiziksel mikrofona hiç ulaşmasın.
-                # Her izin çağrısı taze, sessiz bir sentetik track alır.
+                # The new autostart should never reach the physical microphone.
+                # Each permission call receives a fresh, quiet synth track.
                 js("window.defaultMicContext=new AudioContext();window.defaultMicTracks=[];"
                    "window.testMicOff=()=>{const b=document.getElementById('micB');if(b.getAttribute('aria-pressed')==='true')b.click();};"
                    "window.testMicOn=()=>{testMicOff();document.getElementById('micB').click();};"
@@ -671,12 +677,12 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 assert len(speech_state['requests']) == 2
                 assert speech_state['requests'][-1]['input'][0]['content'][0]['text'] == 'Saved <img src=x onerror=alert(1)>'
                 assert 'tools' not in speech_state['requests'][-1]
-                # Ses hatası metni korur; Mute yeni TTS isteğini başlatmaz.
+                # Audio error preserves text; Mute does not start the new TTS request.
                 speech_state['fail'] = True
                 js("document.getElementById('inp').value='Native profile probe';document.getElementById('send').click();return true;")
                 wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
                 assert 'audio unavailable: speech_unavailable' in window.evaluate_js("document.getElementById('textStatus').textContent")
-                assert len(speech_state['requests']) == 3  # 503 TTS tekrarına dönüşmez.
+                assert len(speech_state['requests']) == 3  # It does not become a 503 TTS repeat.
                 assert 'Native profile probe REST' in window.evaluate_js("document.getElementById('msgs').textContent")
                 speech_state['fail'] = False
                 speech_count = len(speech_state['requests'])
@@ -685,8 +691,8 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 assert len(speech_state['requests']) == speech_count
                 assert 'playback muted' in window.evaluate_js("document.getElementById('textStatus').textContent")
                 js("document.getElementById('mute').click();return true;")
-                # Metin görünürken sentez HTTP'si bekleyebilir. Stop kabulü,
-                # gerçek HTTP bitmeden kontrolleri açmaz; kayıt geri alınmaz.
+                # Synthesis HTTP can wait while the text is visible. Stop acceptance,
+                # does not open checks until the actual HTTP is finished; registration is irrevocable.
                 speech_state['block'] = True
                 js("document.getElementById('inp').value='Native profile probe';document.getElementById('send').click();return true;")
                 assert speech_state['started'].wait(5)
@@ -775,8 +781,8 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 wait_until(lambda: "new session" in window.evaluate_js("document.getElementById('textStatus').textContent"))
                 wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
                 assert live_state["opened"] == 3 and not live_state["closed"]
-                # Gerçek mute ve yalnız kuyrukta kalan sesi Stop: model tamamlanmış
-                # olduğundan yeni bir native/model iptali başlatılmamalıdır.
+                # True mute and Stop only tail sound: model completed
+                # Therefore, a new native/model cancellation should not be initiated.
                 js("document.getElementById('mute').click();return true;")
                 assert js("const a=await import('./js/live_audio.js');return a.liveAudio.muted;") is True
                 js("document.getElementById('inp').value='Native audio muted';document.getElementById('send').click();return true;")
@@ -801,8 +807,8 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
                 assert "KEY CHANGED" in window.evaluate_js("document.getElementById('netP').textContent")
                 js("const c=await import('./js/connections.js');c.setCatalog({models:[{id:'gemini-3.8-live',name:'Synthetic Live'}],currentModel:'gemini-3.8-live'});return true;")
-                # Fiziksel mikrofon açma: gerçek AudioWorklet/PCM yoluna
-                # yalnız test oscillator stream'i ver; gerçek hesap kullanılmaz.
+                # Physical microphone opening: to the real AudioWorklet/PCM path
+                # give test oscillator stream only; Real account is not used.
                 js("window.testMicContext=new AudioContext();window.testMicOsc=testMicContext.createOscillator();window.testMicDestinations=[];"
                    "testMicOsc.start();await testMicContext.resume();"
                    "Object.defineProperty(navigator.mediaDevices,'getUserMedia',{configurable:true,value:async()=>{"
@@ -815,8 +821,8 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 wait_until(lambda: window.evaluate_js("testMicDestinations.length>=2"))
                 wait_until(lambda: 'Listening for speech' in window.evaluate_js("document.getElementById('textStatus').textContent"))
                 assert window.evaluate_js("testMicDestinations[0].stream.getTracks().every(t=>t.readyState==='ended')")
-                # İlk konuşma kaynağı ve yanıt dinleyicisi dışında üçüncü bir
-                # mikrofon açılmamalı; yanıt sonunda aynı track canlı kalır.
+                # A third party other than the initial speech source and response listener
+                # the microphone should not be turned on; At the end of the response, the same track remains live.
                 assert window.evaluate_js("testMicDestinations.length===2 && testMicDestinations[1].stream.getTracks().every(t=>t.readyState==='live')")
                 outcome['reply_end_preserved_waiting_microphone_without_reopen'] = True
                 js("testMicOsc.connect(testMicDestinations.at(-1));return true;")
@@ -826,8 +832,8 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 assert window.evaluate_js("testMicDestinations.every(d=>d.stream.getTracks().every(t=>t.readyState==='ended'))")
                 outcome['two_voice_turns_automatic_rearm_without_second_click'] = True
                 outcome['microphone_stream_worklet_pcm_transcript_and_cleanup'] = True
-                # Kullanıcı On tercihi Stop/model reddinden bağımsızdır.
-                # Sessizlikte yeniden API isteği olmadan yeni konuşma beklenir.
+                # User On preference is independent of Stop/model rejection.
+                # In silence, new conversation is expected without another API request.
                 js("window.persistentMicContext=new AudioContext();window.persistentMicOsc=persistentMicContext.createOscillator();"
                    "window.persistentMicDestinations=[];persistentMicOsc.start();await persistentMicContext.resume();"
                    "Object.defineProperty(navigator.mediaDevices,'getUserMedia',{configurable:true,value:async()=>{"
@@ -842,7 +848,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 assert (home / 'notes.json').read_bytes() == unchanged_notes
                 sent_after_error = len(live_state['sent'])
                 time.sleep(.3)
-                assert len(live_state['sent']) == sent_after_error  # Eski komut/retry yok.
+                assert len(live_state['sent']) == sent_after_error  # The old command/retry is missing.
                 js("document.getElementById('inp').value='Native barge waiting';document.getElementById('send').click();return true;")
                 wait_until(lambda: api._chat.busy and js("const m=await import('./js/live_mic.js');return m.liveMic.waitingForSpeech;"))
                 js("window.stopMicStates=[];window.stopMicObserver=new MutationObserver(()=>stopMicStates.push(document.getElementById('micB').classList.contains('on')));"
@@ -865,7 +871,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 js("persistentMicOsc.connect(persistentMicDestinations.at(-1));return true;")
                 wait_until(lambda: window.evaluate_js("document.getElementById('msgs').textContent.split('Native microphone answer').length") > previous_voice_answers)
                 wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
-                # Off kararı daha sonraki Stop veya model-ready olayıyla kaldırılmaz.
+                # The Off decision is not removed by a subsequent Stop or model-ready event.
                 wait_until(lambda: js("const m=await import('./js/live_mic.js');return m.liveMic.waitingForSpeech;"))
                 js("document.getElementById('inp').value='Native barge waiting';document.getElementById('send').click();return true;")
                 wait_until(lambda: api._chat.busy and js("const m=await import('./js/live_mic.js');return m.liveMic.waitingForSpeech;"))
@@ -881,9 +887,9 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 js("persistentMicOsc.stop();await persistentMicContext.close();return true;")
                 outcome['microphone_on_survives_rejected_note_and_stop_without_replay'] = True
                 outcome['manual_microphone_off_survives_stop_and_model_ready'] = True
-                # Gerçek AudioWorklet ile sessiz bekleme/konuşma/yanıt ayrımı.
-                # Hybrid EOS artık erken yanıtlatabilir; sunucu cevabını açık
-                # bariyerde tutarak Thinking ve kilitleri deterministik gözle.
+                # Quiet standby/talk/answer distinction with true AudioWorklet.
+                # Hybrid EOS can now have early response; open server response
+                # Thinking of holding on to the barrier and eyeing the locks deterministically.
                 live_state['hold_microphone_reply'] = True
                 live_state['hold_status_reply'] = True
                 js("window.statusContext=new AudioContext();window.statusOsc=statusContext.createOscillator();window.statusDestinations=[];"
@@ -905,7 +911,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 js("testMicOff();statusOsc.stop();await statusContext.close();return true;")
                 live_state['hold_microphone_reply'] = False
                 outcome['idle_waiting_listening_speech_thinking_and_speaking'] = True
-                # Mic Off yalnız EOS yollar; aktif model turu Stop sayılmaz.
+                # Mic Off only sends EOS; active pattern round does not count as a Stop.
                 live_state['hold_microphone_reply'] = True
                 ended_before = live_state.get('input_ended', 0)
                 live_state['voice_seen'] = False
@@ -923,7 +929,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 js("offOsc.stop();await offContext.close();return true;")
                 live_state['hold_microphone_reply'] = False
                 outcome['microphone_off_ends_input_without_stopping_answer'] = True
-                # Setup bitmeden Off da aynı giriş sonu yolunu kullanır.
+                # Before Setup is finished, Off uses the same input end path.
                 assert api._chat.reset_live()
                 live_state.update(hold_setup=True, setup_waiting=False, hold_microphone_reply=True)
                 ended_before = live_state.get('input_ended', 0)
@@ -940,8 +946,8 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 js("earlyOsc.stop();await earlyContext.close();return true;")
                 live_state['hold_microphone_reply'] = False
                 outcome['microphone_off_before_setup_ends_input_without_stop'] = True
-                # Aynı gerçek WebView mikrofonu eski yanıtı keser; yeni tur
-                # yalnız host'un eski araç sonucunu kesinleştirmesinden sonra açılır.
+                # The same actual WebView microphone cuts out the old response; new turn
+                # It is opened only after the host finalizes the old tool result.
                 for prompt in ['Native barge active', 'Native barge playback']:
                     previous_answers = window.evaluate_js("document.getElementById('msgs').textContent.split('Native microphone answer').length")
                     js("window.bargeContext=new AudioContext();window.bargeOsc=bargeContext.createOscillator();window.bargeDestinations=[];"
@@ -960,8 +966,8 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                         assert 'Native barge active reply' in window.evaluate_js("document.getElementById('msgs').textContent")
                         assert js("return document.querySelector('[data-request-id=' + JSON.stringify(" + json.dumps(old_reply_id) + ") + '].j').dataset.state;") == 'live'
                         outcome['live_transcript_visible_before_turn_completion'] = True
-                    # Kısa bir 100 ms darbe eski yanıtı kesmemeli veya yeni bir
-                    # konuşma başlatmamalı; ardından gerçek süreli aday denenir.
+                    # A short 100 ms pulse should not interrupt the old response or initiate a new one.
+                    # should not initiate conversation; Then the real term candidate is tried.
                     js("bargeOsc.connect(bargeDestinations.at(-1));await new Promise(r=>setTimeout(r,100));"
                        "bargeOsc.disconnect();await new Promise(r=>setTimeout(r,200));return true;")
                     assert window.evaluate_js("document.getElementById('send').disabled")
@@ -1021,7 +1027,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 assert not any('tool_response' in p for p in live_state['sent'][mic_packets:])
                 js("testMicOff();await cancelMicContext.close();return true;")
                 outcome['microphone_permission_denied_and_stop_discard'] = True
-                # Otomatik listeleme getUserMedia çağırmamalı; izin Mic'e aittir.
+                # Automatic listing should not call getUserMedia; permission courtesy of Mic.
                 js("window.deviceContext=new AudioContext();window.deviceStream=deviceContext.createMediaStreamDestination().stream;"
                    "window.deviceList=[{kind:'audioinput',deviceId:'12345',label:'Synthetic microphone'},"
                    "{kind:'audiooutput',deviceId:'missing-test-output',label:'Synthetic speaker'}];"
@@ -1047,8 +1053,8 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                    "const s=await import('./js/settings.js');return await s.saveSettingsConfirmed();")
                 assert api._store.read()['devs']['dIn'] == 'default'
                 assert api._store.read()['devs']['dOut'] == 'missing-test-output'
-                # Var olmayan sink gerçek Web Audio'da reddedilmeli; metin
-                # sonucu korunurken başka çıkışta sessizce çalınmamalıdır.
+                # Non-existent sink should be rejected in true Web Audio; text
+                # It should not be played silently at another output while preserving the result.
                 js("document.getElementById('inp').value='Native audio muted';document.getElementById('send').click();return true;")
                 wait_until(lambda: 'Selected speaker unavailable' in window.evaluate_js("document.getElementById('textStatus').textContent"))
                 wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
@@ -1067,13 +1073,13 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 js("if(originalSink)AudioContext.prototype.setSinkId=originalSink;else delete AudioContext.prototype.setSinkId;return true;")
                 outcome['stop_during_output_setup_did_not_send_model_request'] = True
                 js("document.getElementById('dOut').value='default';document.getElementById('dOut').onchange();return true;")
-                # Varsayılan sink'e gerçek API çağrısı; fiziksel cihaz değişmez.
+                # Actual API call to default sink; The physical device does not change.
                 outcome['web_audio_custom_output_supported'] = js("const c=new AudioContext();let supported=typeof c.setSinkId==='function';"
                           "if(supported)await c.setSinkId('');await c.close();return supported;")
                 js("await deviceContext.close();return true;")
                 outcome['audio_device_scan_exact_input_missing_sink_and_persistence'] = True
-                # Gerçek profil formu -> doğrulanmış disk -> REST/Live SDK setup.
-                # Yanıtlar sentetiktir; doğru dili konuştuğu iddia edilmez.
+                # Real profile form -> verified disk -> REST/Live SDK setup.
+                # The answers are synthetic; It is not claimed that he speaks the correct language.
                 js("const p=await import('./js/panels.js');p.openM('mProf');"
                    "document.getElementById('pLang').value='en';document.getElementById('pIns').value='Native preference probe';"
                    "document.getElementById('pMem').value='Native unused memory';document.getElementById('btnSaveProf').click();return true;")
@@ -1109,8 +1115,8 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 assert api._chat._live._connection.logical_id != old_profile_session
                 assert 'scope_changed' in window.evaluate_js("document.getElementById('textStatus').textContent")
                 outcome['saved_profile_form_shared_rest_live_instruction_and_scope_reset'] = True
-                # New Chat düğmesi kaldırıldı. Geçici hafıza Stop'ta korunur;
-                # kalıcı hafıza tercihi değişince eski bağlam aktarılmaz.
+                # New Chat button has been removed. Temporary memory is maintained in Stop;
+                # When the persistent memory preference changes, the old context is not transferred.
                 js("testMicOff();document.getElementById('inp').value='Native temporary name is Ada';document.getElementById('send').click();return true;")
                 wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
                 preserved_notes = (home / 'notes.json').read_bytes()
@@ -1196,8 +1202,8 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 outcome['engine_log_bounded_to_200_entries'] = True
                 tokens_before_disconnect=window.evaluate_js("document.getElementById('tokTxt').textContent")
                 js("document.getElementById('disc').click();return true;")
-                # Socket, loop/thread temizliğinden önce kapanır. Ara durumu
-                # bitiş sanma; host tüm kaynakları bırakana kadar bekle.
+                # Socket shuts down before clearing loop/thread. Intermediate status
+                # Don't think it's the end; Wait until the host releases all resources.
                 wait_until(lambda: live_state["closed"] and api._chat._live._thread is None)
                 assert api._chat._live._thread is None
                 assert window.evaluate_js("document.getElementById('tokTxt').textContent")==tokens_before_disconnect
@@ -1267,8 +1273,8 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                     assert "OFFLINE" in state["online"]
                     assert state["pending"]
                     release_key_query.set()
-                    # PyWebView 6.2.1 callback kaydının silinmesi yanıtın JS'ye
-                    # ulaştığını kanıtlar; başta gözlemci bulunması gerekmez.
+                    # PyWebView 6.2.1 deregistering callback converts response to JS
+                    # proves that it has been achieved; It is not necessary to have an observer at the beginning.
                     wait_until(lambda: window.evaluate_js(json.dumps(state["pending"]) +
                                ".every(id=>!(id in window.pywebview._returnValuesCallbacks.event))"))
                     assert "Key stored locally" in window.evaluate_js("document.getElementById('apiKeyStatus').textContent")
@@ -1310,7 +1316,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                                    save_did_not_mark_online=True, stale_status_ignored=True)
                 finally:
                     release_key_query.set()
-                    # Yalnız bu geçici profilin sentetik kaydını temizle.
+                    # Just clear the synthetic record of this temporary profile.
                     library = credentials._library()
                     library.CredDeleteW.argtypes = [w.LPCWSTR, w.DWORD, w.DWORD]
                     library.CredDeleteW.restype = w.BOOL
@@ -1379,11 +1385,11 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 assert partial["ok"] is False and partial["sameLocal"] is True, partial
                 assert partial["theme"] == "#5dffb0" and [n['t'] for n in partial['notes']] == ['Must not replace local notes']
                 assert api._store.read()["theme"] == "#4fd8ff"
-                # Ayrı depoların kısmi başarısını gizleme; sonraki açık Save ile
-                # testin yerel mevcut ayarlarını tekrar native'e eşitliyoruz.
+                # Hiding partial success of individual repositories; with next open Save
+                # We set the local current settings of the test equal to native again.
                 assert js("const s=await import('./js/settings.js');return await s.saveSettingsConfirmed();") is True
 
-                # Gerçek export -> import yolu metadata'yı hiçbir ara dönüşümde düşürmemeli.
+                # The actual export -> import path should not drop metadata in any intermediate transformations.
                 dated = {"t": "Timestamp backup", "d": 0, "id": "dated-backup",
                          "created_at": "2024-02-29T12:34:56.789Z"}
                 assert js("const s=await import('./js/settings.js');return await s.importBackup(" +
@@ -1396,8 +1402,8 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 assert js("const s=await import('./js/settings.js');return await s.importBackup({theme:'#000000',"
                           "notes:[{t:'Invalid timestamp',d:0,created_at:'yesterday'}]});") is False
                 assert (home / "notes.json").read_bytes() == original_notes
-                # Sonraki açılış/kurtarma fazları için gerçek core restore ile
-                # başlangıç notunu geri getir; eski setter yazma sahibi değildir.
+                # With true core restore for subsequent boot/recovery phases
+                # return starting note; The old setter does not have writing.
                 assert js("const n=await import('./js/notes.js');return await n.restoreNativeNotes([{t:'Native local note',d:0}]);") is True
                 timeout = js("const s=await import('./js/settings.js');const original=window.pywebview.api.event;"
                              "let sent=0,resolveSave;window.pywebview.api.event=(name,data)=>name==='save'?(sent++,new Promise(r=>resolveSave=r)):original(name,data);"
@@ -1515,8 +1521,8 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 outcome.update(reset_preserved_collections_profile=True, reset_failure_preserved_preferences=True)
             outcome.update(ok=True, phase=phase, native=initial)
             if phase == "save":
-                # Native restart gerçekten pencere/core'u kapatır. Yeni süreç
-                # oluşturmayı yakalarız; ardıl gerçek süreci testin ana süreci açar.
+                # Native restart actually shuts down window/core. new process
+                # we capture the rendering; The successor actual process opens the main process of the test.
                 def launch(command, **kwargs):
                     assert not api._core._worker.is_alive()
                     launches.append(command)
@@ -1526,8 +1532,8 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 assert window.events.closed.wait(10), "Restart did not close the native window"
                 outcome["native_restart_closed"] = True
             else:
-                # Gerçek Shutdown düğmesi pencereyi yok etmeli; Restart ekranı
-                # gösterilip açık kalan süreç bu beklemeyi geçemez.
+                # The actual Shutdown button should destroy the window; Restart screen
+                # The process that is shown and remains open cannot exceed this wait.
                 window.run_js("document.getElementById('shut').click()")
                 assert window.events.closed.wait(10), "Shutdown did not close the native window"
                 outcome["native_shutdown"] = True
@@ -1557,7 +1563,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
 
 
 def run() -> None:
-    """İki ayrı native süreci sınırla; sonucu isteğe bağlı rapora da yaz."""
+    """Limit two separate native processes; Also write the result in the optional report."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--report", type=Path)
     parser.add_argument("--phase", choices=["save", "reopen", "notes", "persistence", "export_cancel", "credentials", "chat", "corrupt", "schema_invalid", "future"])
@@ -1578,9 +1584,9 @@ def run() -> None:
                     "theme": "#4fd8ff", "vol": 9, "prof": {"pIns": "Native profile 📝"}}}), encoding="utf-8")
             elif phase == "future":
                 (home / "settings.json").write_bytes(b'{"version":2,"data":{"future":true}}')
-            # Windows venv launcher ikinci bir Python süreci yaratır. run()'ın
-            # yalnız launcher'ı öldürmesi pipe'ı açık bırakabilir; kendi test
-            # ağacımızı timeout'ta birlikte kapatıp hata kaydını dosyadan okuruz.
+            # Windows venv launcher creates a second Python process. run()
+            # Only killing the launcher can leave the pipe open; own test
+            # We close our tree together at timeout and read the error record from the file.
             log = home / f"{phase}.log"
             phase_home = home / "chat-profile" if phase == "chat" else home
             with log.open("wb") as output:
@@ -1601,7 +1607,7 @@ def run() -> None:
     result = {"ok": True, "renderer": "edgechromium", "hidden_window": True, "phases": reports}
     if args.report:
         args.report.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
-    # Windows konsolu UTF-8 olmayabilir; rapor dosyası UTF-8, konsol ASCII-safe.
+    # Windows console may not be UTF-8; report file UTF-8, console ASCII-safe.
     print(json.dumps(result, ensure_ascii=True, indent=2))
 
 

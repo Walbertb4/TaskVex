@@ -1,9 +1,9 @@
-"""Model araç çağrılarını mevcut core'a taşıyan küçük oturum adaptörü.
+"""Small session adapter that moves model tool calls to existing core.
 
-Bu modül model çalıştırmaz, ağ bağlantısı veya yeni worker açmaz. Sağlayıcının
-çağrısı id/name/arguments biçimine çevrildikten sonra buraya gelir. Parametre
-şemasının sahibi registry, iznin sahibi policy, yürütmenin sahibi TaskManager'dır.
-Gemini SDK nesneleri bu sınırdan içeri girmez.
+This module does not run models, network connections or open new workers. Provider's
+It goes here after the call is translated to id/name/arguments. Parameter
+The owner of the schema is the registry, the owner of the permission is policy, and the owner of execution is TaskManager.
+Gemini SDK objects do not fall within this boundary.
 """
 
 from hashlib import sha256
@@ -31,12 +31,12 @@ NOTE_TARGET_INSTRUCTION = (
 
 
 def assistant_control_request(report: dict, previous_tasks: frozenset[str] = frozenset()) -> dict:
-    """Yalnız bu başarılı turun doğrulanmış, yeni araç isteğini UI'a çıkar.
+    """Only if this successful turn is verified, the new tool request appears in the UI.
 
-    Araç sonucu uyku/kapanış değil, bekleyen istek üretir. Eski çağrının replay sonucu
-    modele tekrar verilebilir fakat yeni geçiş oluşturamaz. Çelişkili kiplerde
-    tahmin yapılmaz; Stop/hata/unknown veya başarısız araç varsa uygulanmaz.
-    REST ve Live aynı çıkarımı kullanır; doğal dil metni burada yorumlanmaz.
+    The tool produces the result sleep/shutdown, not the pending request. Replay result of old call
+    It can be given again to the model, but it cannot create a new transition. In contradictory moods
+    no predictions are made; Does not apply if Stop/error/unknown or failed tool.
+    REST and Live use the same inference; natural language text is not interpreted here.
     """
     if not report.get('ok') or report.get('stopped') or report.get('unknown'):
         return {}
@@ -72,22 +72,22 @@ def assistant_control_request(report: dict, previous_tasks: frozenset[str] = fro
 
 
 class NoteTargetError(ContractError):
-    """Yazı yapılmadan hedef açıklaması iste; ham model/veri hatasını UI'a taşıma."""
+    """Request target clarification before the text is made; Moving raw model/data error to UI."""
 
     code = "note_target_required"
 
     def __init__(self):
-        super().__init__("Hangi notu veya notları değiştireyim? Taze ve belirsiz olmayan bir notes.select sonucu gerekli. "
-                         "Kayıt ID’lerini ya da hedefi açıkla; bu istekte başka hedef tahmin edilmez. "
-                         "Bu hedefe işlem yapılmadı; önceki doğrulanmış işlemler korunur.")
+        super().__init__("Which note or notes should I change? A fresh, unambiguous notes.select result is required. "
+                         "Provide record IDs or clarify the target; this request does not guess another target. "
+                         "No action was taken on this target; earlier verified actions are preserved.")
 
 
 class ModelTools:
-    """Tek mantıksal model oturumunu güvenilir kullanıcı ve araç listesine bağla.
+    """Connect single logic model session to trusted list of users and tools.
 
-    core, principal, session_id ve allowed_tools güvenilir host tarafından seçilir;
-    model payload'ından alınmaz. Yeniden bağlantı aynı session_id'yi korumalıdır.
-    Bu nesne core'un sahibi değildir; oluşturmaz veya kapatmaz.
+    core, principal, session_id and allowed_tools are chosen by the trusted host;
+    It is not taken from the model payload. Reconnection should maintain the same session_id.
+    This object does not own the core; does not create or close.
     """
 
     def __init__(self, core: TaskManager, *, principal: str, session_id: str,
@@ -117,11 +117,11 @@ class ModelTools:
         self._fresh_selections: set[str] = set()
 
     def begin_turn(self, text: str) -> None:
-        """Yeni kullanıcı turunda eski seçimi bırak; çağrı replay kimlikleri kalır.
+        """Drop old selection in new user turn; call replay IDs remain.
 
-        Metin burada yorumlanmaz. Hedef ve tekli/çoklu kapsam modelin kayıtlı
-        notes.select isteğinden gelir; eski bir liste veya seçim yeni turda
-        yazma kanıtı olamaz. Sesin ara transkriptleri bu turu yeniden başlatmaz.
+        The text is not interpreted here. The target and scope model single/multiple are registered
+        Comes from notes.select request; an old list or selection is in the new round
+        There can be no proof of writing. Intermediate transcripts of the audio do not restart this round.
         """
         self._user_text = text
         self._memory_decision_id = None
@@ -135,15 +135,15 @@ class ModelTools:
         self._clock_reads.clear()
 
     def observe_input(self, text: str) -> None:
-        """Live transkriptini hedefleri sıfırlamadan güncelle; model metni kaynak olamaz."""
+        """Update Live transcript without resetting targets; Model text cannot be a source."""
         self._user_text = text
 
     def _check_note_target(self, name: str, arguments: object) -> None:
-        """Mutasyonu yalnız taze, belirsiz olmayan gerçek seçimle eşleştir.
+        """Match the mutation only with fresh, unambiguous true selection.
 
-        Cümle/regex eşleştirmesi yoktur. Single işlemi bir kayda, toplu mutasyon
-        tam seçilen ID kümesine bağlıdır. Core worker snapshot'ı ayrıca tekrar
-        doğrular; arada UI'ın yaptığı değişiklik eski seçimi geçersiz kılar.
+        Sentence/regex has no pairing. Single operation to a record, mass mutation
+        depends on the exact set of IDs selected. Core worker snapshot also
+        confirms; Any change made by the UI in the meantime overrides the old selection.
         """
         selection = self._selection
         if self._selection_blocked or not selection or not isinstance(arguments, dict):
@@ -161,29 +161,29 @@ class ModelTools:
             raise NoteTargetError
 
     def declarations(self) -> list[dict]:
-        """Host'un izin verdiği araç şemalarını bağımsız JSON verisi olarak ver."""
+        """Export host-permitted tool schemas as independent JSON data."""
         items = [item for item in self._core.describe_tools() if item["name"] in self._allowed]
         for item in items:
             if item['name'] == 'memory.propose':
-                # Kaynak kanıtını model belirleyemez; host mevcut girdiyle üretir.
+                # The model cannot determine provenance; The host produces with the current input.
                 for key in ('source_verified','source_quote'):
                     item['parameters']['properties'].pop(key)
                     item['parameters']['required'].remove(key)
             if item['name'] == 'memory.patch' and 'memory.propose' in self._allowed:
-                # Öğrenme açıkken yeni bilgi ekleme daima kullanıcı incelemesine gider.
+                # When learning is on, adding new information always goes to user review.
                 item['parameters']['properties']['action']['enum'].remove('append')
             if item['name'] in {'notes.update', 'notes.delete'}:
-                # Native tekli UI komutları core'da eski ID sözleşmesini korur;
-                # modelin daha dar sözleşmesinde taze snapshot zorunludur.
+                # Native single UI commands retain the old ID contract in core;
+                # In the narrower contract of the model, fresh snapshot is mandatory.
                 item['parameters']['required'].append('expected_snapshot')
         return items
 
     def submit(self, call: object) -> Task:
-        """id/name/arguments çağrısını sıraya al; kabulü başarı sayma.
+        """Queue call id/name/arguments; Don't consider acceptance as success.
 
-        Eksik/fazla alan, geçersiz JSON, görünmeyen araç veya hatalı parametre
-        reddedilir. Aynı oturum/çağrı kimliği aynı manager request_id'sini üretir;
-        içerik değişmişse manager çakışma verir, yan etkiyi tekrarlamaz.
+        Missing/extra field, invalid JSON, invisible tool or bad parameter
+        is rejected. The same session/call ID produces the same manager request_id;
+        If the content has changed, the manager gives a conflict and does not repeat the side effect.
         """
         if not isinstance(call, dict) or set(call) != {"id", "name", "arguments"}:
             raise ContractError("Expected only id, name and arguments")
@@ -192,8 +192,8 @@ class ModelTools:
             raise ContractError("Expected a model call id")
         if not isinstance(name, str) or name not in self._allowed:
             raise ContractError("Tool is not exposed to this model session")
-        # Replay seçim kontrolünden önce tanınır: silinmiş notun eski başarılı
-        # çağrısı yeniden listede bulunmayabilir. İçerik çakışmasını manager denetler.
+        # Replay is recognized before the selection check: the deleted note's old success
+        # The call may not be on the list again. Manager checks for content conflict.
         replay = call_id in self._calls.values()
         if not replay and name == 'clocks.control' and (not isinstance(call['arguments'], dict)
                 or call['arguments'].get('id') not in self._clock_ids):
@@ -216,8 +216,8 @@ class ModelTools:
         if name == 'memory.propose':
             if not isinstance(arguments, dict) or 'source_verified' in arguments:
                 raise ContractError('Memory source evidence belongs to the host')
-            # Modelin yeniden yazdığı alıntı ASR'den noktalama/ifade bakımından
-            # ayrılabilir. Kaynak sağlayıcıdan alınmaz: aynı turun gerçek girdisidir.
+            # Model rewritten quote from ASR in terms of punctuation/expression
+            # can be separated. It is not taken from the source provider: it is the actual input of the same round.
             source = self._user_text
             proof = bool(source.strip())
             if replay:
@@ -226,8 +226,8 @@ class ModelTools:
                 proof = original.get('source_verified', False)
                 source = original.get('source_quote', '')
             arguments = {**arguments, 'source_quote': source, 'source_verified': proof}
-        # Çiftin JSON kodlaması ('ab','c') ile ('a','bc') karışmasını önler.
-        # Ayrı model oturumlarında aynı sağlayıcı çağrı kimliği çakışmamalıdır.
+        # Prevents JSON encoding of the pair ('ab','c') from being confused with ('a','bc').
+        # The same provider call ID should not conflict in separate model sessions.
         key = sha256(json.dumps([self._session_id, call_id], ensure_ascii=True).encode()).hexdigest()
         task = self._core.submit(ToolRequest(
             request_id=f"model:{key}", source="desktop", principal=self._principal,
@@ -236,7 +236,7 @@ class ModelTools:
         self._calls[task.task_id] = call_id
         if not replay:
             if name == 'memory.propose':
-                # Aynı turdaki yeni öneri modelin kendi onayıyla kaydedilemez.
+                # A new suggestion in the same round cannot be saved with the model's own approval.
                 self._proposed_this_turn = True
                 self._memory_decision_id = None
             if name in ('memory.read', 'memory.decide'):
@@ -260,18 +260,18 @@ class ModelTools:
         return task
 
     def _call_id(self, task_id: str) -> str:
-        """Başka bir oturumun/UI'ın görevini okuma veya iptal etme."""
+        """Read or cancel the task of another session/UI."""
         if not isinstance(task_id, str) or task_id not in self._calls:
             raise ContractError("Task does not belong to this model session")
         return self._calls[task_id]
 
     def result(self, task_id: str, *, timeout: float = 0) -> dict:
-        """Çağrı kimliğiyle birlikte gerçek görev durumunu ve sonucunu döndür.
+        """Return the actual task status and result along with the call ID.
 
-        Bekleme süresinin dolması işlemin başarısız/iptal olduğu anlamına gelmez;
-        güncel queued/running/cancel_requested ve result=None korunur. Sağlayıcı
-        yalnız terminal durumda function response göndermelidir. Sonucu yeniden
-        okumak yeni görev göndermez. Burada ham istek/kullanıcı kimliği paylaşılmaz.
+        Expiration of the waiting period does not mean that the transaction is unsuccessful/cancelled;
+        current queued/running/cancel_requested and result=None are retained. Provider
+        Only in terminal case the function should send response. Result again
+        reading does not send new tasks. The raw request/user ID is not shared here.
         """
         call_id = self._call_id(task_id)
         try:
@@ -309,6 +309,6 @@ class ModelTools:
                 "result": task.result.to_dict() if task.result is not None else None}
 
     def cancel(self, task_id: str) -> Task:
-        """Yalnız bu oturumun görevini iptal et; çalışan işte tamamlanmayı bekle."""
+        """Just cancel this session's task; Wait for completion in the running job."""
         self._call_id(task_id)
         return self._core.cancel(task_id)

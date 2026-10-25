@@ -1,5 +1,5 @@
-/** Widget sırası/boyutu ve kompakt görünüm editörü.
- * Yerleşim tercihi tek preferences.store nesnesinde, kayıt settings.js hattındadır. */
+/** Widget order/size and compact appearance editor.
+ * The layout preference is in the single preferences.store object, the record is in the settings.js line. */
 import {store} from './preferences.js';
 import {LD} from './schema.js';
 import {sfx} from './sfx.js';

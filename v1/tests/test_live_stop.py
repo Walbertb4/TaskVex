@@ -1,7 +1,7 @@
-"""Live Stop kabulü ile gerçek bitişi ayrı doğrula; ağ taşıması sentetiktir.
+"""Verify actual finish separately by accepting Live Stop; network transport is synthetic.
 
-Gerçek SDK, core worker ve geçici not kaydı kullanılır. Event kapıları iptali
-tam ağ/araç beklemesinde gönderir; kullanıcı hesabı veya donanım kullanılmaz.
+Real SDK, core worker and temporary annotation are used. Event gate cancellation
+sends full network/tool pending; No user accounts or hardware are used.
 """
 
 import asyncio
@@ -55,7 +55,7 @@ def test_stop_before_live_io_performs_no_provider_request(socket):
 
 @pytest.mark.parametrize("finishes_successfully", [False, True])
 def test_stop_waits_for_actual_core_completion(socket, finishes_successfully):
-    """Çalışan iş geç iptale rağmen doğrulanmış dönebilir; başarı geri alınmaz."""
+    """Employee can return job verified despite late cancellation; success cannot be undone."""
     entered, cancel_seen, release = Event(), Event(), Event()
     def handler(args, context):
         entered.set()
@@ -75,8 +75,8 @@ def test_stop_waits_for_actual_core_completion(socket, finishes_successfully):
         try:
             running = pool.submit(host.ask, "Run", "future-live", bound, request_id="tool")
             assert entered.wait(3) and host.stop("tool") and cancel_seen.wait(3)
-            assert not running.done()  # kabul edildi, fakat araç henüz durmadı
-            assert host.stop("tool")  # ikinci Stop sonuç beklemesini kesmemeli
+            assert not running.done()  # accepted, but the tool has not stopped yet
+            assert host.stop("tool")  # The second Stop should not interrupt the waiting for results
             release.set()
             report = running.result(3)
             assert report["stopped"] and not report["unknown"]

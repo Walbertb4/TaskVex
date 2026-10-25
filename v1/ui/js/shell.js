@@ -1,5 +1,5 @@
-/** Görsel masaüstü kabuğu: balonlar, saat ve başlangıç/kapanış efektleri.
- * Model, mikrofon, araç yürütme veya kalıcı veri sahibi değildir. */
+/** Visual desktop shell: balloons, clock and startup/shutdown effects.
+ * The model does not have a microphone, tool playback or persistent data. */
 import {setState,getState,getStateRevision,detachAudio} from './reactor.js';
 import {sanitizeError,emit} from './api.js';
 import {sfx} from './sfx.js';
@@ -9,8 +9,8 @@ let curStreamRole = null;
 let sayTimer = null;
 
 export function startupStatus(status) {
-  // Backend mesajı HTML olarak yorumlanmaz. Kurtarma yalnız backend'in
-  // bozuk/şema dışı ayar tanısında sunulur; sürüm/erişim hatasında görünmez.
+  // The backend message is not interpreted as HTML. Recovery only from backend
+  // Presented in the broken/out-of-scheme setting diagnosis; It does not appear in the version/access error.
   const panel = document.getElementById('nativeIssue');
   const message = document.getElementById('nativeIssueText');
   const recover = document.getElementById('recoverSettings');

@@ -1,9 +1,9 @@
-"""Yerel sistem ölçümlerinin tek sahibi: model aracı ve UI aynı örneği okur.
+"""Single owner of local system metrics: model tool and UI read the same instance.
 
-Windows'un belgeli API'leri kullanılır; yeni thread, shell komutu veya dış servis
-başlatılmaz. GPU için Windows PDH sayacı kullanılır.
-İki saniyelik ortak örnek aralığı CPU farkını hesaplar. İlk CPU
-örneği ve desteklenmeyen ölçümler None'dır; eksik veri sıfır diye sunulmaz.
+Windows' documented APIs are used; new thread, shell command or external service
+not initialized. Windows PDH counter is used for GPU.
+The two-second common sample interval calculates the CPU difference. first CPU
+instance and unsupported metrics are None; Missing data is not presented as zero.
 """
 import ctypes as c
 from ctypes import wintypes as w
@@ -22,22 +22,22 @@ from app.tools.local.network import Network
 
 
 class _Memory(c.Structure):
-    """MEMORYSTATUSEX: boyut alanı çağrıdan önce ayarlanmalıdır."""
+    """MEMORYSTATUSEX: size field must be set before the call."""
     _fields_ = [('length',w.DWORD),('load',w.DWORD)] + [(name,c.c_ulonglong) for name in
         ('total','available','page_total','page_available','virtual_total','virtual_available','extended')]
 
 
 class _Power(c.Structure):
-    """SYSTEM_POWER_STATUS: 255 bilinmeyen yüzde, 128 pil yok anlamındadır."""
+    """SYSTEM_POWER_STATUS: 255 means unknown percentage, 128 means no battery."""
     _fields_ = [(name,w.BYTE) for name in ('ac','flags','percent','saver')] + [
         ('remaining',w.DWORD),('full',w.DWORD)]
 
 
 def _read_windows() -> dict:
-    """Ham sayaçları al; aktif pencerenin belge başlığını veya tam yolunu okuma.
+    """Get raw meters; reading the document title or full path of the active window.
 
-    Her ölçüm bağımsız başarısız olabilir. Aktif uygulama yalnız executable
-    adıyla gösterilir; korumalı süreçte None kalır. Handle her durumda kapanır.
+    Each measurement may fail independently. Active application only executable
+    It is indicated by the name; None remains in the protected process. Handle closes in all cases.
     """
     if os.name != 'nt':
         return {}
@@ -89,7 +89,7 @@ def _read_windows() -> dict:
 
 
 class Telemetry:
-    """Tek önbellek/CPU referansı; UI polling görev günlüğünü sürekli büyütmez."""
+    """Single reference to cache/CPU; UI polling does not constantly grow the task log."""
     def __init__(self, *, reader=None, clock=None, gpu_reader=None, network_reader=None):
         self._reader=reader or _read_windows
         self._gpu_reader=gpu_reader or WindowsGpu()
@@ -100,14 +100,14 @@ class Telemetry:
         self._sample=None
 
     def close(self):
-        """Pencere/core kapandığında varsa yerel GPU sayaç kaynağını bırak."""
+        """Drop local GPU counter resource if any when Window/core shuts down."""
         with self._lock:
             close=getattr(self._gpu_reader,'close',None)
             if close is not None:
                 close()
 
     def snapshot(self) -> dict:
-        """En çok iki saniyede bir ölç; dönen kopya sahibin durumunu değiştiremez."""
+        """Measure every two seconds at most; The returning copy cannot change the owner's status."""
         with self._lock:
             now=self._clock()
             if self._sample is not None and now-self._sample['sampled_at']<2:
@@ -128,7 +128,7 @@ class Telemetry:
                 total=(times[1]-self._previous[1])+(times[2]-self._previous[2])
                 if total>0 and 0<=idle<=total:
                     data['cpu_percent']=round(100*(total-idle)/total,1)
-            # Başarısız örnek eski CPU referansını ve eski görünür değeri taşımaz.
+            # The failed instance does not carry the old CPU reference and the old visible value.
             self._previous=times
             for key in data:
                 if key in raw:
@@ -150,11 +150,11 @@ class Telemetry:
 
 
 def system_status(arguments: dict, context: ToolContext, *, monitor: Telemetry | None = None) -> ToolResult:
-    """Parametresiz salt okuma; model mevcut registry/policy/TaskManager'dan gelir.
+    """Read-only with no parameters; The model follows from the existing registry/policy/TaskManager.
 
-    verified örneğin okunduğunu belirtir; unavailable alanları ölçülmüş sayılmaz.
-    Anlık kaynağı okuyamama tek bir metriği None yapar; platform bilgisi bile
-    okunamazsa kontrollü hata döner. İptal edilmiş görev yeni ölçüm başlatmaz.
+    verified indicates that the sample has been read; Unavailable fields are not counted as measured.
+    Failure to read the immediate source makes a single metric None; Even platform information
+    If it cannot be read, a controlled error is returned. A canceled task does not start a new measurement.
     """
     if arguments:
         return ToolResult(task_id=context.task_id,status=TaskStatus.FAILED,

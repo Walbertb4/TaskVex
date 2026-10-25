@@ -1,8 +1,8 @@
-"""Yapılandırılmış not seçimini gerçek core ve sentetik SDK taşımasıyla sınar.
+"""Tests structured annotation selection with real core and synthetic SDK transport.
 
-Modelin doğal dili anladığı iddia edilmez; sağlayıcı açık kind/cardinality
-üretir. Gerçek kayıt/tarih, tek eşleşme, taze snapshot ve replay koruması
-üretim hattından geçer. Kullanıcı dosyası veya ücretli API kullanılmaz.
+The model is not claimed to understand natural language; provider open kind/cardinality
+produces. True recording/date, single match, fresh snapshot and replay protection
+passes through the production line. No user files or paid APIs are used.
 """
 import pytest
 
@@ -17,9 +17,9 @@ from test_live_probe import socket
 from test_live_tools import notes
 
 
-def records(core, *, second_text="Başka not", second_time: str | None = "2024-01-01T00:00:00.000Z"):
-    """En yeni not ilk sırada; depo konumu tarih seçiminin yerine geçemez."""
-    items = [{"id":"new-real-id","text":"Merhaba dünya","done":False,"created_at":"2025-02-01T00:00:00.000Z"},
+def records(core, *, second_text='Another note', second_time: str | None = "2024-01-01T00:00:00.000Z"):
+    """The newest note is first; store location cannot replace date selection."""
+    items = [{"id":"new-real-id","text":'hello world',"done":False,"created_at":"2025-02-01T00:00:00.000Z"},
              {"id":"old-real-id","text":second_text,"done":False,"created_at":second_time}]
     confirmed(core, request('notes.replace','seed-selection',{'notes':items}))
     return items
@@ -32,9 +32,9 @@ def selection(tools, selector, call_id='select'):
 
 @pytest.mark.parametrize('mode',['rest','live'])
 @pytest.mark.parametrize('selector',[
-    {'kind':'contains','text':'MERH','cardinality':'one'},
+    {'kind':'contains','text':'HELL','cardinality':'one'},
     {'kind':'latest','count':1,'cardinality':'one'},
-    {'kind':'text','text':'Merhaba dünya','cardinality':'one'},
+    {'kind':'text','text':'hello world','cardinality':'one'},
     {'kind':'ids','ids':['new-real-id'],'cardinality':'one'},
 ])
 @pytest.mark.parametrize('change',[None, {'done':True}, {'text':'Edited safely'}])
@@ -54,12 +54,12 @@ def test_structured_selectors_use_real_ids_for_all_single_mutations(mode,selecto
 @pytest.mark.parametrize('reason',['multiple','wrong_id','missing_date','tied_date','empty_match','missing_id','too_many_requested'])
 def test_ambiguous_or_invalid_selection_preserves_every_record(mode,reason,transport,socket,taskvex_home):
     with create_core() as core:
-        items=records(core,second_text='Merhaba yine' if reason=='multiple' else 'Başka not',
+        items=records(core,second_text='Hello again' if reason=='multiple' else 'Another note',
             second_time=None if reason=='missing_date' else '2025-02-01T00:00:00.000Z' if reason=='tied_date' else '2024-01-01T00:00:00.000Z')
         selector=({'kind':'latest','count':3 if reason=='too_many_requested' else 1,'cardinality':'one'}
             if reason in {'missing_date','tied_date','too_many_requested'} else
             {'kind':'ids','ids':['not-in-store'],'cardinality':'one'} if reason=='missing_id' else
-            {'kind':'contains','text':'absent' if reason=='empty_match' else 'merh','cardinality':'one'})
+            {'kind':'contains','text':'absent' if reason=='empty_match' else 'hell','cardinality':'one'})
         before=(taskvex_home/'notes.json').read_bytes();chat=TextChat(core)
         try:
             target=items[1]['id'] if reason=='wrong_id' else items[0]['id']
@@ -72,16 +72,16 @@ def test_ambiguous_or_invalid_selection_preserves_every_record(mode,reason,trans
 
 def test_ambiguous_one_cannot_be_silently_widened_to_many_or_guessed_id():
     with create_core() as core:
-        items=records(core,second_text='Merhaba yine');tools=gateway(core)
+        items=records(core,second_text='Hello again');tools=gateway(core)
         tools.begin_turn('Delete one ambiguous note')
-        first=selection(tools,{'kind':'contains','text':'merh','cardinality':'one'})
+        first=selection(tools,{'kind':'contains','text':'hell','cardinality':'one'})
         assert first['result']['data']['selection_ready'] is False
         for selector in ({'kind':'all','cardinality':'many'}, {'kind':'ids','ids':[items[0]['id']],'cardinality':'one'}):
             selection(tools,selector,selector['kind'])
             with pytest.raises(NoteTargetError):
                 tools.submit({'id':'mutation-'+selector['kind'],'name':'notes.delete',
                     'arguments':{'id':items[0]['id'],'expected_snapshot':current_snapshot()}})
-        # Yeni kullanıcı açıklaması yeni tur açar; gerçek ID ile tek hedef değişir.
+        # New user description opens new round; The only target changes with the real ID.
         tools.begin_turn('The user now explicitly chose old-real-id')
         selected=selection(tools,{'kind':'ids','ids':[items[1]['id']],'cardinality':'one'},'clarified')
         task=tools.submit({'id':'clarified-delete','name':'notes.delete','arguments':{

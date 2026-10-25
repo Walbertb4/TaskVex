@@ -1,7 +1,7 @@
-"""Gerçek Live SDK protokolünü sentetik WebSocket ile dene; dış ağ/ses yoktur.
+"""Try the real Live SDK protocol with synthetic WebSocket; There is no external network/audio.
 
-Yalnız socket taşıması taklittir. Kurulum, metin gönderimi, yanıt ayrıştırma ve
-SDK kaynak kapanışı gerçek koddan geçer. Canlı hesap gecikmesini kanıtlamaz.
+Only socket transport is an imitation. Setup, text sending, response parsing and
+SDK source closure passes through the actual code. Live account does not prove latency.
 """
 
 import asyncio
@@ -29,8 +29,8 @@ def socket(monkeypatch):
                 state.turn_open = True
 
         async def recv(self, **kwargs):
-            # Gelecekteki kullanıcı turunun sentetik içeriği idle preflight'a
-            # sızmamalı. Gerçek sunucu da bu metin gelmeden yanıt üretmez.
+            # Synthetic content of future user turn to idle preflight
+            # should not leak. The real server does not respond until this text arrives.
             head = state.frames[0] if state.frames else {}
             while not state.turn_open and not any(k in head for k in ("setupComplete", "sessionResumptionUpdate", "goAway")):
                 await asyncio.sleep(.001)
@@ -61,7 +61,7 @@ def socket(monkeypatch):
 
 
 def frame(text=None, *, complete=False, status=None, audio=False):
-    """Aynı event transkript ve ses taşıyabilir; bütün parçalar okunmalı."""
+    """The same event can carry transcript and audio; All parts must be read."""
     content: dict = {"turnComplete": complete}
     if text is not None:
         content["outputTranscription"] = {"text": text}
@@ -76,9 +76,9 @@ def frame(text=None, *, complete=False, status=None, audio=False):
 
 
 def test_live_probe_uses_audio_transcript_without_playback_or_tools(socket):
-    socket.frames = [{"setupComplete": {}}, frame("Mer", audio=True), frame("haba", complete=True)]
-    report = asyncio.run(live_probe.probe_live_text("Merhaba", "future-live"))
-    assert report["ok"] and report["text"] == "Merhaba" and report["tool_results"] == []
+    socket.frames = [{"setupComplete": {}}, frame("Hel", audio=True), frame("lo", complete=True)]
+    report = asyncio.run(live_probe.probe_live_text("Hello", "future-live"))
+    assert report["ok"] and report["text"] == "Hello" and report["tool_results"] == []
     assert report["audio_bytes_discarded"] == 6
     assert 0 <= report["first_event_ms"] <= report["elapsed_ms"]
     assert 0 <= report["first_text_ms"] <= report["elapsed_ms"]
@@ -87,15 +87,15 @@ def test_live_probe_uses_audio_transcript_without_playback_or_tools(socket):
     assert setup["setup"]["model"] == "models/future-live"
     assert setup["setup"]["generationConfig"]["responseModalities"] == ["AUDIO"]
     assert "outputAudioTranscription" in setup["setup"] and not setup["setup"].get("tools")
-    assert message == {"realtime_input": {"text": "Merhaba"}}
+    assert message == {"realtime_input": {"text": "Hello"}}
     assert "test-key" not in json.dumps(report)
 
 
 def test_live_probe_waits_for_idle_despite_intermediate_turn_complete(socket):
-    socket.frames = [{"setupComplete": {}}, frame("Bir ", complete=True, status="IN_PROGRESS"),
-                     frame("yanıt", status="IDLE")]
-    report = asyncio.run(live_probe.probe_live_text("Merhaba", "future-live"))
-    assert report["ok"] and report["text"] == "Bir yanıt" and not socket.frames
+    socket.frames = [{"setupComplete": {}}, frame("a ", complete=True, status="IN_PROGRESS"),
+                     frame('reply', status="IDLE")]
+    report = asyncio.run(live_probe.probe_live_text("Hello", "future-live"))
+    assert report["ok"] and report["text"] == 'a reply' and not socket.frames
 
 
 @pytest.mark.parametrize("payload,code", [
@@ -194,7 +194,7 @@ def test_persistent_live_error_is_not_replayed_and_next_message_is_fresh(socket)
     try:
         socket.frames = [{"setupComplete": {}}, frame("First", complete=True)]
         assert host.ask("First", "future-live")["ok"]
-        # Sonraki okumada socket hatası: aynı mesaj otomatik yeniden gönderilmez.
+        # socket error on next read: the same message is not automatically resent.
         failed = host.ask("Failed", "future-live")
         assert not failed["ok"] and socket.closed and socket.opened == 1
         socket.frames = [{"setupComplete": {}}, frame("Fresh", complete=True)]

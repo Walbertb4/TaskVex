@@ -1,1 +1,1 @@
-"""Native pencere ile core arasında dar ve doğrulanan veri taşıma sınırı."""
+"""Narrow and verified data movement limit between native window and core."""

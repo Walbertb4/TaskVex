@@ -1,7 +1,7 @@
-"""Elle onaylanmış kişisel hafızayı gerçek REST/Live SDK sınırında doğrula.
+"""Verify manually authenticated personal memory at the actual REST/Live SDK limit.
 
-Kalıcı kayıt geçici profildedir. Ağ taşıması sentetiktir; bu test gerçek modelin
-hatırlama/anlama kalitesini değil, gönderilen veriyi ve unutma sınırını kanıtlar.
+The permanent record is in the temporary profile. Network transport is synthetic; This test is of the real model
+remembering/understanding does not prove its quality, but the data sent and its forgetting limit.
 """
 import json
 

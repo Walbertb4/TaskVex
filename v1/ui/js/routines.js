@@ -1,5 +1,5 @@
 /**
- * routines.js - Yerel rutin tanımları/editörü; yürütme ve scheduler henüz yok.
+ * routines.js - Native routine definitions/editor; There is no execution and scheduler yet.
  */
 
 import { sfx } from './sfx.js';
@@ -189,13 +189,13 @@ export function saveRoutine() {
     const m = /^(\d{1,2})[:.](\d{2})$/.exec(v);
     if (!m || +m[1] > 23 || +m[2] > 59) {
       sfx.bad();
-      showRoutineError('Saat 08:00 biçiminde olmalı');
+      showRoutineError("The time must be in the format 08:00");
       return;
     }
     v = pad2(+m[1]) + ':' + m[2];
   } else if (t !== 'manual' && !v) {
     sfx.bad();
-    showRoutineError('Tetikleyici değeri boş olamaz');
+    showRoutineError("Trigger value cannot be empty");
     return;
   }
 

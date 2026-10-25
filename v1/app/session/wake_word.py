@@ -1,8 +1,8 @@
-"""Yerel sherpa-onnx anahtar sözcük algısı; model veya araç çalıştırmaz.
+"""Local sherpa-onnx keyword detection; Does not operate model or tool.
 
-16 kHz PCM yalnız bu CPU işlemine verilir; ağ, disk ses kaydı ve ikinci mikrofon
-yoktur. --setup açıkça çalıştırılırsa sabit upstream modelini indirir; uygulama
-başlangıcında sessiz indirme yapılmaz. Ağırlıklar TaskVex MIT lisansı sayılmaz.
+16 kHz PCM is given to this CPU process only; network, disk audio recording and second microphone
+There is no. If --setup is run explicitly, it will download the fixed upstream model; application
+There is no silent download at the beginning. Weights do not count towards the TaskVex MIT license.
 """
 from array import array
 from collections import deque
@@ -26,36 +26,36 @@ FILES = {
 }
 
 
-# Bu liste komut niyeti çözmez: yalnız aynı hitabın yerel ses/yazım
-# karşılıklarıdır. Tek başına X/EX, sıradan konuşmayı uyandırmamak için yoktur.
+# This list does not resolve the command intent: only the locale of the same address voice/spelling
+# are their counterparts. The X/EX alone is not meant to evoke casual conversation.
 VEX_SPELLINGS = ('Vex', 'Veks', 'Rex')
 
 
 def wake_spellings(word: str) -> tuple[str, ...]:
-    """Seçili hitabın sınırlı varyasyonları; özel isimde yalnız o isim geçerli.
+    """Limited variations of the selected address; In a proper name, only that name is valid.
 
-    Yerel KWS ve Live'ın yalnız-hitap ayrımı aynı tanımı kullanır. Benzerlik
-    tahmini veya uygulama komutu yorumlaması yapmaz; profil değerini değiştirmez.
+    Local KWS and Live's solo-address distinction use the same definition. similarity
+    does not perform prediction or execution command interpretation; It does not change the profile value.
     """
     return VEX_SPELLINGS if word.casefold() in {s.casefold() for s in VEX_SPELLINGS} else (word,)
 
 
 def is_wake_only(text: str, word: str) -> bool:
-    """Tam transkript yalnız hitapsa True; hitap ardından gelen görev korunur."""
+    """True if the full transcript addresses only; The task following the address is preserved."""
     return text.casefold().strip(' \t\r\n.!?,:') in {s.casefold() for s in wake_spellings(word)}
 
 
 class WakeAlignmentError(ValueError):
-    """Algı var fakat güvenli ses sınırı yok; paket/cihaz hatasından ayrılır."""
+    """There is perception, but there is no safe volume limit; It leaves error packet/device."""
 
 
 def model_home() -> Path:
-    """Kaynak kodundan ve credential dosyasından ayrı model cache'i."""
+    """Model cache separate from source code and credential file."""
     return get_data_home() / 'models' / 'wake'
 
 
 def setup():
-    """Sabit SHA256 ile indir; arşiv yollarını çalıştırma/serbestçe çıkartma."""
+    """Download with constant SHA256; extracting archive paths run/freely."""
     from io import BytesIO
     import tarfile
     from urllib.request import urlopen
@@ -83,12 +83,12 @@ def setup():
 
 
 class WakeWord:
-    """Bridge'in kısa kilidinde seri PCM alır; kendi thread/worker'ı yoktur."""
+    """Receives serial PCM on bridge's short lock; It does not have its own thread/worker."""
 
     def __init__(self, word: str, sensitivity: float = 50):
         if type(sensitivity) not in (int, float) or not math.isfinite(sensitivity) or not 0 <= sensitivity <= 100:
             raise ValueError('Wake sensitivity must be between 0 and 100')
-        # Yüksek duyarlılık daha düşük akustik olasılık eşiğidir; 50 eski 0.25'i korur.
+        # Higher sensitivity is a lower acoustic probability threshold; 50 retains the old 0.25.
         threshold = .45 - .004 * sensitivity
         import sherpa_onnx
         if sherpa_onnx.__version__ != '1.13.8':
@@ -100,8 +100,8 @@ class WakeWord:
             path = directory/name
             if not 0 < path.stat().st_size <= 10_000_000 or sha256(path.read_bytes()).hexdigest() != digest:
                 raise ValueError('Wake model integrity check failed; run wake setup')
-        # Veks aynı VEX fonemleridir; REX ayrı telaffuzdur. Aynı akustik
-        # diziyi iki kez eklemeyiz; bütün adaylar tek mevcut motoru kullanır.
+        # Veks are the same VEX phonemes; REX is a separate pronunciation. same acoustic
+        # we don't add the array twice; All candidates use one available engine.
         phrases = [['VEX' if part == 'VEKS' else part for part in s.upper().split()] for s in wake_spellings(word)]
         requested = {part for phrase in phrases for part in phrase}
         lexicon = {}
@@ -115,8 +115,8 @@ class WakeWord:
         tokens = {line.split()[0] for line in (directory/'tokens.txt').read_text(encoding='utf-8').splitlines() if line.split()}
         if any(phone not in tokens for phones in pronunciations for phone in phones.split()):
             raise ValueError('Wake pronunciation has unsupported tokens')
-        # C++ motoru boş keyword dosyasında process'i sonlandırır; önce
-        # doğrulanmış fonemleri bu örneğe özgü config dosyasına yaz.
+        # The C++ engine terminates the process on the empty keyword file; before
+        # Write the verified phonemes to the config file specific to this instance.
         keyword_file = directory/f'keyword-{uuid4().hex}.txt'
         keyword_file.write_text(''.join(phones + ' @WAKE\n' for phones in pronunciations), encoding='utf-8')
         try:
@@ -130,10 +130,10 @@ class WakeWord:
         self.restart()
 
     def restart(self):
-        """Ağırlıklar RAM'de kalır; her uyku yeni ID, decoder ve boş tampon alır.
+        """Weights remain in RAM; Each sleep gets new ID, decoder and empty buffer.
 
-        Eski ses/hit/sıra tekrar kullanılmaz. Aynı bridge'in seri kilidinde
-        çağrılır; modelin pahalı doğrulama/yüklemesini yeniden yapmak gerekmez.
+        The old sound/hit/sequence is not reused. In the serial lock of the same bridge
+        is called; There is no need to rebuild the expensive model verification/installation.
         """
         self._stream = self._spotter.create_stream()
         self.id = uuid4().hex
@@ -142,14 +142,14 @@ class WakeWord:
         self._recent: deque[tuple[int, bytes]] = deque(maxlen=30)
 
     def _boundary(self, result, sequence: int) -> int:
-        """Hit'i en çok 3 s yerel sesle yeniden doğrula; araç/API tekrarı değildir.
+        """Reverify hit with local audio for up to 3 s; It is not a repeat of tool/API.
 
-        1.13.8 decoder sessizlikte kendi zaman sayacını sıfırlar; Python sonucu
-        bu sıfırlamanın global ofsetini açmaz. Eski timestamps'ı global saymak
-        yerine yalnız hit anında kısa, başlangıcı bilinen bir doğrulama stream'i
-        açılır. Sözcük süresi dışındaki pay 1.5 s iç-reset eşiğinden kısadır;
-        böylece yeni hit'in önünde gizli sessizlik reset'i olamaz. Bu şart veya
-        ses sınırı doğrulanamazsa zaman uydurulmaz, Live'a ses gönderilmez.
+        1.13.8 decoder resets its time counter in silence; Python result
+        this does not turn on the global offset of the reset. Counting old timestamps as global
+        Instead, a short verification stream whose beginning is known only at the time of hit.
+        opens. The margin outside the word duration is shorter than the 1.5 s internal-reset threshold;
+        so there can't be a hidden silence reset before the new hit. This condition or
+        If the volume limit cannot be verified, the time will not be fitted and no audio will be sent to Live.
         """
         times = list(result.timestamps)
         if not times or any(not math.isfinite(t) or t < 0 for t in times) or times != sorted(times):
@@ -164,8 +164,8 @@ class WakeWord:
         samples.frombytes(b''.join(pcm for _, pcm in window))
         if sys.byteorder != 'little':
             samples.byteswap()
-        # Yeni encoder'in kısa ileri bakışını doldur; bu sıfırlar yalnız
-        # doğrulamaya aittir. Live'a aktarılmaz ve hit zamanına dahil edilmez.
+        # Fill in the short look-ahead of the new encoder; these zeros alone
+        # belongs to verification. It is not transferred to Live and is not included in the hit time.
         verify.accept_waveform(16000, [sample / 32768 for sample in samples] + [0.0] * 4800)
         while self._spotter.is_ready(verify):
             self._spotter.decode_stream(verify)
@@ -183,7 +183,7 @@ class WakeWord:
         raise WakeAlignmentError('Wake boundary could not be verified')
 
     def feed(self, sequence: int, pcm: bytes) -> bool:
-        """Tek 100 ms PCM; bozuk sıra/ses reddedilir, sessiz sınırsız kuyruk yoktur."""
+        """Single 100ms PCM; corrupt queue/voice is rejected, there is no silent unlimited queue."""
         if type(sequence) is not int or sequence != self._sequence or type(pcm) is not bytes or len(pcm) != 3200:
             raise ValueError('Invalid local wake packet')
         self._sequence += 1
@@ -199,8 +199,8 @@ class WakeWord:
                 self.start_sequence = self._boundary(result, sequence)
                 return True
         self._packets += 1
-        # shortcut: 60 s'de sınırlı stream yenilenir; sınırdaki bir sözcük
-        # kaçarsa kullanıcı tekrar söylemeli. Fiziksel kabulde bu aralık ölçülür.
+        # shortcut: limited stream refreshes in 60 s; a borderline word
+        # If it escapes, the user must say it again. This range is measured in physical acceptance.
         if self._packets >= 600:
             self._stream = self._spotter.create_stream()
             self._packets = 0

@@ -1,9 +1,9 @@
-"""Çoklu timer/stopwatch için tek RAM durum sahibi ve kayıtlı araçlar.
+"""Single RAM status for multiple timer/stopwatch owned and registered tools.
 
-Model ve native UI mutasyonları aynı registry/policy/TaskManager hattından
-geçer. Host görünüm sorgusu yalnız bu nesnenin snapshot'ını okur; her ekran
-tiki için görev açmaz. Monoton saat, Windows saat ayarı değişse de süreyi korur.
-İkinci worker/scheduler ve disk kaydı yoktur; uygulama kapanınca kayıtlar biter.
+Model and native UI mutations are from the same registry/policy/TaskManager line
+passes. The host view query reads only the snapshot of this object; every screen
+It does not open quests for tiki. Monotonic clock maintains time even if the Windows time setting changes.
+Second worker/scheduler and no disc recording; The recordings end when the application is closed.
 """
 from math import isfinite
 from threading import RLock
@@ -21,7 +21,7 @@ CREATE_SCHEMA = {
     'required': ['kind', 'start'],
 
 }
-# Aynı izinli alanlarla iki açık şema: sağlayıcıda 'not' anahtarına dayanma.
+# Two open schemes with the same allowed fields: relying on the 'not' key in the provider.
 CREATE_SCHEMA['anyOf'] = [
     {'type': 'object', 'additionalProperties': False,
      'properties': {**CREATE_SCHEMA['properties'], 'kind': {'enum': ['timer']}},
@@ -43,11 +43,11 @@ LIST_SCHEMA = {'type': 'object', 'additionalProperties': False}
 
 
 class Clocks:
-    """Bootstrap ve native bridge'e aynı örnek enjekte edilir.
+    """The same sample is injected into Bootstrap and native bridge.
 
-    Kilit, worker mutasyonunu host'un salt görünüm okumasıyla yarıştırmaz.
-    Her nesne UUID, tür, etiket, süre, birikmiş zaman ve başlangıç anını tutar.
-    UI'ya dahili saat referansı değil, bağımsız hesaplanmış görünüm gönderilir.
+    The lock does not compete with the worker mutation with the host's view-only reading.
+    Each object holds UUID, type, tag, duration, accumulated time, and start instant.
+    The standalone computed view, not the internal clock reference, is sent to the UI.
     """
 
     def __init__(self):
@@ -56,11 +56,11 @@ class Clocks:
         self._revision = 0
 
     def snapshot(self) -> dict:
-        """Güncel süreleri tek anda örnekle; dolmuş timer'ı bir kez finished yap.
+        """Sample current times at once; Finish the minibus timer once.
 
-        Sample, geç gelen eski UI okumasının daha yeni durumu ezmesini önler.
-        Zaman aşımı doğal bir saat geçişidir; model komutu veya yan etki replay'i
-        değildir. Alarmın sesi mevcut UI sahibinde, id/generation başına tektir.
+        Sample prevents a late-arriving old UI read from overwhelming the newer state.
+        Timeout is a natural clock transition; model command or side effect replay
+        It is not. The sound of the alarm is unique per the current UI owner, id/generation.
         """
         with self._lock:
             now = monotonic()
@@ -83,11 +83,11 @@ class Clocks:
             error=ToolError(code=code, message=message))
 
     def create(self, arguments: dict, context: ToolContext) -> ToolResult:
-        """Yeni bağımsız kayıt oluştur; aynı etiket eski kaydı ezmez.
+        """Create new independent record; the same label won't crush the old record.
 
-        start=True hemen başlatır; False hazır bırakır. Timer için pozitif,
-        sonlu ve en çok bir yıl süre zorunludur; stopwatch süre almaz.
-        Registry dışında doğrudan çağrıda da biçim ve iptal kontrol edilir.
+        start=True starts immediately; False leaves ready. Positive for Timer,
+        finite and mandatory for a maximum period of one year; stopwatch does not take time.
+        Apart from the registry, format and cancellation are also checked in a direct call.
         """
         kind, start = arguments.get('kind'), arguments.get('start')
         duration = arguments.get('duration_seconds')
@@ -111,13 +111,13 @@ class Clocks:
             return self._result(clock_id, context)
 
     def control(self, arguments: dict, context: ToolContext) -> ToolResult:
-        """Gerçek ID'yi başlat/devam ettir, duraklat veya sıfırla.
+        """Pause, pause or reset real ID start/resume.
 
-        start çalışan kaydı sıfırlamaz; pause+start kaldığı yerden devamdır.
-        Biten timer yeniden başlatılırsa yeni generation olur. Reset timer'ın
-        ayarlı süresini korur; optional duration_seconds yalnız timer resetinde
-        mevcut Set düğmesinin süre ayarını değiştirir. Stopwatch sıfıra döner. Geç Stop tamamlanmış
-        değişikliği geri almaz. İsimle veya sıra tahminiyle hedef seçilmez.
+        start does not reset the running record; pause+start continues where it left off.
+        If the expired timer is restarted, a new generation occurs. Reset timer
+        maintains the set time; optional duration_seconds only on timer reset
+        Changes the time setting of the current Set button. Stopwatch returns to zero. Late Stop completed
+        does not undo the change. A target is not selected by name or by guessing the order.
         """
         if (not {'id', 'action'} <= set(arguments) <= {'id', 'action', 'duration_seconds'} or not isinstance(arguments.get('id'), str)
                 or arguments.get('action') not in ('start', 'pause', 'reset')):
@@ -152,10 +152,10 @@ class Clocks:
             return self._result(item['id'], context)
 
     def delete(self, arguments: dict, context: ToolContext) -> ToolResult:
-        """Yalnız UI’ın gerçek ID hedefini sil; sonucu aynı RAM sahibinden doğrula.
+        """Just delete the real ID target of the UI; verify the result from the same RAM owner.
 
-        TaskManager tekrar koruması ve clocks kilidi kullanılır. İptal mutasyondan
-        önce kontrol edilir; bitmiş silme geç Stop ile geri alınmış sayılmaz.
+        TaskManager replay protection and clocks lock are used. from aborted mutation
+        is checked first; The finished deletion is not considered undone by late Stop.
         """
         clock_id = arguments.get('id')
         if set(arguments) != {'id'} or not isinstance(clock_id, str) or not clock_id.strip():
@@ -172,14 +172,14 @@ class Clocks:
                 data={**snapshot, 'deleted_id':clock_id}, evidence={'in_memory':True, 'read_back':True})
 
     def _result(self, clock_id: str, context: ToolContext) -> ToolResult:
-        """Değişikliği tek sahibinden geri oku; JSON kopyası dışarıda değiştirilemez."""
+        """Read the change back from the sole owner; The JSON copy cannot be modified externally."""
         snapshot = self.snapshot()
         clock = next(c for c in snapshot['clocks'] if c['id'] == clock_id)
         return ToolResult(task_id=context.task_id, status=TaskStatus.SUCCEEDED, verified=True,
             data={**snapshot, 'clock': clock}, evidence={'in_memory': True, 'read_back': True})
 
     def list(self, arguments: dict, context: ToolContext) -> ToolResult:
-        """Model için kayıtlı salt okunur araç; host görünümü aynı snapshot'ı kullanır."""
+        """Read-only tool registered for the model; The host view uses the same snapshot."""
         if arguments:
             return self._error(context, 'invalid_arguments', 'Clock list accepts no arguments')
         if context.cancel_event.is_set():

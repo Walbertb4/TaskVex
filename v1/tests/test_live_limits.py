@@ -1,7 +1,7 @@
-"""Live olay sessizliği ile toplam süreyi hızlı sentetik zamanlarla ayırır.
+"""Live separates the total time with fast synthetic times with event silence.
 
-Gerçek SDK/socket fixture'ı kullanılır; saniyeler yalnız bu testlerde küçültülür.
-Timeout hiçbir mesajı/yan etkiyi tekrar etmez; geçerli araç kanıtını korur.
+The actual SDK/socket fixture is used; Seconds are only reduced in these tests.
+Timeout does not repeat any message/side effects; Maintains valid tool evidence.
 """
 import asyncio
 
@@ -45,7 +45,7 @@ def test_events_can_continue_past_idle_duration_but_total_limit_still_applies(so
 def test_feed_distinguishes_normal_close_from_invalid_input():
     host=PersistentLive()
     assert host.input('old',0,bytes(3200))=={'ok':False,'closed':True,'failed':False}
-    # Yalnız kuyruk sözleşmesini dene; I/O thread veya API açılmaz.
+    # Try the tail-only contract; I/O thread or API will not be opened.
     from threading import Event
     host._pending=('current',Event())
     host._input=LiveInput();host._input.ready=True

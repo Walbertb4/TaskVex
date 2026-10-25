@@ -1,0 +1,86 @@
+{
+  "step": "6.2.5a current Windows media session read-only integration",
+  "status": "implemented; automated/native checks passed; manual acceptance pending",
+  "previous_step": {
+    "id": "6.2.3b",
+    "commit": "9c607bb",
+    "user_acceptance": "tests successful",
+    "pushed": false
+  },
+  "ownership": "one Media instance from main to core and NativeBridge; media.status -> ModelTools/registry/policy/TaskManager with explicit media.read; query_media polls same snapshot without journal tasks",
+  "source": "Windows GSMTC current session, not every app/tab/audio stream",
+  "scope": [
+    "reported title/artist/playback state",
+    "two-second shared sample cache",
+    "two-second async read wait",
+    "three-second UI polling from existing app tick",
+    "ten-second stale cleanup",
+    "no playback controls or audio capture"
+  ],
+  "dependencies": {
+    "packages": [
+      "winrt-runtime",
+      "winrt-Windows.Foundation",
+      "winrt-Windows.Media",
+      "winrt-Windows.Media.Control"
+    ],
+    "version": "3.2.1",
+    "project_markers": "Windows only",
+    "lock_updated": true,
+    "pip_check": "No broken requirements found",
+    "upstream_license": "MIT; docs/THIRD_PARTY_NOTES.md"
+  },
+  "validation": {
+    "media_domain_tests": 18,
+    "targeted_pytest": 138,
+    "full_pytest": 1172,
+    "full_pytest_seconds": 128.92,
+    "browser_groups": 16,
+    "javascript_suites": 9,
+    "native_phases": 10,
+    "pyright_errors": 0,
+    "diff_check": true
+  },
+  "initial_failures": [
+    "Pyright found nullable SDK media properties; explicit None handling added.",
+    "Browser test selected all data-m buttons including timer presets; selector narrowed to the media widget.",
+    "First full Python run: 4 failed / 1168 passed; explicit catalog expectations had not yet added media.status. Expectations updated while preserving note-consent gates; 138 targeted and final full run passed.",
+    "First native run failed in chat because synthetic REST transport asserted the old catalog. Media startup checks had passed. Explicit fixture updated; rerun passed all 10 phases."
+  ],
+  "first_native_report": "media-read-native-first-run.json",
+  "native_report": "media-read-native.json",
+  "covered": [
+    "copy/cache/clear missing metadata",
+    "bounded text and safe textContent",
+    "no_session vs unsupported/timeout/source loss",
+    "native session replacement during async read",
+    "COM init/uninit balance and no forced apartment switch",
+    "explicit read capability and cancel-before-read",
+    "UI/model same snapshot and no polling journal entries",
+    "stale/out-of-order/malformed browser sample handling",
+    "read-only disabled controls",
+    "native temporary-profile media metadata rendering"
+  ],
+  "real_windows_check": {
+    "status": "available",
+    "state": "paused",
+    "title_present": true,
+    "artist_present": true,
+    "actual_title_or_artist_recorded": false,
+    "playback_mutation": false
+  },
+  "limits": [
+    "Only applications reporting a Windows current media session are visible",
+    "The OS-selected session is not all audible output or a requested browser tab",
+    "No play/pause/previous/next tools yet; 6.2.5b is planned separately",
+    "No real-account/paid API, actual player control or older/different hardware acceptance",
+    "Model-requested media read results may be stored in the existing task journal; background UI polling does not do this"
+  ],
+  "manual_test": [
+    "Restart the app; play/pause media in the source app and check title/artist/state in Media",
+    "Ask Vex what is playing or whether current media is paused",
+    "Buttons remain disabled until the next control step"
+  ],
+  "commit": false,
+  "push": false
+}

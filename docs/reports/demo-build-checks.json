@@ -1,0 +1,46 @@
+{
+  "ok": true,
+  "archive": "v1\\dist\\TaskVexDemo-Windows-x64.zip",
+  "bytes": 41580798,
+  "sha256": "f43323ae43c433c2ba6d22ebcd271a26c9a5623254f50d66a2287e296532b417",
+  "bundle_smoke": {
+    "ok": true,
+    "frozen": true,
+    "wake_runtime": "1.13.8",
+    "winrt_import": true,
+    "ui_ready": true,
+    "styles_loaded": true,
+    "no_provider_connected": true
+  },
+  "relocated_unicode_path_minimal_environment": {
+    "ok": true,
+    "frozen": true,
+    "wake_runtime": "1.13.8",
+    "winrt_import": true,
+    "ui_ready": true,
+    "styles_loaded": true,
+    "no_provider_connected": true
+  },
+  "excluded_private_data_and_tests": true,
+  "limits": [
+    "Same Windows x64 PC; no clean VM or other hardware tested",
+    "No real Gemini API, microphone, wake-model download or frozen restart acceptance",
+    "Requires .NET Framework 4.8 and WebView2; unsigned executable",
+    "Wake weights excluded because redistribution license is unconfirmed"
+  ],
+  "additional_checks": {
+    "native_bridge_and_instance_lock_pytest": "92 passed in 9.76s",
+    "compileall_tools": "passed",
+    "pip_check": "No broken requirements found",
+    "pyright_tools_and_main_with_venv": "0 errors, 0 warnings",
+    "git_diff_check": "passed"
+  },
+  "initial_check_failures": [
+    "Direct .venv pyright executable absent; npx used instead",
+    "Initial npx default interpreter reported missing imports; resolved with --pythonpath .venv/Scripts/python.exe",
+    "importlib.metadata license path stub required explicit Path(str(...)); corrected before final type check"
+  ],
+  "source_language": "English; functional Unicode normalization retained",
+  "final_english_error_message_rebuild": true,
+  "final_relocation_path": "Different directory containing spaces; the preceding build also passed a non-ASCII directory check"
+}

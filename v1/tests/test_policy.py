@@ -1,7 +1,7 @@
-"""Policy kararlarını ve gerçek TaskManager izin noktasını yan etkisiz doğrular.
+"""It verifies policy decisions and the actual TaskManager permission point without any side effects.
 
-Buradaki notes/system handler'ları yalnız test fonksiyonlarıdır. Not dosyası,
-donanım, UI veya hesap kullanılmaz; reddedilen iş handler'a hiç ulaşmamalıdır.
+The notes/system handlers here are test functions only. note file,
+no hardware, UI or accounting used; The rejected job should never reach the handler.
 """
 
 from dataclasses import FrozenInstanceError, replace
@@ -16,14 +16,14 @@ from app.tasks.manager import TaskManager
 
 
 def spec(name="notes.list", capabilities=("notes.read",), handler=lambda a, c: None):
-    """Sadece izin testine gereken geçerli araç bildirimini oluştur."""
-    return ToolSpec(name=name, description="Policy test aracı",
+    """Only create the valid tool notification required for the permit test."""
+    return ToolSpec(name=name, description='Policy testing tool',
                     input_schema={"type": "object"}, handler=handler,
                     required_capabilities=cast(Any, capabilities))
 
 
 def request(tool="notes.list", **changes):
-    """Güvenilir masaüstü isteğini kopyalayarak olumsuz sınır durumlarını kur."""
+    """Set up negative limit cases by copying the trusted desktop request."""
     return replace(ToolRequest(request_id="p1", source="desktop", principal="local-user",
                                tool=tool), **changes)
 
@@ -99,7 +99,7 @@ def test_invalid_callback_objects_are_denied(req, tool):
 
 
 def test_task_manager_enforces_policy_before_handler_and_preserves_replays():
-    """İzinli iş bir kez çalışır; reddedilen işten sonra kuyruk devam eder."""
+    """A furlough job works once; The queue continues after the rejected job."""
     calls = []
 
     def handler(arguments, context):

@@ -1,368 +1,346 @@
-# TaskVex — Güncel mimari
+# TaskVex — Current architecture
 
-Bu belge mevcut tasarımın rehberidir; günlük veya değişiklik kaydı değildir.
-İlerleme [PLAN.md](PLAN.md), değişiklikler [CHANGELOG.md](CHANGELOG.md), çalışan
-komutlar [docs/COMMANDS.md](COMMANDS.md), köprü sözleşmesi
-[docs/UI_BACKEND_CONTRACT.md](UI_BACKEND_CONTRACT.md) içindedir.
-Eski tasarım/kabul notları docs/eski altındadır ve güncel talimat sayılmaz.
+This is a design and ownership guide, not a development diary. Current work is
+tracked in [PLAN.md](PLAN.md), changes in [CHANGELOG.md](CHANGELOG.md), working
+commands in [COMMANDS.md](COMMANDS.md), and the active bridge contract in
+[UI_BACKEND_CONTRACT.md](UI_BACKEND_CONTRACT.md). Historical translations under
+`docs/archive` do not override these documents.
 
-## Ürün ve sınır
+## Product boundary
 
-Windows’ta tek yerel kullanıcı için masaüstü asistanı. Vanilla HTML/CSS/JS UI,
-PyWebView2 host ve Python core bulunur. Ana konuşma yolu Gemini Live’dır.
-REST adaptörü test ve gelecekteki farklı kanallar için korunur. Yerel UI tek
-başına tarayıcıda açılabilir; bu mod native araç yetkisi kazandırmaz.
+A Windows desktop assistant for one local user, with a vanilla HTML/CSS/JavaScript
+UI, a PyWebView/WebView2 host and a Python core. Gemini Live is the main desktop
+conversation path. A REST adapter remains for development and future channels.
+Opening the UI in an ordinary browser does not grant native tool permissions.
 
-## Ana akış
+## Shared execution path
 
 ```mermaid
 flowchart LR
-  U[Kullanıcı / UI] --> B[NativeBridge]
-  B --> C[TextChat / tek sohbet kilidi]
-  C --> L[PersistentLive veya REST]
+  U[User / UI] --> B[NativeBridge]
+  B --> C[TextChat / single conversation lock]
+  C --> L[PersistentLive or REST]
   L --> M[ModelTools]
-  M --> R[ToolRegistry + şema]
+  M --> R[ToolRegistry and schema]
   R --> P[Policy]
-  P --> T[TaskManager / tek worker]
-  T --> D[Alan aracı ve tek durum sahibi]
-  D --> V[Doğrulanmış sonuç]
+  P --> T[TaskManager / single worker]
+  T --> D[Domain tool and single state owner]
+  D --> V[Verified result]
   V --> L
-  L --> A[İstek kimlikli metin / PCM]
+  L --> A[Request-scoped text / PCM]
   A --> U
 ```
 
-Model doğal dili yapılandırılmış araç çağrısına çevirir; kendisi kod/işletim
-sistemi yürütücüsü değildir. Cümle regex’i veya uygulamaya özel niyet router’ı
-kurulmaz. Yerel wake-word, Mic On/Off ve Stop dil yorumlama değildir; kendi
-yaşam döngüsü sahibinde kalır.
+The model selects structured tool calls; it is not an arbitrary code or operating-
+system executor. There is no phrase/regex intent router. Local wake detection,
+microphone On/Off and Stop remain local lifecycle operations.
 
-## Modüller ve tek sahiplik
+## Owners
 
-| Sorumluluk | Tek sahip / sınır |
+| Responsibility | Owner and boundary |
 |---|---|
-| Host/pencere/süreç | v1/app/main.py; kontrollü başlangıç, restart ve kapanış |
-| UI başlangıcı/snapshot | ui/js/app.js; modülleri bağlar, ikinci alan state’i tutmaz |
-| Sohbet/mikrofon/uyku/Stop | ui/js/assistant_session.js; bağlı istek ve ses kimlikleri birlikte tutulur |
-| Görsel kabuk | ui/js/shell.js; balon, saat ve açılış efektleri; model çalıştırmaz |
-| Tercih nesnesi | ui/js/preferences.js; settings.js doğrular/kaydeder; layout.js ve devices.js aynı nesneyi kullanır |
-| Native API sınırı | app/bridge/webview_bridge.py; sürümlü veri, hazır durumu ve kısa kilit |
-| Model turu/bellek | app/session/text_chat.py; tek tur kilidi, ConversationMemory |
-| Gemini token kullanımı | app/session/gemini.py; tek uygulama sayacı TextChat ömründe, adaptörler kullanım verisi iletir; UI toplamaz |
-| Live bağlantısı | app/session/live_session.py; tek I/O loop/socket sahibi; scope, resume ve GoAway |
-| Araç kataloğu/parametre | app/session/tool_registry.py; açık kayıt, JSON schema; otomatik plugin import yok |
-| Yetki | app/policy/engine.py; yerel kullanıcı ve desktop kaynağı için açık izin |
-| Yürütme/replay/iptal | app/tasks/manager.py; tek worker ve request_id kaydı; storage/task_journal.py kalıcı SQLite deposu |
-| Kullanıcı hafızası | app/tools/local/personal_memory.py; aynı settings.json profili, taze snapshot ve paylaşılan kısa depo kilidi |
-| Not | app/tools/local/notes.py; ID/tarih/seçim/snapshot ve tek dosya yazımı |
-| Timer/stopwatch | app/tools/local/clocks.py; süreç RAM’i, monoton saat; UI/model aynı nesne |
-| Sistem ölçümleri | app/tools/local/telemetry.py: Telemetry; main aynı örneği core ve bridge’e verir, UI system_view.js yalnız görünümü yeniler |
-| Sır | app/storage/credentials.py; Windows Credentials; UI store/JSON/yedekte anahtar yok |
-| Dosya kayıt | app/storage/json_store.py; schema envelope, atomik replace ve bozuk kaydı koruma |
+| Native host, process, restart and shutdown | `v1/app/main.py` |
+| UI startup and snapshots | `ui/js/app.js`; connects modules without a second domain state |
+| Conversation, microphone, sleep and Stop | `ui/js/assistant_session.js`; request and audio IDs stay together |
+| Visual shell and startup effects | `ui/js/shell.js`; does not execute model actions |
+| Preference object | `ui/js/preferences.js`; settings/devices/layout share it |
+| Native boundary | `app/bridge/webview_bridge.py`; versioned data, readiness and short locks |
+| Model turns and conversation context | `app/session/text_chat.py`; one turn lock and ConversationMemory |
+| Gemini usage accounting | `app/session/gemini.py`; one application-session counter, adapters report usage |
+| Live socket and I/O loop | `app/session/live_session.py`; connection scope, resume and GoAway |
+| Tool catalog and parameter schemas | `app/session/tool_registry.py`; explicit registration, no automatic plugin imports |
+| Permissions | `app/policy/engine.py`; explicit local-user/desktop capability checks |
+| Queue, cancellation and replay | `app/tasks/manager.py`; one worker and request-ID records |
+| Persistent task records | `app/storage/task_journal.py`; SQLite journal |
+| Personal memory | `app/tools/local/personal_memory.py`; shared settings store and short storage lock |
+| Notes | `app/tools/local/notes.py`; stable IDs, dates, selection snapshots and atomic writes |
+| Timers and stopwatches | `app/tools/local/clocks.py`; shared process-memory state and monotonic time |
+| Current media metadata | `app/tools/local/media.py`; same Media instance in core/bridge; media_view.js renders it |
+| System/network measurements | `app/tools/local/telemetry.py`; same Telemetry instance in core/bridge |
+| Credentials | `app/storage/credentials.py`; Windows Credential Manager, no key in UI snapshots/backups |
+| JSON persistence | `app/storage/json_store.py`; schema envelope, atomic replacement, corrupt-file preservation |
 
-settings.js içindeki cihaz/layout re-export’ları mevcut çağıranları kırmadan aynı
-uygulamaya ulaşır; ikinci implementasyon veya ikinci tercih nesnesi değildir.
-assistant_session.js içindeki ses/uyku/tur durumu kasıtlı olarak birlikte kalır;
-sırf satır azaltmak için paylaşılan durumu kopyalayan alt yöneticiler oluşturulmaz.
+The settings.js compatibility re-exports reach the same implementation and
+preference object. The combined audio/sleep/turn state intentionally stays in its
+lifecycle owner. A large file is split at responsibility boundaries, not merely
+to reduce its line count.
 
-## Core sözleşmesi
+## Requests and verified results
 
-- ToolRequest: request_id, source, principal, tool, JSON arguments.
-- Registry aynı ismi sessiz ezmez; tür/ek alan/sonlu sayı denetimini yapar.
-- Policy yalnız izinli principal/source/tool/capability birleşimini kabul eder.
-- TaskManager queued/running/cancel_requested/succeeded/failed/cancelled/unknown
-  durumlarını ayırır. İptal kabulü bitiş değildir; handler öncesi ve sonrası sonuç
-  doğru raporlanır. Doğrulanmış yan etkiyi Stop geri almış sayamaz.
-- Aynı kimlik+aynı içerik mevcut sonucu verir; farklı içerik çakışmadır.
-  Native core bu kaydı tasks/tasks.sqlite3 içinde kalıcı tutar. Aynı kimlik tekrar
-  handler çalıştırmaz; kayıt eski sonucun kanıtıdır, güncel ölçüm/nesne değildir.
-- Parametreler ve sonuçlar JSON sınırında kopyalanır; sırlar/ham exception loglanmaz.
-- Kalıcı core'da capacity=256 RAM kayıt/aktif iş sınırıdır; terminal kayıtların RAM
-  kopyaları gerektiğinde çıkarılır. Eski get/wait/cancel/replay disk indeksinden
-  sonuç verir. 256 aktif iş doluysa yenisi reddedilir; disk geçmişi silinmez.
-  Günlüksüz TaskManager yalnız izole test/gömülü kullanım içindir; eski toplam
-  kapasite sınırını korur, restart garantisi vermez.
-- Kabul, handler öncesi RUNNING ve terminal sonuç ayrı FULL SQLite transaction'larıdır.
-  Restart'ta QUEUED iptal olur, RUNNING/CANCEL_REQUESTED unknown olur; hiçbiri otomatik
-  çalıştırılmaz. Herhangi bir unknown yeni işleri profil genelinde engeller.
-  Günlük yazma/okuma hatası yeni handler'ları durdurur. Araç bitişi doğrulanmışsa
-  geç disk hatası o gerçek sonucu geri almaz; restart kaydı unknown kalabilir.
+ToolRequest contains request_id, source, principal, tool and JSON arguments.
+Registry rejects duplicate names and invalid types, extra fields and non-finite
+numbers. Policy admits only explicit principal/source/tool/capability combinations.
+Parameters and results cross a copied JSON boundary; secrets and raw exceptions
+are not logged.
 
-## Alan kuralları
+TaskManager distinguishes queued, running, cancel_requested, succeeded, failed,
+cancelled and unknown. Cancellation acceptance is not completion. A completed,
+verified side effect is not rolled back by Stop or a late result.
 
-### Notlar
+The same request ID and payload retrieve the existing result; a changed payload
+is a conflict. A historical successful result proves that old operation, not the
+current external state. Persistent core stores records in `tasks/tasks.sqlite3`.
+The 256-record limit bounds active work and cached RAM records, not lifetime disk
+history. Terminal records can leave RAM while get/wait/cancel/replay consult the
+disk index. At 256 active requests, new work is rejected. Journal-free managers
+are for isolated tests/embedding and retain their older total-capacity limit.
 
-İlk yerel not aktarımı kullanıcı tarafından onaylanmadan model not araçları açılmaz.
-Gerçek UUID ve oluşturulma zamanı korunur; eski tarihsiz kayıt için tarih uydurulmaz.
-Model değişiklikten önce aynı turda notes.select çağırır. Tekli belirsizlikte işlem
-yoktur; latest/all/contains/ids seçimi yapılandırılmıştır. Toplu silme/tamamlama tam
-ID kümesi+expected_snapshot ve tek atomik commit kullanır. UI backend’den yenilenir;
-ikinci note_add/save geri beslemesi üretilmez.
+Acceptance, pre-handler RUNNING and terminal results are separate SQLite FULL
+transactions. Recovery cancels QUEUED records and marks RUNNING/CANCEL_REQUESTED
+unknown, without automatically executing them. Any unknown record blocks new
+tools profile-wide. Journal read/write failures stop new handlers. A verified
+domain operation remains real if a later journal write fails; restart may still
+see an unknown outcome. There is no generic external exactly-once guarantee.
 
-### Sayaçlar
+## Domain rules
 
-Clocks aynı örnek olarak bootstrap ve bridge’e verilir. create/list/control model
-kataloğundadır; delete yalnız UI’a açıktır. UI mutasyonları da registry/policy/
-TaskManager hattından geçer. 500 ms görünüm sorgusu aynı snapshot’ı okur, her tik
-TaskManager kaydı açmaz. Pause süreyi korur; reset durdurur; native köprü kaybı eski
-tarayıcı motorunu tekrar açmaz. Sayaçlar uygulama kapanınca kaybolur.
+### Notes
 
-Bitiş bildirimi id/generation ile doğrulanır; mevcut TextChat/Live/ses hattında
-araçsız turdur. Yeni scheduler/TTS/bağlantı sahibi yoktur. Meşgulken bekler,
-uyurken konuşmaz; Stop/bağlantı değişimi eski pending olayları düşürür. Başarısız
-veya durdurulmuş bildirim otomatik tekrarlanmaz. UI alarmı OS alarmı değildir.
+Model note tools remain closed until the initial browser-note transfer is approved.
+Real UUIDs and known creation times are preserved; old undated notes do not receive
+invented dates. Before a model mutation, notes.select must produce a fresh result
+in the same turn. Ambiguous single targets require clarification. Structured
+latest/all/contains/ids selection supplies real IDs and expected_snapshot. Batch
+deletion/completion uses one atomic write. Backend snapshots refresh the UI without
+a second note_add/save mutation.
 
-### Ses, uyku ve hafıza
+### Timers and stopwatches
 
-Tek AudioWorklet akışı 16 kHz mono PCM girişini üretir; live_audio 24 kHz çıktıyı
-aynı istek kimliğinde oynatır. VAD aday/eşik, ön tampon ve sınırlı kuyruklar aynı
-mikrofon sahibindedir. Mic Off yalnız girişi keser; Mute çıktıyı susturur; Stop
-turu durdurur. Geç PCM/transkript yeni mesaja taşınmaz; unknown kontrolleri kilitler.
+Clocks is shared by bootstrap and bridge. The model exposes create/list/control;
+deletion is UI-only. UI mutations also use registry/policy/TaskManager. The 500 ms
+display query reads the owner without journaling every tick. Pause preserves
+elapsed time; reset stops. Loss of the native bridge does not reactivate a second
+browser clock engine. Clocks do not survive application exit.
 
-replyVolume (0–1, varsayılan 1) aynı live_audio PCM oynatıcısının GainNode
-kazancıdır. Live/REST sesleri ve konuşulan timer bildirimi paylaşır; SFX vol
-ayrıdır. Değişiklik mevcut sesi kesmeden uygulanır; Mute yalnız çıkışı sıfırlar,
-kaldırılınca seçili seviyeye döner. Tercih aynı settings save/snapshot/yedek/reset
-yolundadır; model oturumu veya mikrofon ayarı değildir.
+Completion notifications are verified by ID/generation and use the existing
+TextChat/Live/audio path in a tool-free turn. There is no second scheduler, TTS
+engine or connection owner. Notifications wait while busy and are not spoken while
+asleep. Stop, connection changes, deletion or restart invalidate stale notifications.
+Failed/stopped announcements are not automatically repeated. This is not an OS alarm.
 
-Uyku isteği model aracıyla kabul edilir, Vex’in yanıt/ses bitişinden sonra mevcut
-host tarafından uygulanır. Tek seferlik uyku ve her etkileşimden sonra tekrar
-uyuyan kalıcı kip ayrıdır. Idle sleep ayrı 0–300 s tercihidir. Uyurken PCM yerel
-KWS’ye gider; Google’a sıradan ortam sesi yollanmaz. Wake hit’i ses sınırı ve UI
-buffer’ı doğrulandıktan sonra kabul edilir. KWS sözcük/duyarlılık kapsamı değişince
-cache yeniden kurulur; eski hit ve PCM tekrar kullanılmaz.
+### Audio, sleep and conversation context
 
-Geçici hafıza TextChat RAM’indedir: 12 tur / 16.000 JSON karakteri / taraf başına
-2.000 karakter; eski turlar bırakılır, otomatik özet API’si yoktur. Stop/Disconnect
-belleği korur; kapanış/anahtar değişimi temizler. New Chat UI düğmesi yoktur;
-internal new_chat reset endpoint'i test/gelecek kanal uyumluluğunda korunur.
+One AudioWorklet produces 16 kHz mono input. live_audio plays 24 kHz output under
+the matching request ID. Speech thresholds, the prebuffer and bounded queues belong
+to the same microphone owner. Mic Off stops input only; Mute silences output; Stop
+ends the turn. Late PCM/transcripts never migrate to a new request. Unknown outcomes
+keep relevant controls locked.
 
-Kalıcı kullanıcı bağlamı settings.json/prof.pMem metnidir; tek
-tercih sahibi/depo korunur. prof.pMemory varsayılan false açık gönderim tercihidir;
-eski pMem metni kendiliğinden modele gitmez. Kullanıcı Personalization'da
-metni görür/düzeltir/temizler ve mevcut Save profile yoluyla kaydeder. Ayrı DB veya öğrenme servisi yoktur. Kullanıcının öğrenme/kayıt tercihine uymayan model çıktısı
-kalıcı kullanıcı bilgisi sayılmaz; profil araç yetkisi vermez.
+replyVolume is the existing PCM player's GainNode gain (0–1, default 1), shared
+by Live/REST speech and timer announcements. Effects volume is separate. Changing
+gain does not interrupt playback; unmuting restores the selected level. The setting
+uses normal settings snapshot/save/backup/reset and does not change microphone or
+model-session identity.
 
-memory.read ve memory.patch yalnız açık gönderim tercihi etkinse REST/Live
-kataloğundadır; timer bildirimleri araçsız kalır. Açık kullanıcı isteği model
-üzerinden aynı ModelTools → registry/policy → TaskManager hattına gider.
-Her mutasyondan önce aynı turda taze memory.read gerekir. append ekler;
-replace/forget tam ve tekil metni hedefler; clear açık tümünü unut isteğidir.
-Snapshot aradaki metin/izin değişimini reddeder; belirsiz hedefte tahmin yoktur.
-Ortak ayar şeması app/storage/settings.py içindedir; alan aracı UI köprüsüne
-bağımlı değildir. Native main aynı JsonStore örneğini core ve bridge'e verir;
-UI save/reset ve hafıza read/modify/write bu örneğin RLock kilidini paylaşır.
-Kilit ağ turu veya core beklemesi boyunca tutulmaz. Eski UI memoryBase'i
-hafızayı ezemez; çakışma görünür ret verir, otomatik merge/retry yoktur.
-Model turu bittikten sonra bridge güncel profili diskten yanıt zarfına ekler;
-UI aynı loadStore yoluyla, outbound save üretmeden güncellenir. Eski replay
-sonucu güncel profilin yerine yazılmaz. Başarılı işlem Stop ile geri alınmaz;
-yazma sonrası readback hatası unknown olur. Görev günlüğü hafıza metnini
-saklayabilir; forget bu geçmişi temizlemez.
+The model requests sleep through a tool; the host applies it after Vex's response
+and playback finish. One-time sleep differs from return-to-sleep after each
+interaction. Idle sleep is a separate 0–300 second preference. While asleep, local
+wake processing does not stream ambient audio to the provider. Local wake spelling
+variants and microphone calibration are not a general natural-language action parser.
+Connection/Stop/scope changes must preserve existing request and cleanup rules.
 
-prof.pLearn varsayılan false öneri tercihidir; yalnız pMemory ile birlikte
-memory.propose kataloğunu açar. Ayrı çıkarım modeli veya arka plan taraması yoktur.
-Aynı konuşma modeli açık birinci kişi bilgisini aday olarak seçer; üçüncü kişi,
-alıntı, şaka, varsayım, geçici durum, sır ve hassas bilgi dışarıda tutulur.
-Bu anlamsal eleme model talimatıdır; deterministik doğruluk iddiası değildir.
+ConversationMemory is bounded process-memory context. Session replacement can
+retain eligible logical conversation context without blindly resending interrupted
+inputs or replaying side effects. PersistentLive alone owns reconnect/resumption;
+completed and unknown tool calls retain their identities and replay protections.
 
-ModelTools aynı turun gerçek metnini/Live transkriptini kaynak olarak kendisi
-bağlar. Modelden kelimesi kelimesine alıntı istenmez; modelin yeniden yazdığı
-cümle gerçek girdi yerine kullanılamaz. Gerçek girdi yoksa kaynak uydurulmaz:
-sesli girişin ortak transkript koruması araçları durdurur; alan aracına ulaşan
-kaynaksız öneri normal failed sonucu verir. Kaynağı host'un bağlaması adayın
-anlamsal doğruluğunu ispatlamaz.
-Yeni bilgi ekleme, öneri modu açıkken ModelTools'ta memory.patch append yolundan
-geçemez; açık hatırla isteği de öneri oluşturur. Düzeltme/unutma mevcut açık
-komut akışını korur; öneri modu kapalıyken önceki araç sözleşmesi sürer.
+### Personal memory and proposals
 
-İnceleme kipinde PersonalMemory en fazla bir aday RAM'de tutar (1000 karakter; kaynak alıntısı
-20.000; aynı kullanıcı mesajı sınırı). Yeni aday eski ID'yi geçersiz kılar. Aday profil/yedek değildir;
-yürütme günlüğü öneri isteğini/sonucunu yine saklayabilir. Restart aday onayı
-sayılmaz; aday RAM'den kaybolur. memory.decide öğrenme açıkken model kataloğundadır;
-yalnız sonraki kullanıcı turunda taze memory.read ile alınan gerçek bekleyen ID
-kullanılabilir. Aynı turda öneri oluşturulmuşsa yeniden read bile onay açmaz;
-boş kaynak girdi ve eski ID reddedilir. Kullanıcının Save/Dismiss düğmesi aynı
-registry/policy/TaskManager hattına gider. Onay metni UI'dan alınmaz; alan
-sahibindeki gerçek aday ve güncel izin/snapshot kontrol edilir. Save mevcut
-append/readback iş mantığını kullanır; ret profil dosyasını değiştirmez.
-prof.pMemoryConfirm eksik/eski kayıtta true'dur: onay gerekiyorsa öneri
-sohbetin altındaki dört kontrolün sağında ayrı Save/Dismiss grubunda görünür;
-Personalization açılmaz. Vex mevcut yanıt/ses hattında doğal bir soru sorar.
-Sonraki açık kullanıcı kararı memory.read → memory.decide ile aynı adaya gider.
-Belirsiz veya ilgisiz yanıt onay sayılmamalıdır; anlamsal ayrım model sorumluluğudur.
-Kullanıcı checkbox'ı false olarak kaydederse memory.propose yeni bilgiyi aynı
-_apply append/readback üzerinden doğrudan tek profile yazar. Model auto-save
-tercihini değiştiremez veya kendi önerisini aynı turda onaylayamaz. Onay tercihi snapshot'ın parçasıdır; tur
-ortasında değişen tercih eski okumayı geçersiz kılar. memory.propose bu nedenle
-memory.write yetkisi ister. Doğrudan kayıtta yeni öneri penceresi açılmaz ve
-backend profili aynı mevcut snapshot yoluyla editöre yansır.
-Sonuç doğrulanmazsa otomatik tekrar/merge yoktur; belirsiz kararda yeni model
-isteği ve karar kontrolleri engellenir. Onaylanan bilgi tek profilden UI'a
-yansır; taslak korunur ve ikinci save üretilmez. Sesli/metinli karar ve düğmeler
-aynı alan sahibini kullanır; sormadan kayıt tercihi yalnız UI'dan seçilir.
-Doğrulanmış karar sonucu decided_id taşır; geç sonuç yeni adayı gizleyemez.
+Saved personal context is opt-in. `model_instruction` embeds enabled context as
+JSON data, not instructions or permissions. REST, Live and timer turns use the
+same profile snapshot. TextChat checks the enabled-memory fingerprint on the next
+turn and drops old Live/RAM context when it changes; unconfirmed cleanup blocks a
+new turn. Active replies are not interrupted solely to update a profile. Forgetting
+does not erase earlier provider requests, visible messages, backups or task history.
 
-Ortak model_instruction yalnız opt-in metnini JSON veri olarak talimata ekler;
-REST/Live/timer aynı profil snapshot'ını kullanır. TextChat değişen etkin hafıza
-parmak izini sonraki turda kontrol eder; eski Live socket ve RAM geçmişini
-bırakır. Kapanış doğrulanmazsa yeni tur başlatılmaz. Aktif yanıt kesilmez;
-unutma geçmiş sağlayıcı istekleri, görünen mesajlar, yedekler veya disk geçmişini
-silme iddiası değildir. Yerel metin/gönderim tercihi restart'ta korunur.
+With learning enabled, the model may propose clear durable self-reported facts.
+Third parties, quotations, jokes, temporary/hypothetical states, secrets and sensitive
+facts are excluded by model instruction, not a deterministic semantic guarantee.
+ModelTools attaches the real current text/transcript as source; model-rewritten
+quotations are not evidence. Missing real input is never invented. The shared
+transcript gate blocks tools when appropriate; a source-less domain proposal fails.
+When proposal mode is enabled, even explicit additions use memory.propose rather
+than memory.patch append. Explicit correction/forgetting retain their normal path.
 
-Live ses karakteri conn.voice tercihidir; pLang/pIns talimatından ayrıdır.
-catalog.py Google'un belgelenmiş 30 hazır Live sesinin tek izinli listesidir;
-model keşfi hâlâ API'dendir, ses listesi API sorgusu gibi sunulmaz. Legacy/boş
-ses tercihi Puck'a düşer. Native giriş aynı kayıttan dil/talimat/ses snapshot'ı
-alır; Live metin/PCM/timer yanıtı bunu aynı TextChat/PersistentLive hattına taşır.
-speech_config seçili sesi setup'a koyar. Ses değişimi connection identity'yi
-değiştirir; önceki resume handle/araç çağrı haritası yeni sese taşınmaz, aktif
-turun snapshot'ı değişmez. Mevcut REST TTS sesi bu tercihe bağlı değildir.
+Review mode holds at most one pending candidate in RAM: 1,000 characters, with
+source bounded by the 20,000-character input limit. A new candidate invalidates
+the old ID. Restart is not approval and loses the pending RAM candidate. Candidates
+are not profile/backup data, though task history can retain requests and results.
+memory.decide requires a fresh memory.read and the real pending ID in a later user
+turn; another read in the proposal's own turn cannot self-approve it.
 
-## Veri ve kalıcılık
+prof.pMemoryConfirm defaults to true. Separate Save/Dismiss controls appear beside
+conversation controls, not inside Personalization. Vex asks naturally through the
+existing response/audio path. A later explicit unambiguous spoken/typed decision
+uses memory.read -> memory.decide. Ambiguous replies are not consent; semantic
+interpretation remains a model responsibility. Buttons use the same registry,
+policy and TaskManager path, not UI-supplied approval text.
 
-TASKVEX_HOME veya %LOCALAPPDATA%/TaskVex. Kaynak kodu/kullanıcı verisi ayrıdır.
-settings.json izinli tercihleri, notes.json backend notları tutar; API anahtarı
-Windows credential deposundadır. Skill/rutin tanımları şimdilik localStorage’dadır;
-bunların generic save ile backend’e yazıldığı varsayılmaz. İçe aktarma önce tüm
-kaydı doğrular; hatalı veri canlı/kalıcı durumu zehirlemez. Eski jarvis_ui yalnız
-geçişte okunur, yeni yazımlar taskvex_ui anahtarına gider.
+If the user disables confirmation, memory.propose uses the existing append/readback
+logic to save directly to the single profile. Only the UI can select this preference;
+the model cannot enable auto-save or approve its own same-turn proposal. The
+preference belongs to the snapshot, so changing it invalidates an old read.
+memory.propose therefore requires memory.write. Save verifies persistence/readback;
+dismiss does not change the profile. Failed or unknown outcomes do not trigger an
+automatic retry/merge. Late decided_id results cannot hide a newer candidate.
+UI profile refresh preserves drafts and never starts a second save cycle.
 
-JSON atomik replace tek süreçte bozulmayı önler. Native main, veri kökü için
-SingleInstance OS dosya kilidini core/pencere ömrü boyunca tutar; aynı kökte ikinci
-uygulama açılmaz. Crash handle kilidini bırakır; restart kilit bırakıldıktan sonra
-başlatılır. Ayrı veri profilleri bağımsızdır. Doğrudan core/script kullananlar bu
-host kilidini atlamamalıdır; JsonStore kendi başına süreç kilidi sağlamaz.
-Kalıcı core ayrıca tasks/instance.lock ile günlük/core sahipliğini korur; doğrudan
-create_core kullanan script de aynı profilin ikinci worker'ını açamaz. Normal
-kapanış worker bitmeden kilidi bırakmaz. SQLite dosyası bozuk/yeni sürümlüyse
-başlangıç durur; otomatik boşaltma/kurtarma yoktur.
+### Live voices
 
-Günlük yerel, şifrelenmemiş istek/sonuç geçmişidir; silinen notun eski metni burada
-kalabilir. Anahtar saklama aracı değildir ve JSON yedeğine dahil değildir. Disk
-geçmişi süresiz saklanır; açılış doğrulaması geçmişle büyür, RAM'e tümü yüklenmez.
-Günlük ile alan verisi/dış işlem tek transaction değildir: belirsizlikte tekrar
-etmemek, genel bir exactly-once dış servis garantisi vermez. Unknown uzlaştırma
-arayüzü henüz yoktur; restart tek başına kilidi temizlemez. Günlük dosyalarını
-silmek tekrar korumasını kaldırır ve kurtarma yöntemi değildir. Testler geçici
-veri kökü ve sentetik taşıma kullanır.
+conn.voice is separate from pLang/pIns. catalog.py contains one allowlist of
+Google's 30 documented preset Live voices; it is not an API-discovered voice list.
+Model discovery still uses the API. Empty/legacy voice preferences fall back to
+Puck. Native input snapshots language/instructions/voice together; Live text,
+microphone and timer replies use the same TextChat/PersistentLive path.
+speech_config sets the selected voice. A voice change changes connection identity,
+invalidating old resumption handles/call maps without changing an active turn's
+snapshot. The separate REST TTS voice is not controlled by this preference.
 
-## Hedef L0 ve dört GUI katmanı — henüz uygulanmadı
+## Data and persistence
 
-- L0: API/yerel araç/plugin yeteneği. Google Drive/Calendar/Mail ve mesaj gönderme
-  sağlayıcı adaptörleridir; her servis için yeni mimari katman açılmaz.
-- L1: bağlama bağlı doğrulanmış hedef/reçete belleği.
-- L2: varsa DOM/CDP ile hedef çözümleme.
-- L3: Windows erişilebilirlik/UIA ağacıyla hedef çözümleme.
-- L4: sınırlı bütçeyle vision/ekran hedef çözümleme.
+Source runs use TASKVEX_HOME or `%LOCALAPPDATA%/TaskVex`. settings.json stores
+allowed preferences; notes.json stores backend notes. Credentials use Windows
+Credential Manager. Skill/routine definitions currently use localStorage, not
+generic backend save. Import validates the whole candidate before application.
+Legacy jarvis_ui is read only for migration; new browser writes use taskvex_ui.
 
-Resolver yalnız hedef/yöntem önerir. Yürütme, izin, sonuç doğrulama ve belirsizlik
-aynı core hattındadır. Telegram/Discord giriş kanalıdır; doğrudan sınırsız yürütme
-veya yeni kullanıcı yetkisi değildir. Harici içerik/talimat ayrımı, riskli eylem
-onayı, taint takibi ve kanala göre principal yetkileri dış entegrasyonlardan önce
-uygulanmalıdır; bugün bunların tamamı varmış gibi davranılmaz.
+Atomic JSON replacement protects single-process writes. Native SingleInstance
+holds an OS file lock for the profile throughout window/core lifetime; restart
+launches only after it is released. A crash releases the OS handle. Different
+profiles are independent. JsonStore alone is not a process lock. Persistent core
+also holds tasks/instance.lock, preventing direct create_core scripts from opening
+a second worker for that profile. Shutdown keeps the lock until the worker ends.
+Corrupt/future-version journals stop startup without silent reset or recovery.
 
-## Bugün uygulanmayanlar
+The local journal is unencrypted and can retain deleted note text and personal
+proposal/source data. It is not secret storage and is excluded from JSON backup.
+Disk history is retained indefinitely; validation cost grows with it, while RAM
+does not load every record. Domain writes and journal writes are not one atomic
+transaction. Unknown reconciliation has no UI yet; restart does not clear it.
+Deleting the journal removes replay protection and is not a recovery procedure.
+Tests use temporary profiles and synthetic transports.
 
-Google/konum/hava/media/kamera/sistem sesi/dosya ekleme;
-base instruction override/greeting; skill/rutin backend yürütme ve
-scheduler; GUI L1–L4 ve dış mesaj kanalları. Yerel tanımlar ve mevcut kullanıcı
-metni korunur; yürütücüsü olmayan kontroller açıkça planlı/disabled görünür.
+## Local system measurements
 
-## Lisans ve bakım
+Telemetry owns the two-second cache and CPU baseline. Windows GetSystemTimes,
+GlobalMemoryStatusEx, GetSystemPowerStatus and foreground-process queries supply
+CPU/RAM/battery/process data; shutil.disk_usage supplies runtime-volume occupancy,
+not disk throughput. Only the foreground executable name leaves the adapter;
+document/window titles and full paths are not collected. Initial/reset CPU samples
+and systems beyond the supported 64-logical-processor scope return None.
 
-TaskVex özgün katkıları MIT. Referans repo otomatik import edilmez; üçüncü taraf
-hakları THIRD_PARTY_NOTES.md içinde korunur. Değişiklikler CHANGELOG.md’ye yazılır.
-Güvenlik/iptal/doğrulama kontrolleri debloat gerekçesiyle çıkarılmaz. Yeni modül
-sorumluluk sınırı için açılır; satır sayısı tek başına bölme sebebi değildir.
+system.status uses system.read through the normal model tool path. query_system
+reads the same owner without adding a journal task. The existing one-second UI
+tick starts nonoverlapping queries at least three seconds apart. No second sampler
+thread/timer/state exists. Failure or twelve-second staleness clears readings.
+Model offline status does not invalidate local CPU/RAM measurements.
 
+### GPU
 
-## Yerel sistem örnekleri
+windows_gpu.py reads GPU Engine counters through Windows PDH, using
+PdhAddEnglishCounterW independently of OS display language. It does not run vendor
+commands, open Task Manager or add a sampler/package. One WindowsGpu belongs to
+Telemetry; query handles close on errors/shutdown, with a finalizer fallback.
+First collection establishes a baseline; a recreated query warms up again.
 
-Telemetry, iki saniyelik cache ve CPU sayaç referansının tek sahibidir.
-Windows GetSystemTimes, GlobalMemoryStatusEx, GetSystemPowerStatus ve foreground
-process sorgusu; disk için standart shutil.disk_usage kullanılır. Disk uygulamanın
-Python çalışma biriminin doluluğudur, disk I/O hızı değildir. GPU kullanımı
-aynı Telemetry sahibindeki Windows PDH adaptöründen gelir; CPU/GPU sıcaklığı
-için destekli sistem kaynağı henüz yoktur. CPU ilk örnekte, sayaç resetinde veya 64 üstü mantıksal işlemci
-kapsamında None döner; desteklenmeyen veri uydurulmaz.
+Process counters are summed per adapter/physical engine. An adapter's reported
+utilization is its busiest engine; the dashboard shows the busiest adapter, not
+the sum of unrelated engines/cards. gpu_devices IDs are OS counter identities,
+not product names or Task Manager GPU 0/1 ordering. Process IDs are not exported.
+Intel/AMD/NVIDIA adapters work when Windows exposes suitable WDDM counters; there
+is no universal old-driver/hardware guarantee. Temperature and VRAM capacity remain
+unavailable. CPU temperature is not inferred from GPU/ACPI values. Sampling and
+adapter choice can differ from Task Manager.
 
-Model system.status aracı registry/policy/TaskManager'dan aynı snapshot'ı okur.
-Native query_system yalnız aynı sahibin salt snapshot sorgusudur; clock görünümü
-gibi polling için görev günlüğü yazmaz. UI mevcut bir saniyelik app tick'iyle
-istekleri en az üç saniye aralıklı başlatır, üst üste istek açmaz; ayrı sampler
-thread/timer veya ikinci veri sahibi yoktur. Başarısız/12 saniye eski görünüm
-silinir; model offline olması yerel CPU/RAM'ı geçersizleştirmez.
-Aktif süreç yalnız exe adıyla çıkar: belge/pencere başlığı ve tam dosya yolu okunmaz.
+### Physical network traffic and quality
 
+network.py adapts GetIfTable2. One Network inside Telemetry owns prior RX/TX
+samples and uses the same two-second lock/cache. Select physical, non-filter,
+non-endpoint, non-loopback, non-tunnel interfaces. Divide 64-bit active-interface
+byte deltas by elapsed time; interface changes/counter resets establish a new
+baseline. First speed is None; unchanged counters produce real zero. FreeMibTable
+releases allocated tables in finally. Source failure does not invalidate CPU/RAM/GPU.
 
-### Windows GPU adaptörü
+Outputs contain link kind/status, Wi-Fi connected status and RX/TX bytes per second;
+the UI converts rates to Mbps. No SSID, IP/MAC, profile/interface name is exported.
+Traffic is not a speed test, link capacity or proof of internet access. VPN/virtual
+counters are excluded to prevent double counting, so virtual-only setups are outside
+complete physical-traffic coverage. Model/API status is not local-link status.
 
-app/tools/local/windows_gpu.py, PDH DLL üzerinden GPU Engine performans
-sayaçlarını okur; üretici aracı, alt süreç, ek thread veya paket kullanmaz.
-İngilizce sayaç yolu PdhAddEnglishCounterW ile yerelleştirmeden bağımsızdır.
-Tek WindowsGpu nesnesi Telemetry'ye aittir; açık query handle'ı kapanışta
-bırakılır. Kısa ömürlü core'lar için nesne sonlandırıcısı da kaynağı bırakır.
-İlk toplama referanstır; sonraki örnek yüzde üretir. Ortak iki saniyelik cache
-UI/model arasında paylaşılır. Hata sorguyu kapatır; yeni sorgu tekrar ısınır.
+network_quality.py is a bounded Win32 adapter; Network owns its ten-second cache
+under the Telemetry lock. Physical-interface/route changes refresh quality early.
+The lowest-metric active physical IPv4 default route selects a local gateway.
+One small IcmpSendEcho waits at most 250 ms; there is no DNS, arbitrary target,
+public-server probe or scan. The shared measurement lock can wait during this
+probe. Timeout is not proof of internet failure. VPN-only/IPv6-only gateways are
+outside this scope.
 
-Aynı adaptör/fiziksel motorun süreç sayaçları toplanır. Kartın kullanımı en yoğun
-motorudur; tek dashboard barı adaptörlerin en yüksek yüzdesini gösterir. Farklı
-motorlar/kartlar toplanmaz. gpu_devices OS adaptör kimliği ve yüzde içerir;
-bu kimlikler Görev Yöneticisi GPU 0/1 sıralaması veya ürün adı değildir.
-Süreç kimlikleri dışarı aktarılmaz. UI etiketi sabit GPU'dur, yüzde barla aynıdır.
+Wi-Fi uses WlanQueryInterface realtime_connection_quality, without sensitive
+current_connection/BSS/scan fallbacks or location permission. Read at most 16
+connected physical Wi-Fi adapters; report the lowest quality for multiple adapters,
+or None if a required query fails. Zero quality is valid. Output contains only
+milliseconds/percentage, status and monotonic sample time, not route addresses,
+GUID/index or SSID/MAC. Query polling can trigger the bounded gateway probe but
+does not journal every sample. WLAN clients/buffers and ICMP handles close in finally.
+API transport latency is not derived from local traffic or total reply time.
 
-Windows'un ilgili WDDM sayaçlarını sunduğu Intel/AMD/NVIDIA dahil adaptörlerde
-çalışır; eski veya sayaç sunmayan sistem için evrensel destek iddiası yoktur.
-Bu kaynak sıcaklık veya VRAM kapasitesi vermez. Bu alanlar —/None kalır;
-GPU veya ACPI sıcaklığı CPU sıcaklığına dönüştürülmez. Task Manager penceresi
-okunmaz/açılmaz; Windows performans altyapısı kullanılır. Örnekleme aralığı
-ve seçilen GPU farklı olduğunda sayılar Task Manager'la birebir eşzamanlı değildir.
+### Current Windows media metadata
 
+main gives the same Media instance to create_core and NativeBridge. media.status
+uses media.read and the shared model execution path; query_media reads the same
+snapshot without growing the task journal. Model reads can journal title/artist.
 
-### Pasif yerel ağ ölçümleri
+Read Windows GSMTC's current session, not every application/tab or raw speaker
+output. Metadata is title/artist/playback state published by the source app; no
+album art, window title, tab URL, file path or microphone capture is collected.
+Treat metadata as data, never instructions. WinRT runtime/Foundation/Media/
+Media.Control projections supply API types, not a new player or model framework.
 
-network.py, Windows IP Helper GetIfTable2 adaptörü ve ağ örneğinin sahibidir. Önceki RX/TX
-örneğinin sahibi Telemetry içindeki tek Network nesnesidir; aynı iki saniyelik
-cache/kilit kullanılır. query_system UI sorgusu ve system.status model aracı
-aynı snapshot'ı okur. Yeni timer/worker/model isteği yoktur.
+The backend caller runs a temporary asyncio loop with a two-second wait bound.
+MTA initialization/uninitialization is balanced without forcing another apartment
+mode. WinRT objects do not escape into UI/state. One lock/cache shares two-second
+samples; session changes during await invalidate old results. media_view.js uses
+the existing tick, at least three seconds between nonoverlapping queries, and clears
+after ten seconds without fresh data. no_session is distinct from unsupported,
+unavailable, timeout and session_changed. Failures clear stale titles/animations.
+Playback-control tools are not registered and their UI buttons remain disabled.
 
-Tablodan donanımsal, filtre/endpoint/loopback/tünel olmayan arabirimler seçilir.
-Aktif fiziksel kartların 64 bit byte sayaç farkı örnek süresine bölünür; kart
-kümesi değişiminde veya sayaç geriye gittiğinde referans yenilenir. İlk örnekte
-hız None; sabit sayaçta sıfır gerçektir. Kayıp kaynak eski veriyi taşımaz ve
-CPU/RAM/GPU örneğini bozmaz. MIB tablo belleği finally içinde FreeMibTable ile bırakılır.
+## Target L0 and four GUI layers — planned
 
-Dönen alanlar link durumu/kind, Wi-Fi bağlılık durumu ve RX/TX byte/s'dir.
-SSID, IP/MAC veya profil/arabirim adı dışarı çıkmaz. UI Mbps'ye çevirir;
-alma/gönderme trafiği internet hız testi veya link kapasitesi değildir.
-Yerel kart up olsa da internet erişimi olmayabilir. VPN/sanal sayaçlar,
-aynı paket iki kez sayılmasın diye dahil edilmez; yalnız sanal bağlantı
-kullanan kurulumlar için bu kapsam tam trafik ölçümü değildir.
-Ping ve Wi-Fi kalite adaptörü aşağıda tanımlıdır; API taşıma gecikmesi bu
-pasif trafik sayacından üretilmez. Mevcut API/model durumu yerel link olarak yorumlanmaz.
+- L0: API/local-tool/plugin capabilities; Drive/Calendar/mail/messaging are service
+  adapters, not new architecture layers.
+- L1: context-bound verified target/procedure memory.
+- L2: DOM/CDP target resolution when available.
+- L3: Windows accessibility/UIA target resolution.
+- L4: vision/screen target resolution within a bounded budget.
 
+Resolvers propose targets/methods. Execution, permissions, verification and unknown
+outcomes remain in the core path. Telegram/Discord are input channels, not unlimited
+execution authority or new user permissions. External-content boundaries, risky-
+action approval, taint tracking and channel-specific principals must precede those
+integrations; they are not all implemented today.
 
-### Ağ kalitesi: tek örnek sahibi, sınırlandırılmış kaynaklar
+## Not implemented
 
-network_quality.py yalnız Win32 adaptörüdür; durum/10 saniyelik önbellek yine
-Network'te, Telemetry kilidinin altındadır. Yerel tablo okuması sonrası kart/rota
-anahtarı karşılaştırılır; değişince kalite sorgusu hemen yenilenir. Yeni sampler,
-thread, genel ağ yürütücüsü veya model bağlantısı yoktur.
+Google service integrations, location/weather, camera/screen inspection, system
+audio control, file attachments, base-instruction override/greetings, backend
+skill/routine execution/scheduling, GUI L1–L4 and external messaging channels.
+Media metadata is implemented; playback controls are pending. Preserve existing
+definitions/user text and clearly mark controls without executors as planned/disabled.
 
-GetIpForwardTable'dan en düşük metrikli aktif fiziksel IPv4 default route seçilir.
-IcmpSendEcho yalnız bu yerel gateway'e sabit küçük payload gönderir; DNS, kullanıcı
-URL'si, kamu sunucusu veya ağ taraması yoktur. Tek isteğin beklemesi 250 ms'dir;
-bu süre boyunca ortak örnek kilidi de bekleyebilir. ICMP timeout internet kesintisi
-kanıtı değildir. VPN-only/IPv6-only gateway bu fiziksel IPv4 kapsamın dışındadır.
+## Packaged demo host
 
-Wi-Fi kalitesi, WlanQueryInterface realtime_connection_quality opcode'u ile
-alınır. Bu kaynak konum hassas alanları içermez; current_connection/BSS/scan
-fallback yapılmaz ve konum izni açtırılmaz. OS/sürücü desteklemiyorsa veri yoktur.
-En fazla 16 bağlı fiziksel Wi-Fi kartı okunur; çoklu kartta en düşük kalite,
-eksik sorguda None gösterilir. Sıfır kalitesi geçerli bir ölçümdür.
+`v1/tools/demo_entry.py` is a frozen entry point that calls normal app.main.run,
+with the same core/bridge lifecycle. Default profile is
+`%LOCALAPPDATA%/TaskVexDemo`; an explicit TASKVEX_HOME override remains supported.
+Frozen restart launches the same EXE rather than passing Python module arguments.
+UI assets live in `_internal/ui`; user data is never bundled. build_demo.py is a
+build tool, not another application executor. Wake weights are downloaded only by
+explicit setup and are not redistributed with the demo.
 
-Sonuçta yalnız ms/yüzde, statü ve monoton örnek zamanı bulunur. Rota adresi,
-GUID/index ve SSID/MAC rapora/UI/model sonucuna taşınmaz. Query_system snapshot
-okuması bu sınırlı gateway yoklamasını başlatabilir; polling görev günlüğü yazmaz.
-Model okuması mevcut system.read yetkisiyle normal araç hattındadır. Wlan client,
-WLAN buffer ve ICMP handle yaşam döngüleri adaptörde finally ile tamamlanır.
+## Licensing and maintenance
+
+Original TaskVex work is MIT. Reference code is not imported automatically;
+third-party rights remain in THIRD_PARTY_NOTES.md. Record changes in CHANGELOG.md.
+Debloating must preserve security, cancellation and verification. Create modules
+for responsibility boundaries rather than arbitrary file-length targets.

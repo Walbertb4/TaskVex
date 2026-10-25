@@ -1,9 +1,9 @@
-"""Not ekleme/listeleme/güncelleme/silme; not dosyasının şeması burada.
+"""Add/list/update/delete notes; here is the schema of the notes file.
 
-JSON store dosya bütünlüğünü, registry giriş biçimini, policy ise izni denetler.
-Bu modül UI import etmez ve kendi worker'ını başlatmaz. Bütün mutasyonlar tek
-TaskManager üzerinden sıralanmalıdır; aynı dosyaya paralel yazar desteklenmez.
-Eski UI notları ancak host'un açık aktarım akışıyla initialize'a verilir.
+JSON store controls file integrity, registry controls entry format, and policy controls permission.
+This module does not import UI and does not start its own worker. All mutations are single
+Must be sorted via TaskManager; Parallel writes to the same file are not supported.
+Legacy UI notes are only given to initialize via the host's explicit transport stream.
 """
 
 from uuid import uuid4
@@ -98,29 +98,29 @@ REPLACE_SCHEMA = {
 
 
 def _valid_text(value) -> bool:
-    """Boş/yalnız boşluk veya aşırı uzun metinleri reddet; asıl metni değiştirme."""
+    """Empty/alone reject spaces or excessively long text; change the original text."""
     return isinstance(value, str) and bool(value.strip()) and len(value) <= MAX_NOTE_LENGTH
 
 
 def notes_snapshot(notes: list[dict]) -> str:
-    """Kimlik/içerik/tarih/durum değişimini yakalayan depo parmak izini üret.
+    """Generate the repository fingerprint that captures the change ID/content/date/status.
 
-    Gizli yetki anahtarı değildir. ModelTools taze seçimin sahibini denetler;
-    bu değer worker'da seçimden sonra verinin değişmediğini doğrular.
+    It is not a secret authorization key. ModelTools checks the owner of the fresh selection;
+    This value verifies in the worker that the data has not changed after the selection.
     """
     return sha256(json.dumps(notes, sort_keys=True, ensure_ascii=False, separators=(',', ':')).encode('utf-8')).hexdigest()
 
 
 def _fold_text(value: str) -> str:
-    """Literal metin karşılaştırması; doğal dil niyeti veya regex çözümlemez."""
+    """Literal text comparison; It does not parse natural language intent or regex."""
     return ' '.join(value.casefold().replace('i\u0307', 'i').split())
 
 
 def _valid_created_at(value) -> bool:
-    """UTC tarihini gerçek takvimle doğrula; eski kaydın bilinmeyen tarihi null olabilir.
+    """Verify UTC date with real calendar; The unknown date of the old record may be null.
 
-    Yalnız YYYY-MM-DDTHH:mm:ss.sssZ biçimi kullanılır. Gün/ay taşması ve yerel
-    saat belirsizliği kabul edilmez; kayıt okurken geçmişe yapay tarih yazılmaz.
+    Only YYYY-MM-DDTHH:mm:ss.sssZ format is used. Day/month overflow and local
+    time uncertainty is not accepted; When reading a record, no artificial history is written into the past.
     """
     if value is None:
         return True
@@ -135,31 +135,31 @@ def _valid_created_at(value) -> bool:
 
 def _error(context: ToolContext, code: str, message: str,
            status: TaskStatus = TaskStatus.FAILED) -> ToolResult:
-    """İçerik/dosya yolu sızdırmadan beklenen hatayı ortak sonuca dönüştür."""
+    """Internalerik/file Convert the expected error to the common result without leaking the path."""
     return ToolResult(task_id=context.task_id, status=status,
                       error=ToolError(code=code, message=message))
 
 
 class NotesTools:
-    """Host'un verdiği tek JsonStore üzerinde not CRUD işlemlerini yürütür.
+    """It executes not CRUD operations on the single JsonStore provided by the host.
 
-    Kalıcı biçim: {notes: [{id, text, done, created_at?}]}.
-    created_at yeni kayıtta backend'in UTC saatidir; eski kayıtta eksik/null
-    gerçek oluşturulma zamanının bilinmediği anlamına gelir.
-    id kayıt oluşturulurken üretilir ve yeniden açılışta değişmez. UI'ın eski
-    {t,d} biçimini native adaptör dönüştürür. ui_migrated işareti aktarımın
-    tamamlandığını notlarla aynı atomik dosyada tutar; ayrı işaret dosyası yoktur.
+    Persistent format: {notes: [{id, text, done, created_at?}]}.
+    created_at is the UTC time of the backend in the new record; missing/null in old record
+    This means that the actual creation time is unknown.
+    id is generated when the record is created and does not change on restart. UI is outdated
+    The native adapter converts {t,d} format. ui_migrated flag of migration
+    keeps its completion in the same atomic file as the notes; There is no separate flag file.
     """
 
     def __init__(self, store: JsonStore) -> None:
-        """Dosya yolunu host seçer; araç parametresiyle dosya yolu alınmaz."""
+        """The host chooses the file path; The file path is not taken with the tool parameter."""
         self._store = store
 
     def _load_document(self) -> dict:
-        """JSON geçerli olsa bile bozuk not kayıtlarını boş sayarak silme.
+        """Deleting corrupt note records as empty even if the JSON is valid.
 
-        Eksik dosya yeni depo demektir. Var olan dosyada notes listesi zorunlu;
-        tanınmayan alanları da üstüne yazıp kaybetmemek için açıkça reddederiz.
+        Missing file means new repository. The notes list is mandatory in the existing file;
+        We explicitly reject unrecognized areas so as not to overwrite them and lose them.
         """
         data = self._store.read()
         if data is None:
@@ -179,17 +179,17 @@ class NotesTools:
         return data
 
     def _load(self) -> list[dict]:
-        """CRUD çağıranları için doğrulanmış belgeden yalnız not listesini al."""
+        """For CRUD callers, get only the list of notes from the validated document."""
         return self._load_document()["notes"]
 
     def initialize(self, arguments: dict, context: ToolContext) -> ToolResult:
-        """notes:null ile oku; açık aktarımda eski notları bir kez ekle.
+        """read with notes:null; add old notes once in open transfer.
 
-        Eski core notları korunur; aynı metinli eski UI notları da ayrı UUID
-        alır. ui_migrated ve eklenen notlar tek replace ile yazılır. Yazma
-        sonrası doğrulama belirsizse otomatik tekrar yoktur. Yeniden açılışta
-        işaret varsa gönderilen eski liste yeniden eklenmez. Bu işaret normal
-        ekle/güncelle/sil işlemleriyle, son not silinse bile korunur.
+        Old core notes are preserved; old UI notes with same text also separate UUID
+        takes. ui_migrated and added notes are written with a single replace. writing
+        There is no auto-repeat if post-verification is unclear. On reopening
+        If there is a check, the old list sent will not be re-added. This sign is normal
+        With operations add/update/delete, the last note is preserved even if it is deleted.
         """
         incoming = arguments.get("notes")
         if (set(arguments) != {"notes"} or (incoming is not None and (
@@ -214,11 +214,11 @@ class NotesTools:
                           evidence={"store_read": True})
 
     def replace(self, arguments: dict, context: ToolContext) -> ToolResult:
-        """Açık yedek içe aktarımında tam listeyi tek atomik yazmayla değiştir.
+        """Replace full list with single atomic write in open backup import.
 
-        Kimlikler korunur; eski kimliksiz yedeğe kimliği UI adaptörü üretir.
-        Yinelenen id ve bozuk kayıtlar hiçbir yazımdan önce reddedilir. Bozuk
-        mevcut depo yine ezilmez; reset/onarım yerine geçen bir araç değildir.
+        Identities are protected; Generates ID UI adapter to old IDless replacement.
+        Duplicate id and corrupted records are rejected before any write. broken
+        The existing store will not be crushed again; The reset/repair is not a replacement.
         """
         items = arguments.get("notes")
         if (set(arguments) != {"notes"} or type(items) is not list or any(
@@ -231,7 +231,7 @@ class NotesTools:
         return self._commit(items, None, context, migrated=True)
 
     def list(self, arguments: dict, context: ToolContext) -> ToolResult:
-        """Diskteki güncel listeyi döndür; eksik depoyu okurken dosya oluşturma."""
+        """Return the current list on disk; Creating file while reading missing repository."""
         if arguments:
             return _error(context, "invalid_arguments", "Notes list accepts no arguments")
         if context.cancel_event.is_set():
@@ -244,12 +244,12 @@ class NotesTools:
                           verified=True, data={"notes": notes}, evidence={"store_read": True})
 
     def select(self, arguments: dict, context: ToolContext) -> ToolResult:
-        """Modelin yapılandırılmış ölçütünü gerçek kayıtlarda deterministik uygula.
+        """Apply the model's structured criteria deterministically on real records.
 
-        Cümle, dil veya kelime sırası yorumlanmaz. Tekli seçimde sıfır/çoklu
-        eşleşme mutasyon yetkisi üretmez; adaylar açıklama için döner. Latest
-        sıralamasında bilinmeyen tarih veya kesim sınırındaki eşitlik tahminle
-        çözülmez. Snapshot, seçimden sonra değişmiş dosyaya işlem yapılmasını önler.
+        Sentence, language or word order is not interpreted. zero/multiple in single selection
+        mating does not produce mutation authority; candidates return for clarification. Latest
+        Unknown date in the ranking or equality at the cutoff limit is guessed
+        does not dissolve. Snapshot prevents action on the file that has changed after selection.
         """
         kind, cardinality = arguments.get('kind'), arguments.get('cardinality')
         fields = {'ids': {'ids'}, 'text': {'text'}, 'contains': {'text'}, 'latest': {'count'}, 'all': set()}
@@ -295,11 +295,11 @@ class NotesTools:
                   'snapshot': notes_snapshot(notes)}, evidence={'store_read': True})
 
     def add(self, arguments: dict, context: ToolContext) -> ToolResult:
-        """Notu kaydet ve geri okuyarak doğrula; kayıt sonrası belirsizlikte dur.
+        """Save the note and verify by reading it back; Stay in limbo after registration.
 
-        Yazmadan önce iptal edilirse dosyaya dokunulmaz. Yazma bittikten sonraki
-        geç iptal gerçek kaydı geri almış sayılmaz. Kayıt yapılmışken tekrar
-        okuma başarısızsa FAILED değil UNKNOWN döner; otomatik tekrar yapılmaz.
+        If canceled before writing, the file will remain untouched. After writing is finished
+        Late cancellation will not be deemed to revoke the actual registration. Again while recording
+        If the read is unsuccessful, UNKNOWN is returned, not FAILED; There is no automatic repeat.
         """
         if set(arguments) != {"text"} or not _valid_text(arguments["text"]):
             return _error(context, "invalid_arguments", "Expected non-blank note text")
@@ -315,11 +315,11 @@ class NotesTools:
         return self._commit(updated, note, context)
 
     def update(self, arguments: dict, context: ToolContext) -> ToolResult:
-        """Sabit id ile metni ve/veya tamamlanma durumunu değiştir.
+        """Replace text and/or completion status with fixed id.
 
-        Eksik alan korunur; done=False notu yeniden açar. Metin eşitliği ya da
-        liste sırası hedef seçmez, böylece aynı metinli iki not karışmaz. Hedef
-        yoksa yeni not yaratılmaz; not_found döner ve dosyaya dokunulmaz.
+        The missing area is preserved; done=False reopens the note. text equality or
+        The list order does not select targets, so two notes with the same text will not get mixed up. target
+        Otherwise, no new note will be created; not_found is returned and the file is left untouched.
         """
         if (not self._valid_target(arguments)
                 or not set(arguments) <= {"id", "text", "done", "expected_snapshot"}
@@ -343,10 +343,10 @@ class NotesTools:
         return self._commit(updated, note, context)
 
     def delete(self, arguments: dict, context: ToolContext) -> ToolResult:
-        """Yalnız verilen id'yi sil; aynı metinli diğer notları olduğu gibi koru.
+        """Just delete the given id; keep other notes with the same text intact.
 
-        Bulunamayan hedef hata verir. Aynı request_id'nin tekrarını TaskManager
-        mevcut oturumda önler; bu handler kendi kendine tekrar deneme yapmaz.
+        A target not found gives an error. Duplicate the same request_id in TaskManager
+        prevents in the current session; This handler does not retry on its own.
         """
         if not self._valid_target(arguments) or not set(arguments) <= {"id", "expected_snapshot"}:
             return _error(context, "invalid_arguments", "Expected a note id")
@@ -365,11 +365,11 @@ class NotesTools:
         return self._commit(updated, note, context)
 
     def delete_many(self, arguments: dict, context: ToolContext) -> ToolResult:
-        """Tam ID kümesini tek yazıyla sil; eksik/stale hedefte hiçbirini silme.
+        """Delete full ID set with single text; missing/stale delete none on target.
 
-        Her kayıt için ayrı görev/silme döngüsü kurulmaz. Aynı _commit iptal,
-        atomik dosya değişimi ve geri okumayı uygular. Geç Stop tamamlanan
-        silmeyi geri almaz; doğrulama kaybı UNKNOWN olarak korunur.
+        A separate task/delete loop is not established for each record. Same _commit cancel,
+        It implements atomic file replacement and readback. Late Stop completed
+        does not undo deletion; Authentication loss is preserved as UNKNOWN.
         """
         ids = arguments.get('ids')
         if (set(arguments) != {'ids', 'expected_snapshot'} or type(ids) is not list or not ids
@@ -392,11 +392,11 @@ class NotesTools:
         return result
 
     def complete_many(self, arguments: dict, context: ToolContext) -> ToolResult:
-        """Seçilen tam grupta yalnız done değiştir; metin/kimlik/tarih korunur.
+        """Change only done in the selected full group; text/identity/date is protected.
 
-        done=True tamamlar, False yeniden açar. Eksik ID veya değişmiş snapshot
-        varsa hiçbir kayıt yazılmaz. Tek _commit toplu silmeyle aynı atomik
-        yazı, geç iptal ve belirsiz geri okuma kurallarını uygular.
+        done=True completes, False reopens. Missing ID or changed snapshot
+        If there is, no record is written. Same atomicity as single _commit bulk delete
+        applies writing, late cancellation and indefinite readback rules.
         """
         ids = arguments.get('ids')
         if (set(arguments) != {'ids', 'expected_snapshot', 'done'} or type(ids) is not list or not ids
@@ -423,22 +423,22 @@ class NotesTools:
 
     @staticmethod
     def _valid_target(arguments: dict) -> bool:
-        """Registry dışında doğrudan çağrıda da boş/yanlış kimliği reddet."""
+        """Also reject ID is empty/wrong in direct call outside registry."""
         return isinstance(arguments.get("id"), str) and bool(arguments["id"].strip())
 
     def _commit(self, updated: list[dict], note: dict | None, context: ToolContext,
                 *, migrated: bool = False) -> ToolResult:
-        """Bütün not mutasyonlarında aynı iptal/yazma/geri okuma sözleşmesini uygula.
+        """Apply the same cancel/write/re-read contract to all note mutations.
 
-        Başarıdaki note, ekleme/güncellemede yeni kayıt; silmede silinen kayıttır.
-        note=None toplu aktarım/restore/silme içindir; doğrulanmış tam listeyi döndürür.
-        Geri okuma başarısızsa yazılmış veri geri alınmaz ve UNKNOWN döner.
+        Note on success, new record on adding/updating; It is the record deleted in deletion.
+        note=None is for batch transfer/restore/delete; Returns the fully verified list.
+        If readback fails, the written data is not retrieved and UNKNOWN is returned.
         """
         if context.cancel_event.is_set():
             return ToolResult(task_id=context.task_id, status=TaskStatus.CANCELLED)
         try:
-            # Aktarım işareti metadata'dır; sıradan CRUD onu düşürürse eski UI
-            # önbelleği yeniden açılışta ikinci kez eklenebilir. Aynen koru.
+            # The transfer token is metadata; old UI if ordinary CRUD drops it
+            # cache can be added a second time on reboot. Keep it the same.
             document = {**self._load_document(), "notes": updated}
             if migrated:
                 document["ui_migrated"] = True

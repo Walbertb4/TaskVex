@@ -1,1 +1,1 @@
-"""Core verisini sürümlü dosyalarda saklayan, UI'dan bağımsız kayıt katmanı."""
+"""UI-independent recording layer that stores Core data in versioned files."""

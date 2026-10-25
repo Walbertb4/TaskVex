@@ -1,8 +1,8 @@
-"""REST ve Live için kaydedilmiş dil/kişisel tercihlerden ortak talimat üretir.
+"""Generates common instructions from saved language/personal preferences for REST and Live.
 
-Bu modül modele davranış tarif eder; araç izni veya yürütme yetkisi vermez.
-Dil/talimat ve yalnız açıkça etkinleştirilen kullanıcı hafızası sağlayıcıya gider.
-Kısayol ve diğer legacy profil alanları kendiliğinden modele aktarılmaz.
+This module describes the behavior of the model; It does not grant tool permission or execution authority.
+Dil/instruction and only user memory that is explicitly enabled goes to the provider.
+Shortcut and other legacy profile fields are not automatically transferred to the model.
 """
 import json
 
@@ -11,10 +11,10 @@ from app.session.model_tools import NOTE_TARGET_INSTRUCTION
 
 
 def personal_memory(profile: dict | None) -> str:
-    """Açık tercih olmadan eski pMem metnini gönderme; veri/sınır denetimi yap.
+    """Do not send old pMem text without explicit preference; Check data/limit.
 
-    Dönen metin kullanıcının elle kaydettiği bağlamdır; model çıkarımı veya araç
-    yetkisi değildir. Aynı yardımcı TextChat'in eski bağlam temizliğinde kullanılır.
+    The text returned is the context the user manually saved; model extraction or tool
+    It is not the authority. The same helper is used for TextChat's legacy context cleanup.
     """
     if profile is None:
         return ''
@@ -29,11 +29,11 @@ def personal_memory(profile: dict | None) -> str:
 
 
 def model_instruction(profile: dict | None = None, *, tools_enabled: bool = True) -> str:
-    """Bağımsız, değişmez bir talimat döndür; profil verisini hata/loga koyma.
+    """Return an independent, immutable instruction; putting profile data error/log.
 
-    Eksik/eski desteklenmeyen dil, UI'ın varsayılanı olan Türkçeye düşer.
-    Kişisel metin ayar şemasındaki 16.000 karakter sınırına uymalıdır; JSON
-    biçimi metnin sınırını açıklar, güvenlik garantisi yine core/policy'dedir.
+    Missing/obsolete unsupported language, the UI defaults to Turkish.
+    The personal text must comply with the 16,000 character limit in the setting scheme; JSON
+    The format describes the boundary of the text, the security guarantee is again in core/policy.
     """
     if profile is None:
         profile = {}

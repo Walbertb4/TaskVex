@@ -1,7 +1,7 @@
-"""Anlık Live transkriptini gerçek SDK/sentetik socket ile sınar; dış API yok.
+"""Tests instant Live transcript with real SDK/synthetic socket; There is no external API.
 
-Tur tamamlanmadan metnin iletilmesi, Stop'ta korunması ve doğru host kimliği
-ana sözleşmedir. Bildirim hatası araç sonucunu veya retry politikasını değiştirmez.
+Transmission of the text, preservation in Stop and correct host ID before the turn is completed
+is the main contract. Notification error does not change the tool outcome or retry policy.
 """
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
@@ -31,14 +31,14 @@ def test_transcript_arrives_before_completion_and_survives_stop(socket):
 
 
 def test_input_and_output_snapshots_are_scoped_by_host(socket):
-    socket.frames = [{'setupComplete':{}}, {'serverContent':{'inputTranscription':{'text':'Mer'}}},
-        {'serverContent':{'inputTranscription':{'text':'haba'}}}, frame('Hello'), frame(' world',complete=True)]
+    socket.frames = [{'setupComplete':{}}, {'serverContent':{'inputTranscription':{'text':'Hel'}}},
+        {'serverContent':{'inputTranscription':{'text':'lo'}}}, frame('Hello'), frame(' world',complete=True)]
     delivered = []
     with create_core() as core:
         chat = TextChat(core, transcript_sink=lambda *args: delivered.append(args) or True)
         report = chat.run_live('', 'future-live', request_id='voice-id', audio_input=bytes(3200))
-        assert report['ok'] and report['input_text'] == 'Merhaba'
-        assert delivered == [('voice-id','u','Mer',1), ('voice-id','u','Merhaba',2),
+        assert report['ok'] and report['input_text'] == 'Hello'
+        assert delivered == [('voice-id','u','Hel',1), ('voice-id','u','Hello',2),
                              ('voice-id','j','Hello',3), ('voice-id','j','Hello world',4)]
         assert chat.close()
 

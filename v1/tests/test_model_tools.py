@@ -1,8 +1,8 @@
-"""Model çağrı sınırını gerçek registry/policy/worker ile doğrula.
+"""Verify model call limit with actual registry/policy/worker.
 
-Canlı model ve ağ yoktur; sağlayıcının ayrıştırdığı çağrı doğrudan verilir.
-Not testleri yalnız conftest'in geçici TASKVEX_HOME dizinine yazar. Bekleme,
-iptal ve belirsizlik testlerinde Event kapıları rastgele sleep'in yerini alır.
+There is no live model and no network; The call parsed by the provider is issued directly.
+Note that it only writes tests to conftest's temporary TASKVEX_HOME directory. Don't wait,
+Event gates replace random sleep in cancellation and ambiguity tests.
 """
 
 from threading import Event
@@ -17,18 +17,18 @@ from app.tasks.manager import TaskManager, TaskManagerError
 
 
 def session(core, session_id="session-1", principal="local-user"):
-    """Host tarafından seçilen kimlikler ve yalnız iki araçla bir oturum kur."""
+    """Establish a session with just two tools and identities chosen by the host."""
     return ModelTools(core, principal=principal, session_id=session_id,
                       allowed_tools=("notes.add", "notes.list"))
 
 
 def note_call(**changes):
-    """Sağlayıcıdan beklenen sade çağrı; kimlik/yetki alanları içermez."""
+    """The simple call expected from the provider; identity/permission does not contain fields."""
     return {"id": "call-1", "name": "notes.add", "arguments": {"text": "Test note"}, **changes}
 
 
 def test_real_note_roundtrip_and_reconnect_replay():
-    """Yeni adaptör aynı core/oturumla bağlansa da not ikinci kez eklenmesin."""
+    """Even if the new adapter is connected to the same core/with the session, the note should not be added a second time."""
     with create_core() as core:
         tools = session(core)
         task = tools.submit(note_call())
@@ -108,7 +108,7 @@ def test_other_session_cannot_read_or_cancel_a_task():
 
 @pytest.mark.parametrize("status", [TaskStatus.CANCELLED, TaskStatus.UNKNOWN])
 def test_pending_cancellation_and_unknown_keep_actual_state(status):
-    """Zaman aşımı başarı/başarısızlık uydurmasın; iptal kabulü bitiş sayılmasın."""
+    """Don't let the timeout make up success/failure; Acceptance of cancellation should not be considered as the end."""
     started, release = Event(), Event()
     registry = ToolRegistry()
 

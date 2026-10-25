@@ -1,8 +1,8 @@
-"""Native metin isteğinin sahibi: aynı anda tek Gemini turu çalıştırır.
+"""Native text request owner: runs one Gemini turn at a time.
 
-REST çağrısı API thread'inde; kalıcı Live ağı tek I/O event loop'unda çalışır.
-Model, araç yürütücüsü değildir: yalnız host'un seçtiği ModelTools kataloğunu
-kullanır. REST mesajları bağımsızdır; Live açık oturumda bağlamı koruyabilir.
+REST call in API thread; The persistent Live network operates on a single I/O event loop.
+The model is not the tool executor: it only uses the ModelTools catalog the host chooses.
+uses. REST messages are independent; Live can preserve context in an open session.
 """
 
 from threading import Lock
@@ -21,8 +21,8 @@ from app.session.conversation_memory import ConversationMemory
 from app.session.model_instruction import personal_memory
 
 
-# REST ve Live aynı yetki kataloğunu paylaşır; bildirim turları yine araçsızdır.
-BASE_MODEL_TOOLS = ("apps.catalog", "system.status", "assistant.request_sleep_mode",
+# REST and Live share the same authorization catalog; Reporting turns are again tool-free.
+BASE_MODEL_TOOLS = ("apps.catalog", "system.status", "media.status", "assistant.request_sleep_mode",
                     "assistant.request_shutdown", "clocks.create", "clocks.control", "clocks.list")
 MEMORY_MODEL_TOOLS = ("memory.read", "memory.patch")
 NOTE_MODEL_TOOLS = ("notes.add", "notes.list", "notes.select", "notes.update",
@@ -30,7 +30,7 @@ NOTE_MODEL_TOOLS = ("notes.add", "notes.list", "notes.select", "notes.update",
 
 
 class TextChat:
-    """Core'u ödünç al; istemciyi her tur sonunda kapat, sırları sonuçlara koyma."""
+    """Borrow Core; Close the client at the end of each round, do not put secrets into the results."""
 
     def __init__(self, core, *, audio_sink: Callable[[str, bytes, str], bool] | None = None,
                  transcript_sink: Callable[[str, str, str, int], bool] | None = None) -> None:
@@ -48,10 +48,10 @@ class TextChat:
         self._personal_memory_scope: bytes | None = None
 
     def _prepare_personal_memory(self, profile: dict | None) -> bool:
-        """Yeni turda unutulan/düzeltilen bilgiyi eski Live/RAM'den geri getirme.
+        """In the new round, does not bring back the information from the old Live/RAM.
 
-        Model kilidi altındadır. Açık yanıt kesilmez; değişiklik sonraki turda
-        eski socket ve geçici sohbet bağlamını bırakır. Disk notlarına dokunmaz.
+        It is under model lock. The obvious response is not interrupted; change next round
+        Drops the old socket and temporary chat context. It does not touch disk notes.
         """
         scope = sha256(personal_memory(profile).encode('utf-8')).digest()
         if self._personal_memory_scope is not None and scope != self._personal_memory_scope:
@@ -63,14 +63,14 @@ class TextChat:
 
     @property
     def busy(self) -> bool:
-        """UI/host başka bir tur veya kapanış başlatmadan önce durumu gözler."""
+        """UI/host monitors the situation before starting another round or close."""
         return self._lock.locked()
 
     def close(self) -> bool:
-        """Aktif turu öldürme; boşsa yeni istekleri kalıcı kapat.
+        """Killing the active round; If empty, close new requests permanently.
 
-        False kapanışın henüz güvenli olmadığı anlamına gelir. Ağ isteğini veya
-        gerçekleşmiş araç işlemini iptal etmiş gibi davranmayız.
+        False means the close is not yet safe. network request or
+        We do not act as if we have canceled the tool transaction that has already occurred.
         """
         if not self._lock.acquire(blocking=False):
             return False
@@ -85,10 +85,10 @@ class TextChat:
             self._lock.release()
 
     def reset_live(self, *, clear_memory: bool = False) -> bool:
-        """Transport'u bırak; yalnız yeni sohbet/anahtar değişiminde RAM'i temizle.
+        """Drop Transport; just clear RAM on new conversation/key replacement.
 
-        Meşgulken ret hiçbir kaydı silmez. Stop/Disconnect/model değişimi aynı
-        sohbeti sürdürür; geçmiş yeni socket'e yalnız bilgi olarak aktarılır.
+        Rejection while busy does not delete any recordings. Stop/Disconnect/model replacement is the same
+        continues the conversation; The history is transferred to the new socket only as information.
         """
         if not self._lock.acquire(blocking=False):
             return False
@@ -102,7 +102,7 @@ class TextChat:
             self._lock.release()
 
     def stop(self, request_id: str) -> dict:
-        """Meşgul kilidini bekleme; eşleşen REST veya Live turuna sinyal ver."""
+        """Busy unlock waiting; signal the matching REST or Live round."""
         with self._rest_guard:
             if self._rest and self._rest[0] == request_id:
                 waiting = self._rest[1].stop()
@@ -120,9 +120,9 @@ class TextChat:
     def run_live(self, text: object, model: str, *, notes_ready: bool = False, request_id: str | None = None,
                  audio_input: bytes | LiveInput | None = None, profile: dict | None = None, notification: bool = False,
                  voice: str | None = None) -> dict:
-        """Aynı Live oturumuna bir mesaj; REST ile ortak meşgul/kapanış kilidi."""
+        """A message to the same Live session; busy/shutdown lock common with REST."""
         if audio_input is not None:
-            # UI'ya güvenme: 15 saniye, mono/16 kHz/16-bit; PCM rapora yazılmaz.
+            # Don't trust UI: 15 seconds, mono/16 kHz/16-bit; PCM is not written on the report.
             if (not isinstance(audio_input, LiveInput) and
                     (type(audio_input) is not bytes or not 3200 <= len(audio_input) <= 480000 or len(audio_input) % 2)) or text != "":
                 return {"ok": False, "error": "Expected 0.1–15 seconds of mono 16 kHz PCM"}
@@ -145,12 +145,12 @@ class TextChat:
                 if profile.get("pLearn") is True:
                     allowed += ("memory.propose", "memory.decide")
             if notification:
-                allowed = ()  # Host bildirimi konuşur; kullanıcı adına araç çalıştıramaz.
+                allowed = ()  # Host notification speaks; cannot run tools on behalf of the user.
             elif notes_ready:
                 allowed += NOTE_MODEL_TOOLS
             tools = ModelTools(self._core, principal="local-user", session_id=uuid4().hex, allowed_tools=allowed)
-            # Ses yalnız bu host isteğine bağlıdır; sağlayıcı/UI yeni hedef
-            # kimliği seçemez. Başlıksız eski CLI denemesi sessiz kalır.
+            # The sound depends only on this host request; provider/UI new target
+            # cannot choose the identity. The old CLI attempt without a header remains silent.
             output = self._audio_sink
             sink = (lambda data, mime: output(request_id, data, mime)) if output and request_id else None
             text_output = self._transcript_sink
@@ -170,14 +170,14 @@ class TextChat:
             self._lock.release()
 
     def audio_input(self, request_id: str, sequence=None, data=None) -> dict:
-        """Uzun sohbet kilidini beklemeden kendi Live kuyruğuna sınırlı teslim yap."""
+        """Make limited submissions to your Live queue without waiting for a long chat unlock."""
         return self._live.input(request_id, sequence, data)
 
     def read_reply(self, request_id: str) -> dict:
-        """Yalnız son başarılı REST cevabını bir kez oku; UI metin seçemez.
+        """Just read the last successful REST response once; UI cannot select text.
 
-        Aynı kilit ve Stop kimliği kullanılır. Ses hatası, daha önce tamamlanmış
-        metin/araç sonucunu geçersiz yapmaz. Bot/CLI bu metodu çağırmazsa sessizdir.
+        The same lock and Stop ID are used. Audio error, already completed
+        It does not invalidate the result text/tool. If Bot/CLI does not call this method, it is silent.
         """
         if not self._lock.acquire(blocking=False):
             return {'ok': False, 'completed': True, 'audio_error': 'speech_busy'}
@@ -199,13 +199,13 @@ class TextChat:
 
     def run(self, text: object, model: str, *, notes_ready: bool = True, request_id: str | None = None,
             profile: dict | None = None) -> dict:
-        """Hazır host'tan tek mesaj al; bitiş sonucu veya açık ret döndür.
+        """Receive a single message from the ready host; return end result or open rejection.
 
-        Katalog/sistem ve aktarımı onaylanan notların CRUD araçları açılır.
-        Dil/kişisel talimat host'un kayıt snapshot'ından gelir; araç izni vermez.
-        Uygulama açma ve import bu dilimde açılmaz.
-        Beklenmeyen hata araç sonrası oluşabilir; böyle bir sonuçta unknown
-        işareti otomatik yeniden gönderme izni verilmesini engeller.
+        The CRUD tools for Catalog/system and notes whose transfer has been approved are opened.
+        The Language/personal instruction comes from the host's register snapshot; It does not give tool permission.
+        Application opening and import cannot be opened in this language.
+        Unexpected error may occur after the tool; In such a result unknown
+        The mark prevents automatic resubmission permission.
         """
         if not isinstance(text, str) or not text.strip() or len(text) > 20_000:
             return {"ok": False, "error": "Enter a message between 1 and 20000 characters"}
@@ -221,8 +221,8 @@ class TextChat:
             if not self._prepare_personal_memory(profile):
                 return {'ok': False, 'unknown': True, 'code': 'memory_reset_failed',
                         'error': 'Previous memory context could not be closed. Reopen before continuing.'}
-            # Not aktarımı bekliyor diye normal sohbet kapatılmaz. Aynı durum
-            # backend'de araç kapsamını da daraltır; yalnız UI kilidine güvenmeyiz.
+            # Normal chat will not be closed just because the note is waiting for transfer. same situation
+            # It also narrows the scope of tools in the backend; We don't rely on UI lock alone.
             allowed = BASE_MODEL_TOOLS
             if profile and profile.get("pMemory") is True:
                 allowed += MEMORY_MODEL_TOOLS
@@ -240,8 +240,8 @@ class TextChat:
                 return {"ok": False, "code": "model_config_invalid",
                         "error": "Gemini key or model profile is missing or invalid. Save it in Settings."}
             with client:
-                # Model kilidi HTTP boyunca tutulur; Stop için yalnız bu kısa
-                # referans kilidi kullanılır. Her tur ayrı istemci/sinyal alır.
+                # The pattern lock is held throughout HTTP; Just this short to stop
+                # reference lock is used. Each round gets separate client/signal.
                 with self._rest_guard:
                     self._rest = (request_id or uuid4().hex, client)
                 result = client.run(text)

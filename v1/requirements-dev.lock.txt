@@ -41,3 +41,7 @@ typing-inspection==0.4.4
 typing_extensions==4.16.0
 urllib3==2.8.0
 websockets==16.1.1
+winrt-runtime==3.2.1
+winrt-Windows.Foundation==3.2.1
+winrt-Windows.Media==3.2.1
+winrt-Windows.Media.Control==3.2.1

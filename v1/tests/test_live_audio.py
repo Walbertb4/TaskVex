@@ -1,7 +1,7 @@
-"""PCM taşımasını gerçek SDK ile, sentetik socket üzerinden doğrula.
+"""Verify PCM transport with real SDK via synthetic socket.
 
-Ses hoparlöre verilmez; sink yalnız gözlemcidir. UI teslimi fiziksel çalma
-kanıtı sayılmaz. Hatalı ses çıktısı doğrulanmış araç/metin sonucunu kaybettirmez.
+Sound is not output to the speaker; sink is just an observer. UI delivery physical stealing
+It is not considered proof. Incorrect audio output will not lose the validated tool/text result.
 """
 
 import asyncio
@@ -20,14 +20,14 @@ from test_live_tools import call, notes
 
 
 def pcm(data=b'\x00\x00' * 24, mime='audio/pcm;rate=24000'):
-    """Sesi ve transkripti aynı server event'e koy; bütün parçalar okunmalı."""
+    """Put the audio and transcript in the same server event; All parts must be read."""
     return {"serverContent": {"modelTurn": {"role": "model", "parts": [
         {"inlineData": {"data": b64encode(data).decode(), "mimeType": mime}}]},
         "outputTranscription": {"text": "Synthetic audio transcript"}, "turnComplete": True}}
 
 
 def audio_frame(text):
-    """Eski probe fixture'ının üç baytlık örneğini tam 16-bit PCM yap."""
+    """Make the three-byte sample of the old probe fixture full 16-bit PCM."""
     message = frame(text, complete=True, audio=True)
     for part in message['serverContent']['modelTurn']['parts']:
         part['inlineData']['data'] = 'AAA='
@@ -43,7 +43,7 @@ def test_audio_parts_and_transcript_are_both_forwarded_without_recording(socket)
     assert len(delivered) == 2 and report['audio_bytes_forwarded'] == 4
     assert report['audio_bytes_discarded'] == 0 and report['audio_error'] is None
     assert all(mime == 'audio/pcm;rate=24000' for _, mime in delivered)
-    assert 'data' not in report  # Rapor/history PCM içermez.
+    assert 'data' not in report  # Report/history does not contain PCM.
 
 
 @pytest.mark.parametrize('data,mime', [(b'\x00', 'audio/pcm;rate=24000'),

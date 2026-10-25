@@ -1,9 +1,9 @@
-"""İlk uygulama plugininin izinli kataloğu; Aşama 4'ün salt okunur başlangıcı.
+"""Authorized catalog of the first application plugin; Read-only start of Phase 4.
 
-Katalog, TaskVex'in desteklemeyi seçtiği uygulamaları söyler. Bilgisayarda
-uygulamanın kurulu/çalışıyor olduğunu kanıtlamaz; apps.status Windows adaptörünü
-kullanarak salt okunur gözlem yapar. apps.open aynı gözlemle açılışı doğrular. Araç parametresiyle
-dosya yolu, shell komutu ya da ek uygulama kaydı alınmaz.
+The catalog tells you which applications TaskVex chooses to support. on computer
+does not prove that the application is installed/running; apps.status Windows adapter
+Makes read-only observations using apps.open verifies opening with the same observation. With tool parameter
+No file path, shell commands or additional application records are taken.
 """
 
 from types import MappingProxyType
@@ -12,23 +12,23 @@ import time
 from app.core.contracts import TaskStatus, ToolContext, ToolError, ToolResult
 
 
-# Kimlik kalıcı makine adıdır; görünen ad çevrilebilir. Eşleme salt okunurdur
-# ve değerleri metindir, böylece çağıran bir sonuç listesini değiştirerek host'un
-# izinli uygulama kataloğunu genişletemez. İlk kapsam yalnız Not Defteri'dir.
+# ID is the permanent machine name; The display name can be translated. Mapping is read-only
+# and its values are text, so the caller can modify the host by replacing a result list.
+# cannot expand the allowed app catalog. The first scope is just Notepad.
 APP_CATALOG = MappingProxyType({"notepad": "Notepad"})
 STATUS_SCHEMA = {
     "type": "object", "properties": {"app_id": {"type": "string", "enum": list(APP_CATALOG)}},
     "required": ["app_id"], "additionalProperties": False,
 }
-OPEN_WAIT_SECONDS = 5.0  # Host sınırı; kullanıcı/model bunu büyütemez.
+OPEN_WAIT_SECONDS = 5.0  # Host limit; user/model cannot enlarge it.
 
 
 def app_catalog(arguments: dict, context: ToolContext) -> ToolResult:
-    """Parametresiz katalog sorgusunu ortak sonuç ve iptal sözleşmesiyle yanıtla.
+    """Answer parameterless catalog query with common result and cancellation agreement.
 
-    verified=True yalnız yerleşik kataloğun okunduğunu doğrular; kurulum veya
-    açık pencere kanıtı değildir. Her çağrıda bağımsız bir liste oluşturulur.
-    Bu araç dosya yazmaz, uygulama taramaz ve uygulama başlatmaz.
+    verified=True verifies that only the built-in catalog has been read; installation or
+    It is not evidence of an open window. An independent list is created with each call.
+    This tool does not write files, scan applications, or launch applications.
     """
     if arguments:
         return ToolResult(task_id=context.task_id, status=TaskStatus.FAILED,
@@ -44,12 +44,12 @@ def app_catalog(arguments: dict, context: ToolContext) -> ToolResult:
 
 
 def app_status(arguments: dict, context: ToolContext) -> ToolResult:
-    """İzinli hedefin süreç/pencere durumunu gözle; gözlem hatasında başarı deme.
+    """Observe the process/window status of the permitted target; Don't call success an observation error.
 
-    Geçerli bir kapalı gözlem de SUCCEEDED'dır; bu, uygulamanın açık olduğu
-    değil sorgunun tamamlandığı anlamındadır. Kısmi gözlem FAILED/data içerir;
-    null alanı sıfır/kapalı diye gösterilmemelidir. Native kütüphaneler yalnız
-    çağrı anında yüklenir, core başlangıcı Windows UI bağımlılığı yaratmaz.
+    A valid implicit observation is also SUCCEEDED; this means the app is open
+    It does not mean that the query is completed. Partial observation includes FAILED/data;
+    The null field should not be displayed as zero/off. Native libraries only
+    the call is loaded instantly, core startup does not create Windows UI dependency.
     """
     if (set(arguments) != {"app_id"} or not isinstance(arguments["app_id"], str)
             or arguments["app_id"] not in APP_CATALOG):
@@ -78,15 +78,15 @@ def app_status(arguments: dict, context: ToolContext) -> ToolResult:
 
 
 def app_open(arguments: dict, context: ToolContext) -> ToolResult:
-    """İzinli Not Defteri penceresini sağla; kabul ile tamamlanmayı ayır.
+    """Provide permissioned Notepad window; Distinguish between acceptance and completion.
 
-    Zaten doğrulanmış pencere varsa yeni başlatma yapılmaz. Süreç var ama
-    pencere yoksa mevcut açılış beklenir; ikinci süreç istenmez. Hiç süreç
-    olmadığı tam gözlemle doğrulanırsa yalnız host'un sistem başlatıcısı bir
-    kez çağrılır. Başarı WS_VISIBLE pencere kanıtıdır; odak/etkileşime hazır
-    garantisi değildir. Başlatmadan önceki iptal yan etki üretmez. Başlatma
-    istendikten sonra iptal/hata/timeout kaydı geri almaz: UNKNOWN döner ve
-    otomatik tekrar yapılmaz. Harici Not Defteri zorla kapatılmaz.
+    If there is already a verified window, no new launch will be made. There is a process but
+    If there is no window, the current opening is expected; The second process is not desired. no process
+    If it is confirmed by full observation that it is not, only the host's system launcher is a
+    is called once. A WS_VISIBLE window proves visibility; readiness for focus/interaction
+    It is not a guarantee. Cancellation before initiation produces no side effects. initialization
+    cancellation/error/timeout does not undo the record after being requested: it returns UNKNOWN and
+    There is no automatic repeat. External Notepad cannot be forcibly closed.
     """
     before = app_status(arguments, context)
     if before.status != TaskStatus.SUCCEEDED:
@@ -116,8 +116,8 @@ def app_open(arguments: dict, context: ToolContext) -> ToolResult:
             return stopped(False, "launcher_unavailable", "Notepad system launcher is unavailable")
         if context.cancel_event.is_set():
             return ToolResult(task_id=context.task_id, status=TaskStatus.CANCELLED)
-        # Bayrağı çağrıdan önce koy: başlatma dönüşü kaybolsa da yan etki
-        # yapılmış olabilir. Hata halinde ikinci start çağrısı yapılmaz.
+        # Put the flag before the call: side effect though initialization return is lost
+        # may have been made. In case of error, the second start call is not made.
         requested = True
         try:
             start_notepad(executable)

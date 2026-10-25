@@ -1,6 +1,6 @@
-/** Tek Live isteğinin kullanıcı/model metnini aynı iki balonda günceller.
- * Backend birikimli snapshot yollar; sıra numarası tekrarları, istek kimliği
- * eski turu reddeder. Kesilen metin korunur; bu durum araç başarısı değildir.
+/** Updates the user/model text of a single Live request in the same two bubbles.
+ * Backend sends cumulative snapshots; sequence number repeats, request id
+ * rejects the old round. The cut text is preserved; This is not tool success.
  */
 let current = null;
 const labels = {live:' · Live', interrupted:' · Interrupted', failed:' · Incomplete', unknown:' · Result unknown', complete:''};
@@ -13,8 +13,8 @@ function render(role, value, status) {
     const element = document.createElement('div'), body = document.createElement('span'), label = document.createElement('small');
     element.className = 'm ' + role; element.dataset.requestId = state.id;
     label.className = 'transcript-status'; element.append(body, label);
-    // Sağlayıcı giriş transkriptini daha geç iletse de kullanıcı sözü kendi
-    // yanıtının önünde kalır; başka turun balonları taşınmaz.
+    // Even if the provider delivers the login transcript later, the user has the say.
+    // remains in front of the answer; Balloons of another round cannot be carried.
     if (role === 'u' && state.nodes.j?.element.parentNode === panel) panel.insertBefore(element, state.nodes.j.element);
     else panel.append(element);
     node = state.nodes[role] = {element, body, label};
@@ -43,8 +43,8 @@ export const liveTranscript = {
   },
   finish(requestId, report = {}, status = 'complete') {
     if (current?.id !== requestId) return false;
-    // Ekran bildirimi başarısızsa son rapor yedektir. Kesilmiş çıktı daha
-    // sonra üretilmiş metinle genişletilmez, ikinci balon oluşturulmaz.
+    // If the screen notification fails, the last report is a backup. It's cut again
+    // then it is not expanded with the generated text, the second balloon is not created.
     if (typeof report.input_text === 'string' && report.input_text.length <= 20000) render('u', report.input_text, status);
     if (!current.frozen && typeof report.text === 'string' && report.text.length <= 32000) render('j', report.text, status);
     for (const [role, node] of Object.entries(current.nodes)) {

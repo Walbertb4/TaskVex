@@ -1,8 +1,8 @@
-"""Win32 gözleminin kimlik, kaynak kapatma ve yarış sınırlarını kontrollü dene.
+"""Try checking the identity, resource closure and race limits of Win32 monitoring.
 
-Sahte API'ler yalnız testte kullanılır; gerçek Not Defteri açılmaz/kapanmaz.
-Gerçek makine gözlemi ayrı kabul raporundadır. ctypes callback'i Windows ABI'si
-gerektirdiği için bu düşük seviye testler Windows dışında atlanır.
+Mock APIs are used only in testing; real Notepad does not open/close.
+The actual machine observation is in the separate acceptance report. ctypes callback Windows ABI
+These low-level tests are skipped outside of Windows because they require
 """
 
 import ctypes as c
@@ -19,7 +19,7 @@ pytestmark = pytest.mark.skipif(os.name != "nt", reason="Windows ABI tests")
 
 
 class Kernel:
-    """Kimlik API yanıtlarını denetle; alınan her handle'ın kapanmasını izle."""
+    """Check identity API responses; Watch each handle taken close."""
     def __init__(self):
         self.closed = []
         self.image = r"C:\Program Files\WindowsApps\Notepad\Notepad.exe"
@@ -69,7 +69,7 @@ class Kernel:
 
 
 def user_api(*, visible=True, fail=False):
-    """Başlık bilgisi içermeyen tek HWND/PID çifti sun; C callback gerçekten çağrılır."""
+    """Offer the only pair of HWND/PIDs with no header information; C callback is actually called."""
     def enumerate_windows(callback, unused):
         return bool(callback(101, 0)) and not fail
     def owner(hwnd, pid):

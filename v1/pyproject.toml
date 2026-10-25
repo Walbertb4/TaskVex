@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "TaskVex desktop assistant core"
 requires-python = ">=3.11"
 license = "MIT"
-dependencies = ["jsonschema>=4.26,<5", "pywebview>=6.2.1,<7", "bottle>=0.13.4,<0.14", "google-genai>=2.32,<3", "httpx>=0.28.1,<1", "sherpa-onnx==1.13.8"]
+dependencies = ["jsonschema>=4.26,<5", "pywebview>=6.2.1,<7", "bottle>=0.13.4,<0.14", "google-genai>=2.32,<3", "httpx>=0.28.1,<1", "sherpa-onnx==1.13.8", "winrt-runtime==3.2.1; sys_platform == 'win32'", "winrt-Windows.Foundation==3.2.1; sys_platform == 'win32'", "winrt-Windows.Media==3.2.1; sys_platform == 'win32'", "winrt-Windows.Media.Control==3.2.1; sys_platform == 'win32'"]
 
 [dependency-groups]
 dev = ["pytest>=9,<10"]
@@ -13,8 +13,8 @@ dev = ["pytest>=9,<10"]
 testpaths = ["tests"]
 pythonpath = ["."]
 addopts = "-ra"
-# google-genai 2.32.0, Python 3.14'te typing'in özel türünü kullanıyor.
-# Yalnız bu dış SDK uyarısı hariç tutulur; diğer uyarılar hata olmaya devam eder.
+# google-genai 2.32.0 uses the special type of typing in Python 3.14.
+# Only this external SDK warning is excluded; Other warnings remain errors.
 filterwarnings = [
     "error",
     "ignore:'_UnionGenericAlias' is deprecated.*:DeprecationWarning:google.genai.types",

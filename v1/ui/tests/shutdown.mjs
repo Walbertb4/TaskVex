@@ -1,5 +1,5 @@
-/** Gerçek ortak Shutdown fonksiyonunun native kabul/ret/unknown sınırı.
- * Pencere veya API açmaz; uygulama kodu aynen VM içinde çalıştırılır.
+/** Native acceptance/ret/unknown limit of actual common Shutdown function.
+ * Does not open windows or APIs; The application code is run verbatim within the VM.
  */
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

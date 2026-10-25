@@ -1,1 +1,1 @@
-"""Hesap veya model gerektirmeden yerel veriye/sisteme erişen ilk araçlar."""
+"""First tools to access local to the data/to the system without requiring an account or model."""

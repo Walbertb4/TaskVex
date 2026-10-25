@@ -1,7 +1,7 @@
-"""Registry'nin araç çalıştırmadan kayıt ve parametre sınırlarını koruduğunu test eder.
+"""It tests whether the registry maintains registry and parameter limits without starting the tool.
 
-Test araçları yalnız bir çağrı listesine işaret koyabilecek fonksiyonlardır.
-Beklenen sonuç bu listenin boş kalmasıdır; bu adım dosya/uygulama/hesap işlemez.
+Test tools are functions that can only mark a call list.
+The expected result is that this list remains empty; This step does not work file/application/account.
 """
 
 from dataclasses import replace
@@ -14,7 +14,7 @@ from app.session.tool_registry import RegistryError, ToolRegistry
 
 @pytest.fixture
 def sample():
-    """Her test için ayrı registry, şema ve çağrı gözlemcisi oluştur."""
+    """Create separate registry, schema and call observer for each test."""
     calls = []
 
     def handler(arguments, context):
@@ -36,19 +36,19 @@ def sample():
         },
         "required": ["text"], "additionalProperties": False,
     }
-    spec = ToolSpec(name="notes.add", description="Not ekleme", input_schema=schema,
+    spec = ToolSpec(name="notes.add", description="Add a noteme", input_schema=schema,
                     handler=handler, required_capabilities=("notes.write",))
     return ToolRegistry(), spec, calls
 
 
 def make_request(arguments=None, tool="notes.add"):
-    """Geçerli üst sözleşme içine test edilecek araç parametrelerini yerleştir."""
+    """Insert the tool parameters to be tested into the current parent contract."""
     return ToolRequest(request_id="r1", source="test", principal="test-user",
                        tool=tool, arguments={"text": "Hello"} if arguments is None else arguments)
 
 
 def test_register_list_and_validate_never_execute_handler(sample):
-    """Başarılı parametre kontrolü bile aracı çalıştırma yetkisi değildir."""
+    """Even successful parameter control is not an authorization to start the tool."""
     registry, spec, calls = sample
     registry.register(spec)
     item = registry.validate_request(make_request({"text": "Hello", "priority": 0, "due": None}))
@@ -59,7 +59,7 @@ def test_register_list_and_validate_never_execute_handler(sample):
 
 
 def test_duplicate_name_keeps_first_registration(sample):
-    """İkinci kayıt reddedilirken ilk handler ve şema korunmalı."""
+    """The first handler and schema should be preserved while the second record is rejected."""
     registry, spec, calls = sample
     registry.register(spec)
     with pytest.raises(RegistryError) as raised:
@@ -79,7 +79,7 @@ def test_duplicate_name_keeps_first_registration(sample):
     {"text": "x", "mode": "unknown"}, {"text": "x", "due": False},
 ])
 def test_invalid_parameters_rejected_before_handler(sample, arguments):
-    """Zorunlu alan, tür, sayı sınırı ve iç içe kurallar handler'dan önce denetlenir."""
+    """Mandatory fields, types, number limits and nested rules are checked before the handler."""
     registry, spec, calls = sample
     registry.register(spec)
     with pytest.raises(RegistryError) as raised:
@@ -98,7 +98,7 @@ def test_invalid_parameters_rejected_before_handler(sample, arguments):
     {"type": "object", "$dynamicRef": "https://example.invalid/schema"},
 ])
 def test_invalid_or_unsupported_schema_cannot_leave_partial_registration(sample, schema):
-    """Bozuk şema veya desteklenmeyen referans daha kayıt aşamasında reddedilir."""
+    """Broken schema or unsupported reference is rejected at the registration stage."""
     registry, spec, calls = sample
     with pytest.raises(RegistryError) as raised:
         registry.register(replace(spec, input_schema=schema))
@@ -108,7 +108,7 @@ def test_invalid_or_unsupported_schema_cannot_leave_partial_registration(sample,
 
 
 def test_unregistered_tool_does_not_fall_back_to_another_tool(sample):
-    """Bilinmeyen isim, benzer isimli başka bir aracı seçmemeli."""
+    """An unknown name should not choose another agent with a similar name."""
     registry, spec, _ = sample
     registry.register(spec)
     for action in [lambda: registry.get("notes.delete"),
@@ -119,7 +119,7 @@ def test_unregistered_tool_does_not_fall_back_to_another_tool(sample):
 
 
 def test_registry_owns_schema_and_returns_independent_copies(sample):
-    """Kayıttan sonra dışarıdaki şema değişikliği kabul kurallarını gevşetmemeli."""
+    """Scheme change outside after registration should not relax admission rules."""
     registry, spec, _ = sample
     registry.register(spec)
     spec.input_schema["required"].clear()
@@ -131,7 +131,7 @@ def test_registry_owns_schema_and_returns_independent_copies(sample):
 
 
 def test_validation_returns_copy_without_inserting_defaults(sample):
-    """Parametreler sessizce değiştirilmez; dönüş ve giriş aynı sözlüğü paylaşmaz."""
+    """Parameters are not changed silently; return and entry do not share the same dictionary."""
     registry, spec, _ = sample
     spec.input_schema["properties"]["priority"]["default"] = 2
     registry.register(spec)
@@ -143,7 +143,7 @@ def test_validation_returns_copy_without_inserting_defaults(sample):
 
 
 def test_mutated_request_rechecks_json_boundary(sample):
-    """Constructor'dan sonra iç sözlüğe eklenen geçersiz nesne de engellenmeli."""
+    """Invalid objects added to the internal dictionary after the constructor should also be blocked."""
     registry, spec, _ = sample
     registry.register(spec)
     item = make_request()
@@ -154,7 +154,7 @@ def test_mutated_request_rechecks_json_boundary(sample):
 
 
 def test_error_does_not_echo_sensitive_argument(sample):
-    """Doğrulama hatası kütüphane mesajındaki ham kullanıcı değerini sızdırmamalı."""
+    """The validation error should not leak the raw user value in the library message."""
     registry, spec, _ = sample
     registry.register(spec)
     secret = "private-example-value"
@@ -165,7 +165,7 @@ def test_error_does_not_echo_sensitive_argument(sample):
 
 
 def test_empty_registry_and_sorted_catalog(sample):
-    """Katalog sırası dosya yükleme veya kayıt sırasına bağlı kalmamalı."""
+    """The catalog order should not depend on the file upload or registration order."""
     registry, spec, _ = sample
     assert registry.list_tools() == []
     registry.register(replace(spec, name="system.status"))
@@ -174,7 +174,7 @@ def test_empty_registry_and_sorted_catalog(sample):
 
 
 def test_wrong_top_level_objects_rejected(sample):
-    """Sözleşme nesnesi yerine ham dict yanlışlıkla geçerse kontrollü hata verilir."""
+    """If the raw dict is accidentally passed instead of the contract object, a controlled error is thrown."""
     registry, _, _ = sample
     with pytest.raises(RegistryError):
         registry.register({})

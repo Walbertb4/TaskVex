@@ -25,7 +25,7 @@ const numeric = value => typeof value === 'number' && Number.isFinite(value);
 const numOrNumStr = value => numeric(value) || (text(value) && !isNaN(Number(value)) && value.trim() !== '');
 const optional = (value, check) => value == null || check(value);
 
-/** Oluşturulma zamanı: eksik/null bilinmiyor demektir; tarih uydurulmaz. */
+/** Creation time: missing/null means unknown; History cannot be made up. */
 export function validNoteCreatedAt(value) {
   if (value == null) return true;
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value)) return false;

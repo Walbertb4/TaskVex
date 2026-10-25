@@ -1,6 +1,6 @@
-/** Not tarihinin snapshot/yedek normalizasyonunda korunmasını DOM olmadan dene.
- * Uygulama bağımlılığı eklenmez. Bozuk tarih, import adayını kısmen uygulamak
- * yerine bütünüyle reddedilir; eski tarihsiz kayıtlar geçerli kalır.
+/** Try preserving note date in snapshot/backup normalization without DOM.
+ * Application dependency is not added. Broken date, partially applying import candidate
+ * is instead rejected entirely; Older undated records remain valid.
  */
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

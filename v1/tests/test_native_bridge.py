@@ -1,7 +1,7 @@
-"""Köprü doğrulaması; fake pencere testi gerçek WebView2 testi sayılmaz.
+"""Hyperlink verification; Fake window testing does not count as real WebView2 testing.
 
-Gerçek core ve geçici kayıt kullanılır. JS serileştirmesi gözlenir; ayrı native
-smoke betiği gerçek pencere, ES modülleri ve çift yönlü köprüyü çalıştırır.
+Real core and temporary register are used. JS serialization is observed; separate native
+The smoke script runs the real window, ES modules, and bidirectional bridge.
 """
 
 import json
@@ -18,7 +18,7 @@ from app.storage.credentials import CredentialError
 
 
 class FakeWindow:
-    """İzinli çağrı ve JSON argümanlarını yakala; DOM yürütüyormuş gibi davranma."""
+    """Capture permission call and JSON arguments; Don't act like you're executing a DOM."""
 
     def __init__(self):
         from webview.event import Event
@@ -45,18 +45,18 @@ def bridge(monkeypatch):
     store = JsonStore(get_data_home() / "settings.json")
     with create_core(settings_store=store) as core:
         api = NativeBridge(core, store)
-        # Test nesnesini açıkça enjekte et; üretimdeki Window tipini gevşetme.
+        # Explicitly inject the test object; loosening the Window type in production.
         monkeypatch.setattr(api, "_window", FakeWindow())
         yield api
 
 
 def ready(bridge):
-    """Üretim UI'ın gönderdiği sürümlü bildirimi kullan."""
+    """Use the versioned notification sent by the production UI."""
     return bridge.event("ui_ready", {"version": "1.0"})
 
 
 def test_new_chat_clears_memory_only_after_ready_and_preserves_notes(bridge):
-    """Yeni sohbet yanlış payload'da silmez; açık onay ayrı UI işidir."""
+    """New chat does not delete on wrong payload; explicit confirmation is separate UI work."""
     bridge._chat._memory.remember('Synthetic fact', {'ok':True, 'text':'Understood'})
     assert not bridge.event('new_chat')['ok']
     assert ready(bridge)['ok']
@@ -67,7 +67,7 @@ def test_new_chat_clears_memory_only_after_ready_and_preserves_notes(bridge):
 
 
 def test_key_update_clears_memory_but_disconnect_preserves_it(bridge):
-    """Aynı sohbet yeniden bağlanabilir; farklı hesap/anahtara tarihçe taşınmaz."""
+    """The same chat can be reconnected; different account/key history is not carried over."""
     assert ready(bridge)['ok']
     bridge._chat._memory.remember('Synthetic fact', {'ok':True, 'text':'Understood'})
     assert bridge.event('disconnect')['ok'] and bridge._chat._memory.snapshot()
@@ -78,7 +78,7 @@ def test_key_update_clears_memory_but_disconnect_preserves_it(bridge):
 @pytest.mark.parametrize('payload', [None, {}, 'text', {'request_id':''}, {'request_id':'x' * 129},
     {'request_id':'x', 'text':'UI cannot choose speech text'}])
 def test_read_reply_accepts_only_host_reply_identity(bridge, payload):
-    """Serbest metin/ek alan ve hazır olmayan host ses isteği başlatamaz."""
+    """A host that receives a free text/attachment and is not ready cannot initiate a voice request."""
     assert bridge.event('read_reply', {'request_id':'missing'})['audio_error'] == 'invalid_speech_request'
     assert ready(bridge)['ok']
     assert bridge.event('read_reply', payload)['audio_error'] == 'invalid_speech_request'
@@ -96,20 +96,20 @@ def test_ready_is_idempotent_and_snapshot_omits_collections(bridge):
 
 
 def test_text_before_notes_confirmation_is_restricted_and_live_selection_is_separate(bridge, monkeypatch):
-    """İlk not onayı sohbeti kapatmaz; Live tercihi REST modele gönderilmez."""
-    assert not bridge.event("text", "Merhaba")["ok"]
+    """The first note confirmation does not close the chat; Live preference is not sent to the REST model."""
+    assert not bridge.event("text", "Hello")["ok"]
     assert ready(bridge)["ok"]
     seen = []
     def chat(text, model, **kwargs):
         seen.append(kwargs["notes_ready"])
         return {"ok": True, "model": model}
     monkeypatch.setattr(bridge._chat, "run", chat)
-    assert bridge.event("text", "Merhaba")["ok"] and seen == [False]
+    assert bridge.event("text", "Hello")["ok"] and seen == [False]
     bridge._live_models = {"future-live": {"id": "future-live"}}
     before = list(bridge._window.calls)
     assert bridge.event("model", "future-live")["completed"]
     assert bridge._window.calls == before
-    assert bridge.event("text", "Merhaba")["model"] == "gemini-3.8-flash"
+    assert bridge.event("text", "Hello")["model"] == "gemini-3.8-flash"
     assert not bridge.event("model", "unsupported")["ok"]
 
 
@@ -125,7 +125,7 @@ def test_live_catalog_error_invalidates_cached_choices(bridge, monkeypatch):
 
 
 def test_key_cannot_change_during_live_catalog_query(bridge, monkeypatch):
-    """Başka hesaba ait katalog yeni anahtarın listesi diye önbelleğe girmesin."""
+    """Do not let the catalog belonging to another account enter the cache as a list of the new key."""
     from app.bridge import webview_bridge
     assert ready(bridge)["ok"]
     writes = []
@@ -141,7 +141,7 @@ def test_key_cannot_change_during_live_catalog_query(bridge, monkeypatch):
 
 def test_live_test_routes_selected_catalog_model_without_rest_fallback(bridge, monkeypatch):
     assert ready(bridge)["ok"]
-    assert not bridge.event("live_text", "Merhaba")["ok"]
+    assert not bridge.event("live_text", "Hello")["ok"]
     bridge._live_models = {"future-live": {"id": "future-live"}}
     assert bridge.event("model", "future-live")["ok"]
     seen = []
@@ -149,8 +149,8 @@ def test_live_test_routes_selected_catalog_model_without_rest_fallback(bridge, m
         seen.append((text, model))
         return {"ok": True, "mode": "live_latency_test"}
     monkeypatch.setattr(bridge._chat, "run_live", probe)
-    assert bridge.event("live_text", "Merhaba")["ok"]
-    assert seen == [("Merhaba", "future-live")] and bridge._model == "gemini-3.8-flash"
+    assert bridge.event("live_text", "Hello")["ok"]
+    assert seen == [("Hello", "future-live")] and bridge._model == "gemini-3.8-flash"
 
 
 @pytest.mark.parametrize("payload", [None, {}, {"request_id": 3}, {"request_id": ""}, {"request_id": "x", "all": True}])
@@ -197,7 +197,7 @@ def test_active_chat_does_not_hold_bridge_lock_but_blocks_conflicting_actions(br
 def test_save_projects_settings_and_reloads_in_fresh_bridge(bridge, monkeypatch):
     assert ready(bridge)["ok"]
     payload = {"theme": "#4fd8ff", "vol": 0, "replyVolume": 0, "sfx": False,
-               "prof": {"pIns": "Türkçe </script> ' \\ 📝"},
+               "prof": {"pIns": "Turkish </script> ' \\ 📝"},
                "notes": [{"t": "LOCAL ONLY"}], "skills": [], "routines": [], "apikey": "never-persist"}
     result = bridge.event("save", payload)
     assert result == {"ok": True, "completed": True, "saved": True, "memory_base": {"pMem":"", "pMemory":False}}
@@ -250,7 +250,7 @@ def test_unsupported_events_and_bad_handshake_are_rejected(bridge):
     for name, data in [("ui_ready", {}), ("note_add", "do not write"),
                        ("text", "hello"), ("apikey", "secret"), ("system_status", {})]:
         assert bridge.event(name, data)["ok"] is False
-    # Core başlangıcı artık yalnız kalıcı görev günlüğünü oluşturur.
+    # Core startup now only creates the persistent task log.
     assert {p.name for p in get_data_home().iterdir()} == {'tasks'}
 
 
@@ -293,7 +293,7 @@ def test_system_status_passes_real_core_and_safe_js_boundary(bridge):
 
 
 def note_command(bridge, name, request_id, arguments):
-    """UI'ın sürümlü zarfını kullan; test kimliği/araç adı payload'a eklenmez."""
+    """Use the UI's versioned envelope; The test name/tool is not added to the payload."""
     return bridge.event(name, {"version": 1, "request_id": request_id, "arguments": arguments})
 
 
@@ -556,7 +556,7 @@ def test_reset_error_preserves_original_preferences_and_window(bridge, monkeypat
 
 @pytest.mark.parametrize("debug", [False, True])
 def test_main_restart_launches_trusted_command_after_cleanup(monkeypatch, debug):
-    """Süreç açma çağrısını gözle; test masaüstünde yeni uygulama bırakmasın."""
+    """Watch for the process opening call; Do not leave any new applications on the test desktop."""
     from app import main as entry
     import webview
 
@@ -575,7 +575,7 @@ def test_main_restart_launches_trusted_command_after_cleanup(monkeypatch, debug)
         assert not captured["api"]._core._worker.is_alive()
         from app.storage.instance_lock import SingleInstance
         with SingleInstance(entry.get_data_home()):
-            pass  # Restart, eski kilit bırakılmadan yeni süreç açamaz.
+            pass  # Restart cannot open a new process until the old lock is released.
         launched.append((command, kwargs))
 
     monkeypatch.setattr(webview, "create_window", create)
@@ -587,7 +587,7 @@ def test_main_restart_launches_trusted_command_after_cleanup(monkeypatch, debug)
 
 
 def test_main_missing_window_stops_core_without_starting_gui(monkeypatch):
-    """Pencere oluşmazsa GUI döngüsüne girme; açılmış worker'ı kapat."""
+    """If the window does not appear, enter the GUI loop; Close the opened worker."""
     from app import main as entry
     import webview
 

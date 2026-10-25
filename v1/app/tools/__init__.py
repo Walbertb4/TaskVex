@@ -1,1 +1,1 @@
-"""Ortak görev hattından çağrılan araçların Python uygulamaları."""
+"""Python implementations of tools called from the common pipeline."""

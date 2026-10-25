@@ -1,8 +1,8 @@
-"""Kaydedilmiş profilin iki modele taşınmasını sentetik SDK taşımasıyla doğrular.
+"""Verifies migration of saved profile to two models with synthetic SDK migration.
 
-Bu testler modelin dili gerçekten doğru konuştuğunu kanıtlamaz. Gerçek SDK'nin
-aldığı talimatı, oturum kapsamını, Stop'u ve profile rağmen dar kalan araç
-izinlerini denetler; gerçek hesap ve kullanıcı notu kullanılmaz.
+These tests do not prove that the model actually speaks the language correctly. The actual SDK
+tool that remains narrow despite the instructions received, session scope, Stop and profile
+checks their permissions; Real account and user notes are not used.
 """
 import asyncio
 import json
@@ -26,7 +26,7 @@ from app.session.catalog import LIVE_VOICES, live_voice_catalog, selected_live_v
 
 
 def test_live_voice_catalog_has_only_documented_prebuilt_names_and_safe_legacy_default():
-    """Ses listesi model keşfi değildir; eski serbest metin sağlayıcıya taşınmaz."""
+    """The sound list is not pattern discovery; The old free text is not migrated to the provider."""
     assert len(LIVE_VOICES) == len(set(LIVE_VOICES)) == 30
     assert all(v['live'] and v['id'] == v['name'] for v in live_voice_catalog())
     assert selected_live_voice('Kore') == 'Kore'
@@ -35,13 +35,13 @@ def test_live_voice_catalog_has_only_documented_prebuilt_names_and_safe_legacy_d
 
 
 def system_text(request):
-    """SDK'nin REST/Live için aynı Content biçiminde gönderdiği metni çıkar."""
+    """Output the text that the SDK sends for REST/Live in the same Content format."""
     return ''.join(p.get('text', '') for p in request['systemInstruction']['parts'])
 
 
 @pytest.mark.parametrize('language,name', [('tr', 'Turkish'), ('en', 'English'), ('old-language', 'Turkish')])
 def test_common_instruction_is_bounded_and_only_uses_connected_profile_fields(language, name):
-    profile = {'pLang': language, 'pIns': '  Kısa "yanıt"\nver 📝  ', 'pMem': 'PRIVATE_UNUSED_MEMORY'}
+    profile = {'pLang': language, 'pIns': '  Short "answer"\nver 📝  ', 'pMem': 'PRIVATE_UNUSED_MEMORY'}
     before = dict(profile)
     instruction = model_instruction(profile)
     assert f'Selected response language: {name}' in instruction
@@ -113,23 +113,23 @@ def test_unchanged_or_unconnected_profile_fields_reuse_live_socket(wire):
     wire.plans = [{'turns': [[frame('One', complete=True)], [frame('Two', complete=True)], [frame('Three', complete=True)]]}]
     host = PersistentLive()
     try:
-        first = host.ask('One', 'future-live', profile={'pLang': 'tr', 'pIns': 'Kısa yaz.'})
-        second = host.ask('Two', 'future-live', profile={'pLang': 'tr', 'pIns': '  Kısa yaz.  '})
-        third = host.ask('Three', 'future-live', profile={'pLang': 'tr', 'pIns': 'Kısa yaz.', 'pMem': 'Not connected'})
+        first = host.ask('One', 'future-live', profile={'pLang': 'tr', 'pIns': 'Write briefly.'})
+        second = host.ask('Two', 'future-live', profile={'pLang': 'tr', 'pIns': '  Write briefly.  '})
+        third = host.ask('Three', 'future-live', profile={'pLang': 'tr', 'pIns': 'Write briefly.', 'pMem': 'Not connected'})
         assert first['ok'] and second['session_reused'] and third['session_reused']
         assert wire.opened == 1
     finally:
         assert host.close()
 
 
-@pytest.mark.parametrize('changed', [{'pLang': 'en', 'pIns': 'Kısa yaz.'}, {'pLang': 'tr', 'pIns': 'NEW_PREFERENCE'}])
+@pytest.mark.parametrize('changed', [{'pLang': 'en', 'pIns': 'Write briefly.'}, {'pLang': 'tr', 'pIns': 'NEW_PREFERENCE'}])
 def test_profile_change_cannot_resume_old_instruction_scope(wire, changed):
     wire.plans = [
         {'turns': [[frame('One', complete=True)]], 'idle': [[checkpoint(), GOAWAY]]},
         {'turns': [[frame('Two', complete=True)]]},
         {'turns': [[frame('Three', complete=True)]]},
     ]
-    original = {'pLang': 'tr', 'pIns': 'Kısa yaz.'}
+    original = {'pLang': 'tr', 'pIns': 'Write briefly.'}
     host = PersistentLive()
     try:
         first = host.ask('One', 'future-live', profile=original)
@@ -171,7 +171,7 @@ def test_bridge_reads_saved_profile_for_every_input_and_keeps_snapshots_independ
     if event != 'text':
         assert seen[0]['voice'] == 'Kore'
     assert bridge.event('save', {'prof': {'pLang': 'tr', 'pIns': 'Yeni'}})['saved']
-    assert seen[0]['profile'] == profile  # Eski turun kopyası değişmedi.
+    assert seen[0]['profile'] == profile  # The replica of the old turn is unchanged.
     assert bridge.event(event, payload)['ok'] and seen[1]['profile']['pLang'] == 'tr'
 
 
@@ -203,7 +203,7 @@ def test_invalid_live_profile_is_not_sent_to_provider(socket):
 
 
 def test_live_voice_setup_change_discards_old_resume_and_preserves_same_voice_reuse(wire):
-    """Gerçek SDK setup'ında seçili ses; ses değişiminde eski token kullanılmaz."""
+    """The sound selected in the actual SDK setup; The old token is not used in the voice change."""
     wire.plans = [
         {'turns': [[frame('First', complete=True)]], 'idle': [[checkpoint(), GOAWAY]]},
         {'turns': [[frame('Second', complete=True)], [frame('Third', complete=True)]]},

@@ -30,7 +30,7 @@ export function registerCollectionGetters(getters = {}) {
 }
 
 let backupImportHandler = null;
-// Yerel API senkron kalır; native talepler kopyalarıyla sıraya alınır.
+// The native API remains synchronous; native requests are queued with their copies.
 let pendingBackendSave = null;
 let saveQueue = Promise.resolve();
 let saveRevision = 0;
@@ -55,8 +55,8 @@ function queueSettingsSave(value) {
   saveStatus(native ? 'Saving settings…' : 'Saved in this browser');
   const send = () => emit('save', payload);
   const operation = native ? saveQueue.then(send, send) : send();
-  // Bekleme sınırı kuyrukta devam eden gerçek isteği iptal etmez/tekrarlamaz.
-  // Böylece geciken önceki kayıt daha yeni bir kaydın üstüne yazamaz.
+  // The wait limit does not cancel/repeat the actual request that is ongoing in the queue.
+  // This way, the previous delayed record cannot overwrite a newer record.
   saveQueue = operation;
   pendingBackendSave = (async () => {
     let timer;
@@ -153,8 +153,8 @@ export function saveAll(options = {}) {
   const dIn = document.getElementById('dIn');
   const dOut = document.getElementById('dOut');
   const dCam = document.getElementById('dCam');
-  // Native ses tercihinin sahibi onchange/store'dur. Sırf tarama varsayılan
-  // seçeneği gösterdi diye kayıt veya arayüz reset'i yeni tercih yazmamalı.
+  // Native audio preference is owned by onchange/store. Pure scan default
+  // Registry or interface reset should not create a new preference just because it shows the option.
   if (!isBackendAvailable() && dIn && dIn.options.length > 0 && dIn.value && dIn.value !== '-1') {
     store.devs.dIn = dIn.value;
   }
@@ -211,16 +211,16 @@ export function saveAll(options = {}) {
 }
 
 export async function saveSettingsConfirmed() {
-  // Tarayıcı modu eski yerel/fallback davranışını korur. Native modda modal,
-  // yalnız diske yazma backend tarafından doğrulandığında kapanır.
+  // Browser mode retains the old native/fallback behavior. Modal in native mode,
+  // It only closes when the write to disk is verified by the backend.
   if (!saveAll()) return false;
   if (!isBackendAvailable()) return true;
   return (await pendingBackendSave).confirmed;
 }
 
 export async function importBackup(parsed) {
-  // Yalnız UI'ın sahip olduğu yedek alanlarını al; katalog/telemetri/online gibi
-  // dış durumları yedek dosyasından geri yükleyerek gerçek veri gibi göstermeyiz.
+  // Just take the backup areas that the UI has; such as catalog/telemetry/online
+  // We do not represent external states as real data by restoring them from the backup file.
   if (importingBackup || !parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return false;
   const fields = new Set([...Object.keys(defaultInterfaceSettings()), 'devs', 'prof', 'conn', 'notes', 'skills', 'routines']);
   const owned = Object.fromEntries(Object.entries(parsed).filter(([key]) => fields.has(key)));
@@ -242,7 +242,7 @@ export async function importBackup(parsed) {
     saveStatus('Finish the notes transfer or current note operation before importing.');
     return false;
   }
-  // Native not aracı daha katıdır; bütün dosyayı ayar yazımı öncesi denetle.
+  // The native annotation tool is more stringent; Check the entire file before writing settings.
   if (hasNativeNotes && (candidate.notes || []).some(n => !n.t.trim() || n.t.length > 10000 ||
       (n.id !== undefined && (typeof n.id !== 'string' || !n.id.trim())))) return false;
   if (hasNativeNotes) {
@@ -255,8 +255,8 @@ export async function importBackup(parsed) {
   setNotesImportLock(true);
   controls.forEach(([element]) => { element.disabled = true; });
   try {
-    // Önce mevcut yerel kaydın yazılabildiğini kontrol et; import verisini henüz
-    // uygulama. Native ret/timeout durumunda koleksiyonlar aynı kalır.
+    // First check if the existing local register is writable; import data yet
+    // application. In case of native rejection/timeout, collections remain the same.
     if (!saveAll({ emitSave: false })) return false;
     const previous = JSON.parse(JSON.stringify(store));
     const native = isBackendAvailable();
@@ -266,13 +266,13 @@ export async function importBackup(parsed) {
         saveStatus('Settings saved; note restore was not confirmed. Check the notes status.');
         return false;
       }
-      // Notlar artık backend sonucu; yerel snapshot onları tekrar yazamaz.
+      // Notes are now the backend result; local snapshot cannot rewrite them.
       delete candidate.notes;
       previous.notes = collectionGetters.getNotes();
     }
     if (backupImportHandler(candidate, { emitSave: false }) !== true) {
-      // localStorage setItem başarısızlığında önceki baytlar kalır. Bellek/DOM'u
-      // da diske yeniden yazmayı denemeden geri al; native kayıt ayrı depodur.
+      // If localStorage setItem fails, previous bytes remain. Memory/DOM'u
+      // undo without trying to write to the disk again; native registry is a separate repository.
       backupImportHandler(previous, { emitSave: false, skipPersist: true });
       saveStatus(native ? 'Settings saved; local backup import failed' : 'Backup import failed');
       logBridgeError('import', new Error(native ? 'Native settings and any restored notes were saved, but local backup data could not be stored. Backend notes remain authoritative.' : 'Local backup data could not be stored. Previous data was kept.'));
@@ -325,7 +325,7 @@ export function switchTab(t) {
 let memoryProposal = null;
 let memoryDecisionBusy = false;
 
-/** Aday yalnız gösterilir; serbest model metni hiçbir zaman kalıcı kayıt değildir. */
+/** The candidate is shown alone; free model text is never a permanent record. */
 export function showMemoryProposal(proposal) {
   memoryProposal = proposal;
   const panel = document.getElementById('memoryProposal');
@@ -337,7 +337,7 @@ export function showMemoryProposal(proposal) {
   for (const id of ['memoryAccept','memoryDismiss']) document.getElementById(id).disabled = false;
 }
 
-/** Gecikmiş/eski karar daha yeni bir adayı gizleyemez. */
+/** A delayed/old decision cannot hide a newer candidate. */
 export function resolveMemoryProposal(id) {
   if (memoryProposal?.id === id) showMemoryProposal(null);
 }
@@ -370,7 +370,7 @@ async function decideMemory(approve) {
   } finally {memoryDecisionBusy = false;}
 }
 
-/** Model sonucu aynı snapshot yolunu kullanır; açık formdaki taslağı silmez. */
+/** Model result uses the same snapshot path; It does not delete the draft in the open form. */
 export function applyMemoryProfile(profile) {
   const previous = store.prof || {}, base = memoryBase, drafts = [];
   for (const key of ['pLang','pWake','pBr','pIns','pMem','pSc','pSys','pGreet','pTab','pApp','pMemory','pLearn','pMemoryConfirm']) {
@@ -382,7 +382,7 @@ export function applyMemoryProfile(profile) {
   }
   if (window.vex.loadStore({prof: profile}) !== true) return false;
   for (const [el, prop, value] of drafts) el[prop] = value;
-  // Taslak eski belgeye dayanıyorsa yeni metni sessizce ezme hakkı kazanmaz.
+  // If the draft is based on the old document, it does not gain the right to quietly crush the new text.
   if (drafts.some(([el]) => ['pMem','pMemory'].includes(el.id))) memoryBase = base;
   if (drafts.length) saveStatus('Saved memory refreshed; unsaved profile draft kept. Conflicts require restarting the app.');
   return true;
@@ -674,7 +674,7 @@ export function initSettings(options = {}) {
     wakeR.addEventListener('change', function () {
       sfx.blip();
       saveAll();
-      // Yeni eşik bir sonraki uyku girişinde kayıtlı ayardan okunur.
+      // The new threshold is read from the saved setting at the next sleep entry.
     });
   }
 
@@ -694,7 +694,7 @@ export function initSettings(options = {}) {
           return;
         }
       }
-      // Fiziksel değişim anlıktır; kalıcı tercih mevcut Save modeliyle kaydedilir.
+      // The physical change is instantaneous; permanent preference is saved with the existing Save model.
       store.onTop = desired;
     });
   }
@@ -727,8 +727,8 @@ export function initSettings(options = {}) {
         a.href = url;
         a.download = 'vex-backup.json';
         a.click();
-        // Dosya diyaloğu iptal edilebilir: indirme isteğini tamamlanmış kayıt
-        // diye sunmayız. Kullanılan Blob URL'sini daha sonra serbest bırakırız.
+        // File dialog can be canceled: save download request as completed
+        // We do not present it as . We then release the used Blob URL.
         saveStatus('Backup download requested');
         setTimeout(() => URL.revokeObjectURL(url), 1000);
       } finally { expB.disabled = false; }
@@ -761,7 +761,7 @@ export function initSettings(options = {}) {
     });
   }
 
-  // Koleksiyon/profil anahtarlarını silmeden yalnız arayüz tercihlerini sıfırla.
+  // Just reset the interface preferences without deleting the collection/profile keys.
   const resetAll = document.getElementById('resetAll');
   if (resetAll) {
     resetAll.addEventListener('click', async () => {

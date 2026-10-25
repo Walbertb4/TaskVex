@@ -1,1 +1,1 @@
-"""Modelden bağımsız araç kayıtlarını ve ileride oturum bağlantılarını barındırır."""
+"""It contains model-independent tool records and future session links."""

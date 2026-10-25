@@ -1,7 +1,7 @@
-"""Toplu not silme/tamamlamada seçim kapsamı, tek yazı, iptal ve belirsiz sonucu doğrular.
+"""Collective note deletion/completion confirms election coverage, single post, cancellation and indefinite result.
 
-Gerçek core/JSON store kullanılır; REST/Live sağlayıcıları sentetiktir. Notlar
-geçici test deposundadır; gerçek kullanıcı verisi veya ücretli API kullanılmaz.
+Real core/JSON store is used; REST/Live providers are synthetic. Notes
+is in temporary test storage; No real user data or paid API is used.
 """
 from threading import Event
 
@@ -24,13 +24,13 @@ from test_live_tools import notes
 
 @pytest.fixture(params=[None, True, False], ids=['delete', 'complete', 'reopen'])
 def batch_change(request):
-    """Aynı kapsam/iptal/atomiklik sözleşmesini iki toplu araçta sına."""
+    """Test the same scope/cancellation/atomicity contract on two mass tools."""
     done = request.param
     return ('notes.delete_many', {}) if done is None else ('notes.complete_many', {'done': done})
 
 
 def changed_notes(items, ids, fields):
-    """Beklenen sonucu üret; seçilmeyen kayıtta hiçbir alan değişmemeli."""
+    """Produce the expected result; No fields in the unselected record should change."""
     if not fields:
         return [n for n in items if n['id'] not in ids]
     return [{**n, 'done': fields['done']} if n['id'] in ids else n for n in items]
@@ -56,7 +56,7 @@ def test_model_changes_exact_group_in_one_verified_write(mode, selector, transpo
             writes.append(store.path)
             original_write(store, data)
         monkeypatch.setattr(JsonStore, 'write', write)
-        # contains seçimi yalnız metninde "not" geçen eski notu hedefler.
+        # The contains selection only targets the old note with "note" in its text.
         ids = [items[1]['id']] if selector['kind'] == 'contains' else [n['id'] for n in items]
         chat = TextChat(core)
         try:
@@ -197,7 +197,7 @@ def test_batch_stop_before_write_preserves_and_late_stop_keeps_real_result(taskv
 
 @pytest.mark.parametrize('done', [None, 'true', 1, [], {}])
 def test_invalid_batch_completion_state_never_writes(done, taskvex_home):
-    """Boolean dışındaki değerleri kayıt katmanına ulaşmadan reddet."""
+    """Reject non-boolean values before they reach the recording layer."""
     with create_core() as core:
         records(core)
         before = (taskvex_home/'notes.json').read_bytes()

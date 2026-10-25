@@ -1,8 +1,8 @@
-"""Native kabul senaryolarının gerçek UI/core assertion’ları.
+"""Real UI/core assertions of native acceptance scenarios.
 
-Süreç/HTTP/WebSocket kurulumunu native_smoke.py yapar. Buradaki fonksiyonlar
-kendilerine verilen pencere, köprü ve sentetik taşıma ile davranışı doğrular;
-gerçek API hesabı veya kullanıcı kaydı kullanmaz.
+native_smoke.py installs Process/HTTP/WebSocket. Functions here
+validates the behavior with the window, bridge, and synthetic transport given to them;
+It does not use real API accounts or user registrations.
 """
 import json
 import os
@@ -10,9 +10,9 @@ from pathlib import Path
 import time
 
 def check_native_note_ui(home, window, js, wait_until, outcome):
-    """Not panelinin yerel CRUD, gecikmiş yanıt ve kayıt reddi senaryosu."""
+    """Note panel's native CRUD, delayed response, and record rejection scenario."""
     from app.storage.json_store import StoreError
-    # Gerçek UI kontrolleri -> köprü -> worker -> gerçek dosya.
+    # Actual UI controls -> bridge -> worker -> actual file.
     js("document.getElementById('noteIn').value='Duplicate';document.getElementById('noteAdd').click();return true;")
     wait_until(lambda: len(json.loads((home / 'notes.json').read_text('utf-8'))['data']['notes']) == 2)
     wait_until(lambda: not window.evaluate_js("document.getElementById('noteAdd').disabled"))
@@ -33,7 +33,7 @@ def check_native_note_ui(home, window, js, wait_until, outcome):
     assert json.loads((home / 'notes.json').read_text('utf-8'))['data']['notes'][1]['id'] == saved[2]['id']
     js("document.querySelectorAll('#notes button')[1].click();return true;")
     wait_until(lambda: not window.evaluate_js("document.getElementById('noteAdd').disabled"))
-    # Yazma reddinde form metni ve liste korunmalı.
+    # In case of write rejection, the form text and the list must be preserved.
     from app.storage.json_store import JsonStore
     original_write = JsonStore.write
 
@@ -52,8 +52,8 @@ def check_native_note_ui(home, window, js, wait_until, outcome):
         JsonStore.write = original_write
     assert js("return window.vex.initApp({notes:['Must not overwrite']});") is False
     assert js("const n=await import('./js/notes.js');return await n.addNote('No echo',{fromUser:false,silent:true});") is False
-    # Yan etki gerçekten olur; yalnız UI yanıtı geciktirilir. Deadline
-    # sonrası geç yanıt UI'ı değiştiremez veya ikinci komut üretemez.
+    # Side effects really happen; only the UI response is delayed. Deadline
+    # post late response cannot change UI or generate second command.
     js("window._noteSends=0;const original=window.pywebview.api.event;"
        "window.pywebview.api.event=async(name,data)=>{if(name!=='note_add')return original(name,data);"
        "window._noteSends++;const response=await original(name,data);await new Promise(r=>setTimeout(r,13000));return response;};"
@@ -71,7 +71,7 @@ def check_native_note_ui(home, window, js, wait_until, outcome):
 
 
 def check_native_note_crud(home, window, js, wait_until, outcome, mode, target):
-    """Gerçek gönder düğmesiyle done/edit/delete; UI dosyadan yenilensin."""
+    """done/edit/delete with real send button; Refresh UI from file."""
     from app.storage.json_store import JsonStore
     snapshot = JsonStore(home / "notes.json").read()
     assert snapshot is not None
@@ -82,8 +82,8 @@ def check_native_note_crud(home, window, js, wait_until, outcome, mode, target):
        "window.crudEvents.push(name);return window.crudOriginalEvent(name,data);};return true;")
     for verb in ["done", "edit", "delete"]:
         current = target + " edited" if verb == "delete" else target
-        selector = ("içinde 'synthetic' geçen notu tamamlandı işaretle" if verb == "done" else
-                    "son notu sil" if verb == "delete" else "son notun metnini değiştir")
+        selector = ("Mark the note containing 'synthetic' as completed" if verb == "done" else
+                    "delete the latest note" if verb == "delete" else 'change the text of the endnote')
         prompt = f"Native CRUD {verb}: {current} | {selector}"
         js(f"document.getElementById('inp').value={json.dumps(prompt)};"
            "document.getElementById('send').click();return true;")
@@ -113,11 +113,11 @@ def check_native_note_crud(home, window, js, wait_until, outcome, mode, target):
 
 
 def check_native_note_batches(api, home, window, js, wait_until, outcome):
-    """Geçici notlarda REST/Live toplu silme/tamamlama ve yankısız paneli sına."""
+    """Test bulk deletion/completion and anechoic panel in transient notes REST/Live."""
     from app.core.contracts import ToolRequest
     from uuid import uuid4
-    # Yalnız geçici native profil: REST ve Live toplu silme gerçek
-    # core/worker'dan geçer; panel tek backend okumasıyla yenilenir.
+    # Only temporary native profile: REST and Live bulk deletion is real
+    # passes through core/worker; The panel is refreshed with a single backend reading.
     from app.storage.json_store import JsonStore
     js("window.batchEvents=[];window.batchOriginalEvent=window.pywebview.api.event;window.pywebview.api.event=(name,data)=>{if(['save','note_add','note_done','note_del'].includes(name))batchEvents.push(name);return batchOriginalEvent(name,data);};return true;")
     for batch_mode in ('rest', 'live'):
@@ -157,12 +157,12 @@ def check_native_note_batches(api, home, window, js, wait_until, outcome):
 
 
 def check_native_clocks(window, api, js, wait_until, outcome):
-    """Gerçek sayaç görünümü: model+UI tek ID sahibi ve otomatik sekme odağı."""
+    """Real counter view: model+UI with single ID and automatic tab focus."""
     js("window.clockEcho=[];window.clockEvent=window.pywebview.api.event;window.pywebview.api.event=(name,data)=>{if(name==='save')clockEcho.push(name);return clockEvent(name,data);};return true;")
     for mode in ('rest', 'live'):
         js("document.getElementById('liveLatencyTest').checked="+str(mode=='live').lower()+";return true;")
         for action in ('watch', 'timer1', 'timer2', 'pause_timer1', 'reset_watch'):
-            # Her model işlemi, diğer sekme açıkken de doğru kayda odaklanmalı.
+            # Each model process should focus on the correct record even when the other tab is open.
             js("document.getElementById('"+('tabTmB' if action in ('watch','reset_watch') else 'tabSwB')+"').click();return true;")
             prompt='Native CLOCK '+mode+' '+action
             js("document.getElementById('inp').value="+json.dumps(prompt)+";document.getElementById('send').click();return true;")
@@ -176,7 +176,7 @@ def check_native_clocks(window, api, js, wait_until, outcome):
             if action=='pause_timer1':assert clock['state']=='paused'
             if action=='reset_watch':assert clock['state']=='ready' and clock['elapsed_seconds']==0
         assert len([c for c in api._clocks.snapshot()['clocks'] if c['label'].startswith(mode+' ')])==3
-        # UI Start/Pause/Resume/Reset aynı stopwatch ID'sini değiştirir, yeni kayıt açmaz.
+        # UI Start/Pause/Resume/Reset changes the same stopwatch ID, does not open a new record.
         watch=next(c for c in api._clocks.snapshot()['clocks'] if c['label']==mode+' watch')
         for button,state in [('swStartB','running'),('swPauseB','paused'),('swResumeB','running'),('swResetB','ready')]:
             js("document.getElementById('"+button+"').click();return true;")
@@ -190,10 +190,10 @@ def check_native_clocks(window, api, js, wait_until, outcome):
         outcome[mode+'_timer_set_preserved_selected_id']=True
         outcome[mode+'_multi_clocks_same_ids_ui_controls_and_automatic_tabs']=True
     assert len(api._clocks.snapshot()['clocks'])==6
-    # Gerçek WebView CSS'si tema değişimini izlemeli; profil/veri yazılmaz.
+    # The actual WebView CSS should follow the theme change; profile/data is not written.
     assert js("const root=document.documentElement,s=document.getElementById('clockSelect'),old=root.style.getPropertyValue('--gold');try{root.style.setProperty('--gold','#12ab34');const a=getComputedStyle(s).color;root.style.setProperty('--gold','#ab3412');return a==='rgb(18, 171, 52)'&&getComputedStyle(s).color==='rgb(171, 52, 18)'&&getComputedStyle(s).appearance==='none'&&getComputedStyle(s).backgroundColor!=='rgb(255, 255, 255)'&&s.getBoundingClientRect().width<=s.closest('.tmin').getBoundingClientRect().width;}finally{if(old)root.style.setProperty('--gold',old);else root.style.removeProperty('--gold');}")
     outcome['clock_selector_webview_theme_and_width']=True
-    # UI aksanları --c (reaktör) değişiminden etkilenmemeli, --gold'u izlemeli.
+    # UI accents should not be affected by the --c (reactor) change, should follow --gold.
     assert js("const root=document.documentElement,old=root.style.getPropertyValue('--c'),r=document.getElementById('wakeR'),a=document.getElementById('inputArrow');try{root.style.setProperty('--c','#ff6600');const first=[getComputedStyle(r).backgroundColor,getComputedStyle(r,'::-webkit-slider-thumb').backgroundColor,getComputedStyle(a).color];root.style.setProperty('--c','#00ff00');return JSON.stringify(first)===JSON.stringify([getComputedStyle(r).backgroundColor,getComputedStyle(r,'::-webkit-slider-thumb').backgroundColor,getComputedStyle(a).color])&&getComputedStyle(a).color===getComputedStyle(document.getElementById('clockSelect')).color;}finally{if(old)root.style.setProperty('--c',old);else root.style.removeProperty('--c');}")
     outcome['sliders_and_input_arrow_ignore_reactor_state_color']=True
     assert js("const picker=document.getElementById('clockPicker'),head=document.getElementById('clockSelect');head.focus();head.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowUp',bubbles:true,cancelable:true}));return picker.open&&document.activeElement===document.getElementById('clockList').lastElementChild;")
@@ -201,7 +201,7 @@ def check_native_clocks(window, api, js, wait_until, outcome):
     assert js("return !document.getElementById('clockPicker').open&&document.activeElement===document.getElementById('clockSelect');")
     outcome['clock_picker_keyboard_and_escape']=True
 
-    # Açık HTML listesinde sağ tık, seçili kayıt yerine sağ tıklanan ID'yi siler.
+    # Right-clicking in the open HTML list deletes the right-clicked ID instead of the selected record.
     for kind,tab in [('timer','tabTmB'),('stopwatch','tabSwB')]:
         records=[c for c in api._clocks.snapshot()['clocks'] if c['kind']==kind]
         target=records[-1]['id'];keep=records[0]['id']
@@ -213,7 +213,7 @@ def check_native_clocks(window, api, js, wait_until, outcome):
         wait_until(lambda:not window.evaluate_js("document.getElementById('clockNew').disabled"))
         assert any(c['id']==keep for c in api._clocks.snapshot()['clocks'])
         outcome[kind+'_right_click_deleted_only_target']=True
-    # Son stopwatch silindiğinde boş görünüm ve yeniden oluşturabilme korunur.
+    # When the last stopwatch is deleted, the empty view and the ability to recreate are preserved.
     last=next(c for c in api._clocks.snapshot()['clocks'] if c['kind']=='stopwatch')['id']
     js("document.getElementById('clockPicker').open=true;document.querySelector('#clockList button[data-clock-id=\""+last+"\"]').dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true,clientX:100,clientY:150}));document.getElementById('clockDelete').click();return true;")
     wait_until(lambda:not any(c['kind']=='stopwatch' for c in api._clocks.snapshot()['clocks']))
@@ -224,7 +224,7 @@ def check_native_clocks(window, api, js, wait_until, outcome):
     assert window.evaluate_js('window.clockEcho')==[]
     js("window.pywebview.api.event=clockEvent;document.getElementById('liveLatencyTest').checked=true;return true;")
     outcome['clock_mutations_no_settings_save_echo']=True
-    # Kısa gerçek timer: özel kullanıcı metni/boss yok; aynı Live ses/transkript hattı.
+    # Short real timer: no special user text/boss; same Live audio/transcript line.
     js("testMicOff();const c=await import('./js/clocks.js');await c.createNativeClock('timer',1);return true;")
     wait_until(lambda:'Native personalized timer completion' in window.evaluate_js("document.getElementById('msgs').textContent") and not window.evaluate_js("document.getElementById('send').disabled"))
     assert 'Timer finished, boss.' not in window.evaluate_js("document.getElementById('msgs').textContent")
@@ -235,11 +235,11 @@ def check_native_clocks(window, api, js, wait_until, outcome):
 
 
 def check_native_shutdown_request(window, api, js, wait_until, outcome):
-    """Model isteği/çalma/Stop sınırını gerçek DOM'da, host ret taklidiyle sına.
+    """Model request/play Test the/Stop limit in the real DOM, emulating host rejection.
 
-    Model ve core aracı gerçektir; sağlayıcı sentetiktir. Pencereyi testin
-    ortasında kapatmamak için yalnız son shutdown olayı reddedilir. Gerçek
-    worker/pencere kapanışı ayrı native shutdown senaryosunda doğrulanır.
+    The model and core tool are real; The provider is synthetic. Test the window
+    To avoid shutting down in the middle, only the last shutdown event is rejected. Real
+    worker/window shutdown is verified in separate native shutdown scenario.
     """
     js("window.shutdownErrors=[];window.addEventListener('unhandledrejection',e=>shutdownErrors.push(String(e.reason?.stack||e.reason)));window.shutdownModels=Array.from(document.getElementById('mSel').options).filter(o=>o.value).map(o=>({id:o.value,name:o.textContent}));window.shutdownModel=document.getElementById('mSel').value;window.shutdownCalls=0;window.shutdownEvent=window.pywebview.api.event;window.pywebview.api.event=(name,data)=>{if(name==='shutdown'){shutdownCalls++;return Promise.resolve({ok:false,error:'Synthetic host refusal'});}return shutdownEvent(name,data);};"
        "const a=await import('./js/live_audio.js');window.shutdownFinish=a.liveAudio.finish;a.liveAudio.finish=async function(id){const r=await shutdownFinish.call(this,id);window.shutdownPlaybackWaiting=true;await new Promise(resolve=>window.releaseShutdownPlayback=resolve);return r;};return true;")
@@ -266,9 +266,9 @@ def check_native_shutdown_request(window, api, js, wait_until, outcome):
 
 
 def check_local_sleep(window, api, js, wait_until, live_state, wake_state, outcome):
-    """Tek uyku kabul senaryosunu ayrı tut; native kontrol akışını büyütme."""
-    # Komut yanıtı modeldendir; uyurken sıradan ses KWS hit'i olmadan
-    # Live açmaz. Uyku geçişi gerçek oynatıcı bitişini beklemelidir.
+    """Keep the single sleep admission scenario separate; Augmenting native control flow."""
+    # The command response is from the model; without ordinary sound KWS hit while sleeping
+    # Live does not open. The sleep transition must wait for the actual player ending.
     js("const a=await import('./js/live_audio.js');window.originalSleepFinish=a.liveAudio.finish;window.sleepPlaybackBlocked=false;"
        "a.liveAudio.finish=async function(id){const result=await originalSleepFinish.call(this,id);if(window.holdSleepPlayback){window.sleepPlaybackBlocked=true;await new Promise(r=>window.releaseSleepPlayback=r);}return result;};"
        "window.savedAudioContext=AudioContext;window.AudioContext=class extends savedAudioContext{constructor(o){super(o);if(o?.sampleRate===16000)window.capturedMicContext=this;}};"
@@ -276,7 +276,7 @@ def check_local_sleep(window, api, js, wait_until, live_state, wake_state, outco
        "Object.defineProperty(navigator.mediaDevices,'getUserMedia',{configurable:true,value:async()=>{const d=wakeContext.createMediaStreamDestination();wakeDestinations.push(d);return d.stream;}});"
        "testMicOn();return true;")
     wait_until(lambda: js("const m=await import('./js/live_mic.js');return m.liveMic.waitingForSpeech;"))
-    # Gerçek Web Audio suspend/ret yolları; fiziksel mikrofon veya API yok.
+    # Real Web Audio suspend/ret paths; no physical microphone or API.
     before_recovery = live_state['opened']
     js("window.beforeResumeContext=capturedMicContext;await capturedMicContext.suspend();return true;")
     wait_until(lambda: js("return capturedMicContext.state==='running';"))
@@ -290,16 +290,16 @@ def check_local_sleep(window, api, js, wait_until, live_state, wake_state, outco
     assert live_state['opened'] == before_recovery
     js("window.AudioContext=savedAudioContext;return true;")
     outcome['audio_context_suspend_resumed_same_source_or_explicit_on_recovered_without_api'] = True
-    js("window.holdSleepPlayback=true;document.getElementById('inp').value='Lütfen, uyku moduna gir.';document.getElementById('send').click();return true;")
+    js("window.holdSleepPlayback=true;document.getElementById('inp').value='Please enter sleep mode.';document.getElementById('send').click();return true;")
     wait_until(lambda: js("return sleepPlaybackBlocked;"))
     assert not api._sleeping
-    assert 'Tamam efendim, geçiyorum.' in window.evaluate_js("document.getElementById('msgs').textContent")
+    assert "OK sir, I'm passing." in window.evaluate_js("document.getElementById('msgs').textContent")
     js("document.getElementById('stopTask').click();window.holdSleepPlayback=false;releaseSleepPlayback();return true;")
     wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
     assert not api._sleeping
     outcome['stop_during_sleep_reply_did_not_apply_sleep'] = True
     wait_until(lambda: js("const m=await import('./js/live_mic.js');return m.liveMic.waitingForSpeech;"))
-    js("window.holdSleepPlayback=true;window.sleepPlaybackBlocked=false;document.getElementById('inp').value='Lütfen, uyku moduna gir.';document.getElementById('send').click();return true;")
+    js("window.holdSleepPlayback=true;window.sleepPlaybackBlocked=false;document.getElementById('inp').value='Please enter sleep mode.';document.getElementById('send').click();return true;")
     wait_until(lambda: js("return sleepPlaybackBlocked;"))
     assert not api._sleeping
     js("window.holdSleepPlayback=false;releaseSleepPlayback();return true;")
@@ -341,7 +341,7 @@ def check_local_sleep(window, api, js, wait_until, live_state, wake_state, outco
     js("document.getElementById('sleep').click();return true;")
     wait_until(lambda: not api._sleeping and window.evaluate_js("document.getElementById('sleep').textContent==='Sleep' && !document.getElementById('sleep').disabled"))
     js("testMicOff();wakeOsc.stop();await wakeContext.close();return true;")
-    # Mikrofon kapalıyken de uyku backend'e ulaşmalı; yalnız UI etiketi değişmemeli.
+    # Sleep should also reach the backend when the microphone is off; However, the UI label should not change.
     js("document.getElementById('sleep').click();return true;")
     wait_until(lambda: api._sleeping and 'Asleep · Microphone Off' in window.evaluate_js("document.getElementById('textStatus').textContent"))
     wait_until(lambda: api._wake is None)
@@ -350,7 +350,7 @@ def check_local_sleep(window, api, js, wait_until, live_state, wake_state, outco
     wait_until(lambda: not api._sleeping and window.evaluate_js("document.getElementById('sleep').textContent==='Sleep' && !document.getElementById('sleep').disabled"))
     outcome['sleep_with_microphone_off_closed_live_without_capture'] = True
     outcome['one_time_sleep_local_only_pcm_wake_handoff_mic_off_and_profile_word'] = True
-    # Yerel motor hatası açık Wake'ten sonra normal konuşmayı kilitlememeli.
+    # Local engine error should not lock normal conversation after open Wake.
     from app.bridge import webview_bridge as bridge_module
     original_detector = bridge_module.WakeWord
     def unavailable(word, sensitivity=50):
@@ -368,7 +368,7 @@ def check_local_sleep(window, api, js, wait_until, live_state, wake_state, outco
     outcome['manual_wake_recovered_normal_listening_after_local_engine_failure'] = True
     js("testMicOff();return true;")
     check_wake_recovery(window, api, js, wait_until, live_state, outcome)
-    # Gerçek host uyku reddi: UI bunu KWS eksikliği veya SLEEPING saymamalı.
+    # Real host sleep denial: UI should not consider this as lack of KWS or SLEEPING.
     original_reset = api._chat.reset_live
     api._chat.reset_live = lambda **kwargs: False
     js("document.getElementById('sleep').click();return true;")
@@ -377,7 +377,7 @@ def check_local_sleep(window, api, js, wait_until, live_state, wake_state, outco
     assert window.evaluate_js("document.getElementById('sleep').textContent") == 'Sleep'
     assert window.evaluate_js("document.getElementById('sLbl').textContent") != 'SLEEPING'
     api._chat.reset_live = original_reset
-    # IPC beklerken hazırlık görünür; kabul gelince gerçek uyku gösterilir.
+    # Preparation appears while waiting for IPC; When acceptance comes, true sleep is shown.
     js("window.sleepOriginalEvent=window.pywebview.api.event;window.pywebview.api.event=async(n,d)=>{if(n==='sleep_start')await new Promise(r=>setTimeout(r,600));return sleepOriginalEvent(n,d);};document.getElementById('sleep').click();return true;")
     assert window.evaluate_js("document.getElementById('sleep').textContent") == 'Preparing sleep…'
     assert not api._sleeping
@@ -385,26 +385,26 @@ def check_local_sleep(window, api, js, wait_until, live_state, wake_state, outco
     js("window.pywebview.api.event=sleepOriginalEvent;document.getElementById('sleep').click();return true;")
     wait_until(lambda: not api._sleeping and window.evaluate_js("!document.getElementById('sleep').disabled"))
     outcome['sleep_host_rejection_and_pending_confirmation_not_fake_asleep'] = True
-    # Kalıcı komut gerçek model yanıtından sonra uygulanır; Mic Off korunur.
+    # The persistent command is applied after the actual model response; Mic Off is preserved.
     js("const d=document.getElementById('sleepDelay');d.value='2';d.dispatchEvent(new Event('change'));document.getElementById('btnSaveSet').click();return true;")
     wait_until(lambda: api._store.read().get('sleepDelay') == 2)
     opened = live_state['opened']
-    js("document.getElementById('inp').value='Uyku moduna kalıcı olarak gir';document.getElementById('send').click();return true;")
+    js("document.getElementById('inp').value='Enter sleep mode permanently';document.getElementById('send').click();return true;")
     wait_until(lambda: api._sleeping and 'Asleep · Microphone Off' in window.evaluate_js("document.getElementById('textStatus').textContent"))
     js("document.getElementById('sleep').click();return true;")
     wait_until(lambda: not api._sleeping and window.evaluate_js("!document.getElementById('send').disabled"))
     time.sleep(2.3)
-    assert not api._sleeping  # Stay asleep timer'a değil, gerçek etkileşim bitişine bağlıdır.
+    assert not api._sleeping  # Stay asleep depends on the actual interaction ending, not the timer.
     js("document.getElementById('inp').value='Live test';document.getElementById('send').click();return true;")
     wait_until(lambda: api._sleeping and 'Asleep · Microphone Off' in window.evaluate_js("document.getElementById('textStatus').textContent"))
     assert live_state['opened'] == opened + 2
-    # Kalıcı moddan çıkış, bağımsız normal boşta timer'ını kapatmaz.
+    # Exiting persistent mode does not turn off the independent normal idle timer.
     js("document.getElementById('inp').value='Disable persistent sleep mode';document.getElementById('send').click();return true;")
-    wait_until(lambda: 'Tamam efendim, kalıcı uyku modunu kapatıyorum.' in window.evaluate_js("document.getElementById('msgs').textContent") and not window.evaluate_js("document.getElementById('send').disabled"))
+    wait_until(lambda: "OK sir, I'm turning off permanent sleep mode." in window.evaluate_js("document.getElementById('msgs').textContent") and not window.evaluate_js("document.getElementById('send').disabled"))
     assert not api._sleeping
     wait_until(lambda: api._sleeping and 'Asleep · Microphone Off' in window.evaluate_js("document.getElementById('textStatus').textContent"))
     assert live_state['opened'] == opened + 3
-    # Bir kez uyandırılır; normal timer bu tercihi kalıcı moda dönüştürmemiştir.
+    # Once awakened; normal timer did not convert this preference to permanent mode.
     js("const d=document.getElementById('sleepDelay');d.value='0';d.dispatchEvent(new Event('change'));document.getElementById('sleep').click();return true;")
     wait_until(lambda: not api._sleeping)
     time.sleep(2.3)
@@ -412,7 +412,7 @@ def check_local_sleep(window, api, js, wait_until, live_state, wake_state, outco
     assert not window.evaluate_js("document.getElementById('micB').classList.contains('on')")
     outcome['persistent_task_returns_immediately_and_normal_idle_timer_sleeps_once'] = True
     outcome['natural_sleep_enter_and_permanent_enter_reached_confirmed_host_modes'] = True
-    # Native Mic yolu kamera ile aynı tek blip'i çağırmalı; fiziksel ses testi değildir.
+    # The Native Mic path should call the same single blip as the camera; It is not a physical sound test.
     js("const s=await import('./js/sfx.js');window.originalBlip=s.sfx.blip;window.micBlips=0;s.sfx.blip=()=>{micBlips++;};testMicOn();testMicOff();s.sfx.blip=originalBlip;return true;")
     assert window.evaluate_js('window.micBlips') == 2
     outcome['native_microphone_on_off_each_called_camera_blip'] = True
@@ -422,7 +422,7 @@ def check_local_sleep(window, api, js, wait_until, live_state, wake_state, outco
 
 
 def check_wake_recovery(window, api, js, wait_until, live_state, outcome):
-    """Gerçek worklet kuyruğunu geciktir; yeniden hazırlama yeni komut değildir."""
+    """Delay the actual worklet queue; refactoring is not a new command."""
     js("window.recoveryContext=new AudioContext();window.recoveryStream=null;"
        "Object.defineProperty(navigator.mediaDevices,'getUserMedia',{configurable:true,value:async()=>{recoveryStream=recoveryContext.createMediaStreamDestination().stream;return recoveryStream;}});"
        "window.recoveryOriginalEvent=window.pywebview.api.event;window.recoveryFeeds=0;window.recoveryDelayedDone=false;"
@@ -442,7 +442,7 @@ def check_wake_recovery(window, api, js, wait_until, live_state, outcome):
     js("recoveryStream.getTracks()[0].dispatchEvent(new Event('ended'));return true;")
     wait_until(lambda: 'capture ended' in window.evaluate_js("document.getElementById('textStatus').textContent"))
     assert 'capture ended' in window.evaluate_js("document.getElementById('textStatus').textContent")
-    # Açık Wake ve ardından gerçek cihaz hatası → açık Sleep tekrar hazırlanır.
+    # Open Wake and then actual device error → open Sleep prepare again.
     js("document.getElementById('sleep').click();return true;")
     wait_until(lambda: js("const m=await import('./js/live_mic.js');return m.liveMic.waitingForSpeech;"))
     js("recoveryStream.getTracks()[0].dispatchEvent(new Event('ended'));return true;")
@@ -458,10 +458,10 @@ def check_wake_recovery(window, api, js, wait_until, live_state, outcome):
 
 
 def check_real_local_wake(window, api, js, wait_until, outcome):
-    """İsteğe bağlı yerel fixture: gerçek KWS + WebAudio; sağlayıcı hâlâ sentetik.
+    """Optional local fixture: real KWS + WebAudio; The provider is still synthetic.
 
-    Test önceden indirilmiş hash doğrulamalı modeli ve SAPI ile oluşturulmuş
-    İngilizce WAV'ı kullanır. Ağ/gerçek mikrofon/kullanıcı sesi kullanılmaz.
+    Test created with pre-downloaded hash-verified model and SAPI
+    English uses WAV. Network/real microphone/user sound is not used.
     """
     from base64 import b64encode
     from app.bridge import webview_bridge as bridge_module
@@ -489,8 +489,8 @@ def check_real_local_wake(window, api, js, wait_until, outcome):
         before_answers = window.evaluate_js("document.getElementById('msgs').textContent").count('Native microphone answer')
         js("const b=Uint8Array.from(atob(" + json.dumps(encoded) + "),c=>c.charCodeAt(0));const s=realWakeContext.createBufferSource();s.buffer=await realWakeContext.decodeAudioData(b.buffer);s.connect(realWakeDest);s.start();return true;")
         wait_until(lambda: not api._sleeping)
-        # Backend hit'i, UI'nın yanıt turunu başlatıp bitirdiği anlamına gelmez.
-        # Eski enabled düğmesini görüp capture'ı erken kapatma.
+        # Backend hit does not mean that the UI starts and ends the response round.
+        # Seeing the old enabled button and turning off capture early.
         wait_until(lambda: window.evaluate_js("document.getElementById('msgs').textContent").count('Native microphone answer') > before_answers)
         wait_until(lambda: not window.evaluate_js("document.getElementById('send').disabled"))
         outcome['real_kws_sapi_wav_through_web_audio_and_native_bridge'] = True

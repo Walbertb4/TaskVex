@@ -1,8 +1,8 @@
-"""Tek telemetri sahibini sahte donanımla ve gerçek core hattıyla dene.
+"""Try single telemetry owner with fake hardware and real core line.
 
-Hiçbir pencere başlığı, kullanıcı dosyası veya ücretli API kullanılmaz. UI
-snapshot sorgusunun günlük/worker üretmediği ve modelin aynı örneği gördüğü
-kontrol edilir; bu test bütün GPU/sensörler için donanım kabulü değildir.
+No window titles, user files or paid APIs are used. UI
+where the snapshot query does not produce daily/worker and the model sees the same instance
+is controlled; This test is not hardware acceptance for all GPU/sensors.
 """
 from threading import Event
 import pytest
@@ -74,7 +74,7 @@ def test_ui_read_and_model_tool_share_owner_without_poll_tasks(taskvex_home):
         assert not bridge.event('query_system')['ok']
         bridge._ready=True
         assert not bridge.event('query_system',{})['ok']
-        # Böyle bir UI sorgusu core.submit'e uğramaz; worker/journal poll ile büyümez.
+        # Such a UI query does not hit core.submit; worker/journal does not grow with poll.
         initial=len(core._entries)
         view=bridge.event('query_system')
         for _ in range(5):

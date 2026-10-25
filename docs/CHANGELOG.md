@@ -1,311 +1,368 @@
 # Changelog
 
-Bu dosya TaskVex değişikliklerinin tek güncel kaydıdır. Mimari kararların mevcut
-hali ARCHITECTURE.md, yapılacak işler PLAN.md içindedir. Henüz sürüm yayımlanmadı.
+This file is the only current record of TaskVex changes. Architectural decisions are available
+The state is in ARCHITECTURE.md, the work to be done is in PLAN.md. The version has not been released yet.
 
 ## Unreleased
 
-### Gateway ping ve konumsuz Wi-Fi kalitesi — 6.2.3b
+### English repository language and publication preparation
 
-- Aynı Telemetry/Network sahibi yerel IPv4 gateway RTT ve Wi-Fi kalite yüzdesi
-  sağlar; UI hedefi Gateway ping olarak belirtir, yaş/status tooltip'i vardır.
-- Tek ICMP isteği 250 ms, normal kalite cache'i 10 s; rota/kart değişiminde
-  eski başarı bırakılır. Gerçek sıfır, timeout ve eksik sorgu farklıdır.
-- WLAN realtime opcode 19 konum izni istemez; hassas current_connection/BSS
-  fallback'i yoktur. Kaynak desteklenmiyorsa ölçüm — kalır.
-- Önceki yerel trafik dilimi kullanıcı kabulüyle 3e3cb8c commit'inde. Yeni
-  dilim için kullanıcı kabulü ve commit/push bekler.
-- 1154 pytest, 53 hedefli test, 15 browser grubu, 9 JS suite, 10 native aşama
-  ve Pyright 0: [kanıt](reports/network-quality-checks.json). Tek Windows
-  makinesinde gerçek gateway/Wi-Fi sorguları geçti; eski OS/donanım denenmedi.
+- Converted current guides, archived prose, code comments/docstrings and local
+  tool descriptions to English. Functional Unicode normalization and selected
+  conversation languages remain supported; this is not an English-only assistant.
+- Renamed the historical documentation directory to docs/archive and the archived stage guide to stages.md.
+  Updated links and archive hashes; pre-translation hashes and the source Git
+  revision remain in the manifest. Translated reports are historical translations,
+  not fresh acceptance evidence. The English-only maintenance rule is in AGENTS.md.
+- Corrected obsolete README claims about vendor-neutral GPU/network monitoring;
+  documented the portable demo and the separate media-read/control acceptance.
+- Publication checks and any failures are recorded in
+  [the migration report](reports/english-publication-checks.json).
 
+### Portable Windows demo package
 
-### Yerel ağ trafiği ve fiziksel link — 6.2.3a
+- Windows x64 ZIP and reproducible build with Python with PyInstaller
+  Added lock/script. Existing host/core is retained; frozen restart starts EXE.
+- Demo profile is separate under TaskVexDemo by default; developer key,
+  notes and UI tests are not distributed. Third-party license notices are added.
+- Wake weights are not distributed; optional setup available verified downloader
+  calls. WebView2/.NET target prerequisites are specified in the README.
+- Packaged EXE and ZIP temporary profile extracted to different Turkish/gap directory
+  opened: [evidence](reports/demo-build-checks.json). Clean PC/real No API acceptance;
+  Unsigned demo is not production version. Commit/push not made.
 
-- Mevcut Telemetry/system.status/query_system hattına pasif Windows IP Helper
-  sayaçları bağlandı. UI Receive/Send Mbps ve yerel/Wi-Fi bağlılık durumunu gösterir.
-- İlk örnek, sayaç reseti, cihaz kümesi değişimi ve kaynak hatası hız uydurmaz;
-  gerçek sıfır, bilinmeyen durum ve bağlantısız durum ayrılır.
-- Sanal/VPN sayaçları çift sayılmaz; SSID/IP/MAC/profil adı dışarı verilmez.
-  Aktif ping/hız testi, Wi-Fi sinyal yüzdesi veya bağlantı ayarı eklenmedi.
-- GPU dilimi kullanıcı kabulüyle 43c7f28 commit'inde. Bu yeni dilimin otomatik
-  kontrolleri tamamlandı; manuel kabul/commit/push bekler.
-- 1132 pytest, 31 hedefli test, 14 browser grubu, 9 JS suite, 10 native aşama
-  ve Pyright 0: [kanıt](reports/network-local-checks.json). Gerçek Windows
-  üzerinde salt okunur sayaç okuması geçti; fiziksel kesip bağlama denenmedi.
+### Windows media session reading — 6.2.5a
 
-
-### Windows GPU sayaçları ve sistem görünümü düzeltmesi
-
-- Yayınlanmamış NVIDIA aracı/adaptörü kaldırıldı; üreticiden bağımsız Windows
-  PDH GPU Engine sayaçları ortak Telemetry/system.status/UI hattında kullanılır.
-- Aynı motor süreçleri toplanır; en yoğun motor/kart tek barı belirler. İlk
-  örnek, sıfır, sayaç kaybı, CPU/RAM bağımsızlığı ve handle kapanışı korunur.
-- Üstteki sistem açıklaması kaldırıldı; sabit GPU etiketi dar alanda bölünmez.
-  Barın 0/25/100 genişliği 1280/1920 görünümde doğrulanır.
-- Sıcaklık ve VRAM kapasitesi bu kaynaktan gelmediği için ölçülmüş sayılmaz.
-- Önceki vendor denemesi kullanıcı tarafından reddedildi; tarihsel raporları
-  yeni uygulamanın kanıtı değildir. Yeni adım manuel kabul/commit bekler.
-- 1120 pytest, 19 hedefli test, 13 browser grubu, 9 JS suite, 10 native aşama
-  ve Pyright 0: [kanıt](reports/windows-gpu-checks.json). Windows üzerinde salt
-  okunur ortak sayaç kontrolü de geçti; farklı fiziksel üreticiler denenmedi.
-
-### Ortak yerel telemetri — CPU/RAM/disk/pil/aktif uygulama
-
-- Tek Telemetry örneği model ve UI için gerçek Win32 ölçümlerini sağlar.
-  UI mevcut tick üzerinden snapshot okur; poll görev günlüğünü büyütmez.
-- İlk CPU örneği/bozuk sayaç/kayıp ölçüm —; gerçek sıfır korunur.
-  Aktif uygulama yalnız exe adıyla gösterilir; kullanıcı belge başlığı okunmaz.
-- Bağlantı kesilince yerel ölçümler ve oturum token toplamı silinmez.
-  Yeni bağımlılık/servis/thread yoktur. GPU/sıcaklık/ağ/media sonraki dilimlerdir.
-- Kullanıcı token testini kabul etti ve commit'i erteledi; bu tur commit/push yok.
-- 1109 pytest, 96 hedefli test, 12 browser, 9 JS ve Pyright 0. İlk native
-  chat süre aşımından sonra izole tekrar 10/10 geçti; [kanıt](reports/local-telemetry-checks.json).
-
-### Gemini oturum token toplamı
-
-- Python token ayrıştırma/toplama mevcut gemini.py içinde tekleştirildi.
-  UI artık son yanıt yerine uygulama ömründeki toplamı gösterir.
-- REST araç turları, Live üretimleri ve ayrı TTS yanıtları sayılır;
-  ara Live snapshot'ları gelişigüzel toplanmaz. Stop ve Disconnect toplamı korur.
-- Eksik kullanım kesin sıfır sayılmaz; bilinen toplam ≥/Incomplete gösterilir.
-  Yeni API çağrısı/depo/bağımlılık yoktur; restart sayacı sıfırlar.
-- Gerçek API/fatura doğrulaması yapılmadı; bu dilimin kullanıcı kabulü bekleniyor.
-- 1101 pytest, 138 hedefli test, 11 browser, 9 JS, 10 native ve Pyright 0;
-  [kanıt](reports/session-token-checks.json).
-
-- GitHub README güncel hafıza onayı/otomatik kayıt, son token bildirimi ve
-  1091 testlik doğrulamaya göre düzeltildi. Telemetri/hava/ağ eksikleri ve
-  görev günlüğünde öneri/kaynak verisi kalabilmesi açıkça belirtildi.
-
-### Son sağlayıcı token göstergesi
-
-- Live/REST gerçek usage metadata mevcut sohbet raporuna ve UI'a bağlandı.
-  Eksik bilgi eski değeri korumaz; sıfır geçerlidir. Limit/kota uydurulmaz.
-- Ayrı API çağrısı/depo/bağımlılık eklenmedi. Gösterilen son bildirimdir;
-  oturum toplamı, hesap kotası veya tüm araç/ses isteklerinin toplamı değildir.
-- Kullanıcı bu küçük adım için doğrudan commit istedi; gerçek API kabulü yapılmadı.
-- 1091 pytest, 96 hedefli test, 9 JS, 10 browser, 10 native ve Pyright 0;
-  [kanıt](reports/token-counter-checks.json).
-
-- Kullanıcı hafıza önerisinin düğme/konuşma kararını başarılı bildirdi;
-  uygulama 6f52b4c commit'inde, push yok. PLAN'da güncel kabul durumu ve
-  telemetri/ağ/token/media ile kalan UI bağlantılarının sırası netleştirildi.
-  Bu planlama turunda yeni uygulama özelliği eklenmedi.
-
-### Hafıza önerisine sohbet yanında veya konuşarak karar
-
-- Save/Dismiss kişiselleştirmeden sohbetin altındaki dört kontrolün sağına,
-  ayrı ve temaya bağlı gruba taşındı; otomatik modal/Review ara düğmesi kaldırıldı.
-- Vex mevcut normal ses/metin yanıtında izin ister. Sonraki açık kullanıcı
-  kararı aynı memory.decide aracına gider; UI/model iki ayrı kayıt yolu değildir.
-- Model kendi oluşturduğu adayı aynı turda onaylayamaz. Sonraki turda taze
-  pending ID gerekir; eski ID ve geç karar yeni adaya uygulanmaz.
-- Karar sonrası gerçek backend profili yenilenir; ikinci save yoktur.
-  Önceki 6.1.3 kullanıcı kabulü c5d086c commit'inde, push yapılmadı.
-- 1081 pytest, 40 hedefli hafıza testi, 9 JS, 9 browser, 10 native ve Pyright 0;
-  [kanıt](reports/memory-voice-review-checks.json). Gerçek API/mikrofon denenmedi;
-  bu değişikliğin kullanıcı kabulü ve commit'i beklenir.
+- Same Media owner UI connected to query_media and model media.status line.
+  OS current session title/artist/state is displayed; No playback control added.
+- Incomplete session, unsupported/timeout/source loss and transition are separated; stale title
+  and the playing animation is cleared. Native UI/model reads the same cache.
+- Added four WinRT 3.2.1 namespace/runtime packages to pyproject and lock;
+  The COM lifecycle is stable, there are no new threads/players/timers.
+- Previous network quality is in commit 9c607bb. New slice automatic/native control
+  completed; Waits for user acceptance. Control buttons are separated into 6.2.5b.
+- 1172 pytests, 138 targeted tests, 16 browser groups, 9 JS suites, 10 native stages
+  and Pyright 0: [evidence](reports/media-read-checks.json). Old tool catalog
+  The first Python/native failed rounds resulting from expectations were preserved in the report.
 
 
-### Hafıza için sor/sorma tercihi ve doğrudan inceleme
+### Gateway ping and location-free Wi-Fi quality — 6.2.3b
 
-- Personalization'a Ask before saving learned information checkbox'ı eklendi;
-  eski kayıtta true. Öğrenme ve hafıza tercihleriyle aynı profilde saklanır.
-- Onay gerekiyorsa pencere otomatik açılır; Review düğmesinin bulunmasına
-  bağımlı değildir. Zaten açık paneli toggle ile kapatmaz.
-- Checkbox false ise memory.propose aynı alan sahibinin append/readback yoluyla
-  doğrudan kaydeder; UI backend'den yenilenir. Model bu tercihi değiştiremez.
-- memory.write yetkisi, taze snapshot, replay/Stop ve belirsizlik kuralları
-  korunur. Yeni alan snapshot kimliğine dahil edilir.
-- 1074 pytest, 9 JS, 9 browser, 10 native ve Pyright 0; [kanıt](reports/memory-review-checks.json),
-  [native](reports/memory-review-native.json). Canlı API/çıkarım doğruluğu denenmedi;
-  kullanıcı kabulü ve commit beklenir.
-
-
-### Hafıza önerisi kaynak reddi düzeltmesi
-
-- Kullanıcı manuel testte memory.propose başarısızlığı bildirdi. Günlükten
-  source_unavailable doğrulandı; 6.1.3 yeniden açıldı, kabul edilmiş sayılmaz.
-- Kaynak cümlesini modele yeniden yazdırıp birebir eşleştirme kaldırıldı.
-  ModelTools gerçek kullanıcı metni/ASR'yi kendisi bağlar; alıntı varyasyonu
-  geçerli öneriyi düşürmez. Öneri hâlâ onaydan önce profil gerçeği değildir.
-- Engine log araç başarısızlığında güvenli hata kodunu gösterir; özel veri
-  loglanmaz. Kaynaksız sesli işlem, snapshot, replay ve onay korumaları sürer.
-- 1068 pytest, 33 hedefli hafıza/öneri testi, 8 browser grubu, 10 native aşama,
-  Pyright 0 ve live-status JS geçti. [Kanıt](reports/memory-source-checks.json),
-  [native](reports/memory-source-native.json). Gerçek hesapla denenmedi;
-  kullanıcı tekrar testi ve commit beklenir.
+- Local IPv4 gateway RTT and Wi-Fi quality percentage with the same Telemetry/Network
+  provides; The UI specifies the target as Gateway ping, there is a tooltip age/status.
+- Single ICMP request 250 ms, normal quality cache 10 s; In replacement rota/kart
+  old success is abandoned. True zero, timeout and incomplete query are different.
+- WLAN realtime opcode 19 location permission does not require; sensitive current_connection/BSS
+  There is no fallback. If the source is not supported, the measurement remains.
+- Previous local traffic slice is in commit 3e3cb8c by user acceptance. new
+  Waits for user acceptance and commit/push for the slice.
+- 1154 pytests, 53 targeted tests, 15 browser groups, 9 JS suites, 10 native stages
+  and Pyright 0: [evidence](reports/network-quality-checks.json). Single Windows
+  actual gateway/Wi-Fi queries passed on his machine; old OS/hardware untested.
 
 
-### Konuşmadan hafıza önerileri ve kullanıcı onayı (6.1.3)
+### Local network traffic and physical link — 6.2.3a
 
-- Personalization pLearn tercihi varsayılan kapalı; pMemory ile birlikte aynı
-  konuşma modelinden memory.propose önerileri alınır. Kaynak bu turun gerçek
-  metni/Live transkriptine bağlanır; model host kanıtı üretemez.
-- Öneri profil hafızasına yazılmaz; günlük aday metnini içerebilir. Tek RAM
-  adayı ve Save/Dismiss UI kararı aynı core
-  hattındadır. Öğrenme açıkken model yeni bilgiyi append ile onaysız ekleyemez.
-- Onay tek profil/aynı append-readback; eski öneri/izin/snapshot/restart ret,
-  unknown kilidi ve ikinci save üretmeden UI güncellemesi. Taslak korunur.
-- 6.1.2 kullanıcı tarafından kabul edildi, 50421c3 commit'inde; push yok.
-- 1065 pytest, 15 hedefli öneri testi, 9 JS suite, 8 browser grubu, 10/10 native
-  aşama ve Pyright 0; [kanıt](reports/memory-suggestions-checks.json),
-  [native](reports/memory-suggestions-native.json). Gerçek/ücretli API ve modelin
-  anlamsal çıkarım doğruluğu denenmedi; kullanıcı kabulü/commit bekliyor.
+- Passive Windows IP Helper to existing Telemetry/system.status/query_system line
+  meters are connected. UI Receive/Send shows Mbps and local/Wi-Fi shows commitment status.
+- First example, counter reset, device cluster change and resource error do not match speed;
+  true zero, unknown state and disconnected state are separated.
+- Virtual/VPN counters do not count as double; The name SSID/IP/MAC/profile is not given out.
+  Active ping/speed testing, no Wi-Fi signal percentage or connection settings added.
+- GPU slice is in commit 43c7f28 by user acceptance. This new slice is automatically
+  checks completed; manual waits acceptance/commit/push.
+- 1132 pytests, 31 targeted tests, 14 browser groups, 9 JS suites, 10 native stages
+  and Pyright 0: [evidence](reports/network-local-checks.json). Real Windows
+  read-only meter reading passed on it; Physical cutting and binding was not attempted.
 
 
-### Açık model hafıza işlemleri (6.1.2)
+### Windows GPU counters and system view fix
 
-- memory.read/patch, REST ve Live'da mevcut registry/policy/TaskManager hattına
-  eklendi; yalnız etkin pMemory ile, açık kaydet/düzelt/unut isteği için.
-- Taze tur/snapshot ve tekil hedef denetimi; readback, tekrar/iptal/unknown
-  kuralları. Aynı profil dosyası kullanılır, yeni hafıza DB'si yoktur.
-- Native core/bridge aynı JsonStore kilidini paylaşır. Ortak ayar şeması
-  bridge/settings.py'den storage/settings.py'ye taşındı; tüm çağıranlar güncel.
-- UI hafızayı backend'den yeniler; eski form overwrite ve geç kayıt ack'i
-  korunur. Çakışmada otomatik merge/retry yoktur; gerekirse uygulama yeniden açılır.
-- 6.1.1 kullanıcı tarafından kabul edildi, e7f3ce4 commit'inde; push yok.
-- 1050 pytest, 9 JS suite, 7 browser grubu, 10/10 native aşama ve Pyright 0.
-  [Kanıt ve başarısız ara denemeler](reports/model-memory-checks.json),
-  [native](reports/model-memory-native.json). Açık form taslağı korunur;
-  gerçek hesap/ücretli API yok. Kullanıcı kabul etti; 50421c3 commit’inde.
+- Removed unreleased NVIDIA tool/adapter; manufacturer-independent Windows
+  PDH GPU Engine counters are used in the common Telemetry/system.status/UI line.
+- The same motor processes are collected; determines the densest motor/kart single bar. First
+  instance, zero, counter loss, CPU/RAM independence, and handle closure are preserved.
+- Removed system description at the top; fixed GPU tag is not split in narrow space.
+  The 0/25/100 width of the bar is verified in the 1280/1920 view.
+- Temperature and VRAM capacity are not measured because they do not come from this source.
+- Previous vendor attempt was rejected by the user; historical reports
+  It is not evidence of new practice. New step manual waits acceptance/commit.
+- 1120 pytests, 19 targeted tests, 13 browser groups, 9 JS suites, 10 native stages
+  and Pyright 0: [evidence](reports/windows-gpu-checks.json). only on windows
+  read common meter check also passed; different physical generators were not tried.
 
+### Common local telemetry — CPU/RAM/disk/battery/active application
 
-### Elle yönetilen kullanıcı hafızası ve New Chat kaldırılması (6.1.1)
+- Single Telemetry instance provides real Win32 measurements for model and UI.
+  UI reads snapshot from current tick; poll does not enlarge the task log.
+- First CPU self-instance/bad counter/lost measurement —; true zero is preserved.
+  The active application is shown only by its exe name; The user document title is not read.
+- Local metrics and session token total are not deleted when disconnected.
+  There is no new dependency/service/thread. GPU/temperature/network/media are the next slices.
+- User accepted the token test and postponed the commit; There is no commit/push this round.
+- 1109 pytest, 96 targeted tests, 12 browser, 9 JS and Pyright 0. First native
+  After the chat timeout, the isolate passed again 10/10; [evidence](reports/local-telemetry-checks.json).
 
-- New Chat düğmesi ve kullanılmayan UI handler/kontrol referansları kaldırıldı.
-  Internal reset API'si korunur; geçici hafıza Stop/Disconnect'te devam eder.
-- Personalization pMem editörü ve açık pMemory tercihi mevcut profil deposuna
-  bağlandı. Eski metin onaysız gönderilmez. Ortak instruction opt-in bilgiyi
-  yalnız veri olarak alır; model çıkarımı otomatik kaydedilmez.
-- Etkin kişisel hafıza değişince sonraki turda eski Live/RAM bağlamı bırakılır;
-  belirsiz kapanışta yeni tur başlamaz. Aktif yanıt/geçmiş mesaj/yedekler silinmez.
-- Ses seçimi adımı devam onayıyla 2cebea8 commit'ine alındı; push yok.
-- 6.1.2 model mutasyon araçları ve 6.1.3 çıkarım önerileri ayrı dilimlerdir;
-  bu turda eklenmedi. Yeni bağımlılık/veri otoritesi yok.
-- 1035 pytest, 9 JS suite, 6 browser grubu, Pyright 0 ve 10/10 native aşama
-  geçti. Checkbox restore hatası düzeltildi; iki native eski varsayım daha
-  kesin kontrolle güncellendi. Başarısız ara turlar [raporda](reports/personal-memory-checks.json),
-  son native kabul [burada](reports/personal-memory-native.json). Gerçek hesap/
-  ücretli API ve fiziksel ses yok; kullanıcı kabul etti, e7f3ce4 commit’inde.
+### Gemini session token total
 
+- Python token parsing/collection has been unified in existing gemini.py.
+  UI now shows total in app lifetime instead of last response.
+- REST tool turns, Live productions and individual TTS responses are counted;
+  Search Live snapshots are not collected randomly. Stop and Disconnect preserve the total.
+- Underutilization is not considered absolute zero; known total ≥/Incomplete is displayed.
+  There is no new API call/repository/dependency; restart resets the counter.
+- The actual API/billing has not been verified; User acceptance of this slice is awaited.
+- 1101 pytest, 138 targeted test, 11 browser, 9 JS, 10 native and Pyright 0;
+  [evidence](reports/session-token-checks.json).
 
-### Live ses seçimi ve anahtar durum ibaresi (5.F8.2)
+- GitHub README current memory confirmation/automatic record, last token notification and
+  Corrected based on validation of 1091 tests. Telemetry/air/network shortcomings and
+  Explicitly stated that there could be data proposal/source remaining in the mission log.
 
-- Connection altında belgelenmiş 30 hazır Live sesi [LIVE] etiketiyle listelenir.
-  Tek conn.voice tercihi kalıcı ayarlardan aynı Live setup speech_config'una
-  taşınır; metin/mikrofon/timer yanıtı ortaktır. Ses değişimi eski resume token'ını
-  kullanmaz, aktif turu kesmez. REST TTS değişmedi; özel/TTS-only ses eklenmedi.
-- API key input'u kayıtlı/eksik/belirsiz durumu placeholder'da gösterir; gerçek
-  anahtar veya son karakterleri göstermez. Anahtar varlığı API erişim onayı değildir.
-- gemini-live-api-dev skill'i ve Google Live sağlayıcı sözleşmesi doğrulandı.
-  Ses listesi belge kaynaklıdır; model keşfi API'den kalır. Yeni bağımlılık yok.
-- Önceki ses seviyesi adımı kullanıcı kabulüyle 9d67a1d commit'ine kaydedildi;
-  push yok. Kullanıcı devam/commit onayı verdi; ayrı fiziksel ses testi bildirmedi.
-- 1025 genel pytest + 24 son hedefli test, 9 JS suite, 5 browser grubu,
-  app Pyright 0 ve 10/10 native aşama geçti. [Özet](reports/live-voices-checks.json),
-  [native](reports/live-voices-native.json). SDK testinin alan adı varsayımı ve
-  bir tip belirsizliği düzeltildi; başarısız denemeler raporda korunur.
-  Gerçek hesap/ücretli API ve fiziksel ses denenmedi.
+### Latest provider token indicator
 
+- Live/REST actual usage metadata linked to existing chat report and UI.
+  Incomplete information does not preserve the old value; zero is valid. Limit/quota is not made up.
+- Separate API call/repository/dependency not added. It is the last notification shown;
+  session total is not account quota or the sum of all tool/audio requests.
+- The user requested a direct commit for this small step; No actual API adoption.
+- 1091 pytest, 96 targeted test, 9 JS, 10 browser, 10 native and Pyright 0;
+  [evidence](reports/token-counter-checks.json).
 
-### Vex yanıt ses seviyesi (5.F8.1)
+- User reported successful decision of memory recommendation button/speech;
+  app is in commit 6f52b4c, no push. Current acceptance status in the PLAN and
+  With telemetry/network/token/media, the order of the remaining UI links was clarified.
+  No new app features were added in this round of planning.
 
-- Settings Audio altında tema ve klavye uyumlu Vex reply volume barı eklendi.
-  Tek PCM oynatıcısının kazancını anlık değiştirir; Live/REST/timer bildiriminde
-  ortaktır. Mute aç/kapat seçili seviyeyi korur; SFX ve mikrofon değişmez.
-- replyVolume 0–1 arası doğrulanır; varsayılan/reset 1, sıfır korunur.
-  Aynı save/snapshot/import-export yoluyla yerel ve native tercihe kaydolur.
-  Yeni sağlayıcı çağrısı/oynatıcı eklenmedi. Voice/kişiselleştirme 5.F8.2 bekliyor.
-- Önceki günlük/kapasite adımı kullanıcı devam onayıyla 5c21156 commit'ine
-  kaydedildi; push yapılmadı. Kullanıcı bu dilimin çalıştığını doğruladı; commit onaylı.
-- 1024 pytest, 9 JS suite, 5 browser grubu, app Pyright 0 ve 10/10 native
-  aşama geçti. [Özet](reports/reply-volume-checks.json),
-  [native kanıt](reports/reply-volume-native.json). Gerçek hesap/ücretli API ve
-  fiziksel hoparlör testi yapılmadı.
+### You can decide on the memory suggestion by chatting or by talking.
 
-
-### Kalıcı görev günlüğü ve kapasite (5.F7.2/3)
-
-- Aynı TaskManager, standart kütüphane SQLite günlüğünü kullanır; kabul, handler
-  öncesi ve terminal kayıtlar FULL transaction ile yazılır. İkinci core OS
-  kilidiyle reddedilir; yeni bağımlılık/yürütücü/model yolu eklenmedi.
-- Restart tamamlanan işi yeniden çalıştırmaz. Queued iptal, başlamış yarım iş
-  unknown olur. Kimlik/içerik çakışması reddedilir; disk hatası yeni etkileri
-  durdurur. Doğrulanmış araç sonucu geç kayıt hatasıyla geri alınmış sayılmaz.
-- Native core'da 256 toplam ömür sınırı kaldırıldı; RAM kayıtları ve aktif işler
-  sınırlıdır. Terminal RAM kopyaları çıkarılsa da eski get/wait/cancel/replay
-  diskten aynı kimliği/sonucu verir. Günlüksüz test yöneticisi eski güvenli sınırı korur.
-- Günlük düz yerel veri içerir, eski not metnini tutabilir, otomatik silinmez.
-  Unknown uzlaştırma ekranı ve dış servis exactly-once garantisi eklenmedi.
-- Eski açılış testleri artık yalnız tasks dizininin oluşmasını bekler; yeni
-  gözlem restart'ta yeni request_id kullanır. İlk test turundaki eski varsayım
-  hataları ve test bağlantısı ResourceWarning'i düzeltildi. İlk genel turdaki
-  tek Live/asyncio uyarısı odaklı ve son genel turda tekrarlanmadı; filtre gevşetilmedi.
-- 1017 pytest, 17 hedefli günlük testi, Pyright 0 ve 10/10 native aşama geçti.
-  Ayrıntılar [test kanıtı](reports/task-journal-checks.json) ve
-  [native raporda](reports/task-journal-native.json). Gerçek hesap/ücretli API yok;
-  kullanıcı devam/commit onayı verdi; ayrı fiziksel test bildirilmedi.
+- Save/Dismiss from personalization to the right of the four controls below the chat,
+  moved to separate, theme-related group; Removed automatic modal/Review search button.
+- Vex requests permission in the current normal voice/text response. Next open user
+  The decision goes to the same memory.decide tool; UI/model is not two separate recording paths.
+- The model cannot approve the candidate it created in the same round. Fresh for next round
+  pending ID required; The old ID and late decision will not be applied to the new candidate.
+- The real backend profile is renewed after the decision; There is no second save.
+  In the previous 6.1.3 user acceptance commit c5d086c, no push was made.
+- 1081 pytest, 40 targeted memory tests, 9 JS, 9 browser, 10 native and 0 Pyright;
+  [evidence](reports/memory-voice-review-checks.json). The real API/microphone has not been tested;
+  User acceptance and commit of this change is expected.
 
 
-### README ve oturum kapanışı
+### ask/auto-save preference for memory and direct review
 
-- GitHub README, uygulanan özellikler/planlı kapsam/veri akışı/açık sınırlar ve
-  test kanıtını ayıracak şekilde İngilizce yeniden yazıldı. Ölçülmemiş hız/RAM,
-  sınırsız otonomi veya üretime hazır güvenlik iddiası yok.
-- 5.F7.2 kalıcı günlük ve 5.F7.3 güvenli kapasite/retention işleri kabul koşullarıyla
-  PLAN.md'ye kaydedildi. Ses tercihleri ve ayrı yanıt seviyesi 5.F8'de bekliyor.
-- Kullanıcı 5.F7.1 için devam, commit ve GitHub push onayı verdi; bu, ayrı bir
-  fiziksel test sonucunun bildirildiği anlamına gelmez.
-
-
-### Tek-instance güvenliği (5.F7.1)
-
-- Aynı veri kökü için OS dosya kilidi worker/pencere açılmadan alınır; ikinci
-  native instance açık hata ile reddedilir. Başka veri profili engellenmez.
-- Kapanış/exception/crash kilidi bırakır; restart yeni süreci ancak bırakıldıktan
-  sonra başlatır. PID/stale dosya silme, yeni bağımlılık veya ikinci state sahibi yok.
-- Kullanıcının docs altına taşıdığı ana belgeler korundu; aktif linkler ve AGENTS
-  yeni belge konumlarına uyarlandı. Tarihsel arşiv değiştirilmedi.
-- 1000 pytest, hedefli Pyright 0 ve 10/10 sentetik native aşama geçti;
-  gerçek alt süreç/crash ve native giriş/restart testleri de dahil.
-  Sonuç: reports/instance-checks.json. Gerçek hesap/ücretli API kullanılmadı.
-- 256 kayıt ve kalıcı replay günlüğü bu dilimde değişmedi. 5.F7.2/3 açık.
+- Ask before saving learned information checkbox was added to Personalization;
+  true in old record. It is stored in the same profile as learning and memory preferences.
+- If confirmation is required, the window opens automatically; There is a review button
+  It is not dependent. It does not close the already open panel with toggle.
+- If checkbox is false, memory.propose via append/readback of the same domain owner
+  saves directly; The UI is refreshed from the backend. The model cannot change this preference.
+- memory.write permission, fresh snapshot, replay/Stop and ambiguity rules
+  is protected. The new field is included in the snapshot ID.
+- 1074 pytest, 9 JS, 9 browser, 10 native and Pyright 0; [proof](reports/memory-review-checks.json),
+  [native](reports/memory-review-native.json). Live API/inference accuracy not tested;
+  User acceptance and commit is expected.
 
 
-### Bakım ve belge düzeni
+### Memory suggestion resource denial fix
 
-- 133 eski belge/kanıt dosyası özgün göreli yolları ve SHA256 manifestiyle
-  docs/eski altına taşındı. Arşiv güncel yönerge değildir.
-- Arşiv byte'ları .gitattributes ile Git satır sonu dönüşümünden korunur;
-  manifest başka sistemde checkout yapıldığında da geçerlidir.
-- ARCHITECTURE.md ve PLAN.md yeniden yazıldı; çalışan komutlar ve köprü sözleşmesi
-  docs içinde tekilleştirildi. README'lerdeki çelişkili ilerleme günlükleri kaldırıldı.
-- AGENTS.md yeni belge sahipliğini ve her değişiklikte bu kaydın bakımını zorunlu kılar.
-- Kullanılmayan MediaRecorder/decode yolu ve yalnız onu sınayan test kaldırıldı;
-  gerçek AudioWorklet akışı ve onun regresyonları korundu.
-- Backend yürütücüsü olmayan UI rutin/takvim tarayıcıları ve skill/rutin sahte
-  başlangıç bildirimleri kaldırıldı. Yerel tanımlar ve eski profil metinleri korundu;
-  bağlı olmayan kontroller planlı olarak işaretlendi/devre dışı bırakıldı.
-- Sohbet/mikrofon/uyku yaşam döngüsü assistant_session.js'e, görsel kabuk shell.js'e,
-  cihazlar devices.js'e ve layout layout.js'e ayrıldı. preferences.js tek tercih
-  nesnesidir; yeni framework, bağımlılık veya ikinci durum sahibi eklenmedi.
-- Native kabul senaryoları runner'dan native_scenarios.py'ye taşındı.
-- REST/Live araç katalogları ortak sabitlere alındı; eski politika testi tip
-  uyarıları testin kasıtlı geçersiz girdileri açıkça belirtilerek düzeltildi.
-- Denetim bulguları, özelleştirme boşlukları ve gerçek test kapsamı docs/AUDIT.md'dedir.
+- User reported memory.propose failure in manual testing. From the diary
+  source_unavailable verified; 6.1.3 reopened is not considered accepted.
+- The source sentence was reprinted into the model and the one-to-one matching was removed.
+  ModelTools real user connects text/ASR itself; quote variation
+  It does not downgrade the current recommendation. The recommendation is still not the profile truth before approval.
+- Engine log shows safe error code in case of tool failure; private data
+  not logged. Unsourced audio processing, snapshot, replay and confirmation protections remain.
+- 1068 pytests, 33 targeted memory/suggestion tests, 8 browser groups, 10 native stages,
+  Pyright 0 and live-status JS passed. [Proof](reports/memory-source-checks.json),
+  [native](reports/memory-source-native.json). It has not been tested by actual calculation;
+  User retest and commit are expected.
 
-Doğrulama: 996 pytest, 9 JS suite, 4 browser grubu, 10 native aşama; hedefli
-Pyright 0 hata/uyarı, pip check temiz. Runtime Python+JS net 706 satır azaldı.
-İlk konum/link testi hataları ve çözümü cleanup-checks.json içinde açıkça kayıtlıdır.
 
-Bakım kullanıcı tarafından kabul edildi, ea8aa15 commit’inde. Gerçek hesap/ücretli
-API testi yapılmadı; otomatik kanıtlar docs/reports altında tutulur.
+### Speech memory suggestions and user confirmation (6.1.3)
 
-### Önceki kabul edilen temel
+- Personalization pLearn preference is off by default; Same with pMemory
+  memory.propose suggestions are taken from the speech model. Source: This turn is real.
+  Binds to transcript text/Live; The model cannot produce proof of host.
+- The recommendation is not written to the profile memory; May include daily candidate text. single RAM
+  candidate and Save/Dismiss UI resolution are the same core
+  is on the line. When learning is on, the model cannot add new information without approval via append.
+- Append single profile/same append-readback; old suggestion/permission/snapshot/restart rejection,
+  UI update without generating unknown lock and second save. The draft is preserved.
+- 6.1.2 accepted by user, in commit 50421c3; no push.
+- 1065 pytests, 15 targeted recommendation tests, 9 JS suites, 8 browser groups, 10/10 native
+  stage and Pyright 0; [proof](reports/memory-suggestions-checks.json),
+  [native](reports/memory-suggestions-native.json). Real/paid API and model
+  semantic inference accuracy was not tested; user is expecting acceptance/commit.
 
-- `526bfed`: sayaç listesinde yalnız UI üzerinden silme; tema aksanlarını reactor
-  durumundan ayırma. Bu adım kullanıcı tarafından kabul edildi.
-- Önceki ayrıntılı değişiklik/kabul geçmişi Git ve docs/eski altında korunur;
-  eski günlükler yeniden mimariye kopyalanmaz.
+
+### Explicit model memory operations (6.1.2)
+
+- memory.read/patch to line registry/policy/TaskManager available in REST and Live
+  added; for open request save/fix/forget, only with active pMemory.
+- Fresh turn/snapshot and single target validation; readback, replay/cancellation/unknown
+  rules. The same profile file is used, no new memory DB.
+- Native core/bridge shares the same JsonStore lock. Common setting scheme
+  Moved from bridge/settings.py to storage/settings.py; All callers are up to date.
+- UI refreshes memory from backend; old form overwrite and late registration ack
+  is protected. There is no automatic merge/retry in the conflict; If necessary, the application will be reopened.
+- 6.1.1 accepted by user, in commit e7f3ce4; no push.
+- 1050 pytest, 9 JS suite, 7 browser groups, 10/10 native stage and Pyright 0.
+  [Evidence and unsuccessful interim trials](reports/model-memory-checks.json),
+  [native](reports/model-memory-native.json). The open form outline is preserved;
+  There is no real account/paid API. User agreed; In commit 50421c3.
+
+
+### Manual user storage and New Chat removal (6.1.1)
+
+- Removed New Chat button and unused UI handler/control references.
+  Internal reset API is preserved; temporary memory persists in Stop/Disconnect.
+- Personalization pMem editor and open pMemory preference to existing profile storage
+  connected. Old text will not be sent without approval. Common instruction opt-in information
+  receives only data; model inference is not automatically saved.
+- When the active personal memory changes, the old Live/RAM context is dropped in the next round;
+  In case of indefinite closure, a new round does not start. Active reply/history/backups is not deleted.
+- Voice selection step was moved to 2cebea8 commit with continuation approval; no push.
+- 6.1.2 model mutation tools and 6.1.3 inference suggestions are separate slices;
+  not added this round. New dependency/data no authority.
+- 1035 pytest, 9 JS suite, 6 browser groups, Pyright 0 and 10/10 native stage
+  passed. Checkbox restore error fixed; two more native old assumptions
+  Updated with precise control. Unsuccessful intermediate rounds [in report](reports/personal-memory-checks.json),
+  latest native acceptance [here](reports/personal-memory-native.json). Real account/
+  no paid API and no physical audio; user agreed, in commit e7f3ce4.
+
+
+### Live sound selection and key status statement (5.F8.2)
+
+- 30 preset Live sounds documented under Connection are listed with the [LIVE] tag.
+  Single conn.voice preference from permanent settings to the same Live setup speech_config
+  movable; text/microphone/timer response is common. Voice change old resume token
+  does not use, does not interrupt the active turn. REST TTS has not changed; special/TTS-only no sound added.
+- API key input registered/missing/uncertain shows the status in the placeholder; real
+  It does not show key or end characters. Key existence is not API access confirmation.
+- verified gemini-live-api-dev skill and Google Live provider agreement.
+  The sound list is sourced from the document; pattern discovery remains from the API. No new dependencies.
+- Previous volume step saved in commit 9d67a1d by user acceptance;
+  no push. User confirmed continuation/commit; did not report separate physical voice testing.
+- 1025 general pytest + 24 final targeted tests, 9 JS suites, 5 browser groups,
+  app Pyright passed 0 and 10/10 native stage. [Abstract](reports/live-voices-checks.json),
+  [native](reports/live-voices-native.json). Domain name assumption of SDK testing and
+  fixed a type ambiguity; Failed attempts are preserved in the report.
+  The actual account/paid API and physical sound have not been tested.
+
+
+### Vex response volume (5.F8.1)
+
+- Theme and keyboard compatible Vex reply volume bar has been added under Settings Audio.
+  Instantly changes the gain of a single PCM player; In notification Live/REST/timer
+  is common. Mute on/off preserves the selected level; SFX and microphone are unchanged.
+- replyVolume is validated between 0–1; default/reset 1, zero is maintained.
+  It registers to native and native preference via the same save/snapshot/import-export.
+  No new provider call/player added. Voice/personalization 5.F8.2 is waiting.
+- Previous step log/capacity moved to commit 5c21156 with user continuation approval
+  recorded; No push was made. The user confirmed that this slice is working; commit approved.
+- 1024 pytest, 9 JS suite, 5 browser groups, app Pyright 0 and 10/10 native
+  The phase has passed. [Abstract](reports/reply-volume-checks.json),
+  [native evidence](reports/reply-volume-native.json). Real account/paid API and
+  No physical speaker testing was done.
+
+
+### Persistent task log and capacity (5.F7.2/3)
+
+- Same TaskManager uses standard library SQLite logging; acceptance handler
+  Pre- and terminal records are written with a FULL transaction. Second core OS
+  is rejected by its lock; new path dependency/executor/model was not added.
+- Restart does not rerun the completed job. Queued canceled, half job started
+  becomes unknown. Conflict Identity/content is rejected; disk failure new effects
+  stops. The verified tool result will not be considered withdrawn due to a late registration error.
+- Removed 256 total life limit in native core; RAM registers and active jobs
+  is limited. Old get/wait/cancel/replay even though Terminal RAM copies are removed
+  gives the same ID/result from disk. The logless test manager maintains the old safe boundary.
+- The diary contains plain local data, can keep old note text, not automatically deleted.
+  Unknown mediation screen and external service exactly-once guarantee have not been added.
+- Old startup tests now only wait for the tasks directory to be created; new
+  observation uses new request_id on restart. Old assumption in first round of testing
+  Fixed errors and test connection ResourceWarning. In the first general round
+  the single Live/asyncio caution was focused and did not recur in the final round; The filter is not loosened.
+- Passed 1017 pytest, 17 targeted daily tests, Pyright 0 and 10/10 native stage.
+  Details [test proof](reports/task-journal-checks.json) and
+  [in native report](reports/task-journal-native.json). No real account/paid API;
+  user confirmed continuation/commit; No separate physical tests were reported.
+
+
+### README and logout
+
+- GitHub README, implemented features/planned scope/data flow/explicit limits and
+  English rewritten to separate test evidence. Unmeasured speed/RAM,
+  no claims of unlimited autonomy or production-ready security.
+- With the acceptance conditions of 5.F7.2 permanent daily and 5.F7.3 secure capacity/retention jobs
+  Saved in PLAN.md. Sound preferences and individual response level are waiting at 5.F8.
+- User approved continue, commit and GitHub push for 5.F7.1; This is a separate
+  It does not mean that the physical test result is reported.
+
+
+### Single-instance security (5.F7.1)
+
+- For the same data root, the OS file lock is obtained without unlocking worker/window; second
+  native instance is rejected with an explicit error. No other data profiles are blocked.
+- Closing/exception/crash releases lock; restart the new process only after it is released
+  then it starts. PID/stale file deletion, no new dependency or second state owner.
+- Main documents that the user moved under docs were preserved; active links and AGENTS
+  adapted to new document locations. The historical archive has not been modified.
+- Passed 1000 pytest, targeted Pyright 0 and 10/10 synthetic native phases;
+  Including real sub process/crash and native login/restart tests.
+  Result: reports/instance-checks.json. No real account/paid API was used.
+- 256 saves and permanent replay log remain unchanged in this period. 5.F7.2/3 is on.
+
+
+### Maintenance and documentation order
+
+- 133 legacy document/evidence files with unique relative paths and SHA256 manifest
+  Moved below docs/old. Archive is not the current directive.
+- Archive bytes are protected from Git end-of-line conversion with .gitattributes;
+  The manifest is also valid when checked out in another system.
+- ARCHITECTURE.md and PLAN.md rewritten; running commands and bridge contract
+  deduplicated in docs. Removed conflicting progress logs in READMEs.
+- AGENTS.md enforces new document ownership and maintenance of this record with each change.
+- Removed unused path MediaRecorder/decode and the test that tested it alone;
+  the actual AudioWorklet stream and its regressions were preserved.
+- UI routine/calendar browsers without backend player and skill/routine are fake
+  Startup notifications have been removed. Local descriptions and old profile texts were retained;
+  non-linked controls are planned to be excluded from the circuit.
+- Conversation/microphone/sleep lifecycle to assistant_session.js, visual shell to shell.js,
+  The devices were separated into devices.js and the layout into layout.js. preferences.js single preference
+  is the object; No new frameworks, dependencies or secondary state owners were added.
+- Native acceptance scenarios moved from runner to native_scenarios.py.
+- REST/Live tool catalogs have been moved to common constants; old policy test type
+  The warnings were fixed by clearly stating the test's intentional invalid inputs.
+- Audit findings, customization gaps and actual test coverage are in docs/AUDIT.md.
+
+Verification: 996 pytests, 9 JS suites, 4 browser groups, 10 native stages; targeted
+Pyright 0 errors/warnings, pip check is clear. Runtime Python+JS net reduced by 706 lines.
+The first location/link test errors and solution are clearly recorded in cleanup-checks.json.
+
+Maintenance accepted by user, in commit ea8aa15. Real account/paid
+No API testing; automatic proofs are kept under docs/reports.
+
+### Previous accepted basis
+
+- `526bfed`: delete in counter list via UI only; reactor theme accents
+  separation from the situation. This step has been accepted by the user.
+- Previous detailed change/acceptance history is preserved under Git and docs/ski;
+  old logs are not copied back into the architecture.
+
+Demo additional verification: native bridge/instance lock **92 pytest passed** (9.76 s);
+compileall and pip check clean correct venv with package tools/main Pyright **0**.
+The first type round found incorrect interpreter import errors and metadata path type;
+Fixed by collapsing interpreter selection/path. The package report also includes initial errors.
+
+
+English cleanup verification: **1,172 pytest passed** (167.09 s), **9 JavaScript
+suites**, **16 browser groups**, **10 sequential native phases**, Pyright **0** and
+clean dependency checks. The final archive/hash/link check passed **2 tests**.
+Initial translated-fixture failures were corrected and are recorded in the report.
+One concurrent native run crashed in pythonnet/WinForms teardown after successful
+reopen checks; the sequential rerun passed. Its root cause remains open and is not
+claimed fixed. Real-account/paid API and clean-PC acceptance were not performed.
+Explicit user authorization permits publication; physical media/demo acceptance
+remains distinct. See reports/english-publication-checks.json and english-native.json.

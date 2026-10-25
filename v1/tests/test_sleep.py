@@ -1,7 +1,7 @@
-"""Uyku host kontrolü, yerel PCM sınırı ve Live'a ses sızmaması.
+"""Sleep host control, local PCM limit and no audio leakage to Live.
 
-Gerçek sherpa ağırlığının SAPI deneyi ayrı rapordadır; pytest taşımayı sahte
-algılayıcıyla denetler. Kullanıcı hesabı/sesi/notları veya ücretli API yoktur.
+SAPI test of actual sherpa weight is in separate report; fake pytest migration
+Checks with sensors. There is no user account/voice/notes or paid API.
 """
 from base64 import b64encode
 from types import SimpleNamespace
@@ -17,7 +17,7 @@ from test_live_probe import socket, frame
 
 
 def sleep_call(mode, call_id='sleep-request'):
-    """Sentetik sağlayıcı seçimi; doğal dil anlama başarısı iddia edilmez."""
+    """Synthetic provider selection; natural language understanding success is not claimed."""
     return {'toolCall': {'functionCalls': [{'id': call_id,
         'name': 'assistant.request_sleep_mode', 'args': {'mode': mode}}]}}
 
@@ -28,30 +28,30 @@ def test_sleeping_color_contract():
 
 
 def test_typed_sleep_waits_for_model_response_and_keeps_memory(socket):
-    socket.frames = [{'setupComplete': {}}, sleep_call('once'), frame('Tamam efendim, geçiyorum.', complete=True, audio=True)]
+    socket.frames = [{'setupComplete': {}}, sleep_call('once'), frame("OK sir, I'm passing.", complete=True, audio=True)]
     with create_core() as core:
         chat = TextChat(core)
         chat._memory.remember('Fact', {'ok': True, 'text': 'Understood'})
-        report = chat.run_live('Vex uyku moduna geç', 'future-live')
+        report = chat.run_live('Vex go to sleep', 'future-live')
         assert report['sleep_requested'] and report['completed'] and report['ok']
-        assert report['text'] == 'Tamam efendim, geçiyorum.' and socket.opened == 1
+        assert report['text'] == "OK sir, I'm passing." and socket.opened == 1
         assert chat._memory.snapshot() and chat.close()
 
 
-@pytest.mark.parametrize('text', ['Vex uyku moduna geç', 'Rex, uykuya dal.', 'Max, uyku moduna geç.', 'Veks, uykuya dal.'])
+@pytest.mark.parametrize('text', ['Vex go to sleep', 'Rex, go to sleep.', 'Max, go to sleep.', 'Veks, go to sleep.'])
 def test_voice_sleep_waits_for_model_after_verified_control_tool(socket, text):
-    socket.frames=[{'setupComplete':{}}, {'serverContent':{'inputTranscription':{'text':text,'finished':True}}}, sleep_call('once'), frame('Tamam, geçiyorum.', complete=True, audio=True)]
+    socket.frames=[{'setupComplete':{}}, {'serverContent':{'inputTranscription':{'text':text,'finished':True}}}, sleep_call('once'), frame("OK, I'm passing.", complete=True, audio=True)]
     with create_core() as core:
         chat=TextChat(core)
         report=chat.run_live('', 'future-live', audio_input=bytes(3200))
-        assert report['sleep_requested'] and report['ok'] and report['text'] == 'Tamam, geçiyorum.'
+        assert report['sleep_requested'] and report['ok'] and report['text'] == "OK, I'm passing."
         assert report['tool_results'][0]['result']['verified'] and chat._memory.snapshot()
         assert chat.close()
 
 
 def test_partial_sleep_transcript_does_not_consume_a_question(socket):
     socket.frames=[{'setupComplete':{}},
-        {'serverContent':{'inputTranscription':{'text':'uyku moduna geç'}}},
+        {'serverContent':{'inputTranscription':{'text':'go to sleep'}}},
         {'serverContent':{'inputTranscription':{'text':' ne demek?','finished':True}}}, frame('Explanation',complete=True)]
     with create_core() as core:
         chat=TextChat(core)
@@ -66,11 +66,11 @@ def test_partial_sleep_transcript_does_not_consume_a_question(socket):
     {'toolCall': {'functionCalls': [{'id': 'wrong-sleep-tool', 'name': 'notes.delete', 'args': {'id': 'not-a-target'}}]}},
 ])
 def test_failed_sleep_reply_never_requests_mode_change(socket, ending):
-    """Kesilen/boş/yanlış araç isteyen yanıt, gerçek uyku talebini onaylamaz."""
+    """Interrupted/empty/incorrect tool requesting response does not confirm actual sleep request."""
     socket.frames = [{'setupComplete': {}}, ending]
     with create_core() as core:
         chat = TextChat(core)
-        report = chat.run_live('Uyku moduna geç', 'future-live', notes_ready=True)
+        report = chat.run_live('Go to sleep mode', 'future-live', notes_ready=True)
         assert not report['ok'] and not report.get('sleep_requested')
         assert not report.get('sleep_mode') and not report['tool_results']
         assert chat.close()
@@ -207,21 +207,21 @@ def test_boundary_verifies_fresh_window_instead_of_trusting_old_segment_time(sta
         with pytest.raises(ValueError):detector._boundary(old,657)
 
 
-@pytest.mark.parametrize('phrase', ['Vex uykuya dal', 'uyku moduna gir',
-    'kalıcı olarak uyku moduna gir', 'please switch to sleep mode'])
+@pytest.mark.parametrize('phrase', ['Vex go to sleep', 'enter sleep mode',
+    'go into sleep mode permanently', 'please switch to sleep mode'])
 @pytest.mark.parametrize('finished_empty', [False, True])
 def test_sleep_request_streams_model_reply_before_mode_result(socket, finished_empty, phrase):
-    """Gerçek model sesi/metni korunur; uyku bilgisi yalnız tam yanıtta döner."""
+    """The actual model audio/text is retained; Sleep information is returned only in the complete response."""
     from app.session.live_probe import probe_live_text
     import asyncio
-    reply = frame('Tamam efendim, ', audio=True)
+    reply = frame('OK sir, ', audio=True)
     for part in reply['serverContent']['modelTurn']['parts']:
-        part['inlineData']['data'] = 'AAA='  # Geçerli, iki baytlık PCM örneği.
+        part['inlineData']['data'] = 'AAA='  # Valid, two-byte PCM sample.
     socket.frames = [{'setupComplete': {}},
         {'serverContent': {'inputTranscription': {'text': phrase}}},
         sleep_call('once'), reply,
         {'serverContent': {'inputTranscription': {'finished': True}}} if finished_empty else frame(),
-        frame('geçiyorum.', complete=True)]
+        frame("I'm passing.", complete=True)]
     audio, text = [], []
     from app.session.model_tools import ModelTools
     with create_core() as core:
@@ -230,17 +230,17 @@ def test_sleep_request_streams_model_reply_before_mode_result(socket, finished_e
             audio_sink=lambda *args: audio.append(args) or True,
             transcript_sink=lambda role, value, seq: text.append((role, value)) or True))
     assert report['ok'] and report['sleep_requested']
-    assert report['text'] == 'Tamam efendim, geçiyorum.' and audio
-    assert ('j', 'Tamam efendim, ') in text
+    assert report['text'] == "OK sir, I'm passing." and audio
+    assert ('j', 'OK sir, ') in text
 
 
 @pytest.mark.parametrize('candidate,suffix', [
-    ('uyku moduna geç', ' ne demek?'),
-    ('uyku moduna gir', 'me'),
-    ('kalıcı olarak uyku moduna gir', ' ne demek?'),
+    ('go to sleep', ' ne demek?'),
+    ('enter sleep mode', 'me'),
+    ('go into sleep mode permanently', ' ne demek?'),
     ('please switch to sleep mode', ' and delete my notes')])
 def test_sleep_candidate_becomes_question_keeps_response_in_order(socket, candidate, suffix):
-    """Aday soru olursa akan gerçek cevap korunur, uykuya geçilmez."""
+    """If there is a candidate question, the real flowing answer is preserved and it is not put to sleep."""
     from app.session.live_probe import probe_live_text
     import asyncio
     socket.frames = [{'setupComplete': {}},
@@ -254,14 +254,14 @@ def test_sleep_candidate_becomes_question_keeps_response_in_order(socket, candid
 
 
 @pytest.mark.parametrize('text, mode', [
-    ('kalıcı uyku moduna geç', 'persistent'),
+    ('go into permanent sleep mode', 'persistent'),
     ('Please stay asleep', 'persistent'),
     ('disable persistent sleep mode', 'off'),
-    ('Vex bundan sonra uyku modunda kal', 'persistent'),
-    ('Vex uyku modundan kalıcı olarak çık', 'off'),
-    ('Lütfen, uyku moduna gir.', 'once'),
-    ('Vex kalıcı olarak uyku moduna gir', 'persistent'),
-    ('kalıcı uyku modunu kapat', 'off'),
+    ('Vex stay in sleep mode from now on', 'persistent'),
+    ('Permanently wake Vex from sleep mode', 'off'),
+    ('Please, go into sleep mode.', 'once'),
+    ('Vex enters sleep mode permanently', 'persistent'),
+    ('turn off persistent sleep mode', 'off'),
     ('Computer please switch to sleep mode', 'once'),
     ('return to sleep after every task please', 'persistent'),
     ('please stop returning to sleep', 'off')])
@@ -313,7 +313,7 @@ def test_refused_sleep_reports_confirmed_awake_state(bridge, monkeypatch):
 
 
 def test_wake_model_is_reused_but_input_id_and_state_are_fresh(bridge, monkeypatch):
-    """Pahalı ağırlık kurulumu bir kez; eski hit/PCM yeni uykuya taşınmaz."""
+    """Expensive weight installation once; old hit/PCM is not carried over to new sleep."""
     from uuid import uuid4
     built = []
     class Detector:
@@ -361,14 +361,14 @@ def test_broken_wake_cleanup_cannot_prevent_explicit_wake(bridge):
 
 @pytest.mark.parametrize('word', ['Vex', 'vEkS', 'REX'])
 def test_wake_variants_share_one_definition(word):
-    """Profilde aileden bir ad seçilse de tek sınırlı varyasyon kümesi kullan."""
+    """Even if a name from the family is selected in the profile, use a single limited set of variations."""
     assert wake_word.wake_spellings(word) == ('Vex', 'Veks', 'Rex')
     for text in ('Vex', 'Veks.', ' REX! '):
         assert wake_word.is_wake_only(text, word)
 
 
 @pytest.mark.parametrize('text', ['X', 'ex', 'eks', 'next', 'Rex list my notes',
-    'Vex merhaba', 'Vexnot', 'please vex', ''])
+    'Vex hellaba', 'Vexnot', 'please vex', ''])
 def test_wake_only_never_swallows_a_task_or_short_unrelated_sound(text):
     assert not wake_word.is_wake_only(text, 'Vex')
 

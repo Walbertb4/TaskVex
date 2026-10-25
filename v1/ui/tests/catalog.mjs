@@ -1,5 +1,5 @@
-/** Gerçek katalog modülünü sahte native taşıma ile sınar; ağa/hesaba erişmez.
- * Çift yükleme, kayıtlı seçim ve boş/hatalı listenin davranışını gözler.
+/** Tests the real catalog module with a fake native migration; does not access the network/account.
+ * Observes the behavior of double loading, saved selection and empty/faulty list.
  */
 import assert from 'node:assert/strict';
 class Element {
@@ -33,5 +33,5 @@ assert.equal(store.conn.model,'saved-live');assert.ok(signals.at(-1).detail.read
 const failed=loadLiveModels();resolve({ok:false,error:'Synthetic catalog error'});
 assert.equal(await failed,false);assert.equal(nodes.get('mSel').disabled,true);
 assert.equal(store.conn.model,'saved-live');assert.equal(signals.at(-1).detail.ready,false);
-assert.equal(calls,2); // Hata otomatik tekrar döngüsüne dönüşmez.
+assert.equal(calls,2); // The error does not turn into an automatic repeat loop.
 console.log('PASS single catalog load, saved selection, explicit failure, no invented models or retry');

@@ -1,10 +1,11 @@
-/** Modül başlangıcı, snapshot koordinasyonu ve genel UI bağları.
- * Konuşma/wake/Stop yaşam döngüsünün tek sahibi assistant_session.js dosyasıdır. */
+/** Module startup, snapshot coordination and general UI bindings.
+ * The sole owner of the talk/wake/Stop lifecycle is the assistant_session.js file. */
 import { initApi, emit, addLog, isBackendAvailable, sanitizeError } from './api.js';
 import { startupStatus, streamReset, streamMsg, msg, say, user, task, taskDone, start, tick } from './shell.js';
 import { initCredentials } from './credentials.js';
 import { liveMic } from './live_mic.js';
 import { refreshSystem, startSystemView } from './system_view.js';
+import { refreshMedia, startMediaView } from './media_view.js';
 import { liveTranscript } from './live_transcript.js';
 import { initReactor, setState, setLevel, setMicLevel, attachAudio, detachAudio, wakeAnimation } from './reactor.js';
 import { initSettings, store, saveAll, saveSettingsConfirmed, setDevices, queryDevices, loadStore, validateAndNormalizeSnapshot, registerCollectionGetters, setBackupImportHandler } from './settings.js';
@@ -17,8 +18,8 @@ import { initConnections, setCatalog, loadLiveModels, setGoogleStatus, setWeathe
 import {sendText, shutdownApplication, flushClockAnnouncement, assistantReady, receiveAudioChunk, setAssistantState, enqueueClockAnnouncement, initAssistantControls} from './assistant_session.js';
 
 export function applySnapshot(snapshot, options = {}) {
-  // Native not otoritesi snapshot/import ile aşılmaz. Geri yükleme ayrı core
-  // komutu gerektirir; mevcut yedeği yerelde uygulayıp başarı demeyiz.
+  // Native note authority cannot be exceeded by snapshot/import. Restore separate core
+  // requires command; We cannot apply the existing backup locally and call it a success.
   if (isBackendAvailable() && snapshot && Object.hasOwn(snapshot, 'notes') && !options.skipPersist) return false;
   // 1. Pre-validation and normalization: reject invalid snapshots before mutating any state or localStorage
   const validation = validateAndNormalizeSnapshot(snapshot);
@@ -178,7 +179,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!result.ok) {
           const message = document.getElementById('nativeIssueText');
           if (message) message.textContent = sanitizeError(result.error);
-        } else if (result.response?.completed === true) {startSystemView(); await connectNativeNotes();}
+        } else if (result.response?.completed === true) {startSystemView(); startMediaView(); await connectNativeNotes();}
       } finally { buttons.forEach(button => { button.disabled = false; }); }
     });
   }
@@ -187,7 +188,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 9. API & Bridge bindings
   initApi({
-    nativeReady: async () => { startSystemView(); queryDevices(); await connectTimers(); await connectNativeNotes(); assistantReady(); void loadLiveModels(); },
+    nativeReady: async () => { startSystemView(); startMediaView(); queryDevices(); await connectTimers(); await connectNativeNotes(); assistantReady(); void loadLiveModels(); },
     initApp: (s) => applySnapshot(s, { emitSave: false }),
     startupStatus,
     loadStore: (s) => applySnapshot(s, { emitSave: false }),
@@ -302,7 +303,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Global key bindings
   window.addEventListener('keydown', e => {
     if (e.key === 'F11') {
-      // Metin alanı odaktayken de çalışır; tuşu basılı tutmak çift geçiş yapmaz.
+      // It also works when the text field is in focus; Holding down the key does not double-switch.
       e.preventDefault();
       if (e.repeat) return;
       if (isBackendAvailable()) emit('fullscreen');
@@ -319,6 +320,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Start clock and start app
   tick();
-  setInterval(() => {tick(); void refreshSystem();}, 1000);
+  setInterval(() => {tick(); void refreshSystem(); void refreshMedia();}, 1000);
   start();
 });

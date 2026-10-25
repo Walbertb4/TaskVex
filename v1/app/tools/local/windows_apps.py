@@ -1,10 +1,10 @@
-"""Windows'ta Not Defteri gözlemi ve yalnız güvenilir sistem başlatıcısı.
+"""Notepad observation and only reliable system launcher in Windows.
 
-ctypes standart kütüphanesi Win32 işlevlerini çağırır. Bütün yerel kaynaklar
-finally ile kapatılır. Yalnız geçerli oturumdaki notepad.exe adayları incelenir;
-başlık ve belge içeriği okunmaz. Paket ailesi/sistem yolu ile kimlik doğrulanır.
-Gözlem bir anlık görüntüdür; sonraki GUI eylemine kalıcı hedef garantisi vermez.
-Başlatma yardımcıları sabit Not Defteri hedefini kullanır; odaklama/kapatma yoktur.
+The ctypes standard library calls Win32 functions. All local resources
+It is closed with finally. Only notepad.exe candidates from the current session are examined;
+The title and document content are not read. The packet is authenticated via family/system.
+Observation is a snapshot; does not guarantee a persistent target to the next GUI action.
+Launch aids use the fixed Notepad target; There is no focus/shutdown.
 """
 
 import ctypes as c
@@ -15,7 +15,7 @@ import os
 
 
 class _ProcessEntry(c.Structure):
-    """PROCESSENTRY32W bellek düzeni; pointer boyutu 32/64 bit Python'a uyar."""
+    """PROCESSENTRY32W memory layout; pointer size fits 32/64 bit Python."""
     _fields_ = [("dwSize", w.DWORD), ("cntUsage", w.DWORD), ("pid", w.DWORD),
                 ("heap", c.c_size_t), ("module", w.DWORD), ("threads", w.DWORD),
                 ("parent", w.DWORD), ("priority", w.LONG), ("flags", w.DWORD),
@@ -23,7 +23,7 @@ class _ProcessEntry(c.Structure):
 
 
 def _libraries():
-    """Win32 ABI imzalarını açık tanımla; HANDLE'ın 64 bitte kırpılmasını önle."""
+    """Explicitly define Win32 ABI signatures; Prevent HANDLE from being truncated in 64 bit."""
     if os.name != "nt":
         raise NotImplementedError("Windows observation is unavailable")
     kernel = c.WinDLL("kernel32", use_last_error=True)
@@ -52,10 +52,10 @@ def _libraries():
 
 
 def notepad_launcher():
-    """PATH/cwd/ortam değişkeni yerine Windows'un sistem dizinini kullan.
+    """Use Windows' system directory instead of variable PATH/cwd/environment.
 
-    Bu yol host tarafından seçilir; araç parametresiyle dosya/komut alınmaz.
-    Eksik başlatıcıda alternatif executable veya kurulum denemesi yapılmaz.
+    This path is chosen by the host; file/command is not received with the tool parameter.
+    No alternative executable or installation is attempted in the missing launcher.
     """
     kernel, unused = _libraries()
     directory = c.create_unicode_buffer(32768)
@@ -69,24 +69,24 @@ def notepad_launcher():
 
 
 def start_notepad(executable):
-    """Host'un çözdüğü EXE'yi Windows'a bir kez ilet; dönüşü başarı kanıtı sayma.
+    """Pass the host-decoded EXE to Windows once; Don't consider the return as evidence of success.
 
-    os.startfile Windows ShellExecute yolunu kullanır; cmd/PowerShell komutu
-    veya kullanıcı argümanı çalıştırılmaz. Harici uygulama TaskVex'ten uzun
-    yaşayabilir; burada süreç öldürme/çıkış kodu bekleme yapılmaz. Gerçek sonuç
-    apps.open tarafından OS kimliği ve pencere gözlemiyle ayrıca doğrulanır.
+    os.startfile uses the Windows ShellExecute path; cmd/PowerShell command
+    or the user argument is not executed. External app longer than TaskVex
+    can live; Here, the process code kill/exit is not waited for. real result
+    It is further verified by apps.open with OS ID and window observation.
     """
     os.startfile(executable, operation="open", cwd=ntpath.dirname(executable))
 
 
 def _check_cancel(cancel):
-    """C callback'i dışında kooperatif iptali Python istisnasına çevir."""
+    """Convert cooperative cancellation outside C callback to Python exception."""
     if cancel.is_set():
         raise InterruptedError("Observation cancelled")
 
 
 def _candidates(kernel, cancel):
-    """Süreç snapshot'ından yalnız Not Defteri adaylarını seç; başka içerik taşıma."""
+    """Select only Notebook candidates from the process snapshot; moving other content."""
     snapshot = kernel.CreateToolhelp32Snapshot(2, 0)  # TH32CS_SNAPPROCESS
     if snapshot == c.c_void_p(-1).value or snapshot is None:
         raise OSError("Process snapshot unavailable")
@@ -100,7 +100,7 @@ def _candidates(kernel, cancel):
             if entry.name.casefold() == "notepad.exe":
                 candidates.append(entry.pid)
             more = kernel.Process32NextW(snapshot, c.byref(entry))
-        if c.get_last_error() != 18:  # ERROR_NO_MORE_FILES: normal liste sonu.
+        if c.get_last_error() != 18:  # ERROR_NO_MORE_FILES: normal list end.
             raise OSError("Process enumeration incomplete")
         return candidates
     finally:
@@ -108,13 +108,13 @@ def _candidates(kernel, cancel):
 
 
 def _identity(kernel, pid, windows_directory):
-    """Süreç adı adaydır; gerçek image yolu/paket ailesi karar verir.
+    """The process name is a candidate; real image path/packet family decides.
 
-    Dönüş kimlik türü ve oluşum zamanıdır. PID yeniden kullanılmışsa ikinci
-    okumada oluşum zamanı değişir; eski pencere eşlemesi sonuçtan çıkarılır.
-    Kullanıcı/modelden executable yolu veya paket adı alınmaz.
+    The return is the identity type and formation time. Second if PID is reused
+    The formation time changes in reading; The old window mapping is removed from the result.
+    Executable path or package name from user/model is not retrieved.
     """
-    # SYNCHRONIZE yalnız 0 ms yaşam kontrolü içindir; süreç durdurulmaz/bekletilmez.
+    # SYNCHRONIZE is for 0 ms life control only; process is not stopped/does not wait.
     handle = kernel.OpenProcess(0x1000 | 0x100000, False, pid)
     if not handle:
         raise OSError("Process identity unavailable")
@@ -138,7 +138,7 @@ def _identity(kernel, pid, windows_directory):
             identity = "windows_system_notepad"
         else:
             return None
-        if kernel.WaitForSingleObject(handle, 0) != 258:  # WAIT_TIMEOUT: hâlâ canlı.
+        if kernel.WaitForSingleObject(handle, 0) != 258:  # WAIT_TIMEOUT: still alive.
             raise OSError("Process exited or liveness unavailable")
         created, exited, cpu, user = (w.FILETIME() for _ in range(4))
         if not kernel.GetProcessTimes(handle, c.byref(created), c.byref(exited), c.byref(cpu), c.byref(user)):
@@ -150,10 +150,10 @@ def _identity(kernel, pid, windows_directory):
 
 
 def _windows(user, pids, cancel):
-    """Geçerli desktop'un üst seviye WS_VISIBLE pencerelerini PID'ye bağla.
+    """Bind the current desktop's top-level WS_VISIBLE windows to the PID.
 
-    WS_VISIBLE, önde/etkileşime hazır demek değildir; küçültülmüş pencere de
-    bu bayrağı taşır. Başlık okumayız. C callback içinden istisna kaçırmayız.
+    WS_VISIBLE, front/interaction It does not mean ready; in minimized window
+    carries this flag. We don't read headlines. We don't miss exceptions from C callbacks.
     """
     callback_type = c.WINFUNCTYPE(w.BOOL, w.HWND, w.LPARAM)
     user.EnumWindows.argtypes, user.EnumWindows.restype = [callback_type, w.LPARAM], w.BOOL
@@ -181,12 +181,12 @@ def _windows(user, pids, cancel):
 
 
 def observe_notepad(cancel):
-    """Anlık gözlemi döndür; eksik incelemeyi kesin 'kapalı' sonucuna çevirme.
+    """Return instant observation; converting incomplete review to definitive 'closed' result.
 
-    Başka oturumlar dışlanır. Tek adayın erişim/kimlik doğrulaması başarısızsa
-    complete=False olur. Kanıtlanan pozitif bulgu korunabilir; negatif bulgu
-    eksik taramada null'dır. Görev katmanı bu kısmi sonucu FAILED olarak sunar,
-    salt okunur gözlem yüzünden manager'ı UNKNOWN ile durdurmaz.
+    Other sessions are excluded. If verification of single candidate access/identity fails
+    complete=False. The proven positive finding can be maintained; negative finding
+    It is null in incomplete scan. The task layer presents this partial result as FAILED,
+    It does not stop the manager with UNKNOWN because of the read-only observation.
     """
     _check_cancel(cancel)
     kernel, user = _libraries()
@@ -213,8 +213,8 @@ def observe_notepad(cancel):
         windows = _windows(user, {p["pid"] for p in processes}, cancel)
     except OSError:
         windows, complete = [], False
-    # Gözlem sırasında kapanma/PID yeniden kullanımı eski HWND'yi doğrulanmış
-    # saydırmasın. Aynı pid + oluşum zamanı + kimlik hâlâ eşleşmeli.
+    # During observation shutdown/PID reuse confirmed old HWND
+    # Don't let it count. Same pid + creation time + id should still match.
     stable = []
     for process in processes:
         _check_cancel(cancel)

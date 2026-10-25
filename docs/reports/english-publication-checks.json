@@ -1,0 +1,58 @@
+{
+  "status": "validated for explicitly authorized commit and push",
+  "initial_failures": {
+    "python": "26 failed, 1144 passed before documentation checks; translated fragments/selectors/expected strings mismatched",
+    "targeted_retry": "175 passed, 1 failed; remaining split Hello fragment corrected",
+    "native": "chat phase expected translated sleep reply but fixture retained an ASCII Turkish fragment; aligned",
+    "translation": "JS CRLF offsets mismatched on the initial conversion; restored original JS, normalized parser input, and regenerated before final tests",
+    "full_retry": "2 failed, 1170 passed: two remaining Hello input-transcript fragment fixtures; corrected without changing production transport",
+    "native_parallel_shutdown": "Reopen assertions passed, then process exited with Python.Runtime.InternalPythonnetException / System.ComponentModel.InvalidAsynchronousStateException during teardown. No production fix applied; separate sequential rerun pending."
+  },
+  "limits": [
+    "No real account or paid API requests",
+    "No clean-PC or all-hardware certification",
+    "Archive reports are translations, not new acceptance runs",
+    "A concurrent native run exited during pythonnet/WinForms teardown after passing reopen assertions. Sequential rerun passed; root cause remains unresolved."
+  ],
+  "validation": {
+    "full_pytest": "1172 passed in 167.09s",
+    "javascript_suites": 9,
+    "browser_groups": 16,
+    "pyright": "0 errors, 0 warnings, 0 informations",
+    "pip_check": "No broken requirements found",
+    "demo_rebuild_and_relocation": "passed; updated docs/reports/demo-build-checks.json",
+    "archive_records": 133,
+    "native_sequential": "10 phases passed; docs/reports/english-native.json",
+    "documentation_after_last_archive_edit": "2 passed in 0.57s",
+    "credential_scan": "No credential-like patterns or private-data filenames in publishable files",
+    "archive_integrity_and_links": "133 records verified; documentation tests passed",
+    "final_device_message_catalog_suite": "passed"
+  },
+  "language_scan": {
+    "scanned_text_files": 334,
+    "turkish_letter_files": [
+      "v1/tests/test_credentials.py",
+      "v1/ui/js/schema.js"
+    ],
+    "credential_pattern_files": [],
+    "production_python_structure_unchanged": true,
+    "changed_production_text_files": [
+      "v1\\app\\bootstrap.py",
+      "v1\\app\\session\\model_tools.py"
+    ],
+    "functional_unicode_explanation": "The only remaining Turkish letters are the foldTr transliteration alphabet and one invalid-Unicode credential fixture; neither is Turkish prose.",
+    "changed_production_javascript_text_files": [
+      "assistant_session.js",
+      "devices.js",
+      "routines.js"
+    ],
+    "production_javascript_executable_tokens_unchanged": true
+  },
+  "review": "AGENTS, architecture, bridge contract and local READMEs manually edited. Archived prose was machine translated, terminology cleaned and clearly marked historical; exact original wording remains in Git.",
+  "git_publication": {
+    "authorized": true,
+    "remote": "origin",
+    "branch": "main",
+    "ignored_demo_zip": "v1/dist/TaskVexDemo-Windows-x64.zip; not a GitHub binary release"
+  }
+}

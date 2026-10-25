@@ -1,9 +1,9 @@
-"""TaskManager'ın tekrar korumasını SQLite transaction'larıyla kalıcı tutar.
+"""It keeps the TaskManager's replay protection persistent with SQLite transactions.
 
-Bu depo araç çalıştırmaz. Aynı profilin tek yöneticisi OS kilidini tutar;
-her yazma FULL senkron transaction ile tamamlanmadan yürütücü ilerlemez.
-Restart'ta queued işler iptal, başlamış işler unknown olur; yeniden oynatılmaz.
-Kayıtlar diskten silinmez: RAM temizliği eski isteği yeni iş haline getiremez.
+This store does not operate tools. A single administrator of the same profile maintains OS lock;
+The executor does not proceed until each write is completed with a FULL synchronous transaction.
+On restart, queued jobs are canceled and started jobs become unknown; not replayable.
+Records are not deleted from disk: RAM cleaning cannot turn old request into new job.
 """
 
 from contextlib import contextmanager
@@ -17,16 +17,16 @@ from app.storage.instance_lock import SingleInstance
 
 
 class JournalError(RuntimeError):
-    """Depo güvenilir değil; ham SQL, dosya yolu veya kullanıcı verisi sızdırma."""
+    """The repository is unreliable; leaking raw SQL, file path or user data."""
 
 
 def _encode(task: Task) -> str:
-    """Sabit alan sırası ve sıkı JSON ile diskteki tek görev biçimini üret."""
+    """Generate single task format on disk with fixed field order and strict JSON."""
     return json.dumps(task.to_dict(), sort_keys=True, ensure_ascii=True, allow_nan=False)
 
 
 def _decode(row) -> Task:
-    """JSON ile indeks kimliklerini birlikte doğrula; bozuk kayıt boş sayılmaz."""
+    """Validate index IDs together with JSON; corrupt record is not considered empty."""
     principal, request_id, task_id, status, document = row
     data = json.loads(document)
     data['request'] = ToolRequest(**data['request'])
@@ -46,11 +46,11 @@ def _decode(row) -> Task:
 
 
 class TaskJournal:
-    """Güvenilir host'un seçtiği dizinde tek yazıcı ve sınırlı SQLite sayfa cache'i.
+    """Single printer and limited SQLite page cache in the directory chosen by the trusted host.
 
-    Her işlem bağlantısını kapatır; thread'ler arasında SQLite nesnesi paylaşılmaz.
-    Çağrılar TaskManager Condition kilidi altında sıralanır. close yalnız sahipliği
-    bırakır; kapatılmış manager'ın salt sonuç sorguları çalışmaya devam edebilir.
+    Closes each transaction connection; SQLite objects are not shared between threads.
+    Calls are queued under the TaskManager Condition lock. close solo possession
+    leaves; Result-only queries of the closed manager can continue to run.
     """
 
     def __init__(self, home: Path) -> None:
@@ -69,7 +69,7 @@ class TaskJournal:
                     raise ValueError('Unsupported journal version')
                 if db.execute('PRAGMA quick_check').fetchone()[0] != 'ok':
                     raise ValueError('Corrupt journal')
-                # Tüm kayıtları tek tek doğrula; geçmişin tamamını RAM'e yükleme.
+                # Verify all records one by one; Loading the entire history into RAM.
                 self.uncertain = False
                 for row in db.execute('SELECT principal, request_id, task_id, status, document FROM tasks'):
                     task = _decode(row)
@@ -89,7 +89,7 @@ class TaskJournal:
 
     @contextmanager
     def _connect(self, *, create: bool = False):
-        """Eksik dosyayı çalışma sırasında yeniden yaratma; sessiz dedup kaybı yasak."""
+        """Recreating the missing file at runtime; silent dedup loss prohibited."""
         try:
             db = sqlite3.connect(self.path.as_uri() + ('?mode=rwc' if create else '?mode=rw'),
                                  uri=True, timeout=2)
@@ -104,21 +104,21 @@ class TaskJournal:
             raise JournalError('Task journal could not be verified or saved') from None
 
     def find(self, principal: str, request_id: str) -> Task | None:
-        """Aynı kullanıcı/isteğin eski kaydını disk indeksinden oku; yürütme yapma."""
+        """Read the same user/request old record from disk index; do not execute."""
         with self._connect() as db:
             row = db.execute('SELECT principal, request_id, task_id, status, document FROM tasks '
                              'WHERE principal=? AND request_id=?', (principal, request_id)).fetchone()
             return _decode(row) if row else None
 
     def get(self, task_id: str) -> Task | None:
-        """RAM'den ayrılmış terminal görevleri gerçek task_id ile sorgula."""
+        """Query RAM allocated terminal tasks with actual task_id."""
         with self._connect() as db:
             row = db.execute('SELECT principal, request_id, task_id, status, document FROM tasks '
                              'WHERE task_id=?', (task_id,)).fetchone()
             return _decode(row) if row else None
 
     def save(self, task: Task) -> None:
-        """Kimlikleri koruyarak tek görev durumunu atomik kaydet; commit hatası yükselir."""
+        """Atomic save single task state while preserving identities; commit error goes up."""
         with self._connect() as db:
             db.execute('INSERT INTO tasks VALUES (?, ?, ?, ?, ?) ON CONFLICT(task_id) '
                        'DO UPDATE SET status=excluded.status, document=excluded.document',
@@ -126,5 +126,5 @@ class TaskJournal:
                         task.status.value, _encode(task)))
 
     def close(self) -> None:
-        """Worker gerçekten durduktan sonra kilidi bırak; dosyaları silme."""
+        """Release the lock after the worker actually stops; deleting files."""
         self._owner.__exit__(None, None, None)

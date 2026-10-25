@@ -1,7 +1,7 @@
-"""Live araç entegrasyonu: gerçek SDK/core/kayıt, sentetik WebSocket taşıması.
+"""Live tool integration: real SDK/core/register, synthetic WebSocket transport.
 
-ModelTools izin/sözleşme hattı atlanmamalı; replay tek dosya yazımı üretmeli.
-Bu testler gerçek hesap, mikrofon veya ses çıkışı kabulü değildir.
+The ModelTools permission/agreement line should not be skipped; replay should produce a single file write.
+These tests are not an acceptance of a real account, microphone or voice output.
 """
 
 import asyncio
@@ -18,7 +18,7 @@ from test_live_probe import socket, frame
 
 
 def tools(core, *, session="live-tools", notes=True):
-    """Kaynak ve kullanıcı model payload'ından alınmaz; host bu listeyi seçer."""
+    """The source and user are not taken from the model payload; The host selects this list."""
     names = ("apps.catalog", "system.status") + (("notes.add", "notes.list") if notes else ())
     return ModelTools(core, principal="local-user", session_id=session, allowed_tools=names)
 

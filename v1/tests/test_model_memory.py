@@ -1,7 +1,7 @@
-"""Açık kullanıcı hafızası isteklerini gerçek core ve sentetik SDK ile dene.
+"""Try explicit user memory requests with real core and synthetic SDK.
 
-Geçici settings.json dışında veri kullanılmaz. Modelin dil anlama kalitesini
-değil, ortak yürütme, kayıt, hedef, iptal/replay ve UI çakışma sınırını doğrular.
+No data is used outside of temporary settings.json. Language comprehension quality of the model
+not, verifies co-execution, register, target, cancellation/replay and UI conflict limit.
 """
 import json
 
@@ -22,14 +22,14 @@ from test_native_bridge import bridge, ready
 
 
 def read_saved(store: JsonStore) -> dict:
-    """Testte yazıldığı bilinen belge yoksa açık assertion hatası üret."""
+    """If there is no document known to be written in the test, generate an open assertion error."""
     data = store.read()
     assert data is not None
     return data
 
 
 def setup_store(home, text="School: Alpha"):
-    """Yalnız geçici profilde, açıkça etkinleştirilmiş bilinen belge kur."""
+    """Only install known documents that are explicitly enabled in the temporary profile."""
     store = JsonStore(home / 'settings.json')
     store.write({'theme': '#a78bfa', 'prof': {'pMemory': True, 'pMem': text, 'pLang': 'en'}})
     return store

@@ -1,7 +1,7 @@
-"""Çalışma verisinin konumunu belirler; import sırasında dosya oluşturmaz.
+"""Determines the location of study data; It does not create a file during import.
 
-Kaynak kodu ile kullanıcı verisi ayrıdır. Host bu fonksiyonu açılışta çağırır;
-testler TASKVEX_HOME ile her seferinde ayrı geçici dizin seçer.
+Source code and user data are separate. The host calls this function at startup;
+The tests choose a separate temporary directory each time with TASKVEX_HOME.
 """
 
 import os
@@ -11,11 +11,11 @@ from app.core.contracts import ContractError
 
 
 def get_data_home() -> Path:
-    """TASKVEX_HOME veya Windows LOCALAPPDATA/TaskVex yolunu ver.
+    """Give the path TASKVEX_HOME or Windows LOCALAPPDATA/TaskVex.
 
-    Açıkça verilmiş boş/göreli bir yol hatadır; yanlışlıkla çalışma dizinine
-    veri yazmaya geri düşmeyiz. Dizin burada yaratılmaz, ilk yazmada yaratılır.
-    Windows dışında bu ilk sürüm için TASKVEX_HOME açıkça ayarlanmalıdır.
+    Clearly the given is a path error; mistakenly into working directory
+    We don't fall back on writing data. The directory is not created here, it is created on the first write.
+    For this first release outside of Windows, TASKVEX_HOME must be set explicitly.
     """
     configured = os.environ.get("TASKVEX_HOME")
     if configured is not None:

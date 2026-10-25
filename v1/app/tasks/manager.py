@@ -1,12 +1,12 @@
-"""TaskVex'in tek worker ile çalışan görev ve tekrar yürütme yöneticisi.
+"""TaskVex's single worker task and replay manager.
 
-submit isteği kabul eder; tek worker handler'ları sırayla çalıştırır. get/wait
-durum kopyası verir, cancel iptal ister, close yeni iş kabulünü durdurur.
-Tek worker olduğu için iki handler aynı anda desktop gibi ortak kaynağı kullanmaz.
+submit accepts the request; A single worker operates the handlers sequentially. get/wait
+gives a copy of the status, cancel requests cancellation, close stops accepting new jobs.
+Since there is a single worker, two handlers do not use a common resource at the same time, such as a desktop.
 
-Kalıcı profil verildiğinde disk günlüğü yürütmeden önce kaydedilir. Paralel
-kaynak planlayıcısı veya policy motoru değildir. Yetki callback'i yoksa yürütme
-reddedilir. Thread iptali zorlamaz; handler kendi alt kaynaklarını yönetmelidir.
+When a persistent profile is given, the disk log is recorded before execution. parallel
+It is not a resource planner or policy engine. Execution if no authorization callback
+is rejected. Thread does not force cancellation; The handler must manage its own sub-resources.
 """
 
 from collections import deque
@@ -28,7 +28,7 @@ from app.storage.task_journal import JournalError, TaskJournal
 
 
 class TaskManagerError(ContractError):
-    """Kimlik çakışması, kapasite veya yaşam döngüsü hatasını koduyla bildirir."""
+    """Reports an identity conflict, capacity, or lifecycle error with its code."""
 
     def __init__(self, code: str, message: str) -> None:
         super().__init__(message)
@@ -37,7 +37,7 @@ class TaskManagerError(ContractError):
 
 @dataclass
 class _Entry:
-    """Dışarı verilmeyen görev kaydı; iptal Event'i manager/handler arasında ortaktır."""
+    """Task record not exported; Cancel Event is common between manager/handler."""
 
     task: Task
     fingerprint: str
@@ -45,29 +45,29 @@ class _Entry:
 
 
 def _copy_request(request: ToolRequest) -> ToolRequest:
-    """İç sözlüğü paylaşmadan, ortak sözleşmeyi yeniden doğrulayarak kopyala."""
+    """Copy the public contract by revalidating it without sharing the internal dictionary."""
     return ToolRequest(**request.to_dict())
 
 
 def _copy_result(result: ToolResult) -> ToolResult:
-    """Handler'ın tuttuğu result/data/error nesnelerini manager kaydından ayır."""
+    """Separate the result/data/error objects held by the handler from the manager register."""
     return replace(result, error=replace(result.error) if result.error is not None else None)
 
 
 def _snapshot(task: Task) -> Task:
-    """Dışarıdaki kod durum kopyasını değiştirerek iç kaydı değiştiremesin."""
+    """The external code cannot change the internal record by changing the state copy."""
     return replace(task, request=_copy_request(task.request),
                    result=_copy_result(task.result) if task.result is not None else None)
 
 
 def _fingerprint(request: ToolRequest) -> str:
-    """Alan sırasından bağımsız, içerik değişimini fark eden istek gösterimi."""
+    """Request representation that detects content change, regardless of field order."""
     return json.dumps(request.to_dict(), sort_keys=True, separators=(",", ":"),
                       ensure_ascii=False, allow_nan=False)
 
 
 def _timeout(value: float | None) -> None:
-    """Bekleme sınırını kontrol et; None sınırsız, sıfır anlık kontrol demektir."""
+    """Check waiting limit; None means unlimited, zero instant control."""
     if value is not None and (
         type(value) not in (int, float) or value < 0 or not math.isfinite(value)
     ):
@@ -75,15 +75,15 @@ def _timeout(value: float | None) -> None:
 
 
 class TaskManager:
-    """Kısa ömürlü bir uygulama oturumunun görevlerini ve tekrar anahtarlarını tutar.
+    """It holds the tasks and replay keys for an ephemeral application session.
 
-    authorize(request, tool) yalnız açık True döndürürse handler'a geçilir.
-    Kimlik doğrulaması giriş adaptörünün, izin kuralları policy modülünün
-    sorumluluğudur. Callback yokluğu tüm yürütmeleri reddeder.
+    If authorize(request, tool) only returns True, the handler is passed.
+    Authentication login adapter, permission rules policy module
+    It is the responsibility. Absence of callback rejects all executions.
 
-    Kalıcı journal_home verilirse capacity RAM/aktif görev sınırıdır; terminal
-    kayıtlar diskten sorgulanır. Günlüksüz birim kullanımında eski güvenli toplam
-    sınırı korunur: diske taşınmamış tekrar bilgisi sessizce silinemez.
+    If persistent journal_home is given, capacity RAM/active is the task limit; terminal
+    records are queried from disk. Legacy safe total in logless volume usage
+    limit is preserved: replay information that has not been moved to disk cannot be silently deleted.
     """
 
     def __init__(self, registry: ToolRegistry, *,
@@ -101,8 +101,8 @@ class TaskManager:
         self._entries: dict[str, _Entry] = {}
         self._requests: dict[tuple[str, str], str] = {}
         self._queue: deque[str] = deque()
-        # Condition hem kayıtları kilitler hem boş kuyrukta worker'ın işlemciyi
-        # meşgul etmeden uyumasını sağlar. Handler çalışırken bu kilit tutulmaz.
+        # Condition locks both records and prevents the worker from using the processor in an empty queue.
+        # It allows him to sleep without getting busy. This lock is not held while the Handler is running.
         self._condition = Condition()
         self._closing = False
         self._journal = TaskJournal(journal_home) if journal_home is not None else None
@@ -117,20 +117,20 @@ class TaskManager:
             raise
 
     def describe_tools(self) -> list[dict]:
-        """Model adaptörüne yalnız bildirim ver; handler ve yetki nesnesi verme.
+        """Notify model adapter only; grant handler and authorization object.
 
-        Şemalar registry'nin bağımsız kopyalarıdır. Bu katalog bir izin değildir;
-        adaptör görünür alt kümeyi seçer, yürütmede mevcut policy yine denetler.
+        Schemas are independent copies of the registry. This catalog is not a permission;
+        The adapter selects the visible subset, again checking the current policy on execution.
         """
         return [{"name": tool.name, "description": tool.description,
                  "parameters": tool.input_schema} for tool in self._registry.list_tools()]
 
     def submit(self, request: ToolRequest) -> Task:
-        """Geçerli isteği sıraya al veya aynı kimlik/içerik için mevcut görevi ver.
+        """Queue the current request or grant the current task for the same identity/content.
 
-        Tekrar anahtarı (principal, request_id). Parmak izi kanal, araç ve tüm
-        parametreleri de içerir. Farklı kullanıcılar aynı request_id kullanabilir;
-        aynı kullanıcı aynı kimliği farklı istek için kullanırsa hata alır.
+        Repeat key (principal, request_id). Fingerprint channel, tool and all
+        Also includes parameters. Different users may use the same request_id;
+        If the same user uses the same ID for different request, he will get an error.
         """
         owned = self._registry.validate_request(request)
         fingerprint = _fingerprint(owned)
@@ -155,8 +155,8 @@ class TaskManager:
                     return _snapshot(archived)
             if self._uncertain:
                 raise TaskManagerError("uncertain_state", "An earlier operation has unknown outcome")
-            # Yalnız kalıcı kopyası olan terminal kayıt RAM'den çıkabilir. Disk
-            # geçmişi silinmediği için eski request_id hâlâ aynı sonucu verir.
+            # Only the terminal record with a permanent copy can be removed from RAM. disc
+            # Since its history is not deleted, the old request_id still gives the same result.
             if self._journal is not None:
                 for task_id, entry in list(self._entries.items()):
                     if len(self._entries) < self._capacity:
@@ -175,7 +175,7 @@ class TaskManager:
             return _snapshot(task)
 
     def _entry(self, task_id: str) -> _Entry:
-        """Kilit altındaki iç yardımcı; bulunmayan görevi kontrollü hata yap."""
+        """Internal assistant under lock and key; Make a controlled error on the task that does not exist."""
         if isinstance(task_id, str):
             if task_id in self._entries:
                 return self._entries[task_id]
@@ -189,13 +189,13 @@ class TaskManager:
         raise TaskManagerError("unknown_task", "Task id is not known")
 
     def _journal_error(self) -> NoReturn:
-        """Depo hatasından sonra hiçbir yeni handler'a izin verme; içeriği gizle."""
+        """Do not allow any new handlers after repository failure; hide content."""
         self._journal_failed = True
         self._uncertain = True
         raise TaskManagerError('journal_unavailable', 'Task history could not be safely recorded')
 
     def _persist(self, task: Task) -> None:
-        """Kilit altında diske commit et; yazma hatası kabul/başarı sayılmaz."""
+        """Commit to disk under lock and key; write error acceptance/success is not counted."""
         if self._journal_failed:
             self._journal_error()
         if self._journal is not None:
@@ -205,16 +205,16 @@ class TaskManager:
                 self._journal_error()
 
     def get(self, task_id: str) -> Task:
-        """Görevin o andaki bağımsız kopyasını ver; bekleme veya çalıştırma yapma."""
+        """Export the current independent copy of the task; do not standby or start."""
         with self._condition:
             return _snapshot(self._entry(task_id).task)
 
     def wait(self, task_id: str, timeout: float | None = None) -> Task:
-        """Terminal sonucu bekle; bekleme süresi dolarsa TimeoutError üret.
+        """Wait for terminal result; If wait time expires, throw TimeoutError.
 
-        Bu süre yalnız çağıranın beklemesini sınırlar. Görevi iptal etmez, unknown
-        yapmaz ve çalışan thread'i öldürmez. Böylece bekleme timeout'u başarı veya
-        uygulanmadı kanıtı sanılmaz. Worker kendi kuyruğunu bekleyemez.
+        This period only limits the caller's waiting time. Does not cancel the task, unknown
+        It doesn't and it doesn't kill the running thread. So the wait timeout is success or
+        It cannot be considered as evidence that it was not implemented. Worker cannot wait in his own queue.
         """
         _timeout(timeout)
         with self._condition:
@@ -226,10 +226,10 @@ class TaskManager:
             return _snapshot(entry.task)
 
     def cancel(self, task_id: str) -> Task:
-        """Kuyruktaki işi bitir; çalışan işe yalnız işbirlikçi iptal sinyali gönder.
+        """Finish the job in the queue; Send lone collaborative cancel signal to the running job.
 
-        Çalışan handler başarılı sonucu doğrulamış dönerse geç iptal bu başarıyı
-        silmez. Handler durduğunu kendisi CANCELLED sonucu ile bildirmelidir.
+        If the working handler returns with a successful result, late cancellation
+        does not delete. The handler must notify that it has stopped with the CANCELLED result.
         """
         with self._condition:
             entry = self._entry(task_id)
@@ -245,11 +245,11 @@ class TaskManager:
             return _snapshot(entry.task)
 
     def close(self, timeout: float | None = 5.0) -> bool:
-        """Yeni kabulü durdur, bekleyenleri iptal et ve worker'ın bitmesini bekle.
+        """Stop the new acceptance, cancel the pending ones, and wait for the worker to finish.
 
-        True worker gerçekten kapandı demektir. False hâlâ çalışan handler var
-        demektir; uygulama bunu güvenli kapanış tamamlandı diye göstermemeli.
-        Thread daemon değildir: normal çıkışta sessizce terk edilmez.
+        True worker means it is actually closed. False there is still a working handler
+        means; The application should not show this as a safe shutdown completed.
+        Thread is not a daemon: it is not silently abandoned on normal exit.
         """
         _timeout(timeout)
         if current_thread() is self._worker:
@@ -270,32 +270,32 @@ class TaskManager:
         return stopped
 
     def __enter__(self):
-        """with bloğunda kullanımı sağlar; çıkışta worker kapatılacaktır."""
+        """Allows use in the with block; The worker will be closed on exit."""
         return self
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:
-        """with çıkışında takılı kalan worker'ı sessizce gizleme."""
+        """Silently hiding the worker stuck at the with exit."""
         if not self.close():
             raise TaskManagerError("shutdown_timeout", "Worker is still running")
 
     @staticmethod
     def _result(entry: _Entry, status: TaskStatus, code: str, message: str) -> ToolResult:
-        """Manager'ın ürettiği başarısız/iptal/belirsiz sonucu ortak tipe çevir."""
+        """Convert the result failed/cancelled/uncertain produced by the Manager to the common type."""
         return ToolResult(task_id=entry.task.task_id, status=status,
                           error=ToolError(code=code, message=message))
 
     def _finish(self, entry: _Entry, result: ToolResult) -> None:
-        """Kilit altında terminal durumu ve sonucu birlikte yerleştir."""
+        """Place terminal state and result together under lock and key."""
         entry.task = replace(entry.task, status=result.status, result=result)
         try:
             self._persist(entry.task)
         except TaskManagerError:
-            # Araç gerçekten bitmişse onun sonucunu geri almış sayma. Depo
-            # hatası yeni işleri kilitler; restart'ta eski RUNNING unknown olur.
+            # If the tool is truly finished, do not consider it as having undone its result. Store
+            # error locks new jobs; On restart, the old RUNNING becomes unknown.
             pass
 
     def _cancel_pending(self, reason: str) -> None:
-        """Kilit altında henüz çalıştırılmamış işleri iptal et ve kuyruğu boşalt."""
+        """Cancel jobs that have not yet run under lock and empty the queue."""
         while self._queue:
             entry = self._entries[self._queue.popleft()]
             if not entry.task.status.terminal:
@@ -303,32 +303,32 @@ class TaskManager:
                 self._finish(entry, self._result(entry, TaskStatus.CANCELLED, "cancelled", reason))
 
     def _execute(self, entry: _Entry) -> ToolResult:
-        """Worker'ın tek handler çağrısı; kullanıcı verisini exception mesajından sızdırma."""
+        """Worker's single handler call; Leaking user data from exception message."""
         started = False
         try:
             request = self._registry.validate_request(entry.task.request)
             spec = self._registry.get(request.tool)
             if iscoroutinefunction(spec.handler):
                 return self._result(entry, TaskStatus.FAILED, "unsupported_handler", "Expected a synchronous handler")
-            # Callback bağımsız kopyalar alır; yanlışlıkla parametreleri değiştirip
-            # daha önce doğrulanan veri yerine başka veri çalıştırmasın.
+            # Callback makes independent copies; accidentally changed parameters
+            # Do not run any other data instead of previously verified data.
             if self._authorize is None or self._authorize(_copy_request(request), replace(spec)) is not True:
                 return self._result(entry, TaskStatus.FAILED, "permission_denied", "Execution not authorized")
             with self._condition:
                 if entry.cancel_event.is_set():
                     return self._result(entry, TaskStatus.CANCELLED, "cancelled", "Cancelled before execution")
-                # Transaction bitmeden araca teslim yok. Crash bu kayıttan
-                # sonra olursa yeniden açılış sonucu UNKNOWN sayar.
+                # There is no delivery to the tool until the transaction is completed. Crash from this recording
+                # If it happens later, the restart result is counted as UNKNOWN.
                 self._persist(entry.task)
-                # Bu noktadan sonra handler'a teslim edilmiş sayılır. Daha sonra
-                # gelen iptal Event ile görülür; henüz başlamadı garantisi verilmez.
+                # After this point, it is deemed to be delivered to the handler. later
+                # Incoming cancellation is seen with Event; It has not started yet, no guarantee is given.
                 started = True
             context = ToolContext(task_id=entry.task.task_id, request=_copy_request(request),
                                   cancel_event=entry.cancel_event)
             raw = spec.handler(request.arguments, context)
             if not isinstance(raw, ToolResult):
-                # Sync fonksiyon yanlışlıkla coroutine döndürdüyse başlatmadan
-                # kapat; await edilmeyen coroutine uyarısını da sahipsiz bırakma.
+                # If the sync function accidentally returned a coroutine, start it without initializing it.
+                # close; Don't leave the unawaited coroutine warning unattended.
                 if iscoroutine(raw):
                     raw.close()
                 return self._result(entry, TaskStatus.UNKNOWN, "invalid_result", "Handler returned no valid result")
@@ -337,18 +337,18 @@ class TaskManager:
                 return self._result(entry, TaskStatus.UNKNOWN, "invalid_result", "Handler result has wrong task id")
             return result
         except RegistryError as error:
-            # Handler çalıştıktan sonra atılan RegistryError da yan etkinin hiç
-            # yapılmadığını kanıtlamaz; yalnız preflight hatasında FAILED denebilir.
+            # The RegistryError thrown after the Handler runs also has no side effects.
+            # does not prove that it was not done; Only preflight error can say FAILED.
             return self._result(entry, TaskStatus.UNKNOWN if started else TaskStatus.FAILED,
                                 "handler_error" if started else error.code, "Tool validation or execution failed")
         except BaseException:
-            # SystemExit gibi worker'ı öldürebilecek plugin hataları da bütün
-            # kuyruğu sahipsiz bırakmasın. Ana thread'in sinyalleri burada tutulmaz.
+            # Plugin errors that can kill the worker, such as SystemExit, are also
+            # Don't leave your tail unattended. The main thread's signals are not kept here.
             return self._result(entry, TaskStatus.UNKNOWN if started else TaskStatus.FAILED,
                                 "handler_error" if started else "preflight_error", "Tool execution could not be confirmed")
 
     def _run(self) -> None:
-        """Tek worker döngüsü: sırayı al, kilit dışında çalıştır, sonucu yayınla."""
+        """Single worker loop: get queue, run outside lock, publish result."""
         while True:
             with self._condition:
                 self._condition.wait_for(lambda: bool(self._queue) or self._closing)
@@ -363,8 +363,8 @@ class TaskManager:
             with self._condition:
                 self._finish(entry, result)
                 if result.status == TaskStatus.UNKNOWN or self._uncertain:
-                    # Belirsiz dış işlem sürüyor olabilir. Worker geri döndü diye
-                    # ortak kaynağı güvenli sanıp sonraki handler'ı başlatmıyoruz.
+                    # Uncertain external processing may be ongoing. Because Worker is back
+                    # We do not start the next handler considering the common resource is safe.
                     self._uncertain = True
                     self._cancel_pending("Earlier operation has unknown outcome")
                 self._condition.notify_all()

@@ -1,9 +1,9 @@
-"""Ağ kalitesi için Windows adaptörleri; önbellek ve örnek sahibi Network'tür.
+"""Windows adapters for network quality; The cache and instance owner is Network.
 
-Ping hedefi yalnız OS'nin aktif fiziksel karta ait IPv4 varsayılan ağ geçididir.
-Tek ICMP isteği 250 ms bekler; bir internet/hız testi veya serbest hedef aracı
-değildir. Wi-Fi sorgusu konum hassas alanları içermeyen opcode 19'u kullanır;
-eski current_connection sorgusuna düşmez. IP/SSID/MAC sonuçlara taşınmaz.
+The ping target is only the OS's IPv4 default gateway for the active physical card.
+Single ICMP request waits 250 ms; an internet/speed test or free target tool
+It is not. The Wi-Fi query uses opcode 19, which does not include location-sensitive fields;
+It doesn't fall into the old current_connection query. IP/SSID/MAC does not carry over to results.
 """
 import ctypes as c
 from ctypes import wintypes as w
@@ -16,12 +16,12 @@ class _Route(c.Structure):
 
 
 class _EchoHeader(c.Structure):
-    """32/64 bit yanıtın ortak ilk alanları; native pointer alanları okunmaz."""
+    """Common initial fields of 32/64 bit response; native pointer fields are not read."""
     _fields_ = [('address', w.DWORD), ('status', w.DWORD), ('rtt', w.DWORD)]
 
 
 class _WifiHeader(c.Structure):
-    """WLAN_REALTIME_CONNECTION_QUALITY'nin sabit başlığı; link dizisi okunmaz."""
+    """Fixed header of WLAN_REALTIME_CONNECTION_QUALITY; The link string is not read."""
     _fields_ = [('phy', w.ULONG), ('quality', w.ULONG), ('rx_rate', w.ULONG),
         ('tx_rate', w.ULONG), ('mlo', w.BOOL), ('link_count', w.ULONG)]
 
@@ -41,7 +41,7 @@ def _load_iphelper():
 
 
 def read_gateway(active: list[dict]) -> int | None:
-    """En düşük metrikli fiziksel IPv4 default route; ham adres yalnız RAM'dedir."""
+    """Lowest metric physical IPv4 default route; The raw address is only in RAM."""
     indices = {row.get('index') for row in active if row.get('index') is not None}
     if not indices: return None
     dll = _load_iphelper()
@@ -66,7 +66,7 @@ def read_gateway(active: list[dict]) -> int | None:
 
 
 def ping_gateway(gateway: int) -> dict:
-    """Yerel hedefe tek sabit payload; timeout erişimin kesin yokluğu değildir."""
+    """Single fixed payload to local target; timeout is not the absolute absence of access."""
     report = {'network_ping_ms': None, 'network_ping_status': 'unavailable'}
     handle = None
     dll = None
@@ -105,10 +105,10 @@ def _load_wlan():
 
 
 def wifi_signal(active: list[dict]) -> dict:
-    """Bağlı Wi-Fi kartlarının en düşük sinyal yüzdesi; konum izni istenmez.
+    """Lowest signal percentage of connected Wi-Fi cards; Location permission is not requested.
 
-    Çoklu kartta eksik sorguyu gizleyip kalan kartı bütün sistem diye sunma.
-    Her yanıt belleği ve client handle her çıkışta bırakılır.
+    Hiding the missing query in multiple cards and presenting the remaining card as the whole system.
+    Each response memory and client handle is released at each exit.
     """
     report = {'network_wifi_signal': None, 'network_wifi_status': 'unavailable'}
     cards = [row for row in active if row['kind'] == 'wifi']

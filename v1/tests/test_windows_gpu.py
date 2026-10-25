@@ -1,7 +1,7 @@
-"""Windows GPU adaptörünü sahte PDH ile doğrula; gerçek GPU/API kullanılmaz.
+"""Verify Windows GPU adapter with fake PDH; The actual GPU/API is not used.
 
-Sayaç ABI'si (Windows DLL veri biçimi), ilk örnek, sıfır, motor toplama,
-kaynak kapanışı ve ortak model/UI sahibi denetlenir. Donanım kabulü değildir.
+Counter ABI (Windows DLL data format), archetype, zero, engine aggregation,
+resource closure and common owner model/UI are checked. It is not hardware acceptance.
 """
 import ctypes as c
 from ctypes import wintypes as w
@@ -16,7 +16,7 @@ def instance(pid=1, adapter='a', engine=0):
 
 
 class Pdh:
-    """DLL imzalarını taklit eder; buffer gerçek ctypes yerleşimini kullanır."""
+    """Forges DLL signatures; buffer uses the actual ctypes layout."""
     def __init__(self):
         self.closed = []
         self.rows = [(instance(), 0.0, 0)]

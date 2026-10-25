@@ -1,7 +1,7 @@
-"""Tek-instance kilidini geçici klasör ve gerçek alt süreçle doğrular.
+"""Verifies single-instance lock with temporary folder and actual child process.
 
-Gerçek kullanıcı verisi, native pencere veya API kullanılmaz. Çöken sürecin
-dosyayı geride bırakmasının uygulamayı kalıcı engellemediği ayrıca sınanır.
+No real user data, native window or API is used. The collapsing process
+It is also tested whether leaving the file behind does not permanently block the application.
 """
 import subprocess
 import sys

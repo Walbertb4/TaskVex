@@ -1,18 +1,20 @@
-# Belge haritası
+# Documentation map
 
-Bu dizin güncel kullanım/sözleşme/denetim belgelerini ve test kanıtlarını toplar.
+This directory contains current guides, contracts, audits and test evidence.
 
-| Belge | Amacı |
+| Document | Purpose |
 |---|---|
-| [ARCHITECTURE](ARCHITECTURE.md) | Bugünkü mimari, sorumluluklar ve hedef tasarım sınırı |
-| [PLAN](PLAN.md) | Tek güncel aşama ve açık iş kaydı |
-| [CHANGELOG](CHANGELOG.md) | Yapılan değişiklikler; her yeni değişiklik burada |
-| [COMMANDS](COMMANDS.md) | İngilizce kullanıcı komut rehberi |
-| [UI/backend sözleşmesi](UI_BACKEND_CONTRACT.md) | Taşıma, veri sahipliği ve tamamlanma kuralları |
-| [Denetim](AUDIT.md) | Bakım sonuçları, kalan riskler ve özelleştirme boşlukları |
-| [Arşiv manifesti](eski/MANIFEST.json) | Taşınan 133 dosyanın eski/yeni yolu ve SHA256 değeri |
+| [Architecture](ARCHITECTURE.md) | Current owners, design and planned boundaries |
+| [Plan](PLAN.md) | Single current stage/substep status and acceptance record |
+| [Changelog](CHANGELOG.md) | Changes; not a substitute for architecture |
+| [Commands](COMMANDS.md) | Working user-facing requests and limits |
+| [UI/backend contract](UI_BACKEND_CONTRACT.md) | Transport, data ownership and completion rules |
+| [Audit](AUDIT.md) | Maintenance findings, remaining risks and customization gaps |
+| [Third-party notes](THIRD_PARTY_NOTES.md) | Dependency and asset licensing boundaries |
+| [Archive manifest](archive/MANIFEST.json) | Current hashes and pre-translation provenance for 133 historical files |
 
-reports/ güncel otomatik kanıtlardır; rapor içindeki sentetik sonuçlar gerçek hesap
-ve fiziksel cihaz kabulü sayılmaz. eski/ tarihsel içeriktir; talimat olarak uygulanmaz.
-Yerel README'ler kendi klasöründe kalır. AGENTS.md ajan kurallarını,
-THIRD_PARTY_NOTES.md üçüncü taraf sınırlarını korur.
+reports/ contains recorded checks. Synthetic results do not certify real accounts
+or physical devices. archive/ contains English translations of historical files;
+its reports are not new test runs or verbatim original transcripts. Original bytes
+remain in Git history at the manifest's source revision. Historical material does
+not override current instructions. Local READMEs stay beside their modules.

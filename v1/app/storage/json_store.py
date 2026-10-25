@@ -1,12 +1,12 @@
-"""Küçük JSON nesnelerini eski dosyayı yarım bırakmadan kaydet.
+"""Save small JSON objects without leaving the old file unfinished.
 
-Yeni içerik hedefle aynı dizindeki geçici dosyaya yazılır, flush/fsync ile
-tamamlanır ve os.replace ile hedefin yerine geçirilir. Replace öncesi hata
-eski dosyayı değiştirmez. Disk/yazma hataları başarı gibi gizlenmez.
+The new content is written to a temporary file in the same directory as the target, with flush/fsync
+is completed and replaced with the target with os.replace. Error before replacement
+It does not replace the old file. Disk/write errors are not disguised as successes.
 
-Dosya zarfı version + data içerir. Bozuk kayıt otomatik boş veri sayılmaz;
-read hata verir, recover_corrupt ancak açıkça çağrılırsa aslı ayrı korunur.
-Bu sınıf not şemasını, yetkiyi veya sırların güvenli saklanmasını yönetmez.
+The file envelope contains version + data. Corrupt records are not automatically counted as empty data;
+read gives an error, recover_corrupt, but if called explicitly, the original is preserved separately.
+This class does not manage the grading scheme, authority, or secure storage of secrets.
 """
 
 import json
@@ -21,7 +21,7 @@ from app.core.contracts import ContractError, copy_json
 
 
 class StoreError(ValueError):
-    """Hata kodunu taşır; mesajlarda kayıt içeriği veya sistem yolu bulunmaz."""
+    """It carries the error code; messages do not contain log content or system path."""
 
     def __init__(self, code: str, message: str) -> None:
         super().__init__(message)
@@ -29,7 +29,7 @@ class StoreError(ValueError):
 
 
 def _unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
-    """Aynı JSON anahtarının önceki değeri sessizce ezmesini engelle."""
+    """Prevent the same JSON key from silently crushing the previous value."""
     result = {}
     for key, value in pairs:
         if key in result:
@@ -39,36 +39,36 @@ def _unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
 
 
 def _reject_constant(value: str) -> None:
-    """Python decoder'ın kabul ettiği NaN/Infinity standart JSON değildir."""
+    """The NaN/Infinity that the Python decoder accepts is not standard JSON."""
     raise ValueError("Non-finite JSON number")
 
 
 class JsonStore:
-    """Güvenilir host'un seçtiği tek dosyada version=1 JSON nesnesi saklar.
+    """It stores a version=1 JSON object in a single file chosen by the trusted host.
 
-    path mutlak bir dosya yoludur; araç/model girdisinden doğrudan alınmamalı.
-    read eksik dosyada None, geçerli boş kayıtta {} döndürür. Böylece 'henüz
-    oluşturulmadı' ile 'kullanıcı veriyi temizledi' birbirine karışmaz.
+    path is an absolute file path; It should not be taken directly from the tool/model entry.
+    read returns None in the missing file, {} in the current empty record. So 'yet
+    'not created' and 'user cleared data' do not mix.
 
-    Aynı örneği paylaşan yazıcılar read-modify-write boyunca lock tutabilir.
-    Atomik replace tek başına iki yazarı sıralamaz.
-    shortcut: lock süreçler arasında veya ayrı JsonStore örnekleri arasında
-    koruma sağlamaz; çok süreç yazımında transaction destekli depoya geç.
+    Printers sharing the same instance can hold a lock during read-modify-write.
+    Atomic replace alone does not rank two authors.
+    shortcut: lock between processes or separate JsonStore instances
+    does not provide protection; Switch to transaction-supported storage in multi-process writing.
     """
 
     def __init__(self, path: Path) -> None:
-        """Konumu kontrol et; nesne oluşturmak dosya okumaz veya yaratmaz."""
+        """Check location; Creating an object does not read or create a file."""
         if not isinstance(path, Path) or not path.is_absolute() or not path.name:
             raise ContractError("Store path must be an absolute file path")
         self.path = path
-        # Aynı örneği paylaşan alan sahipleri read/modify/write boyunca bu kilidi tutar.
+        # Domain owners sharing the same instance hold this lock for read/modify/write.
         self.lock = RLock()
 
     def read(self) -> dict[str, Any] | None:
-        """Kaydı doğrulayarak oku; bozuk/asıl dosyayı değiştirmeden hata bildir.
+        """Read the record with verification; report error without modifying the file.
 
-        Desteklenmeyen sürüm farklı hata kodudur: daha yeni uygulamanın verisini
-        bozuk sanıp sıfırlamak yerine yükseltme/migration kararı host'a bırakılır.
+        Unsupported version is different error code: data of newer application
+        Instead of thinking it's broken and resetting it, the upgrade/migration decision is left to the host.
         """
         try:
             text = self.path.read_text(encoding="utf-8")
@@ -95,19 +95,19 @@ class JsonStore:
             raise StoreError("corrupt_data", "Stored data is invalid; original file preserved") from None
 
     def write(self, data: dict[str, Any]) -> None:
-        """Tam nesneyi atomik değiştir; dönüş yalnız replace başarılıysa gerçekleşir.
+        """Replace full object atomic; The return occurs only if replace is successful.
 
-        Önce bellekte doğrularız. Sonra var olan kaydı kontrol ederiz: bozuk veya
-        yeni sürümlü dosyanın üstüne yanlışlıkla yazmayız. Başarıdan önce geçici
-        dosya kapatılır; bu Windows'ta replace için de gereklidir.
+        First we verify it in memory. Then we check the existing record: corrupt or
+        We do not accidentally overwrite the new version file. Temporary before success
+        the file is closed; This is also required for replace on Windows.
         """
         try:
             if type(data) is not dict:
                 raise ContractError("Store data must be a JSON object")
             text = json.dumps({"version": 1, "data": copy_json(data)},
                               ensure_ascii=False, allow_nan=False, indent=2) + "\n"
-            # UTF-8'e çevrilemeyen yalnız surrogate karakterler de diske dokunmadan
-            # reddedilir; json.dumps metin üretmiş olması yeterli değildir.
+            # Only surrogate characters that cannot be converted to UTF-8 can also be saved without touching the disk.
+            # is rejected; It is not enough for json.dumps to produce text.
             content = text.encode("utf-8")
         except (ValueError, TypeError, RecursionError):
             raise StoreError("invalid_data", "Expected a JSON object with finite values") from None
@@ -115,8 +115,8 @@ class JsonStore:
         temporary = None
         try:
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            # NamedTemporaryFile bağlamı dosyayı replace'ten önce kapatır. Aynı
-            # dizin kullanmak farklı diskler arasında atomiklik kaybını önler.
+            # The NamedTemporaryFile context closes the file before replace. same
+            # Using indexes prevents loss of atomicity between different disks.
             with tempfile.NamedTemporaryFile(mode="wb", dir=self.path.parent,
                                              prefix=f".{self.path.name}.", suffix=".tmp",
                                              delete=False) as stream:
@@ -132,18 +132,18 @@ class JsonStore:
                 try:
                     temporary.unlink(missing_ok=True)
                 except OSError:
-                    # Temizlik asıl yazma hatasını maskelemesin. Artık .tmp,
-                    # normal açılışta hiçbir zaman asıl kayıt sayılmaz.
+                    # Don't let cleanliness mask the actual writing error. Now .tmp,
+                    # It is never considered the main record during normal startup.
                     pass
 
     def recover_corrupt(self, *, validate: Callable[[dict], Any] | None = None) -> Path | None:
-        """Yalnız bozuk dosyayı benzersiz .corrupt adına taşı; yeni kayıt yazma.
+        """Just move the corrupted file to its unique .corrupt name; write a new record.
 
-        Host önce hatayı kullanıcıya bildirmeli ve bu kurtarmayı açıkça seçmeli.
-        Dönen yol asıl baytları koruyan dosyadır. Sağlıklı/eksik kayıtta None;
-        okuma izni veya sürüm hatasında ret verir. Kurtarma başarısızsa asıl kalır.
-        validate verilirse geçerli JSON içindeki uygulama şeması da denetlenir;
-        yalnız ContractError bozuk kayıt sayılır, beklenmeyen validator hatası değil.
+        The host must first notify the user of the error and explicitly choose this recovery.
+        The returned path is the file that preserves the actual bytes. Healthy/incomplete None in registration;
+        It grants read permission or denial in case of version error. If recovery fails, the original remains.
+        If validate is given, the application schema in valid JSON is also checked;
+        Only ContractError is considered a bad record, not an unexpected validator error.
         """
         try:
             data = self.read()

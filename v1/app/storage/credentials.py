@@ -1,9 +1,9 @@
-"""Gemini anahtarını Windows Kimlik Bilgileri Yöneticisi'nde sakla.
+"""Store the Gemini key in Windows Credential Manager.
 
-TASKVEX_HOME profilleri ayrı kayıt kullanır; geçici test profili gerçek anahtarı
-okuyamaz veya ezemez. CredRead/Write API'leri ctypes standart kütüphanesiyle
-çağrılır; JSON/plaintext yedek deposuna geri dönüş yoktur. Aynı Windows hesabında
-çalışan güvenilir süreçlere karşı bir sandbox sağlamaz.
+TASKVEX_HOME profiles use separate registration; temporary test profile real key
+cannot read or crush. CredRead/Write APIs with ctypes standard library
+is called; There is no return to the JSON/plaintext spare tank. In the same Windows account
+It does not provide a sandbox against running trusted processes.
 """
 
 import ctypes as c
@@ -14,11 +14,11 @@ from pathlib import Path
 
 
 class CredentialError(RuntimeError):
-    """İşletim sistemi hatasını anahtar içermeyen sabit mesajla bildir."""
+    """Report operating system error with fixed message without key."""
 
 
 class _Credential(c.Structure):
-    """Win32 CREDENTIALW yerleşimi; pointer'lar 32/64 bit Python'a uyar."""
+    """Win32 CREDENTIALW layout; pointers respect 32/64 bit Python."""
     _fields_ = [("flags", w.DWORD), ("type", w.DWORD), ("target", w.LPWSTR),
                 ("comment", w.LPWSTR), ("written", w.FILETIME), ("size", w.DWORD),
                 ("blob", c.POINTER(c.c_ubyte)), ("persist", w.DWORD),
@@ -27,7 +27,7 @@ class _Credential(c.Structure):
 
 
 def _library():
-    """Windows API imzalarını açık kur; import sırasında sistem çağrısı yapma."""
+    """Set Windows API signatures on; Do not make system calls during import."""
     if os.name != "nt":
         raise CredentialError("Windows credential storage is unavailable")
     library = c.WinDLL("advapi32", use_last_error=True)
@@ -42,7 +42,7 @@ def _library():
 
 
 def _validate(key: str) -> bytes:
-    """Boş, aşırı uzun veya HTTP başlığına uygun olmayan girdiyi reddet."""
+    """Reject input that is empty, overly long, or does not comply with the HTTP header."""
     if not isinstance(key, str) or not 1 <= len(key) <= 2048 or any(
         not 33 <= ord(char) <= 126 for char in key
     ):
@@ -51,11 +51,11 @@ def _validate(key: str) -> bytes:
 
 
 class GeminiCredentials:
-    """Güvenilir host'un seçtiği tek veri profiline ait Gemini kaydı.
+    """Gemini record for the single data profile chosen by the trusted host.
 
-    Profil yolu UI/model payload'ından alınmaz. Kayıt adı yolun özetini içerir;
-    yolun kendisi kimlik deposunda görünmez. Anahtarı geri verme yetkisi yalnız
-    Python host'undadır; UI'a yalnız configured durumu gönderilir.
+    The profile path is not taken from the UI/model payload. The record name contains the summary of the path;
+    The path itself does not appear in the identity store. Only the person who has the authority to return the key
+    It is on the Python host; Only configured status is sent to the UI.
     """
 
     def __init__(self, home: Path) -> None:
@@ -63,7 +63,7 @@ class GeminiCredentials:
         self._target = "TaskVex/Gemini/" + sha256(profile.encode("utf-8")).hexdigest()
 
     def read(self) -> str | None:
-        """Kaydı oku ve CredFree ile belleği bırak; bulunamama dışında hatayı gizleme."""
+        """Read record and release memory with CredFree; hiding the error except for not being found."""
         library = _library()
         pointer = c.POINTER(_Credential)()
         if not library.CredReadW(self._target, 1, 0, c.byref(pointer)):
@@ -83,16 +83,16 @@ class GeminiCredentials:
             library.CredFree(pointer)
 
     def write(self, key: str) -> None:
-        """Yalnız bu profilin kaydını yaz ve geri okuyarak doğrula; ağ isteği yapma.
+        """Just write the record of this profile and verify it by reading it back; make a network request.
 
-        Yerel buffer temizlenir; Python string'lerinin bellekten kesin silindiği
-        iddia edilmez. Yazma sonrası doğrulama başarısızsa kayıt uygulanmış olabilir.
+        Local buffer is cleared; Python strings are definitely deleted from memory
+        not claimed. If post-write validation fails, the record may have been applied.
         """
         data = _validate(key)
         buffer = c.create_string_buffer(data)
         credential = _Credential(type=1, target=self._target, size=len(data),
                                  blob=c.cast(buffer, c.POINTER(c.c_ubyte)), persist=2,
-                                 username="TaskVex")  # CRED_PERSIST_LOCAL_MACHINE: aynı kullanıcı/makine
+                                 username="TaskVex")  # CRED_PERSIST_LOCAL_MACHINE: same as user/machine
         try:
             if not _library().CredWriteW(c.byref(credential), 0):
                 raise CredentialError("API key could not be stored in Windows credentials")
@@ -103,7 +103,7 @@ class GeminiCredentials:
 
 
 def load_gemini_key() -> str | None:
-    """Açık süreç anahtarı önceliklidir; yoksa Windows'taki mevcut profili oku."""
+    """The open process switch takes precedence; Otherwise, read the current profile in Windows."""
     key = os.environ.get("GEMINI_API_KEY")
     if key is not None:
         _validate(key)

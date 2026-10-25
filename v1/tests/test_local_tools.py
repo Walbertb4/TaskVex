@@ -1,8 +1,8 @@
-"""Gerçek araçları registry/policy/worker/dosya hattında uçtan uca doğrula.
+"""Verify real tools end-to-end on the registry/policy/worker/file line.
 
-Her testin TASKVEX_HOME'u geçicidir; gerçek kullanıcı notları kullanılmaz.
-Sistem testleri salt okunurdur. Hata testleri belirli dosya/sistem çağrılarını
-kontrollü bozar; beklenmeyen başarı veya çift not oluşmamalıdır.
+Each test's TASKVEX_HOME is temporary; real user notes are not used.
+System tests are read-only. Error tests specific file/system calls
+controlled disruption; Unexpected success or double grades should not occur.
 """
 
 from concurrent.futures import ThreadPoolExecutor
@@ -22,7 +22,7 @@ from app.tools.local import telemetry
 
 
 def request(tool, request_id="r1", arguments=None, **identity):
-    """Güvenilir yerel girişte üretilecek isteği test için oluştur."""
+    """Create the request to be generated on the trusted local login for testing."""
     return ToolRequest(tool=tool, request_id=request_id,
                        source=identity.get("source", "desktop"),
                        principal=identity.get("principal", "local-user"),
@@ -30,7 +30,7 @@ def request(tool, request_id="r1", arguments=None, **identity):
 
 
 def run(manager, req):
-    """Testi yalnız başvuru kabulünde bırakma; terminal sonucu bekle."""
+    """Don't leave the test alone when accepting applications; wait for terminal result."""
     return manager.wait(manager.submit(req).task_id, 3)
 
 
@@ -41,10 +41,10 @@ def test_add_list_and_reopen_keep_stable_note_identity():
         assert empty.status == TaskStatus.SUCCEEDED
         assert empty.result.data == {"notes": []}
         assert not path.exists()
-        added = run(manager, request("notes.add", "add", {"text": "Türkçe not 📝"}))
+        added = run(manager, request("notes.add", "add", {"text": 'Turkish note 📝'}))
         assert added.status == TaskStatus.SUCCEEDED
         note = added.result.data["note"]
-        assert note["text"] == "Türkçe not 📝" and note["done"] is False
+        assert note["text"] == 'Turkish note 📝' and note["done"] is False
         assert len(note["id"]) == 32
         assert added.result.evidence == {"persisted": True, "read_back": True, "note_id": note["id"]}
         assert json.loads(path.read_text("utf-8"))["data"] == {"notes": [note]}
@@ -54,7 +54,7 @@ def test_add_list_and_reopen_keep_stable_note_identity():
 
 
 def test_concurrent_replays_add_only_one_real_note():
-    req = request("notes.add", arguments={"text": "Bir kere"})
+    req = request("notes.add", arguments={"text": "Once"})
     with create_core() as manager:
         with ThreadPoolExecutor(max_workers=4) as pool:
             tasks = list(pool.map(lambda _: manager.submit(req), range(12)))
@@ -63,7 +63,7 @@ def test_concurrent_replays_add_only_one_real_note():
         assert first.status == TaskStatus.SUCCEEDED
         assert manager.submit(req).task_id == first.task_id
         with pytest.raises(TaskManagerError) as caught:
-            manager.submit(request("notes.add", arguments={"text": "Farklı içerik"}))
+            manager.submit(request("notes.add", arguments={"text": 'different content'}))
         assert caught.value.code == "request_conflict"
         listed = run(manager, request("notes.list", "list"))
         assert listed.result.data["notes"] == [first.result.data["note"]]
@@ -71,17 +71,17 @@ def test_concurrent_replays_add_only_one_real_note():
 
 def test_same_text_with_different_request_ids_creates_distinct_notes():
     with create_core() as manager:
-        first = run(manager, request("notes.add", "a", {"text": "Aynı metin"}))
-        second = run(manager, request("notes.add", "b", {"text": "Aynı metin"}))
+        first = run(manager, request("notes.add", "a", {"text": 'same text'}))
+        second = run(manager, request("notes.add", "b", {"text": 'same text'}))
         assert first.result.data["note"]["id"] != second.result.data["note"]["id"]
         assert len(run(manager, request("notes.list", "list")).result.data["notes"]) == 2
 
 
 def test_update_reopen_and_delete_target_only_stable_id():
-    """Aynı metinli iki not arasında hedef karışmaz; yeniden açılışta id korunur."""
+    """The target is not confused between two notes with the same text; The id is preserved on reboot."""
     with create_core() as manager:
-        first = run(manager, request("notes.add", "a", {"text": "Aynı"})).result.data["note"]
-        second = run(manager, request("notes.add", "b", {"text": "Aynı"})).result.data["note"]
+        first = run(manager, request("notes.add", "a", {"text": 'same'})).result.data["note"]
+        second = run(manager, request("notes.add", "b", {"text": 'same'})).result.data["note"]
         note_id = first["id"]
         changed = run(manager, request("notes.update", "edit", {"id": note_id, "text": "Yeni", "done": True}))
         assert changed.status == TaskStatus.SUCCEEDED
@@ -103,7 +103,7 @@ def test_update_reopen_and_delete_target_only_stable_id():
 
 
 def test_ui_transfer_is_atomic_once_and_survives_all_notes_deleted():
-    """Ayrı manager'da tekrar aktarım yeni kimlikle ikinci kayıt yaratmamalı."""
+    """Retransmission in a separate manager should not create a second record with the new identity."""
     legacy = [{"text": "Same", "done": False}, {"text": "Same", "done": True}]
     with create_core() as manager:
         existing = run(manager, request("notes.add", "existing", {"text": "Core"})).result.data["note"]
@@ -203,7 +203,7 @@ def test_missing_note_does_not_create_or_rewrite_store(tool, arguments, existing
 @pytest.mark.parametrize("operation", ["update", "delete"])
 @pytest.mark.parametrize("failure", ["write", "readback", "cancel_before", "cancel_after"])
 def test_note_mutations_keep_commit_and_cancellation_contract(monkeypatch, operation, failure):
-    """Gerçek dosyada hata/iptal sınırlarını dene; yazılmış veri yok sayılmasın."""
+    """Try error/cancel limits on real file; Do not ignore written data."""
     store = JsonStore(get_data_home() / "notes.json")
     original = {"id": "stable-id", "text": "Keep", "done": False}
     store.write({"notes": [original]})
@@ -275,7 +275,7 @@ def test_bad_arguments_never_reach_local_handlers(tool, arguments, monkeypatch):
         with pytest.raises(RegistryError) as caught:
             manager.submit(request(tool, arguments=arguments))
         assert caught.value.code == "invalid_arguments"
-    # Core başlangıcı artık yalnız kalıcı görev günlüğünü oluşturur.
+    # Core startup now only creates the persistent task log.
     assert {p.name for p in get_data_home().iterdir()} == {'tasks'}
 
 
@@ -289,7 +289,7 @@ def test_real_note_tool_denies_wrong_identity_without_creating_file(identity, to
         denied = run(manager, request(tool, arguments=arguments, **identity))
         assert denied.status == TaskStatus.FAILED
         assert denied.result.error.code == "permission_denied"
-    # Core başlangıcı artık yalnız kalıcı görev günlüğünü oluşturur.
+    # Core startup now only creates the persistent task log.
     assert {p.name for p in get_data_home().iterdir()} == {'tasks'}
 
 
@@ -416,7 +416,7 @@ def test_late_cancellation_does_not_erase_a_verified_write(monkeypatch):
 
 
 def test_running_note_cancelled_after_read_does_not_write(monkeypatch):
-    """Handler başladıktan sonra, disk yazımı öncesindeki iptal noktasını dene."""
+    """After the Handler starts, try the cancel point before the disk burn."""
     req = request("notes.add", arguments={"text": "Do not save"})
     context = ToolContext(task_id="direct-cancel", request=req)
     store = JsonStore(get_data_home() / "notes.json")
@@ -441,7 +441,7 @@ def test_system_status_uses_real_read_only_system_calls():
         assert result.result.data["cpu_percent"] is None
         value=result.result.data["memory_percent"]
         assert value is None or 0<=value<=100
-    # Core başlangıcı artık yalnız kalıcı görev günlüğünü oluşturur.
+    # Core startup now only creates the persistent task log.
     assert {p.name for p in get_data_home().iterdir()} == {'tasks'}
 
 

@@ -289,7 +289,7 @@ export function initTimers(options = {}) {
   showTimerTab(true);
 }
 
-/** Native sahipliğine geçerken tarayıcı-only eski sayaç motorunu durdur. */
+/** Stop browser-only legacy counter engine when switching to native ownership. */
 export async function connectTimers(){
   clearInterval(tmr);clearInterval(swTimer);tmRunning=swRunning=false;
   await connectNativeClocks();

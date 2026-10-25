@@ -1,9 +1,9 @@
-"""Gerçek Windows apps.open kabulü: python tests/apps_open_smoke.py --report ...
+"""Real Windows apps.open acceptance: python tests/apps_open_smoke.py --report ...
 
-pytest'e dahil değildir; bilinçli çalıştırılınca Not Defteri açabilir. Belgeleri
-düzenlemez, kullanıcı sekmelerini kapatmaz. Test yalnız gerçek core hattındaki
-başlatma sayısını gözler; Windows başlatıcısını veya gözlem sonucunu taklit etmez.
-Varsayılan kayıt dizini yerine geçici TASKVEX_HOME kullanır.
+not included in pytest; It can open Notepad when run consciously. Documents
+does not edit or close user tabs. Testing only on real core line
+monitors the number of starts; It does not emulate the Windows launcher or observation result.
+Uses temporary TASKVEX_HOME instead of the default save directory.
 """
 
 import argparse
@@ -21,7 +21,7 @@ from app.tools.local import windows_apps
 
 
 def main():
-    """Aç/kabul/replay/yeniden istek hattını doğrula; kapatma yetkisi kullanma."""
+    """verify request line Open/accept/replay/restart; use shutdown authority."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--report", type=Path, required=True)
     args = parser.parse_args()

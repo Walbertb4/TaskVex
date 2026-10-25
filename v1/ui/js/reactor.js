@@ -154,8 +154,8 @@ export function wakeAnimation() {
 function frame(t) {
   requestAnimationFrame(frame);
   const st = currentState;
-  // Boşta da 60 FPS hedefle; yüksek Hz ekranda gereksiz fazladan çizim yapma.
-  // Küçük tolerans, rAF zaman damgası yuvarlamasının 60'ı 30 FPS'e düşürmesini önler.
+  // Aim for 60 FPS at idle; Avoid unnecessary extra drawing on a high Hz screen.
+  // Small tolerance prevents rAF timestamp rounding from reducing 60 to 30 FPS.
   if (t + 0.5 < nextRenderTime) return;
   nextRenderTime += FRAME_INTERVAL;
   if (nextRenderTime < t) nextRenderTime = t + FRAME_INTERVAL;

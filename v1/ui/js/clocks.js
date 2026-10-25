@@ -1,6 +1,6 @@
-/** Native çoklu sayaç görünümü. Tek durum sahibi backend Clocks'tur.
- * Poll yalnız snapshot okur; geçen süre veya completion UI'da yürütülmez.
- * Tarayıcı-only mevcut tekli timers.js motoru bu adaptörün dışında kalır.
+/** Native multi-meter view. The only state owner is the backend Clocks.
+ * Poll only reads snapshots; elapsed time or completion is not executed in the UI.
+ * The browser-only existing single timers.js engine is excluded from this adapter.
  */
 import {emit, isBackendAvailable, sanitizeError} from './api.js';
 import {sfx} from './sfx.js';
@@ -13,12 +13,12 @@ let menuTarget=null;
 let onPoll=null, showTab=null, finished=null, initialized=false, configuredId=null;
 const el=id=>document.getElementById(id);
 const time=s=>String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
-// Native sahipliği başladıktan sonra taşıma kaybı ikinci yerel motor açmaz.
+// Once native ownership begins, carry loss will not open the second native engine.
 export const nativeClocksActive=()=>ready||isBackendAvailable();
 export const canSendClockText=()=>!busy&&!uncertain;
 export function setClocksChatLock(locked){chatLocked=locked;renderNativeClocks();}
 
-/** Yalnız yeni örneği kabul et; eski model sonucu yine güncel kaydı odaklayabilir. */
+/** Only accept new instance; The old model result can still focus the current record. */
 export function applyClockSnapshot(data, focusId=null){
   if(!data || !Array.isArray(data.clocks) || !Number.isFinite(data.sampled_at)) return false;
   if(new Set(data.clocks.map(c=>c?.id)).size!==data.clocks.length)return false;
@@ -98,7 +98,7 @@ export function renderNativeClocks(){
   }
 }
 
-/** Aynı anda tek view okuması; başarısız okumada eski ölçüm güncelmiş gibi kalmaz. */
+/** Reading one view at a time; In case of unsuccessful reading, the old measurement does not remain as current. */
 export async function refreshClocks(){
   if(!ready||reading)return false;
   if(!isBackendAvailable()){if(el('tm'))el('tm').textContent='—';if(el('clockStatus'))el('clockStatus').textContent='Clock view unavailable';return false;}
@@ -116,7 +116,7 @@ export async function refreshClocks(){
   }finally{reading=false;}
 }
 
-/** UI komutu tek request_id ile gider; unknown sonrası otomatik tekrar yapılmaz. */
+/** UI command goes with single request_id; There is no automatic repeat after unknown. */
 async function command(tool,args){
   if(!ready||busy||uncertain||chatLocked)return false;
   if(!isBackendAvailable()){if(el('clockStatus'))el('clockStatus').textContent='Native backend unavailable';return false;}
@@ -146,7 +146,7 @@ export function controlNativeClock(kind,action,duration=null){
 }
 export function hasNativeClock(kind){return records.some(c=>c.id===selected[kind]);}
 
-/** details doğal Enter/Space desteği verir; satırlar Tab/oklar ile seçilebilir. */
+/** details provides native Enter/Space support; Rows can be selected with Tab/arrows. */
 function closeClockMenus(){
   if(el('clockPicker'))el('clockPicker').open=false;
   if(el('clockMenu'))el('clockMenu').hidden=true;
@@ -188,7 +188,7 @@ export function initNativeClocks(options){
   });
 }
 
-/** Native el sıkışmasından sonra; yerel eski interval'ler caller tarafından kapanır. */
+/** After native handshake; Local old intervals are closed by the caller. */
 export async function connectNativeClocks(){
   if(!nativeClocksActive())return;
   ready=true;

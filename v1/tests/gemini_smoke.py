@@ -1,9 +1,9 @@
-"""İsteğe bağlı gerçek Gemini kabulü; varsayılan yalnız uygulama kataloğunu okur.
+"""Optional true Gemini acceptance; By default it only reads the application catalog.
 
-v1 içinde: python tests/gemini_smoke.py --report ../docs/stage5-gemini-live.json
-Anahtar GEMINI_API_KEY veya Windows kimlik deposundan gelir. --notes seçilirse yalnız
-geçici dizindeki sentetik not kullanılır. Gerçek kullanıcı notları gönderilmez.
-Betik import edilince ağ isteği, dosya yazma veya model oturumu başlatmaz.
+in v1:python tests/gemini_smoke.py --report ../docs/stage5-gemini-live.json
+The key comes from GEMINI_API_KEY or the Windows identity store. Only if --notes is selected
+The synthetic note in the temporary directory is used. Actual user notes are not sent.
+Once imported, the script does not initiate a network request, file write, or model session.
 """
 
 import argparse
@@ -25,7 +25,7 @@ from app.storage.credentials import CredentialError, load_gemini_key
 
 
 def main() -> int:
-    """Tek canlı tur yap; modelin sözü yerine gerçek araç kayıtlarını denetle."""
+    """Do one live turn; Check actual tool records rather than the model's word."""
     parser = argparse.ArgumentParser(description="TaskVex optional live Gemini acceptance")
     parser.add_argument("--notes", action="store_true", help="Use only a temporary synthetic note")
     parser.add_argument("--model", default=DEFAULT_MODEL, help="Generate Content text model; not a Live model")
@@ -33,7 +33,7 @@ def main() -> int:
     args = parser.parse_args()
     key_error = False
     try:
-        key = load_gemini_key()  # Test profiline geçmeden gerçek host profilinin anahtarını al.
+        key = load_gemini_key()  # Get the key to the real host profile before moving to the test profile.
     except (CredentialError, ContractError):
         key = None
         key_error = True
@@ -60,8 +60,8 @@ def main() -> int:
                     document = JsonStore(Path(directory) / "notes.json").read()
                     notes = document["notes"] if document else []
                     checked = checked and len(notes) == 1 and notes[0]["text"] == "TaskVex API acceptance"
-                    # Yalnız araç adlarının görünmesi yetmez: not eklenmeden
-                    # önceki boş liste, eklenen notun geri okunması sayılamaz.
+                    # It is not enough for tool names to appear alone: without adding notes
+                    # the previous empty list cannot be counted as a readback of the added note.
                     checked = checked and any(
                         item["name"] == "notes.list" and item["status"] == "succeeded"
                         and item["result"]["verified"] and item["result"]["data"]["notes"] == notes

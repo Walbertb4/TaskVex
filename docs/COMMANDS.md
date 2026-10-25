@@ -36,7 +36,7 @@ Update it whenever an implemented command or its behavior changes.
 | `Mark all my notes as not completed.` | Reopens the selected entire set using the same verified batch tool. Latest N, matching content and explicit ID groups also work. |
 | `Delete the note "Buy milk".` | Deletes one unambiguous existing note. |
 | `Delete the note with ID <note-id>.` | Deletes only the selected record, even if other notes have the same text. |
-| `Delete the note containing "merh".` | Selects by literal substring and deletes only if there is exactly one match. Quotes are examples, not required command syntax. |
+| `Delete the note containing "hell".` | Selects by literal substring and deletes only if there is exactly one match. Quotes are examples, not required command syntax. |
 | `Delete my latest note.` | Deletes the uniquely newest note by creation timestamp, not by list position. |
 | `Delete my last two notes.` | Selects exactly two newest records by creation timestamp and deletes them together in one atomic write. |
 | `Delete all notes containing "test".` | Selects the explicitly requested matching group and deletes exactly those records together. |
@@ -168,13 +168,13 @@ recall or a substitute for reading current saved notes. Restart loses it.
 
 | Say, type or select | What happens |
 | --- | --- |
-| `Go to sleep.` / `Switch to sleep mode, please.` / `Uyku moduna gir.` | Asks the model to request one-time sleep using `mode=once`. Addressing Vex is optional while awake; these are examples, not fixed matching phrases. |
+| `Go to sleep.` / `Switch to sleep mode, please.` / `Sleep mode gir.` | Asks the model to request one-time sleep using `mode=once`. Addressing Vex is optional while awake; these are examples, not fixed matching phrases. |
 | **Sleep** button | Sleeps after the current turn has finished. Does not enable or disable the persistent return preference. |
 | Say `Vex` while asleep | The local detector wakes Vex. A finalized transcript containing only the configured wake word is not a completed task; Vex waits for the actual request. Normal conversation continues afterward. Automatic return happens only if you explicitly enabled persistent sleep for this chat. |
 | `Vex, tell me something interesting.` while asleep | Wakes and forwards the addressed utterance through the existing Live input. |
 | **Wake** button or an explicit typed Live message | Exits sleep without needing the wake word. |
-| `Stay in sleep mode.` / `Return to sleep after each task.` / `Uyku moduna kalıcı olarak gir.` | Asks the model for `mode=persistent`: enables return-to-sleep for this chat and sleeps after Vex's reply. After an addressed interaction and reply playback finish, returns to sleep immediately. “Permanent” means this chat only. |
-| `Stop returning to sleep.` / `Disable persistent sleep mode.` / `Kalıcı uyku modunu kapat.` | Requests `mode=off`, disabling stay-asleep after Vex's reply. The independent normal idle timer still applies; set it to 0 to disable timed sleep. Wake first or type the command while asleep. |
+| `Stay in sleep mode.` / `Return to sleep after each task.` / `Enter sleep mode permanently.` | Asks the model for `mode=persistent`: enables return-to-sleep for this chat and sleeps after Vex's reply. After an addressed interaction and reply playback finish, returns to sleep immediately. “Permanent” means this chat only. |
+| `Stop returning to sleep.` / `Disable persistent sleep mode.` / `Turn off persistent sleep mode.` | Requests `mode=off`, disabling stay-asleep after Vex's reply. The independent normal idle timer still applies; set it to 0 to disable timed sleep. Wake first or type the command while asleep. |
 | **Settings → Audio → Idle sleep timer** | Saves 0–300 whole seconds (default 10; 0 disables the timer). In normal conversation, idle time triggers one-time sleep. Does not delay return in stay-asleep mode. |
 | **Personalization → Wake word** | Saves the keyword used for the next sleep. Default: Vex. Supports 1–3 words in the local English pronunciation dictionary, such as Hey Vex or Computer. |
 | **Settings → Theme → SLEEPING** | Customizes the color of the real sleeping reactor state. This is distinct from IDLE and does not change the wake word. |
@@ -449,7 +449,7 @@ consent invalidates an old approval. No automatic retry or merge is performed.
 
 The UI refreshes local readings without requiring a model connection. Missing
 values remain unavailable, never invented zeroes. CPU/GPU temperatures, remote internet probes and
-media integration are still pending. Windows GPU readings are described below. System readings use the existing shared
+media controls are still pending. Windows GPU readings are described below. System readings use the existing shared
 registry/policy/TaskManager model path; UI polling reads the same local owner.
 
 
@@ -505,3 +505,32 @@ or denied data stays unavailable; TaskVex does not fall back to location-sensiti
 queries. 0% signal and 0 ms ping are valid. The UI tooltip shows status and sample
 age. No gateway address, SSID, MAC or device GUID is returned. API transport
 latency remains unavailable until a separate real transport metric is defined.
+
+
+## Current Windows media session — read only
+
+| Say or type → | What Vex does |
+|---|---|
+| “What is playing right now?” | Calls media.status for the current session selected by Windows, including the reported title, artist and playback state. |
+| “Is the current media paused?” | Reads the same OS sample as the dashboard; paused and playing are distinguished. |
+
+This is metadata provided to Windows by the source application, not audio
+capture, a browser tab scan or all currently audible sounds. Some apps do not
+publish a media session. No_session is distinct from unavailable/unsupported/
+timeout; missing data must not become a claim that nothing is playing.
+The UI updates every few seconds and clears stale/failed samples. Model reads
+may store returned metadata in the existing task journal; background UI polling
+does not journal each sample or send it to a model.
+Play/pause/previous/next are not available in this slice; the buttons remain disabled.
+
+
+## Portable Windows demo
+
+- Extract the entire `TaskVexDemo-Windows-x64.zip`, then open `TaskVexDemo.exe`.
+  Python is bundled; Windows 10/11 x64, .NET Framework 4.8 and WebView2 are required.
+- Enter your own Gemini key in Settings. The demo uses a separate TaskVexDemo
+  profile by default; no developer key or notes are supplied.
+- Optional: close the app and run `Setup wake model.cmd` once online. It invokes
+  the existing verified upstream download; model weights are not in the ZIP.
+  Without setup, local wake from sleep is unavailable. This is setup, not a
+  natural-language command or a claim that all hardware has been tested.

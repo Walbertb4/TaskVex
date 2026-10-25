@@ -1,8 +1,8 @@
-"""TaskVex native başlangıcı: v1 içinde python -m app.main ile çalıştır.
+"""TaskVex native start: run in v1 with python -m app.main.
 
-Mevcut UI aynı dizinden yerel HTTP ile sunulur; ES modülleri file:// kısıtına
-takılmaz. PyWebView'in Edge/WebView2 motoru zorunludur; eski IE motoruna düşmeyiz.
-Native profil ve ayarlar TASKVEX_HOME altında kaynak koddan ayrı tutulur.
+The current UI is served via native HTTP from the same directory; ES modules have the file:// constraint
+It doesn't get stuck. PyWebView's Edge/WebView2 engine is mandatory; We don't fall back on the old IE engine.
+Native profile and settings are kept separate from the source code under TASKVEX_HOME.
 """
 
 from contextlib import closing
@@ -19,11 +19,11 @@ from app.storage.instance_lock import AlreadyRunningError, SingleInstance
 
 
 def _ui_app(ui: Path):
-    """Mevcut Bottle sunucusunda UI'ı her açılışta yeni dosya yollarıyla sun.
+    """On existing Bottle server, present UI with new file paths on every startup.
 
-    Aynı origin ve WebView profili korunur: kullanıcı depolaması silinmez.
-    Yalnız asset yolu yenilenir; eski HTML/yeni JS veya eski import karışmaz.
-    no-store başlığı Bottle'ın döndürdüğü gerçek yanıta eklenmelidir.
+    The same origin and WebView profile is preserved: user storage is not deleted.
+    Only the asset path is renewed; legacy HTML/new JS or legacy import will not interfere.
+    The no-store header should be added to the actual response returned by Bottle.
     """
     from bottle import Bottle, HTTPResponse, static_file
 
@@ -35,7 +35,7 @@ def _ui_app(ui: Path):
         return HTTPResponse(status=302, headers={**headers, "Location": f"/{prefix}/index.html"})
 
     def asset(filename):
-        # Yol sınırı, MIME ve dosya kaynak kapanışı mevcut Bottle'da kalır.
+        # The path boundary, MIME and file source closure remain in the current Bottle.
         return static_file(filename, root=str(ui.parent), headers=headers)
 
     app.route("/", method="GET", callback=index)
@@ -44,40 +44,42 @@ def _ui_app(ui: Path):
 
 
 def main() -> None:
-    """Pencereyi ana thread'de aç; kapanış veya başlangıç hatasında core'u kapat."""
+    """Open window in main thread; Shut down core on shutdown or startup error."""
     parser = argparse.ArgumentParser(description="TaskVex native desktop")
     parser.add_argument("--debug", action="store_true", help="Enable native developer tools")
     args = parser.parse_args()
-    # Bağımlılık hataları da run() tarafından anlaşılır başlangıç hatasına
-    # dönüştürülebilsin; --help çalıştırmak native kütüphane gerektirmesin.
+    # Dependency errors are also detected by run()
+    # be transformed; Running --help should not require a native library.
     from app.tools.local.clocks import Clocks
     from app.tools.local.telemetry import Telemetry
+    from app.tools.local.media import Media
     from app.bootstrap import create_core
     from app.bridge.webview_bridge import NativeBridge
     from app.storage.json_store import JsonStore
-    # Yerel masaüstü UI'ın açılış sesi tıklama beklememeli. Yalnız bu sürecin
-    # WebView2 argümanını ayarlarız; Windows/genel Edge politikası değişmez.
+    # The native desktop UI's startup sound should not wait for a click. Only this process
+    # We set the WebView2 argument; Windows/general Edge policy remains unchanged.
     browser_args = os.environ.get("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", "")
     if "--autoplay-policy=no-user-gesture-required" not in browser_args.split():
         os.environ["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] = (
             browser_args + " --autoplay-policy=no-user-gesture-required"
         ).strip()
     import webview
-    # Yedek export'u native Save File diyaloğunu kullanır; varsayılan indirme
-    # engeli açıkken Blob download isteği sessizce iptal edilirdi.
+    # Backup export uses the native Save File dialog; default download
+    # When blocking was on, the Blob download request would be silently canceled.
     webview.settings["ALLOW_DOWNLOADS"] = True
 
     home = get_data_home()
-    # Aynı veri kökü için bütün native/core yaşam döngüsünün tek sahibi.
-    # Restart yeni süreci ancak bu kilit bırakıldıktan sonra açar.
+    # Single owner of the entire native/core lifecycle for the same data root.
+    # Restart opens the new process only after this lock is released.
     with SingleInstance(home):
         ui = Path(__file__).resolve().parents[1] / "ui" / "index.html"
         if not ui.is_file():
             raise FileNotFoundError("TaskVex UI index.html is missing")
         clocks = Clocks()
+        media = Media()
         settings_store = JsonStore(home / "settings.json")
-        with closing(Telemetry()) as telemetry, create_core(clocks=clocks, settings_store=settings_store, telemetry=telemetry) as core:
-            bridge = NativeBridge(core, settings_store, clocks=clocks, telemetry=telemetry)
+        with closing(Telemetry()) as telemetry, create_core(clocks=clocks, settings_store=settings_store, telemetry=telemetry, media=media) as core:
+            bridge = NativeBridge(core, settings_store, clocks=clocks, telemetry=telemetry, media=media)
             window = webview.create_window("TaskVex", _ui_app(ui), js_api=bridge,
                                            http_port=webview.settings["DEFAULT_HTTP_PORT"],
                                            width=1280, height=800, min_size=(900, 600),
@@ -85,29 +87,29 @@ def main() -> None:
             if window is None:
                 raise RuntimeError("Native window could not be created")
             bridge._window = window
-            # X düğmesi ağ turu sürerken core'u kapatmamalı. Live turu Stop ile
-            # bitirildikten sonra kapanabilir; REST'te tur bitişi hâlâ beklenir.
+            # The X button should not shut down the core while the network turn is in progress. Live turn with Stop
+            # can be closed after finishing; In REST, the turn finish is still awaited.
             window.events.closing += bridge._chat.close
             try:
-                # WSGI app kendi SDK sunucusunu açar; ikinci global sunucu açma.
+                # WSGI app opens its own SDK server; Opening a second global server.
                 webview.start(gui="edgechromium", debug=args.debug, http_server=False,
                               private_mode=False, storage_path=str(home / "webview"))
             finally:
-                bridge._chat._live.close()  # GUI döngüsü beklenmedik biçimde biterse de I/O kaynağını bırak.
+                bridge._chat._live.close()  # Also drop resource I/O if the GUI loop ends unexpectedly.
     if bridge._restart_requested:
-        # Aynı güvenilir Python/entrypoint ve veri ortamıyla yeniden aç. Shell
-        # kullanılmaz; core kapanmadan ikinci worker veya pencere başlatılmaz.
-        command = [sys.executable, "-m", "app.main"]
+        # Reboot with the same trusty Python/entrypoint and data medium. Shell
+        # not used; The second worker or window will not be started before the core is closed.
+        command = [sys.executable] if getattr(sys, "frozen", False) else [sys.executable, "-m", "app.main"]
         if args.debug:
             command.append("--debug")
         subprocess.Popen(command, cwd=str(ui.parent.parent))
 
 
 def _show_startup_error(error: Exception) -> None:
-    """Pencere hiç açılamadığında terminal + Windows hata kutusuyla yol göster.
+    """Prompt with terminal + Windows error box when the window cannot be opened at all.
 
-    Ham exception mesajı dosya yolu veya özel içerik taşıyabilir; varsayılan
-    mesajlar sabittir. Kutunun kendisi açılamazsa terminal bildirimi korunur.
+    The raw exception message may contain file path or custom content; default
+    messages are fixed. If the box itself cannot be opened, the terminal notification is retained.
     """
     if isinstance(error, AlreadyRunningError):
         message = "TaskVex is already running for this data profile. Close the existing window before opening another instance."
@@ -132,7 +134,7 @@ def _show_startup_error(error: Exception) -> None:
 
 
 def run() -> None:
-    """CLI girişinde beklenmeyen açılış hatasını görünür kıl ve hata koduyla çık."""
+    """Make unexpected startup error visible in CLI login and exit with error code."""
     try:
         main()
     except Exception as error:

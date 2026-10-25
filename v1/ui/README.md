@@ -1,47 +1,48 @@
 # TaskVex UI
 
-Vanilla HTML/CSS ve ES modülleri. Native açılış v1 içinde
-`.\.venv\Scripts\python.exe -m app.main`; [backend rehberi](../README.md).
-Bu README kullanım/modül haritasıdır; değişiklik günlüğü değildir.
+Vanilla HTML/CSS and ES modules. Run the native host from v1 with
+`.\.venv\Scripts\python.exe -m app.main`; see [backend setup](../README.md).
 
-## Tarayıcıda görünüm
+## Browser preview
 
-v1 içinde:
+From v1:
 
 ```powershell
 .\.venv\Scripts\python.exe -m http.server 8000 --directory ui --bind 127.0.0.1
 ```
 
-Edge/Chrome ile http://127.0.0.1:8000 açın. ES modülleri için file:// kullanmayın.
-Bu modda tema/profil/layout, yerel notlar, skill/rutin editörleri, yedek, palet ve
-tekli yerel sayaç çalışır. Native sohbet, backend notları, çoklu sayaç, Credentials
-ve yerel KWS entegrasyonu kazanmaz. Harici font erişilemezse sistem fontu kullanılır.
+Open http://127.0.0.1:8000 in Edge/Chrome. ES modules should not use file://.
+Standalone mode supports local preferences/layout, notes, skill/routine editors,
+backup, palette and a local clock. It does not gain native conversation, backend
+notes, multiple native clocks, Windows Credentials or local KWS. Unavailable web
+fonts fall back to system fonts.
 
-## Modül sahipliği
+## Module ownership
 
-| Modül | Görev |
+| Module | Responsibility |
 |---|---|
-| app.js | Başlatma, modül bağlantıları, toplu snapshot |
-| assistant_session.js | Tek sohbet/mikrofon/uyku/Stop tur yaşam döngüsü |
-| shell.js | Metin balonları, başlangıç/kapanış görünümü, saat |
-| api.js | Taşıma ve public bridge; kabul/bitiş ayrımı, hata maskeleme |
-| schema.js / storage.js | Saf doğrulama / görünür hata veren localStorage |
-| preferences.js / settings.js | Tek tercih nesnesi / ayarlar, profil, yedek ve native save |
-| devices.js / layout.js | Aynı nesne üzerinden cihaz listesi/seçimi ve widget düzeni |
-| credentials.js | Windows key kayıt UI'ı; sır tarayıcı deposuna girmez |
-| notes.js | Yerel veya onaylı native not görünümü; çift mutasyon yok |
-| skills.js / routines.js | Yerel tanım editörleri; backend yürütme yok |
-| connections.js | API Live katalog ve salt okunur widget setter'ları |
-| system_view.js | Native ortak sistem örneğini mevcut UI tick'iyle yeniler; model offline yerel ölçümü silmez |
-| panels.js | Modal, palet, drawer, yerel timeline |
-| reactor.js / sfx.js | Görsel durum/animasyon ve yerel efektler |
-| live_mic.js / mic_worklet.js | Tek AudioWorklet PCM girişi, VAD/seviye |
-| live_audio.js / live_transcript.js | İstek kimlikli çıktı ve transkript |
-| clocks.js / timers.js | Native çoklu sayaç görünümü / tarayıcı tekli fallback |
+| app.js | Startup, module connections and validated snapshots |
+| assistant_session.js | One conversation/microphone/sleep/Stop lifecycle |
+| shell.js | Message bubbles, startup/shutdown visuals and clock |
+| api.js | Transport/bridge, acceptance versus completion, safe errors |
+| schema.js / storage.js | Pure validation / localStorage with visible failures |
+| preferences.js / settings.js | One preference object, profile, backup and native save |
+| devices.js / layout.js | Shared-preference device selection and widget layout |
+| credentials.js | Secret-free key-status UI and explicit credential storage |
+| notes.js | Local or approved backend note ownership; no double mutation |
+| skills.js / routines.js | Local definition editors; no backend execution |
+| connections.js | Live catalog and compatibility display setters |
+| system_view.js / media_view.js | Shared native snapshots via the existing app tick |
+| panels.js | Modals, command palette, drawer and local timeline |
+| reactor.js / sfx.js | Visual states/animation and local effects |
+| live_mic.js / pcm_worklet.js | One AudioWorklet PCM source, VAD and level |
+| live_audio.js / live_transcript.js | Request-scoped playback and transcript rendering |
+| clocks.js / timers.js | Native multi-clock view / separate standalone fallback |
 
-Native başladıktan sonra köprü kaybı ikinci sayaç/not otoritesi açmaz. Setters
-backend'e ikinci save/komut göndermez. Google/konum/kamera/ekran/media ve
-uygulanmamış profil alanları açıkça planlı/disabled; kayıtlı metinler korunur.
+After native initialization, bridge loss cannot create a second note/clock owner.
+Setters never send a second backend save/command. Planned Google/location/camera/
+screen/media-control integrations remain disabled; saved definitions/text are preserved.
+Media metadata is already read-only; it does not authorize playback controls.
 
-[Sözleşme](../../docs/UI_BACKEND_CONTRACT.md), [komutlar](../../docs/COMMANDS.md),
-[testler](tests/README.md), [açık sınırlar](../../docs/AUDIT.md).
+[Contract](../../docs/UI_BACKEND_CONTRACT.md), [commands](../../docs/COMMANDS.md),
+[tests](tests/README.md), [audit](../../docs/AUDIT.md).

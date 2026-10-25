@@ -1,8 +1,6 @@
-# UI regresyonları
+# UI regressions
 
-Bu testler UI sözleşmesini gerçek hesap ve fiziksel cihaz açmadan doğrular.
-Komutlar v1 içinde çalıştırılır. Test değişiklikleri ilerleme günlüğüne değil
-docs/CHANGELOG.md'ye yazılır.
+Run these nine synthetic suites from v1, without a real account or physical device:
 
 ```powershell
 node ui/tests/live-audio.mjs
@@ -16,26 +14,26 @@ node ui/tests/clocks.mjs
 node ui/tests/catalog.mjs
 ```
 
-Bu 9 suite; PCM kaynak/oynatma, VAD/metre, geç transkript, Stop/unknown,
-uyku/wake toparlanması, tarihli notlar, kapanış, çoklu sayaç/sağ tık silme,
-tema ve katalog kapsamını sınar. Eski MediaRecorder yolu uygulamada kullanılmadığı
-için kaldırıldı; ilgili self-test'in yerine gerçek AudioWorklet regresyonları korunur.
-VM/sentetik nesneler gerçek akustik, WebView2 veya sağlayıcı kabulü değildir.
+They exercise PCM/playback, VAD/levels, transcripts, Stop/unknown, sleep/wake,
+notes/dates, shutdown, clock deletion/themes and catalogs. The obsolete MediaRecorder
+path was removed; AudioWorklet regressions remain. Synthetic objects do not certify
+acoustics, real provider access or hardware behavior.
 
-## Gerçek tarayıcı
+## Real browser
 
-Kurulu playwright-core yolunu kullanın; UI'a runtime bağımlılık eklenmez:
+Use an existing Playwright installation; no application runtime dependency is added:
 
 ```powershell
 $env:PLAYWRIGHT_MODULE = 'C:\path\to\node_modules\playwright-core\index.mjs'
 node ui/tests/audit-fixes.mjs
 ```
 
-BROWSER_PATH gerekirse Edge/Chromium exe yolunu seçer. Test kendi yerel sunucusu ve
-izole profiliyle çalışır, dış ağı engeller; gerçek kullanıcı localStorage'ına erişmez.
-Dört grup: planlı kontrollerde dürüst durum/olmayan scheduler, tek tercih nesnesi ve
-eski metni koruma, yerel not CRUD/yenileme, legacy anahtar okuma/tek yeni anahtar yazma.
+BROWSER_PATH optionally selects Edge/Chromium. The test opens its own local server,
+uses an isolated profile and blocks external requests. It never reads user storage.
+The current 16 groups cover honest status, shared preferences, notes, compatibility
+storage, memory, usage accounting and system/network/media views.
 
-Python native kabul: v1/tests/native_smoke.py; senaryolar native_scenarios.py'dedir.
-Native rapor aynı core/gerçek WebView2 üzerinde sentetik provider/PCM kullanır.
-Fiziksel mikrofon/echo/cihaz geçişi ve canlı API ayrı kullanıcı kabulüdür.
+Native coverage is in tests/native_smoke.py and native_scenarios.py. It uses the real
+core/WebView2 with synthetic providers/PCM across ten phases. Physical microphone,
+echo, device handover and live-account acceptance remain separate. Record changes
+in docs/CHANGELOG.md and actual evidence under docs/reports.

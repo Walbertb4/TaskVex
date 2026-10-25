@@ -1,6 +1,6 @@
-/** Gerçek app.js uyku fonksiyonlarını cihaz/API açmadan sınar.
- * Denetimli saat, geç callback ve hata bütçesi kullanılır; test edilen
- * fonksiyonlar kopyalanmaz, kaynak dosyadan aynen VM'e yüklenir.
+/** Tests real app.js sleep functions without opening device/API.
+ * Supervised clock, late callback and error budget are used; tested
+ * functions are not copied, they are loaded into the VM exactly from the source file.
  */
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -39,7 +39,7 @@ f.ctx.liveMic.fail('wake_backpressure');
 assert.equal(f.ctx.wakeRetryCount,1);assert.equal(f.node('micB').classList.on,true);
 assert.equal(f.node('micB').lastChild.textContent,'Microphone On');assert.ok(f.events.some(e=>e.name==='wake_close'));
 f.timers.at(-1).fn();await settle();assert.equal(f.prepared,2);
-staleFail('wake_backpressure');assert.equal(f.ctx.wakeRetryCount,1); // Eski kaynak yeni bütçeyi tüketemez.
+staleFail('wake_backpressure');assert.equal(f.ctx.wakeRetryCount,1); // The old resource cannot consume the new budget.
 f.ctx.liveMic.fail('wake_alignment_failed');f.timers.at(-1).fn();await settle();assert.equal(f.prepared,3);
 f.ctx.liveMic.fail('wake_prefix_expired');
 assert.equal(f.ctx.wakeRetryCount,2);assert.equal(f.ctx.wakeRetryTimer,null);assert.equal(f.ctx.micBlocked,true);
@@ -71,11 +71,11 @@ assert.equal(hard.node('micB').lastChild.textContent,'Microphone Off');
 assert.equal(hard.node('micB').classList.on,false);
 console.log('PASS explicit Sleep retry, bounded local recovery, stable On, error reasons, stale/Off/Disconnect/unknown guards');
 
-// Normal konuşmada süre dolunca tek seferlik uyku; kalıcı tercih açılmaz.
+// In normal conversation, one-time sleep when time is up; permanent preference is not opened.
 const idle=fixture();idle.ctx.scheduleAutoSleep();
 assert.equal(idle.timers.at(-1).delay,3000);idle.timers.at(-1).fn();await settle();
 assert.equal(idle.ctx.sleeping,true);assert.equal(idle.ctx.automaticSleep,false);
-// Kalıcı mod hiçbir idle timer kullanmaz; işin gerçek bitişinde hemen uyur.
+// Persistent mode uses no idle timer; He goes to sleep immediately after the actual completion of the job.
 const auto=fixture();auto.ctx.applySleepMode('persistent');auto.ctx.scheduleAutoSleep();
 assert.equal(auto.ctx.autoSleepTimer,null);
 assert.equal(auto.ctx.returnToPersistentSleep({completed:true},0),true);await settle();
@@ -113,13 +113,13 @@ for(const guard of ['busy','unknown','pending','stale','reportedUnknown']){
   assert.equal(x.ctx.returnToPersistentSleep(report,0),false,guard);
   assert.equal(x.ctx.sleeping,false);
 }
-// Yanıtta ayrı dinleme kaynağı, izin istemi veya barge-in açılamaz.
+// A separate listening source, permission request, or barge-in cannot be opened in the response.
 const privateTurn=fixture();privateTurn.ctx.automaticSleep=true;
 vm.runInContext(source.match(/async function listenAutomatically\([^]*?\n\}/m)[0],privateTurn.ctx);
 await privateTurn.ctx.listenAutomatically('active');assert.equal(privateTurn.prepared,0);
 console.log('PASS normal idle timer vs immediate persistent sleep, no reply listener, terminal/unknown/stale guards');
 
-// Backend snapshot / yedek / yerel açılış aynı doğrulanmış süreyi korumalı.
+// Backend snapshot/backup/local boot should maintain the same verified duration.
 const schemaText=fs.readFileSync(new URL('../js/schema.js',import.meta.url),'utf8');
 const {validateAndNormalizeSnapshot}=await import('data:text/javascript;base64,'+Buffer.from(schemaText).toString('base64'));
 for(const sleepDelay of [0,1,3,300]){
@@ -130,7 +130,7 @@ for(const sleepDelay of [-1,301,1.5,'3',null]){
 }
 console.log('PASS sleep delay survives snapshot and rejects invalid values');
 
-// Uyku kabulü beklenirken SLEEPING/Wake gösterilmez; Mic Off onayı bozmaz.
+// SLEEPING/Wake is not displayed while waiting for sleep acceptance; Mic Off does not disrupt confirmation.
 const pending=fixture();let accept;
 pending.ctx.emit=()=>new Promise(resolve=>{accept=resolve;});pending.ctx.enterSleep();
 assert.equal(pending.ctx.sleeping,false);assert.equal(pending.ctx.sleepPending,true);
@@ -147,7 +147,7 @@ assert.match(rejected.node('textStatus').textContent,/rejected.*awake/);
 const unknown=fixture();unknown.ctx.emit=async()=>({ok:false,response:null});
 unknown.ctx.enterSleep();await settle();assert.equal(unknown.ctx.textOperation.uncertain,true);
 assert.equal(unknown.ctx.sleeping,false);assert.equal(unknown.node('sleep').textContent,'Sleep state unknown');
-// Geciken cevap timeout veya Disconnect sonrasında yeni kaynak açamaz.
+// A delayed response cannot open a new resource after timeout or Disconnect.
 for(const action of ['timeout','disconnect']){
  const x=fixture();let reply;x.ctx.emit=()=>new Promise(r=>{reply=r;});x.ctx.enterSleep();
  if(action==='timeout')x.timers.at(-1).fn();else x.ctx.resetLiveAudio();
@@ -160,8 +160,8 @@ assert.equal(onlyWake.ctx.returnToPersistentSleep({completed:true,wake_only:true
 assert.equal(onlyWake.ctx.sleeping,false);
 console.log('PASS host-confirmed sleep, rejection vs unknown, late/Off guards, wake-only is not a completed task');
 
-// Wake -> Live devrinde artık wake retry değil normal Stop/gerçek bitiş
-// uygulanır. Kesin bitişten sonra yalnız boş dinleme hazırlanabilir.
+// In the Wake -> Live period, it is no longer wake retry but normal Stop/real end
+// is applied. After the final conclusion, only blank listening can be prepared.
 const handoffFailure=fixture();handoffFailure.ctx.activeTextRequest='live-now';
 handoffFailure.ctx.handleWakeFailure('stream_backpressure',0);
 assert.equal(handoffFailure.ctx.micBlocked,true);
@@ -170,7 +170,7 @@ handoffFailure.ctx.settleMicrophoneFailure({completed:false},0);
 assert.equal(handoffFailure.ctx.micBlocked,true);
 handoffFailure.ctx.settleMicrophoneFailure({completed:true,stopped:true},0);
 assert.equal(handoffFailure.ctx.micBlocked,false);assert.equal(handoffFailure.ctx.micRecoveryCount,1);
-assert.equal(handoffFailure.prepared,0); // Burada eski komut veya yeni model isteği yok.
+assert.equal(handoffFailure.prepared,0); // No old commands or new model requests here.
 assert.match(handoffFailure.node('textStatus').textContent,/Input discarded/);
 for(const guard of ['unknown','stale','permission','budget']){
  const x=fixture();x.ctx.micBlocked=true;x.ctx.micBlockReason='stream_backpressure';

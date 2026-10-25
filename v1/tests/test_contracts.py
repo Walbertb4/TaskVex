@@ -27,12 +27,12 @@ def result(status=TaskStatus.SUCCEEDED, **changes):
 
 
 def test_request_keeps_json_values_and_detaches_caller_and_serialized_data():
-    arguments = {"items": [0, False, None, {"text": "Türkçe"}]}
+    arguments = {"items": [0, False, None, {"text": 'Turkish'}]}
     item = request(arguments=arguments)
     arguments["items"].clear()
     wire = item.to_dict()
     wire["arguments"]["items"].clear()
-    assert item.arguments == {"items": [0, False, None, {"text": "Türkçe"}]}
+    assert item.arguments == {"items": [0, False, None, {"text": 'Turkish'}]}
     assert json.loads(json.dumps(item.to_dict(), allow_nan=False)) == item.to_dict()
     with pytest.raises(FrozenInstanceError):
         item.request_id = "changed"

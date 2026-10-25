@@ -1,7 +1,7 @@
-"""Mikrofon parçalarını API thread'inden tek Live sahibine sınırlı RAM ile taşır.
+"""Moves microphone tracks from API thread to single Live owner with limited RAM.
 
-Bu kuyruk araç çalıştırmaz. Sıra numarası tekrar/eksik parçayı reddeder;
-taşma veya cihaz hatasında tur iptal edilir, kayıp sesle işleme devam edilmez.
+This queue does not operate tools. Sequence number replay/missing rejects the part;
+In case of overflow or device error, the turn is canceled and the process is not continued with the lost sound.
 """
 import asyncio
 from queue import Empty, Full, Queue
@@ -14,7 +14,7 @@ from app.core.contracts import ContractError
 
 
 class LiveInput:
-    """En çok 2 saniye bekleyen, toplam 15 saniye PCM; hiçbir ses diske yazılmaz."""
+    """PCM for a total of 15 seconds, waiting for a maximum of 2 seconds; no audio is written to disk."""
 
     def __init__(self):
         self._queue: Queue[bytes | None] = Queue(maxsize=20)
@@ -23,14 +23,14 @@ class LiveInput:
         self.closed = False
         self.failed = False
         self._sequence = self._bytes = 0
-        # Kabul edilen kuyruk ile gerçekten socket'e gönderilen ses ayrıdır.
-        # İçerik tutulmaz; yalnız bu turun gecikme tanısı için sayaç/zaman.
+        # The accepted queue and the audio actually sent to the socket are separate.
+        # Content is not retained; counter/time. for delay diagnosis of this round only
         self.sent_packets = 0
         self.first_sent_at: float | None = None
         self.end_sent_at: float | None = None
 
     def feed(self, sequence: int, data: bytes | None) -> bool:
-        """Yalnız sıradaki 100 ms PCM'i al; None açık konuşma bitişidir."""
+        """Just take the next 100 ms PCM; None is the open speech ending."""
         with self._lock:
             if not self.ready or self.closed:
                 return False
@@ -51,10 +51,10 @@ class LiveInput:
             return True
 
     async def send(self, session):
-        """Tek yerel konuşmanın sınırını açık başlat/bitir ile SDK'ye aktar.
+        """Export limit of single local conversation to SDK with open start/end.
 
-        Başlangıç gönderilmeden ready açılmaz. Son paket sıralı kuyruktan
-        sonra activity_end üretir; otomatik VAD/EOS ile iki ayrı bitiş sahibi yoktur.
+        Ready cannot be opened until the startup is sent. Last packet from sequential queue
+        then generates activity_end; With the automatic VAD/EOS there are no two separate finishers.
         """
         await session.send_realtime_input(activity_start=types.ActivityStart())
         self.ready = True
@@ -75,7 +75,7 @@ class LiveInput:
                 self.first_sent_at = perf_counter()
 
     def close(self):
-        """Geç paketleri reddet ve bekleyen PCM'i bırak; başka turun kuyruğuna dokunma."""
+        """Reject late packets and drop pending PCM; Don't touch another round's tail."""
         with self._lock:
             self.closed = True
             self.ready = False

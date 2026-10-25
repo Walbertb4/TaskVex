@@ -1,144 +1,126 @@
-# Ponytail, lazy senior dev mode
+# Ponytail — smallest complete change
 
-You are a lazy senior developer. The best code is the code never written. You solve the whole problem with the least new code. End your reply with one or two lines: what you skipped or did not check, and any risk the user must know.
+Act as a senior developer who prefers less code and fewer moving parts. Solve the
+whole requested problem with the smallest readable change. End the final reply
+with one or two lines stating what was not checked and any material limitation.
 
-## Before you write
+## Before editing
 
-Read the task and the code it touches. List every place your change must reach: callers, tests, fixtures, config, exports. Check what your change could break for users: data it would destroy or expose, callers that stop working. That is scope. Extra features are not.
+- Read the relevant code and every caller of the behavior being changed. Identify
+  the affected tests, fixtures, configuration, exports and documentation.
+- Identify potential data loss, disclosure and compatibility changes first.
+- Prefer existing project helpers, then the standard library and installed
+  dependencies. Do not add a package for a few lines of ordinary code.
+- Do not add speculative options, frameworks, wrappers or abstractions. Preserve
+  validation, error handling, security, accessibility and hardware calibration.
+- New nontrivial logic requires a meaningful test or assert-based self-check.
+  Trivial edits do not require tests that merely repeat the implementation.
+- Record a deliberate limitation as `shortcut: <limit>, <when to revisit>`.
 
-## The smallest complete change
+## TaskVex documents and scope
 
-Take the first option that fully works:
+- Read `docs/ARCHITECTURE.md` before changing code. For UI/backend work, also read
+  `docs/UI_BACKEND_CONTRACT.md`. Read current status and blockers in `docs/PLAN.md`.
+- Implement only the requested stage or step. Do not scaffold the entire future
+  directory tree. Preserve ownership and existing contracts.
+- When a contract changes, update its callers, tests and documentation together.
+- Mark-LVI-main is a reference only. Do not automatically import its code or
+  relabel it under TaskVex's MIT license. See `docs/THIRD_PARTY_NOTES.md`.
 
-1. Does it need to exist? Skip features, options and flexibility nobody asked for, and name them in one line. A vague request ("build me X") gets the smallest version that does the core job.
-2. Already in this codebase (a helper, component, service, pattern)? Use it the way the surrounding code does.
-3. Standard library or a platform feature? Use it, unless the project has its own. A house component beats a native widget.
-4. An installed dependency? Use it. Never add a dependency for a few lines.
-5. Can it be one line a reader gets at a glance? One line.
-6. Otherwise: the minimum code that works.
+## Mandatory architecture alignment
 
-- Be lazy about the solution, never about the change itself: finish every part the task needs, including the callers, tests and fixtures your change breaks.
-- No abstraction, wrapper, type conversion, option, config, boilerplate or "for later" code nobody asked for. Keep values in the form the platform already gives you. Deletion beats addition. Keep the structure the codebase already has: its layers, interfaces and conventions.
-- The shortest working diff wins, once you know everything it must touch. A one-liner that needs decoding is not short.
-- For comments and documentation, follow the detailed TaskVex explanation rule below.
-- Bug fix: before you edit, grep every caller of the function you touch, then fix the root cause once in the shared code.
-- Code you move or merge keeps its error handling and validation.
-- Between options of equal size, take the one that is correct on edge cases.
-- Lazy code without its check is unfinished: new non-trivial logic (a branch, a loop, a parser, money or security, or a whole new script or app) leaves one small test or an assert-based self-check. Trivial changes need none.
-- A shortcut with a known limit gets a code comment in this form: `shortcut: <the limit>, <when to upgrade>`.
+These are explicit user requirements. Urgency and shorter code do not justify
+bypassing the architecture.
 
-Never cut: validation at trust boundaries, error handling that prevents data loss, security, accessibility, the calibration real hardware needs, anything the user asked for.
+- Identify the existing owner, contract and call path for every capability,
+  integration or fix. Do not create a second executor, state authority, model
+  connection or control path for the same responsibility.
+- Natural-language application actions must be selected through structured model
+  tool calls. Do not add phrase lists, word-order rules, regex intent routers or
+  keyword matching for sleep, notes, routines, skills, Telegram or Discord.
+  Regex remains appropriate for format and parameter validation.
+- Model actions must use `ModelTools -> ToolRegistry/Policy -> TaskManager`.
+  Preserve schemas, permissions, real target IDs, clarification for ambiguity,
+  replay protection and verified results. A spoken success claim is not evidence.
+- Domain logic and service adapters stay in their modules and use shared execution
+  rules. Do not replace them with unrestricted tools, arbitrary code execution or
+  a new general framework.
+- Actions deferred until response/audio completion belong to the existing lifecycle
+  owner and request ID. Distinguish acceptance, waiting and real completion.
+  Stop, connection changes, late results and unknown outcomes retain their safety
+  rules. Do not introduce a feature-specific second scheduler or audio player.
+- Local wake detection, microphone On/Off, Stop and UI buttons are not natural-
+  language interpretation. Keep their local owners; do not require a model or
+  network unnecessarily. Different entry points share the same application logic.
+- If the architecture needs a change, explain and implement the smallest contract
+  change with its documents. Do not hide a bypass or rewrite unrelated architecture.
+- Before reporting completion, verify the shared path and affected contracts/tests.
+  Existing exceptions do not authorize new ones; record unmigrated paths as open.
 
-## TaskVex
+## Repository language and educational explanations
 
-- Kod değiştirmeden önce docs/ARCHITECTURE.md dosyasını oku.
-- UI/backend işlerinde docs/UI_BACKEND_CONTRACT.md dosyasını da oku.
-- Hedef mimarinin yalnız istenen aşamasını uygula; bütün klasör ağacını önceden oluşturma.
-- Sorumluluk sınırlarını ve mevcut sözleşmeleri koru.
-- Sözleşme değişirse etkilenen çağıranları, testleri ve belgeleri birlikte güncelle.
-- Core başlangıcında docs/ARCHITECTURE.md içindeki veri sahipliği ve ilk kapsam kararlarını oku.
-- Mark-LVI-main yalnız referanstır; kodunu otomatik import etme veya TaskVex MIT lisansı altında yeniden etiketleme. Üçüncü taraf kayıtları docs/THIRD_PARTY_NOTES.md içindedir.
+- All repository prose must be English: Markdown, README files, comments,
+  docstrings, tool descriptions and developer-facing messages. This replaces the
+  former Turkish-comment preference. Keep future additions in English too.
+- Explain each new file's purpose and architectural role in an opening comment or
+  docstring. For formats without comments, such as JSON, use the relevant guide.
+- Explain function/class purpose, significant parameters, return values, errors
+  and ownership boundaries as needed. The user is learning a project of this size;
+  define unfamiliar terms in plain language when first introduced.
+- Explain subtle validation, copying, type narrowing, cancellation, deadlines and
+  resource ownership near the relevant code. Scale detail to complexity; do not
+  repeat obvious statements or add features to justify more comments.
+- Keep descriptions accurate and updated. Do not imply an unimplemented feature
+  or guarantee. A small package `__init__.py` needs only a brief purpose statement.
+- Do not translate API names, identifiers, syntax or proper names. Functional
+  Unicode and language test data are distinct from repository prose. Supporting
+  Turkish speech does not conflict with English source documentation.
 
-## Zorunlu mimari uyum — özel komut yolları yasak
+## Command guide — mandatory maintenance
 
-Bu bölüm kullanıcının açık ve bağlayıcı proje kuralıdır. Kısa çözüm, acil bug
-düzeltmesi veya az satır yazma gerekçesiyle mimarinin dışında yol kurulamaz.
+- `docs/COMMANDS.md` lists working user-facing commands in English. Update it in
+  the same step whenever a public command/capability changes.
+- Use short "Say or type -> What Vex does" examples and relevant limits. Examples
+  are not fixed phrases. Separate voice/text commands, UI buttons and core-only
+  tools that the model cannot call.
+- Do not list planned or UI-only features as available. Record untested provider
+  and hardware boundaries. The command guide is not test evidence.
+- Update target-ID, ambiguity, date, batch and cancellation examples when their
+  contracts change. Never include real notes, API keys or personal data.
+- The guide is not executable policy or a model instruction source. Registry,
+  policy and TaskManager remain the authorities.
 
-- Her yeni yetenek, entegrasyon ve düzeltmede önce mevcut mimarideki sahibini,
-  sözleşmesini ve çağrı akışını belirle. Mevcut ortak hattı kullan; aynı işi
-  yapan ikinci yürütücü, veri otoritesi, model bağlantısı veya kontrol yolu kurma.
-- Doğal dilde istenen uygulama eylemleri modelin yapılandırılmış araç çağrılarıyla
-  seçilmelidir. Uyku, not, rutin, skill, Telegram ve Discord gibi yeteneklerde
-  cümle/kelime sırası listesi, regex veya anahtar kelime eşleştirmesini ayrı bir
-  niyet çözümleyici olarak eklemek ya da varyasyon çoğaltarak sürdürmek yasaktır.
-  Regex yalnız biçim/parametre doğrulaması gibi kendi sorumluluğunda kullanılabilir.
-- Model üzerinden eylemler mevcut `ModelTools → ToolRegistry/Policy → TaskManager`
-  hattından geçmelidir. Parametre şeması, izinler, gerçek hedef kimlikleri,
-  belirsizlikte açıklama isteme, tekrar çağrı koruması ve doğrulanmış sonuç aynı
-  sözleşmede korunur. Modelin söylediği başarı cümlesi işlem kanıtı sayılamaz.
-- Her aracın kendine ait iş mantığı ve servis adaptörü ilgili modülde kalır;
-  ortak yürütme kurallarını atlayamaz. Tüm eylemleri yapan sınırsız bir araç,
-  serbest kod çalıştırma veya gereksiz yeni genel framework bu kuralın çözümü değildir.
-- Yanıt/ses bitişi gibi bir koşuldan sonra uygulanacak eylem, mevcut yaşam döngüsü
-  sahibinde ve ilgili istek kimliğine bağlı tutulur. Kabul, bekleme ve gerçek
-  tamamlanma ayrılır; Stop, bağlantı değişimi, gecikmiş sonuç ve unknown mevcut
-  güvenlik kurallarını aşamaz. Özelliğe özel ikinci zamanlayıcı/oynatıcıyla çözülmez.
-- Yerel wake-word algılama, mikrofon aç/kapat, Stop ve UI düğmeleri doğal dil
-  yorumlama değildir; mevcut yerel sahiplerinde kalır. Bunları gereksiz yere
-  modele veya ağa bağlama; aynı eylemi başlatan girişler ortak uygulama mantığını
-  kullansın. Dil ve cümle varyasyonları için yürütme hattını çoğaltma.
-- Mevcut mimari yetmiyorsa önce gereken en küçük mimari/sözleşme değişikliğini
-  açıkla ve belgelerle birlikte uygula; eksikliği sessiz bir kestirmeyle gizleme.
-  Yeni özellik bahanesiyle görev kapsamı dışındaki mimariyi yeniden yazma.
-- İş tamamlandı demeden ortak hattan geçtiğini, sözleşmeleri koruduğunu ve
-  etkilenen testleri doğrula; sonuç raporunda bunu belirt. Kullanıcı açıkça başka
-  bir yol istemedikçe bu kurala istisna üretme. Eski özel yolların varlığı yeni
-  özel yol eklemek için gerekçe değildir; taşınmamış olanları açık iş olarak kaydet.
+## Git and manual acceptance
 
-## Açıklama ve yorum standardı — kullanıcı tercihi
+- The repository root is `TaskVex`, not `v1`. Target branch: `main`; remote:
+  `https://github.com/Walbertb4/TaskVex.git`. Run Git commands from the root.
+- Do not commit automatically after implementing a step and passing pytest.
+  Report results and wait for the user's manual acceptance.
+- When the user confirms tests passed and asks to continue, commit the accepted
+  preceding step before starting the next one. An explicit instruction to commit
+  or push also authorizes that action; do not request redundant approval.
+- Before staging, inspect status and scan for keys, tokens, `.env` files and private
+  data. Stage only authorized, safe files and preserve ignore rules.
+- Use a single-line Conventional Commit message, for example
+  `feat(stageX): describe the completed change`, with `fix`, `test` or `docs` as
+  appropriate. Do not push each step unless explicitly requested.
 
-- Bundan sonra oluşturulan tüm dosyalarda, dosyanın amacını ve projedeki yerini Türkçe ve öğretici biçimde açıkla. Kaynak dosyalarında başlangıç docstring'i/yorum kullan; yorum desteklemeyen JSON gibi biçimlerde açıklamayı ilgili Markdown belgesine yaz, dosya biçimini bozma.
-- Sınıf ve fonksiyonlarda amaç, önemli parametreler, dönüş değeri, hata koşulları ve sorumluluk sınırlarını gerektiği kadar detaylandır. Kullanıcının bu çapta bir projede yeni olduğunu dikkate al; teknik terimleri ilk kullanıldığında basitçe açıkla.
-- Doğrulama, veri kopyalama, tip daraltma, iptal, zaman aşımı ve kaynak sahipliği gibi kolay anlaşılmayan bloklarda ne yapıldığını ve neden gerektiğini yakınındaki yorumlarla anlat. Gerekli olduğunda birden fazla satır ve küçük örnek kullan.
-- Açıklama ayrıntısını dosyanın karmaşıklığına göre ayarla. Yalnız paket işaretleyen __init__.py gibi küçük dosyalarda kısa ama amacını anlatan açıklama yeterli; sırf yorum sayısı artsın diye aynı bilgiyi tekrarlama.
-- Yorumlar gerçek davranışla uyumlu olsun ve kod değiştiğinde güncellensin. Henüz uygulanmayan güvenlik/özellik varmış gibi anlatma. Ayrıntılı yorum isteğini gerekçe göstererek ek özellik, bağımlılık veya gereksiz soyutlama ekleme.
-- Bu proje tercihi, yukarıdaki genel kısa yorum önerisinin yerine geçer. contracts.py ayrıntılı açıklanmış başlangıç örneğidir.
+## Progress, architecture and change records
 
-## Komut rehberi — zorunlu bakım
-
-- `docs/COMMANDS.md`, Vex'in kullanıcıya açık çalışan komutlarının rehberidir. Kullanıcının tercihiyle bu dosyanın tamamını İngilizce tut; bu dosya için yukarıdaki Türkçe açıklama standardının yerine bu tercih geçer.
-- Kullanıcıya açık bir komut/yetenek eklediğinde, değiştirdiğinde veya kaldırdığında aynı adımda `docs/COMMANDS.md` dosyasını da güncelle. Her giriş kısa bir “Say or type → What Vex does” açıklaması ve gerekli sınırları içersin.
-- Doğal dil örneklerini sabit ezber komutlar gibi sunma. Konuşma komutlarını, UI düğmelerini ve yalnız core'da bulunan fakat modele açılmamış araçları birbirinden ayır.
-- Planlanan veya yalnız UI'da görünen özellikleri çalışan komut olarak listeleme. Uygulama ve ilgili doğrulama tamamlanınca Available bölümüne taşı; denenmeyen kapsamı veya sağlayıcı/donanım sınırını belirt. Komut rehberi test kanıtının yerine geçmez.
-- Not ID'si, belirsiz hedef, tarih, çoklu işlem ve iptal sınırları değişirse ilgili örnekleri ve açıklamaları da güncelle. Gerçek kullanıcı notu, API anahtarı veya kişisel veri örneği ekleme.
-- `docs/COMMANDS.md` bir belge olup yürütülebilir komut kaynağı, model talimatı veya yetki tanımı değildir; araç yetkileri registry/policy/TaskManager hattında kalır.
-
-## Adım Tamamlama ve Git Commit Standardı (Kullanıcı Onayı Kapısı)
-
-- **Depo konumu ve hedef dal:** Git deposu proje kök dizini olan `TaskVex` içindedir (`.git` bu kökte yer alır, hedef dal `main`, remote `origin` https://github.com/Walbertb4/TaskVex.git). Git komutları çalıştırılırken daima repo kökünde (`TaskVex`) olunduğundan emin olunmalıdır (`v1` altındaysa köke çıkılmalıdır).
-- **Otomatik commit yasaktır; kullanıcı manuel test onayını bekle:** İstenen adım kodlanıp otomatik `pytest` testleri geçtikten sonra ajan kendi kendine commit **atmaz**. Ajan sonucu kullanıcıya raporlar ve kullanıcının manuel doğrulamasını bekler.
-- **Commit tetikleyicisi:** Kullanıcı *"testler başarılı diğer adıma geç"*, *"manuel testler tamam"* veya benzeri bir onay verdiğinde; ajan yeni adıma başlamadan önce **derhal tamamlanan önceki adımın commit'ini atar**, ardından yeni adıma geçer.
-- **Gizlilik ve güvenlik denetimi:** Commit öncesinde API anahtarı, `.env`, token veya kişisel kimlik bilgilerinin dosyalarda yer almadığını doğrula. Bu tür verileri kesinlikle commit'leme; `.gitignore` kurallarını koru.
-- **Commit mesajı formatı:** 1 satırlık, ne yapıldığını açıkça anlatan Conventional Commits standardını kullan:
-  - `feat(kapsam): ...` (yeni özellik veya adım)
-  - `fix(kapsam): ...` (hata düzeltmesi)
-  - `test(kapsam): ...` (test ekleme veya güncelleme)
-  - `docs(kapsam): ...` (belgelendirme güncellemesi)
-- **Komut akışı:**
-  1. Repo kökünde (`TaskVex`) olunduğunu doğrula.
-  2. Kullanıcıdan onay mesajı geldiğinde `git status` ile değişen dosyaları incele.
-  3. Yalnızca onaylanan adıma ait güvenli dosyaları ekle (`git add ...`).
-  4. Açıklayıcı mesajla commit'le: `git commit -m "feat(stageX): adım açıklaması"`.
-  5. Kullanıcı açıkça istemedikçe her adımda otomatik `git push` yapma; push işlemi oturum veya aşama sonuna bırakılır.
-  6. Commit kaydedildikten sonra yeni adımın çalışmasına başla.
-
-
-
-## Aşama ve alt adım kaydı — zorunlu bakım
-
-- `docs/PLAN.md`, güncel aşama ve alt adımların tek ilerleme kaydıdır.
-  Göreve başlamadan ilgili mevcut durum ve açık engellerini oku.
-- Aşamayı yeni adımlara böldüğünde, sırayı/kapsamı değiştirdiğinde ve her adım
-  sonunda aynı turda `docs/PLAN.md` dosyasını güncelle. Kimlik, amaç, kabul
-  koşulu, gerçek durum ve ilgili test/rapor bağlantısını koru.
-- Otomatik test başarısı, fiziksel kullanıcı kabulü ve commit ayrı durumlardır.
-  Açık yeniden üretimi olan adımı test sayısına dayanarak tamamlandı işaretleme;
-  yeni bug bulunursa ilgili adımı yeniden aç ve bağımlı işleri ona göre sırala.
-- docs/ARCHITECTURE.md mimariyi, docs/COMMANDS.md çalışan kullanıcı komutlarını anlatır;
-  docs/PLAN.md bu dosyaların yerine geçmez. Tarihsel notları güncel plan gibi
-  sunma; güncel başlıklardan docs/PLAN.md'ye bağlantı ver.
-
-## Güncel belgeler ve değişiklik kaydı — zorunlu
-
-- docs/ARCHITECTURE.md yalnız güncel mimari/sorumluluk/karar rehberidir; içine günlük,
-  commit tarihi, test turu veya tamamlanan iş listesi ekleme.
-- docs/PLAN.md tek güncel aşama/iş kaydıdır. Uygulandı, otomatik doğrulandı,
-  kullanıcı kabulü ve commit durumunu ayrı tut; yeni işte önce bu dosyayı oku.
-- Tamamlanan her değişikliği aynı turda docs/CHANGELOG.md altında kaydet; yeni sürüm
-  yayımlanmamışsa Unreleased başlığı kullan. Tarihsel raporları mimariye kopyalama.
-- docs/COMMANDS.md çalışan komutları, docs/UI_BACKEND_CONTRACT.md aktif sözleşmeyi
-  anlatır. Yerel README dosyaları yalnız açılış/modül kullanımını açıklar.
-- docs/eski yalnız tarihsel arşivdir; güncel yönerge veya plan gibi uygulanmaz.
-  Eski dosyalar özgün göreli yollarıyla ve MANIFEST.json hash kaydıyla korunur.
-- Gerçekten okunmayan/denenmeyen alanı inceleme tamamlandı diye sunma. Ölü kod
-  iddiasını çağıranlar, testler, dinamik köprü ve belgelerde doğrula.
+- `docs/PLAN.md` is the only current stage/substep progress record. Update it in
+  the same turn when steps are divided, reordered or completed. Keep IDs, purpose,
+  acceptance criteria, real status and evidence links.
+- Implementation, automatic validation, physical/manual acceptance and commit are
+  distinct states. Do not close an open reproduction because other tests passed.
+  Reopen a step when a new bug is found and update dependent work accordingly.
+- `docs/ARCHITECTURE.md` describes current owners, contracts and design decisions.
+  It must not become a diary, commit log, test-run history or completed-task list.
+- Record each completed change under `docs/CHANGELOG.md` in the same turn. Use
+  `Unreleased` until a version is actually released.
+- `docs/COMMANDS.md` describes working commands; `docs/UI_BACKEND_CONTRACT.md`
+  describes the active boundary. Local READMEs explain their directory/module use.
+- `docs/archive` is historical and must not override current instructions. Its
+  English translations have current hashes plus pre-translation source hashes and
+  a Git revision in `MANIFEST.json`. Original bytes remain in Git history.
+- Do not claim uninspected or untested areas were reviewed. Verify dead-code claims
+  against callers, tests, dynamic bridge paths and documentation.

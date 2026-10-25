@@ -1,8 +1,8 @@
-"""Not zamanının kalıcılığını ve eski kayıtlarla uyumunu gerçek core'da dene.
+"""Try the permanence of note time and its compatibility with old records in real core.
 
-Yalnız geçici TASKVEX_HOME kullanılır. Oluşturulma zamanı dosyaya eklenir;
-eski kayıtta olmayan tarih icat edilmez. Model/UI sıradan güncelleme ile
-tarihi değiştiremez; açık yedek geri yüklemesi ise doğrulanmış metadata'yı korur.
+Only temporary TASKVEX_HOME is used. The creation time is added to the file;
+History that is not in the old record is not invented. Model/UI with ordinary update
+cannot change history; Open backup restoration, on the other hand, preserves verified metadata.
 """
 
 from datetime import datetime, timezone, timedelta
@@ -16,7 +16,7 @@ from test_local_tools import request, run
 
 
 def confirmed(core, req):
-    """Kabulü değil doğrulanmış terminal sonucu iste; None sonuçla devam etme."""
+    """Request verified terminal result, not acceptance; Do not continue with None results."""
     task = run(core, req)
     assert task.result is not None and task.result.verified
     return task.result

@@ -1,4 +1,4 @@
-/** Balon tekilliği, eski/sırasız bildirim, güvenli metin ve kesilme korunumu. */
+/** Balloon singularity, stale/out-of-order declaration, safe text and truncation protection. */
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 class Element {
@@ -25,7 +25,7 @@ assert.ok(!t.chunk(packet('old','j','STALE',5)));
 assert.ok(!t.chunk(packet('one','j','DUPLICATE',4)));
 assert.ok(!t.chunk(packet('one','j','x'.repeat(32001),5)));
 t.interrupt('one');
-assert.ok(t.chunk(packet('one','j','LATE words',5))); // Tüketilir, kesilen balona yazılmaz.
+assert.ok(t.chunk(packet('one','j','LATE words',5))); // It is consumed, it is not written on the cut balloon.
 t.finish('one',{text:'Late final words',input_text:'Merhaba'},'interrupted');
 assert.equal(panel.children.length,2);
 assert.equal(panel.children[1].children[0].textContent,'Hello world');

@@ -1,8 +1,8 @@
-"""REST iptalini gerçek SDK/core ve sentetik HTTP kapılarıyla doğrula.
+"""Verify REST revocation with real SDK/core and synthetic HTTP ports.
 
-Event kapıları Stop'u ağ veya araç beklemesinde kabul ettirir. HTTP cevabı
-gelmeden bitiş iddia edilmemeli; sonra yeni araç/retry/fallback başlamamalı.
-Kullanıcı verisi ve ücretli API kullanılmaz.
+Event gates allow Stop to be accepted while the network or tool is waiting. HTTP response
+The end should not be claimed before it arrives; then the new tool/retry/fallback should not start.
+No user data or paid API is used.
 """
 
 from concurrent.futures import ThreadPoolExecutor
@@ -43,7 +43,7 @@ def test_rest_stop_during_http_waits_then_blocks_tools_retry_and_fallback(transp
             assert entered.wait(3) and not chat.stop("old")["ok"]
             accepted = chat.stop("rest-1")
             assert accepted["ok"] and not accepted["completed"] and accepted["waiting_for"] == "http_response"
-            assert chat.stop("rest-1")["ok"]  # aynı sinyal; ikinci işlem değildir
+            assert chat.stop("rest-1")["ok"]  # same signal; is not the second transaction
             assert chat.busy and not running.done() and not chat.close()
             assert not chat.run("Other", gemini.DEFAULT_MODEL)["ok"]
             release.set()

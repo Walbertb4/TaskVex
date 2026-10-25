@@ -1,6 +1,6 @@
-/** Cihaz listesini ve browser cihaz kimliklerini yöneten tek UI adaptörü.
- * İzin/kayıt başlatmaz; I/O kaynağı live_mic/live_audio sahibinde kalır.
- * Tercih kaydı formun mevcut saveAll hattına teslim edilir. */
+/** Single UI adapter that manages device list and browser device IDs.
+ * Does not initiate permission/registration; The I/O resource remains with the live_mic/live_audio owner.
+ * Preference registration is delivered to the existing saveAll line of the form. */
 import {store} from './preferences.js';
 import {sfx} from './sfx.js';
 import {emit, isBackendAvailable} from './api.js';
@@ -9,8 +9,8 @@ export function initDeviceSettings(save) { savePreference = save; }
 let devQueryTimer = null;
 let deviceQueryPending = false, deviceQueryRevision = 0, nativeDevicesScanned = false;
 
-/** Browser cihaz kimliği ile eski Python donanım indeksini karıştırma.
- * Varsayılan açık seçimdir; kaybolan/seçilemeyen özel cihazda sessiz fallback yok.
+/** Don't mix the browser device ID with the old Python hardware index.
+ * Default is open selection; No silent fallback on disappearing/unselectable specific device.
  */
 export function getAudioDeviceId(id) {
   const value = store.devs?.[id];
@@ -69,7 +69,7 @@ export function setDevices(data) {
       if ([...s.options].some(o => o.value === target)) {
         s.value = target;
       } else if (isBackendAvailable() && ['dIn', 'dOut'].includes(selId)) {
-        // Kayıtlı cihaz kaybolduysa ilk cihazı seçilmiş gibi gösterme.
+        // If the registered device is lost, show the first device as selected.
         const missing = new Option('Saved device unavailable — choose a device', target, true, true);
         missing.disabled = true;
         s.append(missing);
@@ -138,8 +138,8 @@ export async function queryDevices() {
     const message = document.getElementById('devMsg');
     if (message) message.textContent = 'Refreshing audio devices…';
     try {
-      // Listeleme izin veya kayıt başlatmaz. İzin yalnız Mic düğmesinden gelir;
-      // izin sonrası aynı fonksiyon adları/cihazları yeniden listeler.
+      // Listing does not initiate permission or registration. Permission comes from the Mic button alone;
+      // after permission, the same function lists device names and devices again.
       const devices = await navigator.mediaDevices.enumerateDevices();
       if (revision !== deviceQueryRevision) return;
       const list = kind => [{deviceId:'default', name:'System default'}, ...devices
@@ -168,15 +168,15 @@ export async function queryDevices() {
   try {
     const res = await emit('query_devices');
     if (!res || !res.ok) {
-      if (devMsg) devMsg.textContent = 'Backend yok, cihazlar taranamadı';
+      if (devMsg) devMsg.textContent = "No backend, devices could not be scanned";
       return;
     }
     devQueryTimer = setTimeout(() => {
       devQueryTimer = null;
-      if (devMsg) devMsg.textContent = 'Cihaz listesi gelmedi';
+      if (devMsg) devMsg.textContent = 'No device list was received';
     }, 10000);
   } catch {
-    if (devMsg) devMsg.textContent = 'Backend yok, cihazlar taranamadı';
+    if (devMsg) devMsg.textContent = "No backend, devices could not be scanned";
   }
 }
 

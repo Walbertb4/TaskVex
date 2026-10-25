@@ -1,8 +1,8 @@
-"""Güncel belge yolları ve taşınmış arşivin bütünlüğü.
+"""Validate current guide links and translated-archive integrity.
 
-Arşiv eski yolları içerdiği için linkleri yeniden yazılmaz; SHA256 özgün içeriği
-koruduğumuzu sınar. Güncel Markdown bağlantıları ise depoda gerçek hedefe gitmelidir.
-Bu test internet adreslerini ziyaret etmez veya kullanıcı verisini okumaz.
+Current hashes cover the English archive; source hashes and a Git revision retain
+pre-translation provenance. Historical links are not current operating instructions.
+No internet requests or real user files are involved.
 """
 import hashlib
 import json
@@ -14,19 +14,21 @@ from urllib.parse import unquote
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_archived_document_contents_are_preserved():
-    """Manifestteki eski dosya sayısı ve her yeni dosyanın byte hash'i sabittir."""
-    assert 'docs/eski/** -text' in (ROOT / '.gitattributes').read_text(encoding='utf-8')
-    records = json.loads((ROOT / 'docs/eski/MANIFEST.json').read_text(encoding='utf-8'))
+def test_translated_archive_integrity_and_source_provenance():
+    """Each translated file has a current hash and pre-translation provenance."""
+    assert 'docs/archive/** -text' in (ROOT / '.gitattributes').read_text(encoding='utf-8')
+    records = json.loads((ROOT / 'docs/archive/MANIFEST.json').read_text(encoding='utf-8'))
     assert len(records) == 133
     for record in records:
+        assert re.fullmatch(r'[0-9a-f]{64}', record['source_sha256'])
+        assert re.fullmatch(r'[0-9a-f]{40}', record['source_revision'])
         target = ROOT / record['archive_path']
         assert target.is_file(), record
         assert hashlib.sha256(target.read_bytes()).hexdigest() == record['sha256'], record
 
 
 def test_current_document_links_resolve_inside_repository():
-    """Yalnız güncel/izlenen rehberler: tarihsel arşiv ve sanal ortam taranmaz."""
+    """current/followed guides only: historical archives and virtual media are not scanned."""
     sources = list(ROOT.glob('*.md')) + list((ROOT / 'docs').glob('*.md'))
     sources += [ROOT / name for name in ('v1/README.md', 'v1/ui/README.md', 'v1/ui/tests/README.md')]
     for source in sources:

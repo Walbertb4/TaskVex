@@ -1,5 +1,5 @@
 /**
- * connections.js - Canlı model kataloğu ve salt okunur widget görünümleri.
+ * connections.js - Live model catalog and read-only widget views.
  */
 
 import { sfx } from './sfx.js';
@@ -10,7 +10,7 @@ let isPlayingMedia = false;
 let calEvents = [];
 let warnedHighApi = false;
 let saveStoreCb = null;
-// Native hazır ve anahtar değişimi aynı tek katalog işlemini kullanır.
+// Native ready and key exchange use the same single catalog process.
 const catalogOperation = createPendingOperation(() => {
   const status = document.getElementById('liveCatalogStatus');
   if (status) status.textContent = 'Catalog result unknown. Reopen the app before loading again.';
@@ -223,7 +223,7 @@ export function setTelemetry(data) {
   }
 }
 
-/** Toplamın sahibi Python'dur; JS her yanıtı yeniden toplamaz ve eski turu kabul etmez. */
+/** Total owned by Python; JS does not recollect every response and does not accept the old round. */
 export function setSessionTokens(report) {
   if (report?.usage_scope !== 'session') return;
   const count = report.usage_tokens;
@@ -244,7 +244,7 @@ export function setTokens(u, m, isEst) {
   const tokBar = document.getElementById('tokBar');
 
   const validUsed = Number.isSafeInteger(u) && u >= 0;
-  // Sağlayıcı kullanım bildirmiş fakat limit bilinmiyorsa kota uydurma.
+  // If the provider reports usage but the limit is unknown, don't make up the quota.
   if (validUsed && m == null) {
     if (tokTxt) {tokTxt.textContent = u.toLocaleString('en-US');tokTxt.title = 'Latest provider token report; not account quota or session total';}
     if (tokSub) tokSub.textContent = `Latest provider report: ${u.toLocaleString('en-US')} tokens · Limit/quota: unknown`;
@@ -284,6 +284,10 @@ export function setTokens(u, m, isEst) {
 }
 
 export function setMedia(o) {
+  if (o===null) {
+    o={title:'Media unavailable',artist:'—',playing:false};
+    document.getElementById('mTitle2')?.removeAttribute('title');
+  }
   if (!o) return;
   const mTitle2 = document.getElementById('mTitle2');
   const mArt = document.getElementById('mArt');
@@ -338,8 +342,8 @@ export function initConnections(options = {}) {
       : 'Voice save was not confirmed. Check settings before the next reply.';
   });
 
-  // Native başlangıcı ve anahtar kaydı API kataloğunu otomatik yükler. Boş/hatalı katalog
-  // sabit model adlarıyla doldurulmaz; katalog başarısı Live bağlantısı değildir.
+  // Native startup and key registration automatically load the API catalog. Empty/incorrect catalog
+  // not populated with fixed model names; catalog success is not a Live link.
   const catalogStatus = document.getElementById('liveCatalogStatus');
   window.addEventListener('taskvex-key-saved', () => { void loadLiveModels(); });
 

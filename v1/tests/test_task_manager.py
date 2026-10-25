@@ -1,7 +1,7 @@
-"""Gerçek thread'lerle kuyruk/iptal yarışlarını, dış yan etki olmadan doğrular.
+"""Verifies queue/cancellation races with real threads, without external side effects.
 
-Event kapıları handler'ları belirli noktalarda bekletir. Böylece rastgele sleep
-kullanmak yerine test, işin gerçekten başladığını veya bitmediğini bilir.
+Event doors keep handlers waiting at certain points. So sleep randomly
+Instead of using test, it knows whether the job has actually started or not.
 """
 
 from concurrent.futures import ThreadPoolExecutor
@@ -15,27 +15,27 @@ from app.tasks.manager import TaskManager, TaskManagerError
 
 
 def registry_with(handler):
-    """Yalnız test fonksiyonunu kaydet; gerçek uygulama veya dosya aracı yok."""
+    """Save test function only; no real application or file tool."""
     registry = ToolRegistry()
-    registry.register(ToolSpec(name="test.run", description="Deneme aracı",
+    registry.register(ToolSpec(name="test.run", description='trial tool',
                                input_schema={"type": "object"}, handler=handler))
     return registry
 
 
 def request(request_id="r1", *, principal="test-user", source="test", **arguments):
-    """Aynı kimliğin içerik/kimlik kapsamını test etmeyi kolaylaştır."""
+    """Make it easy to test coverage of the same ID."""
     return ToolRequest(request_id=request_id, source=source, principal=principal,
                        tool="test.run", arguments=arguments)
 
 
 def done(context, data=None):
-    """Testin gözlediği handler bitişini başarılı ToolResult'a dönüştür."""
+    """Convert the handler ending observed by the test into a successful ToolResult."""
     return ToolResult(task_id=context.task_id, status=TaskStatus.SUCCEEDED,
                       verified=True, data=data, evidence={"handler_finished": True})
 
 
 def allow(request, tool):
-    """Yalnız testler için açık izin; üretim policy uygulaması değildir."""
+    """Explicit permission for testing alone; It is not a production policy application."""
     return True
 
 
@@ -68,7 +68,7 @@ def test_success_and_completed_replay_only_execute_once():
 
 
 def test_concurrent_replays_admit_one_task():
-    """Eşzamanlı başvuruların kontrol-et/ekle yarışı çift handler doğurmamalı."""
+    """The control-et/add race of simultaneous submissions should not result in a double-hander."""
     calls = []
     entered, release = Event(), Event()
 
@@ -362,7 +362,7 @@ def test_async_handler_is_not_started_by_synchronous_worker():
 
 
 def test_sync_handler_returning_coroutine_is_closed_without_execution():
-    """Yanlış dönüş unawaited coroutine uyarısı veya gizli ikinci yürütme yaratmaz."""
+    """A false return does not generate an unawaited coroutine warning or hidden second execution."""
     calls = []
 
     async def inner():
@@ -375,9 +375,9 @@ def test_sync_handler_returning_coroutine_is_closed_without_execution():
 
 
 def test_invalid_parameters_do_not_consume_capacity_or_enter_handler():
-    """Başvuru doğrulaması başarısızsa kuyruk/kayıt alanı bile harcanmamalı."""
+    """Even queue/register space should not be wasted if application validation fails."""
     registry = ToolRegistry()
-    registry.register(ToolSpec(name="test.run", description="Sayı testi",
+    registry.register(ToolSpec(name="test.run", description='Number test',
                                input_schema={"type": "object", "properties": {
                                    "value": {"type": "integer"}}, "required": ["value"]},
                                handler=lambda a, c: done(c)))
@@ -390,7 +390,7 @@ def test_invalid_parameters_do_not_consume_capacity_or_enter_handler():
 
 @pytest.mark.parametrize("decision", [False, 1, "allow", None])
 def test_authorization_requires_explicit_true(decision):
-    """Truthy bir metin/sayı izin kararı yerine yanlışlıkla geçmemeli."""
+    """Truthy should not inadvertently replace a text/number consent decree."""
     calls = []
     with TaskManager(registry_with(lambda a, c: calls.append(a)),
                      authorize=lambda r, s: decision) as manager:

@@ -1,6 +1,6 @@
 /**
- * API anahtarının yalnız native kimlik deposuna kaydı ve sır içermeyen durum.
- * Anahtar store/localStorage/yedeğe girmez. Kayıt onayı API erişim onayı değildir.
+ * The API key is only recorded in the native identity store and does not contain secrets.
+ * The key does not go into store/localStorage/backup. Registration confirmation is not API access approval.
  */
 import { emit, isBackendAvailable, createPendingOperation } from './api.js';
 import { sfx } from './sfx.js';
@@ -37,10 +37,10 @@ export function initCredentials() {
   async function save() {
     if (operation.pending || operation.uncertain) return;
     const key = input.value;
-    input.value = ''; // Gizli girdi bekleyen Promise süresince DOM'da kalmasın.
+    input.value = ''; // Hidden input should not remain in the DOM for the duration of the pending Promise.
     if (!isBackendAvailable()) { message.textContent = 'Key storage requires the desktop app.'; return; }
     if (!key.trim()) { message.textContent = 'Enter an API key.'; return; }
-    statusRevision++; // Kaydetmeden önce başlayan sorgu yeni kayıt durumunu ezmesin.
+    statusRevision++; // The query that starts before saving does not overwhelm the new save state.
     const id = operation.begin();
     input.disabled = button.disabled = true;
     message.textContent = 'Saving to Windows credentials…';

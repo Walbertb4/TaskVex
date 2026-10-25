@@ -41,7 +41,7 @@
     "status": "passed",
     "files": 133,
     "head_comparison": "content identical; 131 checkout CRLF/LF differences, 2 byte-identical",
-    "git_byte_preservation": "docs/eski/** -text"
+    "git_byte_preservation": "docs/archive/** -text"
   },
   "real_account": {
     "status": "not_tested",

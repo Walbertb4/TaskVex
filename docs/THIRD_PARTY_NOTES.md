@@ -29,3 +29,25 @@ Runtime dependencies are declared in v1/pyproject.toml; the exact tested develop
 - Source/setup: https://k2-fsa.github.io/sherpa/onnx/kws/pretrained_models/index.html . Runtime files live outside Git in the user's local model cache. No model, training data, audio corpus or upstream Python example was imported into TaskVex MIT source. The wrapper is TaskVex code.
 - Do not infer a weight/data redistribution license from the code license. Upstream weight-license clarification is tracked at https://github.com/k2-fsa/sherpa-onnx/issues/3760 ; confirm the applicable weight/lexicon terms before bundling a release. This development setup downloads directly from upstream and does not redistribute the weights.
 - Windows SAPI synthetic speech was used only in ignored runtime test files; no user voice was collected. Engine-positive/negative tests do not establish real-microphone accuracy.
+
+
+## Windows media API projection — 6.2.5a
+
+- PyWinRT: winrt-runtime, winrt-Windows.Foundation, winrt-Windows.Media and
+  winrt-Windows.Media.Control, all 3.2.1. Source: https://github.com/pywinrt/pywinrt ;
+  MIT license. Installed as dependencies; no upstream source was copied into app/.
+- These are Windows API Python type projections, not a media player or AI provider.
+  Pins and Windows-only project markers are in pyproject.toml; the tested Windows
+  environment is requirements-dev.lock.txt. Preserve upstream notices in packaging.
+
+
+## Demo packaging tools
+
+PyInstaller 6.22.3 and hooks-contrib 2026.9 are pinned in the separate build lock;
+PyInstaller is GPL with its distribution exception. Keep the supplied license
+and exception notices: https://pyinstaller.org/en/stable/license.html . The demo
+copies installed distribution license/NOTICE files into THIRD_PARTY_NOTICES.
+BUILD_ENVIRONMENT.json records installed build packages, not an exact bundled
+SBOM. Wake weights/lexicon are deliberately excluded; the existing explicit
+upstream setup remains optional. This does not close the full UI asset
+provenance audit or signed-production-release work.

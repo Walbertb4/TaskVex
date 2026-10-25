@@ -1,7 +1,7 @@
-"""Gemini model listesini API'den oku; yalnız bildirilen Live yeteneğini göster.
+"""Read Gemini model list from API; Show only declared Live ability.
 
-Model adından tahmin veya sabit model listesi yoktur. Listeleme üretim isteği
-değildir ve Live WebSocket erişiminin/konuşmanın çalıştığını kanıtlamaz.
+There is no guesswork or fixed model list from the model name. Listing production request
+is not and does not prove that Live WebSocket access/talk works.
 """
 
 import re
@@ -11,9 +11,9 @@ from google.genai import types
 
 from app.storage.credentials import load_gemini_key
 
-# Google Live voice belgesi (2026-10-24): bu liste API'den keşfedilmiş değildir.
+# Google Live voice document (2026-10-24): this list was not discovered from the API.
 # https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/live-api/configure-language-voice
-# Yalnız belgelenmiş hazır Live sesleri; özel/TTS-only sesleri ekleme.
+# Only documented ready-made Live sounds; Adding exclusive/TTS-only sounds.
 LIVE_VOICES = tuple('Zephyr Puck Charon Kore Fenrir Leda Orus Aoede Callirrhoe '
     'Autonoe Enceladus Iapetus Umbriel Algieba Despina Erinome Algenib Rasalgethi '
     'Laomedeia Achernar Alnilam Schedar Gacrux Pulcherrima Achird Zubenelgenubi '
@@ -21,22 +21,22 @@ LIVE_VOICES = tuple('Zephyr Puck Charon Kore Fenrir Leda Orus Aoede Callirrhoe '
 
 
 def live_voice_catalog() -> list[dict]:
-    """Aynı izinli listeden UI seçenekleri üret; hesap erişim kanıtı değildir."""
+    """Generate UI options from the same permission list; It is not proof of account access."""
     return [{'id': voice, 'name': voice, 'live': True} for voice in LIVE_VOICES]
 
 
 def selected_live_voice(value: object) -> str:
-    """Eski/boş legacy tercihi Puck'a taşı; sağlayıcıya bilinmeyen isim gönderme."""
+    """move legacy preference to Puck; sending unknown name to provider."""
     return value if isinstance(value, str) and value in LIVE_VOICES else 'Puck'
 
 
 def load_live_catalog() -> dict:
-    """En çok beş sayfa oku; tam başarı yoksa kısmi/eski listeyi başarı sayma.
+    """Read no more than five pages; If there is no complete success, do not count the partial/old list as success.
 
-    SDK supported_actions alanı REST supportedGenerationMethods karşılığıdır.
-    bidiGenerateContent bildirmeyen kayıt, adı live içerse bile gösterilmez.
-    Her sayfa 10 saniye ile sınırlıdır; istemci bütün çıkışlarda kapatılır.
-    Anahtar, ham sağlayıcı hatası veya hesap bilgisi sonuçlara konmaz.
+    The SDK supported_actions field is the REST equivalent of supportedGenerationMethods.
+    A record that does not declare bidiGenerateContent will not be shown, even if its name contains live.
+    Each page is limited to 10 seconds; The client is closed at all exits.
+    No key, raw provider error, or account information is put into the results.
     """
     try:
         key = load_gemini_key()

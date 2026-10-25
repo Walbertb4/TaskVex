@@ -1,9 +1,9 @@
-"""Yerel ağ sayaçları: Telemetry'nin çağırdığı pasif Windows alan adaptörü.
+"""Local network meters: Passive Windows field adapter that Telemetry calls.
 
-GetIfTable2 ile fiziksel arabirimlerin 64 bit byte sayaçlarını okur. Paket,
-IP/MAC, SSID veya profil adı dışarı verilmez; hız testi yapılmaz. Yerel ağ geçidi
-ping ve konum istemeyen Wi-Fi kalite adaptörü aynı örnekten çağrılır.
-İki örnek arasındaki fark trafik hızıdır, bağlantının azami hızı değildir.
+Reads 64-bit byte counters of physical interfaces with GetIfTable2. Package,
+IP/MAC, SSID or profile name is not output; There is no speed test. local gateway
+The Wi-Fi quality adapter, which does not require ping and location, is called from the same instance.
+The difference between the two examples is the traffic speed, not the maximum speed of the connection.
 """
 import ctypes as c
 from ctypes import wintypes as w
@@ -17,7 +17,7 @@ class _Guid(c.Structure):
 
 
 class _Row(c.Structure):
-    """MIB_IF_ROW2'nin SDK yerleşimi; hizalama ctypes tarafından korunur."""
+    """SDK layout of MIB_IF_ROW2; Alignment is maintained by ctypes."""
     _fields_ = [('luid', c.c_ulonglong), ('index', w.ULONG), ('guid', _Guid),
         ('alias', w.WCHAR * 257), ('description', w.WCHAR * 257),
         ('address_length', w.ULONG), ('address', w.BYTE * 32), ('permanent_address', w.BYTE * 32)] + [
@@ -44,11 +44,11 @@ def _load_iphelper():
 
 
 def read_interfaces() -> list[dict]:
-    """Tabloyu oku ve finally'de bırak; kişisel arabirim alanlarını dışarı verme.
+    """Read the table and leave it at finally; Exporting personal interface areas.
 
-    Sanal/tünel/loopback veya filtre arabirimleri, aynı paketin VPN ve fiziksel
-    katmanda iki defa sayılmaması için kapsam dışıdır. Kaynak başarısızsa []
-    dönmek yerine hata verilir: bilinmeyen kaynak 'bağlantı yok' değildir.
+    Virtual/tunnel/loopback or filter interfaces, VPN and physical
+    It is out of scope to avoid being counted twice in the layer. If resource fails []
+    Instead of returning an error is given: unknown resource is not 'no connection'.
     """
     dll = _load_iphelper()
     table = c.c_void_p()
@@ -76,7 +76,7 @@ def read_interfaces() -> list[dict]:
 
 
 class Network:
-    """Önceki örnek yalnız Telemetry kilidi altında kullanılır; ek tick yoktur."""
+    """The previous example is used only under Telemetry lock; There is no additional tick."""
     def __init__(self, reader=None):
         self._reader = reader or read_interfaces
         self._previous = None
@@ -85,7 +85,7 @@ class Network:
         self._quality = {}
 
     def _sample_quality(self, now, active):
-        """Sınırlı kalite sorgusu on saniyede bir; kart/rota değişimi eski sonucu siler."""
+        """Limited quality query every ten seconds; Changing kart/rota deletes the old result."""
         if not active:
             self._quality_key = None
             return {
@@ -106,7 +106,7 @@ class Network:
         return self._quality
 
     def sample(self, now: float) -> dict:
-        """Byte farkını saniyeye böl; reset/kayıp/değişen cihazda hız uydurma."""
+        """Divide byte difference by seconds; Speed ​​matching on reset/lost/changed device."""
         data = {'network_source': 'windows-iphelper', 'network_link': None, 'network_kind': None,
             'network_wifi_connected': None, 'network_receive_bps': None, 'network_send_bps': None}
         try:
@@ -125,7 +125,7 @@ class Network:
         if self._previous is not None and current:
             before, old = self._previous
             elapsed = now - before
-            # Değişen cihaz kümesinde eski ve yeni kart sayaçlarını birbirinden çıkarma.
+            # Subtracting old and new card counters from each other in a changing device cluster.
             if elapsed > 0 and current.keys() == old.keys():
                 delta = [(current[key][i] - old[key][i]) for key in current for i in (0, 1)]
                 if all(value >= 0 for value in delta):

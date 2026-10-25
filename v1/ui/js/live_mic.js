@@ -1,13 +1,13 @@
-/** Otomatik yerel bekleme ve tek konuşmayı 16 kHz PCM olarak gönderme sahibi.
- * waitForSpeech sınırlı ön tamponla konuşma adayını bulur; activateStream
- * aynı AudioWorklet'in tamponunu akıtır. Hazır onayından sonra yerel sessizlik
- * EOS bildirir; sağlayıcının otomatik VAD'si de açık kalır (hibrit VAD).
- * Yalnız AudioWorklet yolu kullanılır; aynı anda tek mikrofon kaynağı açılır.
- * İzin geç verilirse iptal edilmiş kaydın track'leri de hemen kapatılır.
- * prepareStream onError'a yalnız sabit hata kodu iletir; izin/cihaz, bozuk
- * paket ve yerel kuyruk ayrı tutulur. Yeniden deneme kararını assistant_session.js verir.
- * prepareStream'in ikinci parametresi browser cihaz ID'sidir; özel seçimde exact
- * kullanılır, erişilemeyen mikrofon yerine başka cihaz açılmaz.
+/** Automatic local standby and single speech sending as 16 kHz PCM.
+ * waitForSpeech finds speech candidate with limited front buffer; activateStream
+ * streams the same AudioWorklet's buffer. Local silence after ready confirmation
+ * EOS reports; the provider's automatic VAD also remains open (hybrid VAD).
+ * Only the AudioWorklet path is used; One microphone source is turned on at a time.
+ * If permission is given late, the tracks of the canceled recording will be closed immediately.
+ * prepareStream only passes fixed error code to onError; permission/device, broken
+ * packet and local queue are kept separate. Assistant_session.js makes the decision to retry.
+ * The second parameter of prepareStream is the browser device ID; exact in special election
+ * is used, no other device is turned on instead of the inaccessible microphone.
  */
 let current = null;
 let noiseThreshold = 420;
@@ -32,9 +32,9 @@ export const liveMic = {
     current?.node?.port.postMessage({noiseThreshold:value});
   },
   async prepareStream(onError, deviceId = '', onActivity = null, onLevel = null) {
-    // İzin/setup beklerken ses gönderilmez; activateStream açık hazır el
-    // sıkışmasından sonra 100 ms paket akışını başlatır. Eski izin sonucu
-    // iptal edilen/yeni kaydı açamaz.
+    // No audio is sent while waiting for permission/setup; activateStream open ready hand
+    // Starts packet flow 100 ms after jam. Result of old leave
+    // it cannot open a cancelled capture or replace a newer one.
     if (current) throw new Error('microphone_busy');
     const state = current = {stream:null, timer:null, deviceId, onError, onLevel, queue:[], armed:false};
     try {
@@ -51,9 +51,9 @@ export const liveMic = {
       state.source = state.context.createMediaStreamSource(state.stream);
       state.source.connect(state.node); state.node.connect(state.context.destination);
       state.fail = (code = 'microphone_unavailable') => { if (current === state) { this.cancel(); onError(code); } };
-      // Tarayıcı/işletim sistemi kaynağı sonradan askıya alabilir. Aynı
-      // context'i bir kez uyandır; izin/kaynak açma veya eski PCM replay yok.
-      // resume hiç dönmezse aktif görünen sessiz mikrofonu açık bırakma.
+      // The browser/OS may subsequently suspend the resource. same
+      // wake up context once; No permissions/source unlocking or legacy PCM replay.
+      // If resume never returns, do not leave the mute microphone that appears active on.
       state.context.onstatechange = () => {
         if (current !== state) return;
         if (state.context.state === 'running') {
@@ -109,8 +109,8 @@ export const liveMic = {
           return;
         }
         if (state.inputEnded || !state.armed && !state.triggered) return;
-        // Setup sırasında konuşmanın başını kaybetme. Üç saniyede bağlantı
-        // hazırlanamazsa kes; sessizce kırpılmış komutu yürütme.
+        // Don't lose the beginning of the conversation during setup. Connection in three seconds
+        // If it cannot be prepared, cut it; silently executing the trimmed command.
         if (!(event.data instanceof ArrayBuffer) || event.data.byteLength !== 3200) { state.fail('invalid_pcm'); return; }
         if (state.queue.length >= (state.armed && !state.drainingPrefix ? 10 : 30)) { state.fail('stream_backpressure'); return; }
         state.queue.push(new Uint8Array(event.data));
@@ -133,8 +133,8 @@ export const liveMic = {
     return true;
   },
   waitForWake(onPacket, onWake) {
-    // Aynı mikrofon 100 ms PCM'i yalnız yerel KWS'ye taşır. 3 s ön tampon
-    // wake-word ile aynı cümledeki isteğin başını korur; kuyruk en çok 1 s.
+    // The same microphone carries 100 ms PCM only to local KWS. 3s front bumper
+    // preserves the beginning of the request in the same sentence as the wake-word; queue maximum 1 s.
     const state = current;
     if (!state?.node || state.armed) return false;
     state.localWake = true; state.prefix = []; state.wakeQueue = []; state.wakeSequence = 0;
@@ -149,8 +149,8 @@ export const liveMic = {
             if (!state.prefix.length || detected.start_sequence < state.prefix[0].sequence ||
                 detected.start_sequence > state.prefix.at(-1).sequence) throw new Error('wake_prefix_expired');
             state.localWake = false; state.triggered = true; state.waiting = true;
-            // Önceki ortam konuşmasını değil yalnız algılanan hit'in başından
-            // sonraki PCM'i devret. KWS fonem zamanı 100 ms paketlere yuvarlanır.
+            // Not the previous environment conversation, but just the beginning of the perceived hit
+            // hand over next PCM. KWS phoneme time is rounded into 100 ms packets.
             state.queue = state.prefix.filter(p => p.sequence >= detected.start_sequence).map(p => p.bytes);
             state.prefix = []; state.wakeQueue = [];
             state.speaking = true; state.node.port.postMessage('wake-to-live');
@@ -159,7 +159,7 @@ export const liveMic = {
           if (detected !== false) throw new Error(detected?.error || 'wake_bridge_rejected');
         }
       } catch (error) {
-        // Serbest exception metni taşınmaz; yalnız tanımlı taşıma nedenleri.
+        // The free exception text is not carried over; defined transportation reasons only.
         const code = ['wake_prefix_expired','wake_alignment_failed','wake_packet_rejected','wake_engine_failed'].includes(error?.message)
           ? error.message : 'wake_bridge_rejected';
         state.fail(code);
@@ -170,8 +170,8 @@ export const liveMic = {
     return true;
   },
   continueListening() {
-    // Yanıt sonundaki cihaz yeniden açılış boşluğunu önle. Henüz tetiklenmemiş
-    // ön tampon ve yarım aday korunur; yakalanmış bir komut yeniden kurulmaz.
+    // Prevent device reboot gap at end of response. not triggered yet
+    // front bumper and half island are preserved; A captured command is not re-established.
     if (!this.waitingForSpeech) return false;
     current.node.port.postMessage({replyPlaying:false});
     return true;
@@ -180,13 +180,13 @@ export const liveMic = {
     const state = current;
     if (!state?.node) return false;
     state.armed = true; state.sentPackets = 0;
-    // Yerel sessizlik/15 s yalnız PCM girişini bitirir; Stop değildir.
+    // Local silence/15 s ends PCM input only; It is not a stop.
     state.endInput = () => {
       state.inputEnded = true;
       if (current === state && !state.sending) { this.cancel(); onLimit(); }
     };
-    // Setup'tan kalan ön tampon erimeden sınırı 3 s'den 1 s'ye daraltma;
-    // aksi halde sağlıklı bağlantının ilk yeni paketi yanlış taşma sayılır.
+    // Narrowing the limit from 3 s to 1 s before the front bumper remaining from Setup melts;
+    // otherwise the first new packet of the healthy connection is considered a false overflow.
     state.drainingPrefix = state.queue.length > 10;
     if (!state.waiting) state.node.port.postMessage('start');
     state.drain = async () => {
@@ -196,7 +196,7 @@ export const liveMic = {
           const bytes = state.queue.shift();
           if (state.queue.length <= 10) state.drainingPrefix = false;
           if (await onChunk(btoa(String.fromCharCode(...bytes))) !== true) { state.fail('stream_rejected'); return; }
-          // Wake ön tamponu da backend'in toplam 150 paket sınırına dahildir.
+          // The Wake front bumper is also included in the backend's total package limit of 150.
           if (++state.sentPackets >= 150) { state.queue = []; state.inputEnded = true; break; }
         }
       } catch { state.fail('stream_rejected'); }
@@ -229,5 +229,5 @@ if (typeof navigator !== 'undefined') navigator.mediaDevices?.addEventListener?.
     if (current === state && !devices.some(d => d.kind === 'audioinput' && d.deviceId === state.deviceId)) {
       liveMic.cancel(); state.onError('device_removed');
     }
-  } catch { /* Liste okunamadı diye başka bir stream'in track'ini kapatma. */ }
+  } catch { /* Do not turn off the track of another stream because the list could not be read. */ }
 });

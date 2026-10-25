@@ -322,7 +322,7 @@ body.lit .reactor {
   overflow: visible;
 }
 
-/* Başlatma hatası yalnız gerektiğinde görünür; sağlıklı açılışın düzenini etkilemez. */
+/* Initialization error appears only when necessary; It does not affect the normal opening pattern. */
 .native-issue {
   position: fixed;
   z-index: 3000;
@@ -1459,7 +1459,7 @@ input[type=color] {
   -moz-appearance: textfield;
 }
 
-/* details/summary yerel aç/kapat ve klavye davranışını korur; renkler temadandır. */
+/* details/summary preserves native toggle and keyboard behavior; colors are from the theme. */
 .clock-picker {
   gap: 5px;
   margin: 5px 0 8px;
@@ -1575,14 +1575,14 @@ input[type=color] {
   }
 }
 
-/* Aynı sayı alanı ve change doğrulaması; tarayıcının beyaz spinner'ı yerine tema düğmeleri. */
+/* Same number field and change validation; theme buttons instead of the browser's white spinner. */
 .sleep-stepper { display: flex; align-items: center; gap: 6px; }
 .sleep-stepper .mi { width: 64px; text-align: center; appearance: textfield; }
 .sleep-stepper .mi::-webkit-inner-spin-button,
 .sleep-stepper .mi::-webkit-outer-spin-button { appearance: none; margin: 0; }
 .sleep-stepper .chip { flex: none; width: 30px; padding: 6px; }
 
-/* Onay grubu sohbet kontrollerinden ayrıdır; mod rengi yerine temayı kullanır. */
+/* The approval group is separate from chat controls; The mod uses theme instead of color. */
 .sessionControls {display:flex; gap:8px; flex-wrap:wrap; justify-content:center; align-items:center;}
 .memoryReview {border-inline-start:1px solid var(--gold); padding-inline-start:14px; max-width:290px; text-align:left;}
 .memoryReview[hidden] {display:none;}

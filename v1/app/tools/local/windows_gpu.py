@@ -1,9 +1,9 @@
-"""Üreticiden bağımsız GPU kullanımı: Windows PDH performans sayaçları.
+"""Manufacturer-independent GPU usage: Windows PDH performance counters.
 
-Görev Yöneticisi gibi en yoğun GPU motoru esas alınır. Süreçlerin aynı
-motordaki kullanımları toplanır; farklı motorlar veya kartlar toplanmaz.
-İlk örnek referanstır, yüzde sonraki örnekte oluşur. Sıcaklık/VRAM kapasitesi
-bu sayaçtan gelmez; tahmin edilmez. DLL dışında süreç veya thread açılmaz.
+It is based on the most GPU intensive engine like Task Manager. Your processes are the same
+Their use in the engine is summed up; No different engines or cards are collected.
+The first sample is the reference, the percentage occurs in the next sample. Temperature/VRAM capacity
+This does not come from the meter; unpredictable. No processes or threads are opened outside the DLL.
 """
 import ctypes as c
 from ctypes import wintypes as w
@@ -26,7 +26,7 @@ class _Item(c.Structure):
 
 
 def _load_pdh():
-    """Yerelleştirilmiş Windows'ta da İngilizce sayaç yolunu kullan."""
+    """Also use English counter path on localized Windows."""
     if os.name != 'nt':
         raise OSError('Windows counters unavailable')
     dll = c.WinDLL('pdh', use_last_error=True)
@@ -43,10 +43,10 @@ def _load_pdh():
 
 
 def aggregate_engines(items) -> list[dict]:
-    """PDH örnek adından donanım/motor kimliğini ayır; süreç kimliği dışarı çıkmaz.
+    """Separate ID hardware/engine from PDH instance name; The process ID does not come out.
 
-    Aynı motorda iki süreç %20 + %30 ise motor %50'dir. Başka motorun %40'ı
-    buna eklenmez: kart kullanımı %50 kalır. Hatalı/eksik örnekler sıfır değildir.
+    If two processes are 20% + 30% in the same engine, the engine is 50%. 40% of another engine
+    this is not added: card usage remains 50%. Faulty/incomplete samples are non-zero.
     """
     engines = {}
     for name, value in items:
@@ -62,10 +62,10 @@ def aggregate_engines(items) -> list[dict]:
 
 
 class WindowsGpu:
-    """Tek Telemetry sahibine bağlı PDH sorgusu; close bütün sayaçları bırakır.
+    """PDH query linked to a single Telemetry owner; close leaves all counters.
 
-    Sonlandırıcı, pencere dışındaki kısa ömürlü core kullanımlarında da handle'ı
-    bırakır. Hata sonrası sorgu kapatılır; sonraki okuma yeni referansla başlar.
+    The terminator also uses the handle for short-lived core uses outside the window.
+    leaves. After the error, the query is closed; The next reading starts with the new reference.
     """
     def __init__(self):
         self._dll = None
@@ -101,7 +101,7 @@ class WindowsGpu:
                 raise OSError('GPU collection unavailable')
             size, count = w.DWORD(), w.DWORD()
             status = dll.PdhGetFormattedCounterArrayW(self._counter, 0x200, c.byref(size), c.byref(count), None)
-            # Boyut/örnek sayısı yerel API'den gelse de sınırsız bellek ayırma.
+            # Unlimited memory allocation although the number Size/instance comes from the native API.
             if status & 0xffffffff != 0x800007D2 or not 0 < size.value <= 4194304:
                 raise OSError('GPU counters unavailable')
             capacity = size.value

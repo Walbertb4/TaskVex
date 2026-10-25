@@ -1,7 +1,7 @@
-"""Sayaçların tek sahibi, gerçek araç hattı ve sentetik REST/Live kabulü.
+"""The only owner of the meters, real tool line and synthetic REST/Live acceptance.
 
-Gerçek kullanıcı verisi/API/uyku kullanılmaz. Monoton saat denetimli ilerler;
-UI snapshot poll'ü görev açmamalı, Stop tamamlanmış saati geri almamalıdır.
+Real user data/API/sleep is not used. Monotonous clockwise progresses;
+UI snapshot poll should not open a task, Stop should not roll back the completed time.
 """
 from threading import Event
 from uuid import uuid4
@@ -51,7 +51,7 @@ def test_multiple_clocks_pause_resume_reset_and_wall_clock_independence(clock_ti
         assert clocks.snapshot()['clocks'][2]['elapsed_seconds']==5.25
         mutate(core,'clocks.control',{'id':first['id'],'action':'start'})
         clock_time[0] += 1
-        # Tekrar Start, çalışan süreyi sıfırlamaz.
+        # Restart does not reset the running time.
         started = mutate(core,'clocks.control',{'id':first['id'],'action':'start'})['clock']
         assert started['remaining_seconds']==6.75
         reset = mutate(core,'clocks.control',{'id':first['id'],'action':'reset'})['clock']
@@ -153,7 +153,7 @@ def test_model_creation_and_fresh_list_control(mode,transport,socket):
 
 
 def test_unknown_ui_command_blocks_new_mutations_and_model_but_allows_view(tmp_path,monkeypatch):
-    """Bekleme sonucu kaybolursa işlem tekrar edilmez; görünüm okumak kilidi aşmaz."""
+    """If the waiting result disappears, the process is not repeated; Reading a view does not bypass the lock."""
     clocks=module.Clocks()
     with create_core(clocks=clocks) as core:
         api=NativeBridge(core,JsonStore(tmp_path/'settings.json'),clocks=clocks)
@@ -180,7 +180,7 @@ def test_unknown_id_changes_no_clock(clock_time):
 
 
 def test_pause_crossing_timer_deadline_finishes_instead_of_sticking_paused(clock_time,monkeypatch):
-    """Okuma ile pause arasındaki çok küçük deadline yarışı doğru sonuçlanır."""
+    """The very small deadline race between reading and pause ends correctly."""
     clocks=module.Clocks()
     with create_core(clocks=clocks) as core:
         clock=mutate(core,'clocks.create',{'kind':'timer','start':True,'duration_seconds':1})['clock']

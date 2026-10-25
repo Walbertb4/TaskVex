@@ -1,167 +1,169 @@
-# Bakım ve mimari denetim
+> Historical maintenance findings, translated to English. Current status is in PLAN.md; original bytes remain in Git history.
 
-Bu rapor mevcut kodun sınırlarını ve yapılan temizliği açıklar. “Gereksiz hiçbir
-satır kalmadı” veya “artık bug yok” garantisi değildir. Güncel işler
-[PLAN](PLAN.md), değişiklik kaydı [CHANGELOG](CHANGELOG.md) içindedir.
+# Maintenance and architectural inspection
 
-## Kapsam ve yöntem
+This report describes the limitations of the existing code and the cleanup performed. "No unnecessary
+It is not a guarantee of "no more lines" or "no more bugs". Current works
+[PLAN](PLAN.md), change record is in [CHANGELOG](CHANGELOG.md).
 
-Git'in izlediği ve bu bakımda eklenen kaynak/test/config/belgeler envantere alındı.
-Python AST ve JS syntax taraması, import/caller/export aramaları; bootstrap,
-bridge, model→core, not/sayaç, ses/wake/Stop ve kayıt sahipliği takip edildi.
-Dinamik public bridge ve test çağıranları kontrol edilmeden export silinmedi.
-Dosya bazlı yollar/satırlar/hash ve kontrol türü
-[cleanup-inventory.json](reports/cleanup-inventory.json) içindedir.
+## Scope and method
 
-Bu, bütün satırların ayrı ayrı elle ispatlandığı anlamına gelmez. Kritik yollar
-okunup regresyonla sınandı; bütün kaynaklara statik envanter/syntax kontrolü uygulandı.
-Sanal ortam, Git içeriği/cache, kullanıcı veri kökü, referans Mark-LVI-main ve
-kurulu üçüncü taraf paket kaynakları ürün kaynak denetimine dahil edilmedi.
-Arşivdeki 133 dosyanın içeriği SHA256 ile korunur; tarihsel linkleri yeniden yazılmaz.
-Arşiv içeriği HEAD ile karşılaştırıldı: fark yalnız checkout CRLF/LF dönüşümüdür,
-metin içeriği farkı yoktur. .gitattributes arşiv byte'larını bundan sonra sabit tutar.
-UI varlıklarının tam lisans/provenance incelemesi ayrıca açıktır.
+source/test/config/documentation, which was tracked by Git and added in this maintenance, was put into inventory.
+Python AST and JS syntax scanning, import/caller/export searches; bootstrap,
+bridge, model→core, note/meter, audio/wake/Stop and record ownership were followed.
+The export was not deleted without checking the dynamic public bridge and test callers.
+File based paths/lines/hash and control type
+[located in cleanup-inventory.json](reports/cleanup-inventory.json).
 
-## Yapılan temizlik
+This does not mean that all rows are individually proven by hand. critical paths
+read and tested with regression; Static inventory/syntax control applied to all resources.
+Virtual environment, Git content/cache, user data root, reference Mark-LVI-main and
+Installed third-party package sources were not included in the product source check.
+The contents of the 133 files in the archive are protected with SHA256; Historical links are not rewritten.
+Archive content compared with HEAD: the only difference is the checkout CRLF/LF conversion,
+There is no difference in text content. .gitattributes keeps archive bytes constant from now on.
+Full license/provenance review of UI assets remains open.
 
-| Önce | Sonra / gerekçe |
+## Cleaning done
+
+| Before | After / reason |
 |---|---|
-| app.js 1675 satır; başlangıç + kabuk + sohbet state'i | app.js 323; shell.js görsel kabuk; assistant_session.js tek sohbet/mic/uyku sahibi |
-| settings.js 1033 satır; cihaz/layout aynı dosyada | settings.js 701; devices.js ve layout.js ayrı sorumluluk, preferences.js tek ortak nesne |
-| Kullanılmayan MediaRecorder/decode yolu | Kaldırıldı; gerçek AudioWorklet girişi ve testleri kaldı |
-| UI rutin/takvim tarayıcıları, olmayan native komutlar | Kaldırıldı; backend olmadan “başlatıldı” denmiyor |
-| Serbest shortcut → native olay/fake timeline | Kaldırıldı; kayıtlı metin korundu, planlı alan disabled |
-| Native runner içinde büyük senaryo blokları | native_scenarios.py'ye taşındı; aynı runner ve geçici fixture |
-| REST/Live iki ayrı aynı araç listesi | Aynı modül sabitleri kullanılır; izin şeması/core değişmedi |
-| Çelişkili README günlükleri ve dağınık aşama belgeleri | Güncel rehberler ve tek plan/changelog; eski içerik arşiv |
+| app.js 1675 lines; start + shell + chat state | app.js 323; shell.js visual shell; assistant_session.js single owner conversation/mic/sleep |
+| settings.js 1033 lines; device/layout in the same file | settings.js 701; devices.js and layout.js separate responsibility, preferences.js single common object |
+| Unused path MediaRecorder/decode | Removed; real AudioWorklet input and tests left |
+| UI routine/calendar browsers, non-native commands | Removed; Without backend it is not said "started" |
+| Free shortcut → native event/fake timeline | Removed; saved text preserved, scheduled area disabled |
+| Large script blocks in native runner | moved to native_scenarios.py; same runner and temporary fixture |
+| REST/Live two separate same tool list | The same module constants are used; permission scheme/core unchanged |
+| Conflicting README logs and messy milestone documentation | Current guides and single plan/changelog; old content archive |
 
-Runtime Python+JS toplamı **12.409 → 11.703 satır**, net **706 satır azalma**.
-Taşınan satırlar dahil hesaplandı; belge arşivini kod silme kazanımı saymadık.
-Yeni runtime bağımlılık/framework yok. Ayrıntı [metriklerde](reports/cleanup-metrics.json).
+Runtime Python+JS total **12,409 → 11,703 lines**, net **706 lines reduction**.
+Calculated including moved rows; We did not count the document archive as code deletion gain.
+There is no new runtime dependency/framework. Detail [metrics](reports/cleanup-metrics.json).
 
-CSS tek görünümün stil dosyasıdır; yalnız 1582 satır diye parçalanmadı. schema.js
-sınır doğrulamasını birlikte tutar. assistant_session.js hâlâ 942 satırdır; Stop,
-wake, mikrofon ve gecikmiş yanıt kimliklerini farklı sahiplerde çoğaltmamak için
-birlikte tutuldu. Native test runner'ının sentetik sağlayıcı fixture'ı da satır
-sayısını düşürmek uğruna yeni test framework'üne çevrilmedi.
+CSS is the style file for the single view; It was not broken down into just 1582 lines. schema.js
+keeps boundary validation together. assistant_session.js is still 942 lines; stop,
+To avoid duplicating wake, microphone and delayed response IDs across different owners
+kept together. Native test runner's synthetic provider fixture is also in line
+It was not converted to the new testing framework in order to reduce the number of tests.
 
-REST kullanıcı isteğiyle korundu. Browser-only görünüm ve legacy ayar okuma/bridge
-alias'ları gerçek uyumluluk yollarıdır. Public salt okunur widget setter'ları,
-testte kullanılan probe ve JSON şemaları “az çağrılıyor” diye silinmedi.
-Skill/rutin editörleri ve mevcut kullanıcı tanımları korunur; yürütme ayrı açık iştir.
+REST protected by user request. Browser-only view and legacy setting reading/bridge
+aliases are true means of compatibility. Public read-only widget setters,
+The probe and JSON schemas used in the test were not deleted due to "infrequent calls".
+Skill/routine editors and existing user definitions are retained; Execution is a separate open business.
 
-## Mimariye uyum ve kalan bulgular
+## Architecture alignment and kalan findings
 
-Çalışan model eylemleri **ModelTools → registry/policy → TaskManager → alan aracı**
-hattından geçer. Not/sayaç ikinci yürütücüye taşınmadı. UI kontrolleri ve yerel KWS
-doğal dil router'ı değildir. Kaldırılan shortcut/scheduler yolları bu ayrımı bozuyordu.
+Working model actions **ModelTools → registry/policy → TaskManager → field tool**
+passes through the line. Note/counter was not moved to the second executor. UI controls and local KWS
+It is not a natural language router. Removed shortcut/scheduler paths broke this distinction.
 
-| Öncelik | Bulgu ve kanıt | Karar |
+| Priority | Findings and evidence | Decision |
 |---|---|---|
-| Kapatıldı (5.F7.3) | Kalıcı core'da 256 RAM/aktif iş sınırıdır; terminal kayıtlar SQLite'tan sorgulanır. | Eski kimlikler disk indeksinde kalır. Aktif kuyruk dolunca açık ret; disk geçmişi otomatik silinmez. |
-| Kapatıldı (5.F7.2) | TaskManager kimlik/istek/sonucu SQLite FULL transaction ile tutar; core tek sahip kilidi vardır. | Restart eskiyi yürütmez; yarım başlamış iş unknown, queued iptal. Bu harici servisler için exactly-once değildir; model oturum RAM'i yeniden canlandırılmaz. |
-| P2 | Günlük süresiz ve şifrelenmemiştir; unknown yeni işleri profil genelinde kilitler. | Disk/açılış maliyeti geçmişle büyür; eski not metni kalabilir. Kullanıcıya yönelik unknown uzlaştırma ve güvenli disk sıkıştırma henüz yoktur. |
-| P1 | json_store.py atomik replace kullanır; native main artık veri kökü OS kilidini tutar. | 5.F7.1 native aynı-profil çakışmasını kapatır. Host dışı scriptler için JsonStore tek başına kilit sağlamaz. |
-| P2 | main.py kapanışta bridge._chat._live.close gibi private sınırları bilir. | İkinci socket sahibi yok, fakat host/bridge bağlaşımı var. Sonraki lifecycle değişiminde mevcut sahibin public kapanış noktası kullanılmalı; yeni manager kurulmamalı. |
-| P2 | Skill/rutin tanımları localStorage; core yürütme ve backend scheduler yok. | Bugün editör kapsamı. İleri entegrasyon tek backend sahipliğinde yapılmalı. Yerel zamanlayıcı ile geçici yürütme kurulmadı. |
-| P2 | Google/Telegram/Discord/GUI henüz yok; harici veri taint/kanal principal/risk onay sistemi tamam değil. | Bunlar bugünkü sınırlı yerel araçlara varmış gibi yazılmıyor. Dış içerik ve riskli eylemler açılmadan önce zorunlu. |
-| P2 | UI'da base instruction/greeting/browser tercihlerinin backend karşılığı yok. | Önceden sessizce işe yarıyor görünüyordu; şimdi planlı/disabled, mevcut metin korunur. |
-| P3 | NativeBridge 613 satır ve assistant_session 942 satır; yaşam döngüsü dalları yoğun. | Şimdilik tek sahip korunuyor. Yeni özellik aynı dosyaya yığılmadan gerçek sözleşme sınırıyla çıkarılmalı; sadece satır eşiğiyle bölünmemeli. |
+| Closed (5.F7.3) | On persistent core, 256 RAM/active is the throughput limit; terminal records are queried from SQLite. | Old IDs remain in the disk index. Open rejection when active queue is full; Disk history is not automatically deleted. |
+| Closed (5.F7.2) | TaskManager holds identity/request/result with SQLite FULL transaction; Core has a single owner lock. | Restart does not execute the old one; half-started job unknown, queued cancelled. This is not exactly-once for external services; model session RAM is not revived. |
+| P2 | The log is indefinite and unencrypted; unknown locks new jobs profile-wide. | Disk/boot cost grows with history; The old note text may remain. There is no user-facing mediation and secure disk compression yet. |
+| P1 | json_store.py uses atomic replace; native main now holds the data root OS lock. | 5.F7.1 native turns off same-profile conflict. JsonStore alone does not provide locks for non-host scripts. |
+| P2 | main.py knows private boundaries such as bridge._chat._live.close on closure. | There is no second socket owner, but there is a host/bridge connection. In the next lifecycle change, the current owner's public closure point should be used; A new manager should not be installed. |
+| P2 | Skill/routine definitions localStorage; There is no core execution and no backend scheduler. | Editorial coverage today. Advanced integration should be done under single backend ownership. Temporary execution with local scheduler not established. |
+| P2 | Google/Telegram/Discord/GUI is not available yet; external data taint/channel principal/risk confirmation system is not OK. | These are not written as if they were available for today's limited local tools. Mandatory before opening external content and risky actions. |
+| P2 | There is no backend equivalent of base instruction/greeting/browser preferences in the UI. | It seemed to work quietly before; now planned/disabled, existing text is retained. |
+| P3 | NativeBridge 613 lines and assistant_session 942 lines; life cycle branches dense. | For now, the sole owner is protected. The new feature should be released with the actual contract limit, without being crowded into the same file; It should not be divided only by the line threshold. |
 
-P1'ler yeni bulunmuş her şeyin bu turda yeniden mimarileştirilmesi anlamına gelmez.
-Bu bakım güvenli dead-code/doc temizliğidir; uzun oturum/dağıtım kapanışı yukarıdaki
-açık sınırları kabul etmeden “üretime hazır” ilan edilemez.
+P1s do not mean that everything new has been re-architected in this round.
+This maintenance is safe dead-code/doc cleaning; long session/deployment close above
+cannot be declared “production ready” without accepting clear boundaries.
 
-## Özelleştirilebilir olması gerekenler ve sabit değerler
+## Customizable must-haves and constants
 
-| Konu | Gerçek durum | Öneri |
+| Topic | Real situation | Suggestion |
 |---|---|---|
-| Yanıt sesi | Live conn.voice, belgelenmiş hazır Live listesi ve oturum speech_config'una bağlı; REST speech.py Kore sabit | Live seçimi uygulandı; REST kanalı ürünleştirilirken ayrı tercih kapsamı |
-| Yanıt ses seviyesi | replyVolume aynı PCM oynatıcısında 0–1 kazançtır; Settings Audio barı, kalıcı kayıt ve reset bağlıdır | 5.F8.1'de uygulandı; efektlerden ayrıdır. Ses karakteri/voice seçimi ayrı açık iştir |
-| REST varsayılan/fallback ve TTS modeli | gemini.py DEFAULT_MODEL/FALLBACK_MODEL, speech.py SPEECH_MODEL sabit | Ana masaüstü Live modeli API'den seçilip kaydoluyor; REST kanalı ürünleştirilirken ayrı sağlayıcı tercihine taşı |
-| Kullanıcı talimatı/dil | pIns/pLang gerçekten ortak model instruction'a gider | Çalışıyor; güvenlik/araç izni kişisel prompt ile değiştirilemez |
-| Base override / greeting | pSys/pGreet yalnız saklı metin | Henüz bağlı değil |
-| Kullanıcı hafızası | pMem + açık pMemory; elle ve modelle kaydet/düzelt/unut, ortak REST/Live bağlamı | 6.1.1–3; tek ayar deposu, snapshot/tekil hedef/paylaşılan kilit; isteğe bağlı öğrenmede kullanıcı inceleme veya doğrudan kayıt seçer; anlamsal eleme sağlayıcıya bağlı |
-| Browser / yeni sekme / app önceliği / shortcut | pBr/pTab/pApp/pSc yalnız legacy tercih | İlgili plugin/resolver gelince tek servise bağla; şimdilik disabled |
-| Wake word | pWake backend'e bağlı; Vex/Veks/Rex ailesi, özel kelimede İngilizce sözlük sınırı | Serbest tüm diller iddiası yok; başka dil model/lexicon kalibrasyonu ayrı iş |
-| Wake sensitivity, konuşma eşiği, idle sleep | Mevcut ayarlar gerçek backend/worklet'e bağlı | Sabit değillerdir; wake değişimi sonraki uykuya uygulanır |
-| UI metin dili/tarih ve birkaç kabuk mesajı | UI İngilizce; model yanıt dili pLang'dan ayrı | Kullanıcı daha önce İngilizce UI istedi. Çok dilli UI istenirse tek locale katmanı; sözlük kopyalayarak değil |
-| Tema/SFX/cihazlar | Varsayılan mor, eşik ve cihaz seçimi mevcut ayarlardan değişebilir | Varsayılan değer olması hardcoded davranış hatası değildir |
-| Hafıza 12 tur/16k/2k, ses 15 s, deadline/PCM limitleri | Teknik güvenlik/kaynak sınırları | Her sayıyı ayara çevirme. İhtiyaç ölçülürse tek gelişmiş config; validasyon/replay/izin sınırlarını kullanıcı prompt'una bırakma |
+| Response tone | Live conn.voice depends on documented preset Live list and session speech_config; REST speech.py ​​Korean constant | Live selection implemented; Separate scope of preferences when productizing a REST channel |
+| Response volume | replyVolume is a 0–1 gain on the same PCM player; Settings Audio bar, permanent recording and reset are connected | Implemented in 5.F8.1; separate from effects. Audio character/voice selection is a separate open job |
+| REST default/fallback and TTS model | gemini.py DEFAULT_MODEL/FALLBACK_MODEL, speech.py ​​SPEECH_MODEL constant | The main desktop Live model is selected and registered from the API; Move to separate provider preference when productizing REST channel |
+| User instruction/language | pIns/pLang actually goes to common model instruction | It works; security/tool ​​permission cannot be changed with personal prompt |
+| Base override / greeting | pSys/pGreet reserved text only | Not yet connected |
+| User memory | pMem + open pMemory; by hand and model save/fix/forget, common REST/Live context | 6.1.1–3; single adjustment tank, snapshot/single target/shared lock; In on-demand learning, the user chooses review or direct enrollment; semantic screening provider dependent |
+| Browser / new tab / app priority / shortcut | pBr/pTab/pApp/pSc legacy preference only | As for the relevant plugin/resolver, connect it to a single service; currently disabled |
+| Wake word | pWake depends on the backend; Vex/Veks/Rex family, English dictionary limit in special word | There is no claim that all languages ​​are free; other language model/lexicon calibration separate job |
+| Wake sensitivity, speech threshold, idle sleep | Current settings depend on actual backend/worklet | They are not fixed; wake change applies to next sleep |
+| UI text language/date and a few shell messages | UI English; separate from model response language pLang | User wanted English UI before. Single locale layer if multilingual UI is desired; not by copying dictionary |
+| Theme/SFX/devices | Default purple, threshold and device selection may vary from current settings | Having a default value is not a hardcoded behavior error |
+| Memory 12 laps/16k/2k, audio 15 s, deadline/PCM limits | Technical limits of security/resource | Converting each number to a setting. One advanced config if the need is measured; validation/replay/permission leave limits to user prompt |
 
-Timer bitişindeki “boss” sabit bir model hitabı değildir; model kişisel talimatı
-kullanır. UI timer/alarm metni ile kişiselleştirilmiş ses yanıtı farklı şeylerdir.
+The “boss” at the end of the timer is not a fixed pattern address; model personal instruction
+uses. UI timer/alarm text and personalized voice response are two different things.
 
-## Doğrulama ve sınırlar
+## Validation and limits
 
-İlk 5.F6 bakımının sonuçları [cleanup-checks.json](reports/cleanup-checks.json) içinde, gerçek
-WebView2 sentetik kabul [cleanup-native.json](reports/cleanup-native.json) içindedir.
-5.F6 sonucu: **996 pytest**, **9 JS suite**, **4 browser grubu**, **10 native aşama**
-başarılı; app ve etkilenen Python dosyalarında **Pyright 0 hata/uyarı**. pip check
-bağımlılık çakışması bulmadı. 78 Python ve 34 JS/MJS dosyası syntax taramasından geçti.
-133 arşiv dosyasının hash'i ve güncel belge bağlantıları doğrulandı.
-Python, JS, browser, tip kontrolü ve arşiv/link testleri birlikte değerlendirilir.
-İlk regresyondaki dosya-konumu varsayımı testte yeni import grafiğine güncellendi;
-başarısız ilk deneme son başarı diye gizlenmedi. Eski MediaRecorder self-test'i
-kaldırılmış aktif davranışın kanıtı sayılmaz; stream/izin/Stop testleri kalır.
+Results of the first 5.F6 maintenance [in cleanup-checks.json](reports/cleanup-checks.json), actual
+WebView2 synthetic acceptance is in [cleanup-native.json](reports/cleanup-native.json).
+5.F6 result: **996 pytest**, **9 JS suite**, **4 browser groups**, **10 native stages**
+successful; app and **Pyright 0 error/warning** in affected Python files. pip check
+found no dependency conflicts. 78 Python and 34 JS/MJS files were syntax scanned.
+Hashes of 133 archive files and current document links have been verified.
+Python, JS, browser, type checking and archive/link tests are evaluated together.
+The file-location assumption in the first regression was updated to the new import graph in testing;
+The first unsuccessful attempt was not disguised as the last success. Legacy MediaRecorder self-test
+does not count as evidence of removed active behavior; stream/permission/Stop tests remain.
 
-Bu bakımda gerçek Google hesabı/ücretli API, canlı resume/GoAway ve fiziksel
-mikrofon/echo/cihaz değişimi yeniden denenmedi. Otomatik testler akustik doğruluk,
-süresiz kararlılık, sıfır bug veya bütün olası dinamik üçüncü taraf çağıranları ispatlamaz.
+In this regard, real Google account/paid API, live resume/GoAway and physical
+Replacement microphone/echo/device was not retried. Automatic tests acoustic accuracy,
+It does not prove indefinite stability, zero bugs, or all possible dynamic third-party callers.
 
-## Kısa manuel kabul
+## Short manual accept
 
-1. Native uygulamayı aç; kayıtlı tema/model ve yerel tanımlar yerinde olsun.
-2. Geçici bir not ekle/tamamla/sil; tek kayıt ve yenileme doğrulansın.
-3. Timer/stopwatch oluştur, pause/reset ve sağ tık delete yap; doğru sekme/ID kalsın.
-4. Live erişimin varsa konuş/Stop/Sleep/Wake dene; Mic Off yanıtı kesmesin.
-5. Planlı Google/voice/inspect vb. kontroller işlem yapamasın; skill/rutin editörleri
-   tanımı korusun ve Run henüz bağlanmadığını açık söylesin.
+1. Open the native application; registered theme/model and get local definitions in place.
+2. A temporary note add/complete/delete; verify single registration and renewal.
+3. Create Timer/stopwatch, right-click pause/reset and delete; keep it correct tab/ID.
+4. If you have live access, try talk/Stop/Sleep/Wake; Do not let Mic Off interrupt the response.
+5. Planned Google/voice/inspect etc. controls cannot take action; skill/routine editors
+   keep the definition and make it clear that Run is not connected yet.
 
-API limiti sürüyorsa 4. maddeyi test edilemedi bırak; diğerlerini atlama. Önceki
-kullanıcı kabulü bu bakım değişikliğinin manuel kabulü yerine geçmez.
-
-
-5.F8.1 güncel doğrulama: 1024 pytest, 9 JS suite, 5 browser grubu, app Pyright 0
-ve 10 native aşama. [Sonuç](reports/reply-volume-checks.json),
-[native](reports/reply-volume-native.json). Ses seviyesi fiziksel duyum/API
-kabulü değildir; kullanıcı çalıştığını doğruladı.
+If the API limit persists, leave item 4 as untestable; don't skip the others. Previous
+User acceptance does not replace manual acceptance of this maintenance change.
 
 
-6.1.2 açık model hafızası: mevcut profile memory.read/patch eklendi; ikinci
-otorite yok. Snapshot/tekil hedef, UI base/ortak depo kilidi, readback,
-Stop/replay ve taslak koruması doğrulandı. 1050 pytest, 9 JS, 7 browser,
-10 native ve Pyright 0; [kanıt](reports/model-memory-checks.json).
-Gerçek model ve otomatik çıkarım kabulü yoktur; kullanıcı testi bekler.
+5.F8.1 current verification: 1024 pytest, 9 JS suite, 5 browser groups, app Pyright 0
+and 10 native stages. [Result](reports/reply-volume-checks.json),
+[native](reports/reply-volume-native.json). Sound level physical sensation/API
+It is not acceptance; The user confirmed that it worked.
 
 
-6.1.3: pLearn ile opt-in öneriler, host kaynak kanıtı, tek RAM adayı ve gerçek
-UI Save/Dismiss kararı ortak core hattına bağlandı. Öneri kendiliğinden profil
-gerçeği olmaz; kaynak eşleşmesi anlamsal doğruluk garantisi değildir. 1065 pytest,
-9 JS, 8 browser, 10 native ve Pyright 0; [kanıt](reports/memory-suggestions-checks.json).
-Gerçek model kalitesi/ücretli API denenmedi; kullanıcı testi bekler.
+6.1.2 open model memory: added memory.read/patch to existing profile; second
+authority yok. Snapshot/single target, UI base/shared store lock, readback,
+Stop/replay and draft protection verified. 1050 pytest, 9 JS, 7 browser,
+10 native and Pyright 0; [evidence](reports/model-memory-checks.json).
+There is no acceptance of real model and automatic inference; The user waits for the test.
 
 
-6.1.3 manuel testte source_unavailable ile yeniden açıldı: birebir model alıntısı
-şartı gerçek konuşmada hatalıydı. Kaynak mevcut tur sahibinden bağlandı; alıntı
-varyasyonu regresyonu düzeltme öncesinde başarısız, sonrasında başarılı.
-1068 pytest, 8 browser, 10 native ve Pyright 0; [kanıt](reports/memory-source-checks.json).
-Gerçek sağlayıcıda tekrar kabulü beklenir; önceki sentetik başarı manuel kabul
-olarak sunulmaz. Görev günlüğü gerçek kaynak mesajını da içerebilir.
+6.1.3: opt-in recommendations, host resource evidence, single RAM candidate and actual with pLearn
+The UI Save/Dismiss decision was connected to the common core line. Suggestion spontaneous profile
+there is no truth; source matching is not a guarantee of semantic correctness. 1065 pytest,
+9 JS, 8 browser, 10 native and Pyright 0; [evidence](reports/memory-suggestions-checks.json).
+Actual model quality/paid API not tested; The user waits for the test.
 
 
-Kullanıcı başarılı öneride Review düğmesini görünür onay olarak algılamadı;
-kişisel alana henüz yazılmaması bekleyen aday davranışıydı. Onay penceresi
-otomatik açılır hale getirildi; pMemoryConfirm false seçilirse aynı core
-hattında doğrudan doğrulanmış kayıt eklenir. 1074 pytest, 9 JS, 9 browser,
-10 native ve Pyright 0; [kanıt](reports/memory-review-checks.json).
-Çıkarım hatası otomatik kipte kayda geçebilir; gerçek model kabulü bekler.
+Reopened with source_unavailable in 6.1.3 manual testing: verbatim model quote
+The condition was erroneous in actual speech. Resource connected from current turn owner; quote
+Variation regression fails before correction, succeeds after.
+1068 pytest, 8 browser, 10 native and Pyright 0; [evidence](reports/memory-source-checks.json).
+Re-acceptance is expected at the actual provider; previous synthetic success manual acceptance
+It is not presented as. The task log may also contain the actual resource message.
 
 
-6.1.3 güncel onay akışı: kullanıcı önceki sor/sorma dilimini kabul etti;
-c5d086c commit'i alındı. Yeni dilimde modal yerine sohbet yanında ayrı
-Save/Dismiss, sonraki kullanıcı yanıtıyla aynı memory.decide, taze ID ve
-aynı-tur kendi kendini onay engeli var. 1081 pytest, 9 JS, 9 browser,
-10 native ve Pyright 0; [kanıt](reports/memory-voice-review-checks.json).
-Gerçek modelin anlamsal onay/ret ayrımı kullanıcı testini bekler; yapısal
-kimlik/tur koruması bu ayrımın kusursuz olduğunu iddia etmez.
+User did not perceive the Review button as visible confirmation on successful recommendation;
+It was candidate behavior that expected not to be written in the personal area yet. Confirmation window
+It was made automatic opening; If pMemoryConfirm false is selected, the same core
+A verified record is added directly to the line. 1074 pytest, 9 JS, 9 browser,
+10 native and Pyright 0; [evidence](reports/memory-review-checks.json).
+Inference error may be recorded in automatic mode; The actual model awaits acceptance.
+
+
+6.1.3 current approval flow: user accepted previous slice ask/auto-save;
+Commit c5d086c received. In my new language, instead of modal, there is a separate text next to chat.
+Save/Dismiss same memory.decide, fresh ID and as next user response
+There is the same-kind self-certification barrier. 1081 pytest, 9 JS, 9 browser,
+10 native and Pyright 0; [evidence](reports/memory-voice-review-checks.json).
+The semantic approval/rejection distinction of the actual model awaits user testing; structural
+The identity/turn protection does not claim that this distinction is perfect.

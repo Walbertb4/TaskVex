@@ -1,8 +1,8 @@
-"""Tamamlanmış REST metnini araçsız Gemini TTS ile PCM olarak seslendirir.
+"""It speaks the completed REST text as PCM with tool-free Gemini TTS.
 
-Yeni görev/worker değildir; TextChat'in aynı tek sohbet kilidinde çalışır.
-Metin yeniden yorumlanacak komut değil, TTS'nin birebir okuyacağı içeriktir.
-Ses yalnız sınırlı RAM'de kalır; hata model/not işlemini yeniden yürütmez.
+It is not the new task/worker; It works on the same single chat lock as TextChat.
+The text is not the command to be reinterpreted, but the content that TTS will read verbatim.
+Audio remains only in limited RAM; error model/not does not replay operation.
 """
 from base64 import b64decode
 from threading import Event, Lock
@@ -17,7 +17,7 @@ SPEECH_MODEL = 'gemini-3.8-flash-lite-tts'
 
 
 class GeminiSpeech:
-    """Bir HTTP sentezi ve en çok 60 s PCM; Stop kabulü gerçek bitiş değildir."""
+    """One HTTP synthesis and up to 60s PCM; Accepting a stop is not a real finish."""
 
     def __init__(self, *, usage: GeminiUsage | None = None):
         self._usage = usage
@@ -26,7 +26,7 @@ class GeminiSpeech:
         self._finished = self._http_active = False
 
     def stop(self) -> str | None:
-        """Senkron HTTP anında kesilemez; gelen PCM Stop sonrası teslim edilmez."""
+        """Synchronous HTTP cannot be interrupted on the fly; It is not delivered after incoming PCM Stop."""
         with self._gate:
             if self._finished:
                 return None
@@ -34,7 +34,7 @@ class GeminiSpeech:
             return 'speech_response' if self._http_active else 'speech_completion'
 
     def run(self, text: str, sink) -> dict:
-        """Tek araçsız isteği yap; kayıt/kimlik/profil/sırlar sonuçlara eklenmez."""
+        """Make one toolless request; registration/identity/profile/secrets is not included in the results."""
         result = {'ok': False, 'completed': True, 'speech_model': SPEECH_MODEL,
                   'audio_bytes_forwarded': 0, 'audio_error': None}
         try:
@@ -45,13 +45,13 @@ class GeminiSpeech:
             if not key:
                 result['audio_error'] = 'speech_key_unavailable'
                 return result
-            # Interactions retry sayısı 0'dır; normal REST model retry/fallback
-            # politikası burada kullanılmaz. Aynı cevabı tekrar ücretlendirme.
+            # Interactions retry count is 0; normal REST model retry/fallback
+            # policy is not used here. Don't charge the same answer again.
             retry = types.HttpRetryOptions(attempts=0)
             options = types.HttpOptions(timeout=20000, retry_options=retry)
             with genai.Client(api_key=key, vertexai=False, http_options=options) as client:
-                # SDK 2.32 istemci kurulumunda 0'ı 1 yapar; Interactions ise
-                # bunu tekrar sayısı okur. Tembel resource kurulmadan düzelt.
+                # SDK 2.32 sets 0 to 1 in client installation; If Interactions
+                # the number of repetitions reads this. Fix it without installing lazy resource.
                 retry.attempts = 0
                 with self._gate:
                     if self._stop.is_set():
@@ -91,13 +91,13 @@ class GeminiSpeech:
                         result['audio_error'] = 'playback_unavailable'
                         return result
                     result['audio_bytes_forwarded'] += len(chunk)
-                    # En çok 1 s'lik parçalar gerçek zaman hızında akar; mevcut
-                    # 20 s Web Audio kuyruğu büyük tek yanıtla taşırılmaz.
+                    # At most 1 s chunks stream at real-time speed; available
+                    # The 20 s Web Audio queue is not overrun by a single large response.
                     if self._stop.wait(len(chunk) / 48000):
                         return result
                 result['ok'] = True
         except Exception:
-            result['audio_error'] = 'speech_unavailable'  # Ham SDK metni sır içerebilir.
+            result['audio_error'] = 'speech_unavailable'  # Raw SDK text may contain secrets.
         finally:
             with self._gate:
                 if self._stop.is_set():

@@ -1,7 +1,7 @@
-"""Mikrofon PCM'ini gerçek SDK/sentetik socket ile dene; cihaz ve API açılmaz.
+"""Try the microphone PCM with the real SDK/synthetic socket; The device and API are not opened.
 
-Geçici notlar aynı core hattından yürür. Transkript yoksa araç başlamamalı,
-ses/metin kapsam değişimi eski checkpoint'i kullanmamalıdır.
+Temporary notes follow the same core line. If there is no transcript, the tool should not start.
+voice/text scope change should not use the old checkpoint.
 """
 import asyncio
 from base64 import b64encode
@@ -18,10 +18,10 @@ from test_native_bridge import bridge
 
 
 def test_mic_pcm_uses_explicit_activity_and_input_transcript(socket):
-    socket.frames = [{"setupComplete": {}}, {"serverContent": {"inputTranscription": {"text": "Merhaba"}}},
+    socket.frames = [{"setupComplete": {}}, {"serverContent": {"inputTranscription": {"text": "Hello"}}},
                      frame("Hello", complete=True)]
     report = asyncio.run(probe_live_text('', 'future-live', audio_input=b'\x00\x00' * 3200))
-    assert report['ok'] and report['input_text'] == 'Merhaba'
+    assert report['ok'] and report['input_text'] == 'Hello'
     setup = socket.sent[0]['setup']
     assert setup['realtimeInputConfig']['automatic_activity_detection']['disabled']
     assert 'inputAudioTranscription' in setup

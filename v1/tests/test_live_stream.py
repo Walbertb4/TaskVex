@@ -1,7 +1,7 @@
-"""Sınırlı mikrofon akışını gerçek SDK ve sentetik socket ile doğrula.
+"""Verify limited microphone stream with real SDK and synthetic socket.
 
-Gerçek hesap, mikrofon veya kullanıcı notu kullanılmaz. VAD setup'ı, parça
-sırası, Stop ve transkript güvenliği üretim kodundan geçer.
+No real account, microphone or user notes are used. VAD setup, part
+The sequence, Stop, and transcript security go through the production code.
 """
 import asyncio
 from base64 import urlsafe_b64decode
@@ -50,13 +50,13 @@ def test_stream_queue_validates_order_size_and_backpressure():
 def test_stream_sends_with_explicit_activity_boundary(socket):
     async def scenario():
         stream = LiveInput()
-        socket.frames = [{'setupComplete':{}}, {'serverContent':{'inputTranscription':{'text':'Merhaba'}}}, frame('Hello', complete=True)]
+        socket.frames = [{'setupComplete':{}}, {'serverContent':{'inputTranscription':{'text':'Hello'}}}, frame('Hello', complete=True)]
         task = asyncio.create_task(probe_live_text('', 'future-live', audio_input=stream))
         while not stream.ready:
             await asyncio.sleep(.001)
         assert stream.feed(0, b'\xff' * 3200)
         report = await task
-        assert report['ok'] and report['input_text'] == 'Merhaba'
+        assert report['ok'] and report['input_text'] == 'Hello'
         assert stream.closed and not stream.ready
         return report
     asyncio.run(scenario())
@@ -123,10 +123,10 @@ def test_explicit_stream_end_uses_ordered_activity_end():
 
 @pytest.mark.parametrize('sent,final', [(False, False), (True, False), (True, True)])
 def test_idle_timeout_identifies_input_progress_without_audio_content(socket, monkeypatch, sent, final):
-    """25 s sınırını küçültmeden aynı dalı kısa sentetik beklemeyle dene.
+    """Try the same branch with a short synthetic wait without reducing the 25 s limit.
 
-    Hiç PCM gitmemesi, PCM gidip transkript gelmemesi ve kesin transkript
-    sonrası sessizlik ayrı kanıttır; sağlayıcı arızası olduğu varsayılmaz.
+    No PCM, PCM and no transcript, and definitive transcript
+    The silence afterwards is further evidence; Provider failure is not assumed.
     """
     from app.session import live_probe
     monkeypatch.setattr(live_probe, 'LIVE_IDLE_SECONDS', .08)
@@ -190,7 +190,7 @@ def test_native_stream_envelope_rejects_before_dispatch(bridge, monkeypatch):
 
 
 def test_thought_only_does_not_close_active_microphone(socket, monkeypatch):
-    """İşitilmeyen model düşüncesi devam eden kullanıcı girişini kesmemeli."""
+    """The thought of an inaudible pattern should not interrupt ongoing user input."""
     from app.session import live_probe
     original = live_probe._next_message
     checks = []
@@ -207,7 +207,7 @@ def test_thought_only_does_not_close_active_microphone(socket, monkeypatch):
     monkeypatch.setattr(live_probe, '_next_message', next_message)
     socket.frames = [{'setupComplete': {}},
         {'serverContent': {'modelTurn': {'parts': [{'text': 'Internal', 'thought': True}]}}},
-        frame('Merhaba', complete=True)]
+        frame('Hello', complete=True)]
 
     async def scenario():
         task = asyncio.create_task(probe_live_text('', 'future-live', audio_input=stream))
@@ -215,14 +215,14 @@ def test_thought_only_does_not_close_active_microphone(socket, monkeypatch):
             await asyncio.sleep(.001)
         assert stream.feed(0, bytes(3200))
         result = await task
-        assert result['ok'] and result['text'] == 'Merhaba' and stream.closed
+        assert result['ok'] and result['text'] == 'Hello' and stream.closed
     asyncio.run(scenario())
     assert checks
 
 
-@pytest.mark.parametrize('final_text', ['Notlarimi listele', None])
+@pytest.mark.parametrize('final_text', ['List my notes', None])
 def test_final_transcript_closes_old_ingress_before_model_thinks(socket, final_text):
-    """Sonraki PCM eski tura gitmez; yanıtı iptal etmek için Stop kullanılmaz."""
+    """The next PCM does not go to the old round; Stop is not used to cancel the response."""
     async def scenario():
         stream = LiveInput()
         transcription = {'finished': True}
@@ -236,9 +236,9 @@ def test_final_transcript_closes_old_ingress_before_model_thinks(socket, final_t
         assert stream.feed(0, bytes(3200))
         assert await asyncio.to_thread(socket.waiting.wait, 2)
         assert stream.closed and not stream.feed(1, b'\x01\x00' * 1600)
-        assert not task.done()  # Model yanıtı beklenir; giriş sonu Stop değildir.
+        assert not task.done()  # Model response is expected; The entry end is not Stop.
         socket.frames.append(frame('Confirmed', complete=True))
-        # Fixture boş recv'de kasıtlı beklediğinden sonuç yerine kontrollü temizle.
+        # Since Fixture expects intentional in empty recv, controlled clear instead of result.
         task.cancel()
         await task
     asyncio.run(scenario())
@@ -257,7 +257,7 @@ def test_wake_only_turn_finishes_without_tool_or_model_answer(socket, text):
 
 
 def test_final_transcript_keeps_the_real_reply_alive(socket, monkeypatch):
-    """Girişin kapanışı gerçek model yanıtını iptal etmez."""
+    """Closing the input does not cancel the actual model response."""
     from app.session import live_probe
     original = live_probe._next_message
     stream = LiveInput()
@@ -272,7 +272,7 @@ def test_final_transcript_keeps_the_real_reply_alive(socket, monkeypatch):
 
     monkeypatch.setattr(live_probe, '_next_message', checked)
     socket.frames = [{'setupComplete': {}},
-        {'serverContent': {'inputTranscription': {'text': 'Merhaba', 'finished': True}}},
+        {'serverContent': {'inputTranscription': {'text': 'Hello', 'finished': True}}},
         frame('Reply survived', complete=True)]
 
     async def scenario():
@@ -286,7 +286,7 @@ def test_final_transcript_keeps_the_real_reply_alive(socket, monkeypatch):
 
 
 def test_final_transcript_flushes_audio_before_waiting_for_reply(socket, monkeypatch):
-    """Sunucu EOS gelmeden yanıtlamazsa giriş kapatıp beklemek 25 s kilit yaratır."""
+    """If the server does not respond before EOS arrives, logging in and waiting 25 seconds will create a lock."""
     from google.genai.live import AsyncSession
     from app.session import live_probe
     original = AsyncSession.send_realtime_input
@@ -297,7 +297,7 @@ def test_final_transcript_flushes_audio_before_waiting_for_reply(socket, monkeyp
             socket.frames.append(frame('Reply after flush', complete=True))
     monkeypatch.setattr(AsyncSession, 'send_realtime_input', send)
     socket.frames = [{'setupComplete': {}}, {'serverContent': {
-        'inputTranscription': {'text': 'Merhaba', 'finished': True}}}]
+        'inputTranscription': {'text': 'Hello', 'finished': True}}}]
     socket.stall = True
     async def scenario():
         stream = LiveInput()
@@ -313,10 +313,10 @@ def test_final_transcript_flushes_audio_before_waiting_for_reply(socket, monkeyp
 
 
 def test_fourteen_packets_and_two_interim_transcripts_end_without_final_flag(socket, monkeypatch):
-    """Kullanıcının 14 PCM/2 olay gözlemi: ara transkript final sayılmadan bitir.
+    """User observation of event 14 PCM/2: finish the intermediate transcript before it is considered final.
 
-    Sentetik sunucu cevabı yalnız açık activity_end sonrasında verir. Gerçek
-    sağlayıcı arızasının yeniden üretimi değil, yeni protokol kabulüdür.
+    The synthetic server returns the response only after explicit activity_end. real
+    it is not a reproduction of provider failure, but an acceptance of a new protocol.
     """
     from google.genai.live import AsyncSession
     from app.session import live_probe
@@ -342,8 +342,8 @@ def test_fourteen_packets_and_two_interim_transcripts_end_without_final_flag(soc
         monkeypatch.setattr(AsyncSession, 'send_realtime_input', send)
         monkeypatch.setattr(live_probe, '_next_message', receive)
         socket.frames = [{'setupComplete': {}},
-            {'serverContent': {'inputTranscription': {'text':'Mer'}}},
-            {'serverContent': {'inputTranscription': {'text':'haba'}}}]
+            {'serverContent': {'inputTranscription': {'text':'Hel'}}},
+            {'serverContent': {'inputTranscription': {'text':'lo'}}}]
         stream = LiveInput()
         task = asyncio.create_task(probe_live_text('', 'future-live', audio_input=stream))
         while not stream.ready:
@@ -352,15 +352,15 @@ def test_fourteen_packets_and_two_interim_transcripts_end_without_final_flag(soc
             assert stream.feed(sequence, bytes(3200))
         assert stream.feed(14, None)
         report = await asyncio.wait_for(task, 2)
-        assert report['ok'] and report['input_text'] == 'Merhaba'
+        assert report['ok'] and report['input_text'] == 'Hello'
         assert report['input_boundary'] == 'manual_activity' and report['input_sent_packets'] == 14
         assert report['input_end_sent_ms'] is not None and socket.opened == 1
     asyncio.run(scenario())
 
 
-@pytest.mark.parametrize('text,word', [('Rex list my notes', 'Vex'), ('Veks merhaba', 'Vex'), ('Rex', 'Computer')])
+@pytest.mark.parametrize('text,word', [('Rex list my notes', 'Vex'), ('Veks hello', 'Vex'), ('Rex', 'Computer')])
 def test_wake_variation_with_task_or_custom_profile_keeps_reply(socket, text, word):
-    """Yalnız-hitap optimizasyonu gerçek isteği ya da özel profili yutamaz."""
+    """Solo-target optimization cannot swallow the actual request or custom profile."""
     socket.frames = [{'setupComplete': {}},
         {'serverContent': {'inputTranscription': {'text': text, 'finished': True}}},
         frame('Real reply', complete=True)]

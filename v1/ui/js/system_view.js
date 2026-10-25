@@ -1,6 +1,6 @@
-/** Yerel sistem görünümünü ortak UI tick'inden yeniler; ölçümün sahibi Python'dur.
- * Ayrı örnekleyici/thread veya görev mutasyonu yoktur. Ağ/model durumu bu yerel
- * ölçümleri silmez; gecikmiş/başarısız ölçüm güncelmiş gibi gösterilmez. */
+/** Refreshes the local system view from the common UI tick; The measurement is owned by Python.
+ * No separate sampler/thread or task mutation. Network/model status in this locale
+ * does not delete measurements; A delayed/failed measurement will not be displayed as up-to-date. */
 import {emit,isBackendAvailable} from './api.js';
 import {setTelemetry,setNetwork} from './connections.js';
 let started=false,pending=false,closed=false,lastAttempt=-Infinity,lastSuccess=-Infinity,sample=-Infinity;

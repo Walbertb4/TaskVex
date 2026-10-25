@@ -1,7 +1,7 @@
-"""REST TTS ve Stop: gerçek SDK, geçici notlar ve yalnız sentetik HTTP/PCM.
+"""REST TTS and Stop: real SDK, temps and synthetic only HTTP/PCM.
 
-Ses hatası tamamlanmış metni/araç sonucunu bozmaz; hiçbir gerçek hesap veya
-fiziksel cihaz denenmez. Native test, UI teslimini ayrıca doğrular.
+The audio error does not corrupt the completed text/tool result; no real account
+physical device is not tested. Native testing further validates UI delivery.
 """
 from base64 import b64encode
 from concurrent.futures import ThreadPoolExecutor
@@ -18,14 +18,14 @@ from test_gemini import transport, reply, call, stored_notes
 
 
 def audio(data=bytes(480), **fields):
-    """Interactions ayrıştırıcısına sınırlı mono PCM yanıtı ver."""
+    """Give limited mono PCM response to Interactions parser."""
     return {'id':'test-tts', 'status':'completed', 'steps':[{'type':'model_output',
         'content':[{'type':'audio', 'mime_type':'audio/l16', 'sample_rate':24000,
                     'data':b64encode(data).decode(), **fields}]}]}
 
 
 def test_reply_read_once_without_tools_and_preserved_mutation(transport, taskvex_home):
-    transport.responses = [reply([call()]), reply([{'text':'Not eklendi.'}]), audio()]
+    transport.responses = [reply([call()]), reply([{'text':'Add a notendi.'}]), audio()]
     delivered = []
     with create_core() as core:
         chat = TextChat(core, audio_sink=lambda *args: delivered.append(args) or True)
@@ -40,7 +40,7 @@ def test_reply_read_once_without_tools_and_preserved_mutation(transport, taskvex
         assert len(transport.requests) == 3
         body = transport.requests[-1]
         assert body['model'] == SPEECH_MODEL and body['store'] is False
-        assert body['input'][0]['content'][0]['text'] == 'Not eklendi.'
+        assert body['input'][0]['content'][0]['text'] == 'Add a notendi.'
         assert 'tools' not in body and body['response_format']['sample_rate'] == 24000
         assert chat.close()
 

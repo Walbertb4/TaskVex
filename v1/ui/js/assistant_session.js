@@ -1,6 +1,6 @@
-/** Tek masaüstü sohbet yaşam döngüsü: mikrofon, wake, yanıt ve Stop.
- * Birbirini iptal eden istek/ses kimlikleri birlikte tutulur; ikinci oturum veya
- * mikrofon sahibi kurulmaz. DOM kabuğu shell.js, PCM I/O mevcut adaptörlerdedir. */
+/** Single desktop chat lifecycle: microphone, wake, reply and stop.
+ * request/voice IDs that cancel each other are kept together; second session or
+ * microphone owner is not installed. DOM shell shell.js, PCM I/O are available adapters. */
 import { emit, addLog, setConnectionStatus, isBackendAvailable, sanitizeError, createPendingOperation } from './api.js';
 import { msg, say, user, shutdown } from './shell.js';
 import { uniqueRecordId } from './schema.js';
@@ -14,8 +14,8 @@ import { setSessionTokens } from './connections.js';
 import { applyClockSnapshot, canSendClockText, setClocksChatLock } from './clocks.js';
 import { connectNativeNotes, setNotesChatLock, canSendNativeText } from './notes.js';
 
-// REST ağ turu retry/fallback ile uzayabilir. Süre aşımı iptal/başarı değildir;
-// geç yanıt yeni komut başlatmamalı, yeniden açılana kadar kontroller kilitlidir.
+// REST network turn can be extended by retry/fallback. Timeout is not a cancellation/success;
+// late response should not start new commands, controls are locked until reopened.
 let textBusy = false;
 let activeTextRequest = null;
 let playbackOnly = false;
@@ -23,14 +23,14 @@ let preparingAudio = false, cancelBeforeSend = false;
 let microphoneInput = null;
 let connectionRevision = 0;
 let micRevision = 0;
-// Kullanıcının On/Off tercihi; model başarısı/Stop bu değeri değiştirmez.
+// User's On/Off preference; model success/Stop does not change this value.
 let microphoneEnabled = true, nativeInitialized = false;
 let micBlocked = false, micBlockReason = null;
 let replyMicRequest = null, pendingBargeIn = null;
 let sleeping = false, sleepPending = false, wakeSession = null, preparingWake = false;
 let wakeRetryTimer = null, wakeRetryCount = 0;
 let micRecoveryCount = 0;
-// Tercih yalnız bu sohbetin RAM'inde; saniye ayarı diskte saklanır.
+// The choice is only in the RAM of this chat; The seconds setting is stored on disk.
 let automaticSleep = false, autoSleepTimer = null, autoSleepRevision = 0;
 const MIC_FAILURES = {
   microphone_unavailable:'Microphone unavailable or permission denied.',
@@ -50,13 +50,13 @@ const MIC_FAILURES = {
 };
 function paintMic() {
   const button = document.getElementById('micB');
-  // Düğme yalnız kullanıcı giriş tercihini gösterir. Kaynak/bağlantı hataları
-  // bu tercihi değiştirmez; ayrıntılar ayrı durum satırı ve log'da kalır.
+  // The button only displays user login preference. Source/link errors
+  // this does not change the preference; details remain in separate status line and log.
   button.classList.toggle('on', microphoneEnabled);
   button.lastChild.textContent = microphoneEnabled ? 'Microphone On' : 'Microphone Off';
   button.setAttribute('aria-pressed', String(microphoneEnabled));
   button.title = microphoneEnabled ? 'Turn microphone input off.' : 'Turn microphone input on.';
-  button.disabled = false; // Belirsizlikte bile kullanıcı tercihini Off yapabilsin.
+  button.disabled = false; // Even in uncertainty, the user can choose Off.
 }
 function cancelAutoSleep() {
   clearTimeout(autoSleepTimer); autoSleepTimer = null; autoSleepRevision++;
@@ -64,8 +64,8 @@ function cancelAutoSleep() {
 
 function scheduleAutoSleep() {
   cancelAutoSleep();
-  // Yanıt/ses/araç bitmeden veya sonuç belirsizken uyutma. Bu timer yeni
-  // model/araç çağırmaz; yalnız mevcut enterSleep yaşam döngüsünü kullanır.
+  // Don't put me to sleep before the response/sound/tool is finished or when the outcome is uncertain. This timer is new
+  // does not call model/tool; It just uses the existing enterSleep lifecycle.
   if (automaticSleep || store.sleepDelay === 0 || sleeping || sleepPending || textBusy || textOperation.uncertain || micBlocked ||
       liveMic.speaking || !nativeInitialized || !isBackendAvailable() ||
       !document.getElementById('liveLatencyTest')?.checked || !document.getElementById('mSel')?.value) return;
@@ -80,8 +80,8 @@ function scheduleAutoSleep() {
 }
 
 function returnToPersistentSleep(report, connection) {
-  // Tek adresli etkileşim gerçekten bitti: ikinci mikrofon/boşta süre açma.
-  // Unknown/aktif görevde uykuyla kilidi aşma; Stop kabulü bitiş değildir.
+  // The one-stop interaction is really over: second microphone/idle time on.
+  // Unlocked by sleep in Unknown/active duty; Accepting a stop is not an end.
   if (!automaticSleep || report?.wake_only || sleepPending || textBusy || textOperation.uncertain || !report || report.completed !== true ||
       report.unknown || connection !== connectionRevision || !nativeInitialized || !isBackendAvailable()) return false;
   enterSleep();
@@ -109,10 +109,10 @@ function cancelMic(message = 'Recording cancelled. Nothing sent.') {
   paintMic();
 }
 function blockMicrophone(message, reason = 'microphone_unavailable') {
-  // Donanım/izin/belirsizlik engeli kullanıcı tercihi değildir. Sonsuz izin
-  // isteme döngüsü yoktur; açık On işlemi veya yeni bağlantı hazırlığı gerekir.
+  // Hardware/permission/uncertainty barrier is not user preference. endless leave
+  // there is no cycle of wanting; On operation or new connection preparation is required.
   micBlocked = true; micBlockReason = reason; cancelMic(message);
-  // İzin reddinde kaynak henüz açılmamıştır; yine de hazırlık yazısı kalmamalı.
+  // In permission denial, the resource has not yet been opened; However, there should be no preparatory writing left.
   if (message) document.getElementById('textStatus').textContent = message;
   if (textBusy && getState() === 'listening') setState('thinking', true);
 }
@@ -127,16 +127,16 @@ function resetLiveAudio(pause = true) {
   cancelMic();
 }
 
-/** Hazır Live modelinde veya çalan yanıtta yerel konuşma adayı bekler.
- * Yanıtta yeni ses eski turun gerçek bitişine kadar tamponda kalır.
- * Kesin biten Stop/model hatasından sonra yalnız yeni konuşmayı bekler; eski
- * komut tekrar edilmez. Donanım/Disconnect/unknown engeli ayrıca korunur.
+/** Waits for local talk candidate in Ready Live model or ringing response.
+ * In response, the new audio remains in the buffer until the actual end of the old round.
+ * After the final Stop/model error, it only waits for the new conversation; old
+ * command is not repeated. Hardware/Disconnect/unknown barrier is also protected.
  */
 async function listenAutomatically(replyRequest = null, preserveStatus = false) {
   if (sleepPending) return;
   if (sleeping) { if (!textBusy) void listenForWake(); return; }
-  // Stay asleep tek çağrılık giriş açar; yanıt/araç sırasında arkadaşların
-  // konuşmasını barge-in (yanıtı kesen yeni istek) olarak yakalama.
+  // Stay asleep opens a one-time login; friends during reply/tool
+  // Capturing speech as barge-in (new request interrupting response).
   if (automaticSleep && replyRequest) return;
   if (!microphoneEnabled || micBlocked || !nativeInitialized || !isBackendAvailable() || (textBusy && (!activeTextRequest || replyRequest !== activeTextRequest)) ||
       textOperation.uncertain || liveMic.active ||
@@ -150,8 +150,8 @@ async function listenAutomatically(replyRequest = null, preserveStatus = false) 
     const started = await liveMic.prepareStream(code => {
       handleLiveMicFailure(code, revision);
     }, getAudioDeviceId('dIn'), speaking => {
-      // Yalnız mevcut mikrofonun yerel enerji geçişi görünümü etkiler.
-      // Sessizce hazır beklemek listening değildir; model yanıtında speaking korunur.
+      // Only the local energy transition of the current microphone affects the appearance.
+      // Standing silently at attention is not listening; Speaking is preserved in the model response.
       if (revision !== micRevision || !microphoneEnabled || textOperation.uncertain) return;
       if (speaking) { cancelAutoSleep(); setState('listening', true); }
       else {
@@ -167,13 +167,13 @@ async function listenAutomatically(replyRequest = null, preserveStatus = false) 
     liveMic.waitForSpeech(() => {
       if (revision !== micRevision || !microphoneEnabled) return;
       cancelAutoSleep();
-      // Yanıt bittiyse aynı dinleyici artık boşta çalışır; closure içindeki
-      // eski request_id yeni konuşmayı yanlışlıkla engellememeli.
+      // If the response is finished, the same listener now idles; in closure
+      // The old request_id should not accidentally block the new conversation.
       const target = replyMicRequest;
       if (target) {
         if (activeTextRequest !== target || !textBusy || pendingBargeIn) return;
-        // Yeni ses yalnız RAM'de bekler. Eski turun iptal kabulü, gerçek
-        // bitişi değildir; araç sonucu belirsizse ikinci komut gönderilmez.
+        // The new sound only sits in RAM. Acceptance of cancellation of old turn, real
+        // It is not the end; If the tool result is uncertain, the second command is not sent.
         pendingBargeIn = {requestId:target, revision, connection:connectionRevision};
         liveTranscript.interrupt(target);
         liveAudio.stop(target);
@@ -211,8 +211,8 @@ function handleLiveMicFailure(code, revision) {
 function settleMicrophoneFailure(report, connection) {
   if (!micBlocked || connection !== connectionRevision) return;
   const label = document.getElementById('textStatus'), reason = micBlockReason;
-  // Yalnız kesin bitmiş turun geçici kuyruk/taşıma kaybından sonra yeni
-  // boş dinleyici aç. Eski ses/komut tekrar edilmez; izin/unknown aşılmaz.
+  // Only after temporary tail/carriage loss of the final completed turn
+  // open empty listener. The old sound/command is not repeated; permission/unknown impenetrable.
   if (report?.completed === true && !report.unknown && !textOperation.uncertain && micRecoveryCount < 2 &&
       ['stream_backpressure','stream_rejected','wake_bridge_rejected'].includes(reason)) {
     micRecoveryCount++; micBlocked = false; micBlockReason = null;
@@ -237,14 +237,14 @@ window.addEventListener('taskvex-sleep-delay-changed', scheduleAutoSleep);
 
 function handleWakeFailure(code, revision) {
   if (revision !== micRevision) return;
-  // Devirden sonra bu kaynak artık Live girişidir. Yerel wake hatası diye
-  // kilitleyip aktif turu sahipsiz bırakma; aynı normal hata yolundan bitir.
+  // After the handover, this source is now the Live input. Local wake error
+  // locking and leaving the active turn unattended; finish in the same normal error path.
   if (!sleeping && !sleepPending) { handleLiveMicFailure(code, revision); return; }
   code = Object.hasOwn(MIC_FAILURES,code) ? code : 'wake_bridge_rejected';
   const retryable = ['wake_backpressure','wake_prefix_expired','wake_alignment_failed','wake_bridge_rejected'].includes(code);
   addLog('Local wake: ' + code + '. Previous input discarded.', true);
-  // Yalnız henüz Live'a geçmemiş yerel dinleme tekrar hazırlanabilir.
-  // Araç/model isteği veya eski PCM tekrar edilmez; bütçe her uykuda iki kezdir.
+  // However, local listening that has not yet switched to Live can be prepared again.
+  // Tool/model request or old PCM is not repeated; budget is twice every sleep.
   if (retryable && sleeping && microphoneEnabled && !textBusy && !textOperation.uncertain && wakeRetryCount < 2) {
     cancelMic();
     const retryRevision = micRevision, connection = connectionRevision;
@@ -329,8 +329,8 @@ async function listenForWake() {
       }
       sleeping = false;
       document.getElementById('sleep').textContent = 'Sleep';
-      // Off sırasında kabul edilmiş wake, Off tercihini değiştirmez ve
-      // eski kaynağın sesini yeni bir model isteğine dönüştürmez.
+      // Wake accepted during Off does not change the Off preference and
+      // It does not convert the old source's audio into a new pattern request.
       if (revision !== micRevision || wakeSession !== session || !microphoneEnabled || !liveMic.active) {
         setState('idle', true); paintMic(); return;
       }
@@ -363,7 +363,7 @@ function enterSleep() {
     micBlocked = false; micBlockReason = null;
   }
   resetLiveAudio(false);
-  // İstek gönderildi diye SLEEPING gösterme; host kabulü listenForWake'de.
+  // Don't show SLEEPING just because the request has been sent; host acceptance at listenForWake.
   sleepPending = true; sleepOperation.begin(); paintSleepControl();
   setState('idle', true);
   document.getElementById('textStatus').textContent = 'Preparing sleep · awaiting host confirmation…';
@@ -371,7 +371,7 @@ function enterSleep() {
   void listenForWake();
 }
 
-/** Sağlayıcı ham hatası yerine host'un güvenli kodlarını ve ölçülen süreyi göster. */
+/** Show host's safe codes and measured time instead of provider raw error. */
 function textDiagnostics(report) {
   if (!report) return '';
   const parts = [];
@@ -391,11 +391,11 @@ function textDiagnostics(report) {
   return parts.length ? ' · ' + parts.join(' · ') : '';
 }
 
-/** Tek konuşmayı gerçek zamanlı gönder; setup onayı gelmeden mikrofonu akıtma.
- * Uzun start Promise'i gerçek tur bitişidir. Kısa feed çağrıları bu kilidi
- * beklemez. Her parça aynı istek kimliğine bağlıdır; geç callback yeni tura
- * taşınamaz. İlk yanıtta eski giriş kapanır; yanıt dinleyicisinin yeni
- * ön tamponu eski turun finally temizliğinden etkilenmez.
+/** Send single conversation in real time; Do not stream the microphone before setup confirmation.
+ * The long start Promise is the actual turn finish. Short feed calls unlock this
+ * does not wait. Each fragment is linked to the same request ID; late callback to new round
+ * cannot be moved. At the first response the old entry closes; response listener new
+ * The front bumper is not affected by the finally cleaning of the old turn.
  */
 async function streamMicrophone(requestId) {
   const result = emit('live_audio_start', {request_id:requestId});
@@ -403,8 +403,8 @@ async function streamMicrophone(requestId) {
   result.then(() => { finished = true; });
   let sequence = 0;
   let delivery = Promise.resolve(true);
-  // EOS (giriş sonu) Stop değildir. PCM ve son bildirim aynı sıradan geçer;
-  // Off setup'tan önce seçilirse hazır olunca yalnız EOS gönderilir.
+  // EOS (end of entry) is not a Stop. PCM and final notification pass in the same sequence;
+  // If Off is selected before setup, only EOS will be sent when ready.
   const input = {ready:false, ending:!microphoneEnabled, ended:false, finish() {
     this.ending = true;
     if (!this.ready || this.ended) return;
@@ -443,8 +443,8 @@ async function streamMicrophone(requestId) {
           return ack.ok;
         }, () => {
           if (activeTextRequest === requestId) {
-            // Süre sınırı yalnız bu girişin sonudur; kullanıcı On tercihi veya
-            // model yanıtı iptal edilmez. EOS, bekleyen PCM'den sonra gider.
+            // The time limit is the end of this entry only; On user preference or
+            // The model response is not canceled. EOS goes after pending PCM.
             input.finish();
           }
         });
@@ -464,9 +464,9 @@ async function streamMicrophone(requestId) {
   }
 }
 
-/** Tek Shutdown yolu: düğme ve model aynı host kaynak temizliğini kullanır.
- * Araç sonucunun kabulü pencereyi kapatmaz. Native ret/unknown görünür kalır;
- * otomatik tekrar veya işletim sistemini kapatma komutu yoktur.
+/** Single Shutdown way: button and model use the same host resource cleanup.
+ * Accepting the tool result does not close the window. Native ret/unknown remains visible;
+ * there is no auto-repeat or operating system shutdown command.
  */
 export async function shutdownApplication() {
   cancelAutoSleep();
@@ -489,10 +489,10 @@ export async function shutdownApplication() {
   return true;
 }
 
-// Yeni scheduler yok: aynı sayaç snapshot poll'u yalnız boşta bu kuyruğu kontrol eder.
+// There is no new scheduler: the same counter checks the snapshot poll but this queue is idle.
 const pendingClockAnnouncements = new Map();
 export function flushClockAnnouncement(snapshot = null) {
-  // UI’dan silinen veya yeniden başlatılan kaydın bekleyen bildirimi düşer.
+  // The pending notification of the deleted or restarted recording drops from the UI.
   if(snapshot)for(const [id,pending] of pendingClockAnnouncements){
     if(!snapshot.clocks.some(c=>c.id===id&&c.generation===pending.generation))pendingClockAnnouncements.delete(id);
   }
@@ -502,7 +502,7 @@ export function flushClockAnnouncement(snapshot = null) {
   const [id, pending] = pendingClockAnnouncements.entries().next().value;
   pendingClockAnnouncements.delete(id);
   if (pending.connection !== connectionRevision) return;
-  // Tek deneme: hata/Stop'ta otomatik yeniden gönderme yok; backend gerçek bitişi doğrular.
+  // Single try: no automatic resubmit on error/Stop; the backend verifies the actual ending.
   void sendText('', null, {id, generation:pending.generation});
 }
 
@@ -519,7 +519,7 @@ export async function sendText(text = null, audio = null, notification = null) {
     }
     if (liveMic.active && !audio?.stream) {
       if (!liveMic.waitingForSpeech) return;
-      cancelMic(); // Yazılı mesaj bekleyen mikrofonla yarışmaz; yanıt sonrası yeniden açılır.
+      cancelMic(); // The text message does not compete with the waiting microphone; It reopens after the response.
     }
     const liveTest = !!notification || document.getElementById('liveLatencyTest')?.checked === true;
     let outputDevice = '', outputProblem = null;
@@ -529,7 +529,7 @@ export async function sendText(text = null, audio = null, notification = null) {
         if (audio?.stream) blockMicrophone(undefined, 'output_unavailable');
         document.getElementById('textStatus').textContent = 'Select an available speaker in Audio settings.'; return;
       }
-      outputProblem = 'output_device_unavailable'; // Metin sohbeti hoparlör hatasıyla iptal edilmez.
+      outputProblem = 'output_device_unavailable'; // Text chat is not canceled by speaker error.
     }
     if (!liveTest && !canSendNativeText()) {
       document.getElementById('textStatus').textContent = 'A note operation is pending or unknown. Finish it, or reopen the app to check notes.';
@@ -549,8 +549,8 @@ export async function sendText(text = null, audio = null, notification = null) {
     label.textContent = liveTest ? 'Live session…' : 'Thinking…';
     if (!audio && !notification) user(v);
     setState(audio?.stream && liveMic.speaking ? 'listening' : 'thinking', !!audio?.stream);
-    // Live: 120 s tur + araç temizliği/çalma payı. Bu UI bekleme sınırıdır;
-    // aşımı gerçek iptal veya güvenli yeniden deneme anlamına gelmez.
+    // Live: 120 s of turns + tool cleaning/steal allowance. This is the UI wait limit;
+    // Timeout does not mean actual cancellation or safe retry.
     let revision = textOperation.begin(liveTest ? 210000 : 240000);
     const replyConnectionRevision = connectionRevision;
     const replyRequestId = activeTextRequest;
@@ -630,8 +630,8 @@ export async function sendText(text = null, audio = null, notification = null) {
           ? ' · Selected speaker unavailable. Choose an available speaker or System default in Audio settings.'
           : problem ? ' · audio unavailable: ' + sanitizeError(problem) : ' · playback ' + audio.status;
       } else if (!liveTest) {
-        // Araçlı model turu bitmiştir; yalnız host'un sakladığı cevabı okut.
-        // TTS hatası metni/not sonucunu bozmaz ve modeli yeniden çağırmaz.
+        // The drive-in model turn is over; Just read the response stored by the host.
+        // TTS error does not corrupt the text/note result and does not call the model again.
         if (cancelBeforeSend || replyConnectionRevision !== connectionRevision) {
           liveAudio.close(); label.textContent += ' · playback stopped';
         } else if (liveAudio.muted || outputProblem) {
@@ -657,8 +657,8 @@ export async function sendText(text = null, audio = null, notification = null) {
               : playbackProblem ? ' · audio unavailable: ' + sanitizeError(playbackProblem) : ' · playback ' + playback.status);
         }
       }
-      // Çalma beklenirken anahtar/model/Disconnect değişmiş olabilir; eski
-      // başarılı metin yeni bağlantıyı online gösteremez.
+      // The key/model/Disconnect may have changed while waiting for playback; old
+      // The successful text cannot show the new link online.
       if (replyConnectionRevision === connectionRevision)
         setConnectionStatus('online', (liveTest ? 'LAST LIVE TEST · ' : 'TEXT · ') + report.model);
       if (!audio && !notification && inp?.value === v) inp.value = '';
@@ -680,11 +680,11 @@ export async function sendText(text = null, audio = null, notification = null) {
       if (report?.tool_results?.length) label.textContent += ' Earlier tool results may already be saved; check notes before retrying.';
       setConnectionStatus('offline', liveTest ? 'LIVE TEST FAILED' : 'TEXT REQUEST FAILED');
     }
-    // Native tur ve varsa çalma birlikte bitti; eski Stop yeni isteğe taşınmaz.
+    // Native turn and playback, if any, ended together; The old Stop is not carried over to the new request.
     if (liveTest) liveTranscript.finish(activeTextRequest, report,
       report?.stopped || report?.code === 'live_interrupted' ? 'interrupted' : report?.ok ? 'complete' : 'failed');
-    // Not yenilemesi de await içerir. Dinleyiciyi boşta moda geçirmek ve eski
-    // kimliği bırakmak bu beklemeden sonra, arada await olmadan yapılır.
+    // Note refresh also includes await. Putting the listener into idle mode and
+    // Dropping the ID is done after this wait, without await in between.
     if (!liveTest || report?.tool_results?.some(tool => tool.name?.startsWith('notes.'))) await connectNativeNotes();
     if (!textOperation.isCurrent(revision)) return;
     const handoff = pendingBargeIn;
@@ -699,20 +699,20 @@ export async function sendText(text = null, audio = null, notification = null) {
     activeTextRequest = null;
     if (liveStop) { liveStop.disabled = true; liveStop.textContent = originalStopLabel; }
     textOperation.finish();
-    // Başarısız model yanıtından önce de not kaydedilmiş olabilir. Setter ile
-    // yazmak yerine tek backend otoritesinden oku; outbound mutasyon üretme.
+    // A note may also have been recorded before the failed model response. with Setter
+    // instead of writing, read from a single backend authority; producing outbound mutation.
     setNotesChatLock(false); setClocksChatLock(false);
     setState('idle');
     controls.forEach(el => { el.disabled = false; });
     textBusy = false;
     settleMicrophoneFailure(report, replyConnectionRevision);
-    // Kullanıcının komutuna Vex yanıt verdi ve yukarıdaki finish çalmayı bitirdi.
-    // Stop, yeni araya giriş veya ses hatası bekleyen uyku komutunu uygulamaz.
+    // Vex responded to the user's command and finished playing the above finish.
+    // Stop does not execute the sleep command pending a new interrupt or audio error.
     const sleepReplyFinished = result.ok && report?.ok && report.completed === true && !cancelBeforeSend && !handoff && !report.audio_error && !playbackProblem &&
       replyConnectionRevision === connectionRevision;
     if (sleepReplyFinished && report.shutdown_requested && report.request_id === replyRequestId) {
-      // Güncel turun gerçek yanıt/çalma bitişi; Stop, yeni ses veya bağlantı
-      // değişimi eski kapanış isteğini geçersiz kılar. Yeni mesaj yarışmasın.
+      // The actual response/ring end of the current round; Stop, new sound or connection
+      // The change overrides the old closing request. New message contest.
       textBusy = true;
       controls.forEach(el => { el.disabled = true; });
       const closed = await shutdownApplication();
@@ -725,7 +725,7 @@ export async function sendText(text = null, audio = null, notification = null) {
     if (sleepReplyFinished && report.sleep_requested) {
       enterSleep();
     } else if (returnToPersistentSleep(report, replyConnectionRevision)) {
-      // Kaynaklar enterSleep tarafından bırakıldı; normal dinlemeye dönme.
+      // Sources left by enterSleep; return to normal listening.
     } else if (canHandoff && handoff.revision === micRevision && handoff.connection === connectionRevision && microphoneEnabled && liveMic.active) {
       replyMicRequest = pendingBargeIn = null;
       void sendText('', {stream:true});
@@ -733,8 +733,8 @@ export async function sendText(text = null, audio = null, notification = null) {
       label.textContent += ' · Listening for speech';
       setState('idle', true);
     } else if (report?.completed === true && replyConnectionRevision === connectionRevision) {
-      // Yalnız kesin bitişten sonra boşta yerel dinleme açılır; eski ses,
-      // başarısız araç veya aynı model mesajı yeniden gönderilmez.
+      // Only after the final end, idle local listening is turned on; old voice,
+      // Failed tool or same model message will not be sent again.
       void listenAutomatically(null, true);
     }
     scheduleAutoSleep();
@@ -749,10 +749,10 @@ export async function sendText(text = null, audio = null, notification = null) {
   const res = await emit('text', v);
   if (!res || !res.ok) {
     if (m) {
-      m.classList.add('bad', 'gönderilemedi');
-      m.dataset.status = 'gönderilemedi';
-      m.title = 'gönderilemedi';
-      m.textContent += ' (gönderilemedi)';
+      m.classList.add('bad', "could not be sent");
+      m.dataset.status = "could not be sent";
+      m.title = "could not be sent";
+      m.textContent += " (could not be sent)";
     }
     return;
   }
@@ -760,7 +760,7 @@ export async function sendText(text = null, audio = null, notification = null) {
 }
 
 
-/** Köprü callback'leri durumu dışarı açmaz; aynı yaşam döngüsü sahibine teslim eder. */
+/** Bridge callbacks do not expose state; The same life cycle delivers it to its owner. */
 export function assistantReady() { nativeInitialized=true; void listenAutomatically(); }
 export function setAssistantState(k) { setState(sleeping?'sleeping':k); }
 export function enqueueClockAnnouncement(clock) {
@@ -768,8 +768,8 @@ export function enqueueClockAnnouncement(clock) {
   pendingClockAnnouncements.set(clock.id,{generation:clock.generation,connection:connectionRevision});
 }
 export function receiveAudioChunk(packet) {
-      // Kesilmiş yanıtın geç PCM'i tüketilir ama yeniden çalınmaz. Yeni
-      // istek başlayınca eski kimlik zaten normal alıcı tarafından reddedilir.
+      // The late PCM of the truncated response is consumed but not replayed. New
+      // when a new request starts, the normal receiver already rejects the old ID.
       if (pendingBargeIn?.requestId === packet?.request_id && packet?.request_id === activeTextRequest) return true;
       const accepted = liveAudio.chunk(packet);
       if (accepted && packet?.request_id === activeTextRequest && textBusy && replyMicRequest !== activeTextRequest &&
@@ -848,7 +848,7 @@ export function initAssistantControls() {
   document.getElementById('sleep')?.addEventListener('click', async () => {
     if (textBusy || sleepPending || textOperation.uncertain || !isBackendAvailable()) return;
     if (!sleeping) { enterSleep(); return; }
-    sleeping = false; // Geç sleep_start sonucu tekrar yerel dinleme başlatamaz.
+    sleeping = false; // As a result of late sleep_start, you cannot start local listening again.
     liveAudio.close();
     cancelMic();
     const button = document.getElementById('sleep');
@@ -861,8 +861,8 @@ export function initAssistantControls() {
       sleeping = true; blockMicrophone('Wake was not confirmed. Sleep remains active; try Wake again.'); return;
     }
     sleeping = false; document.getElementById('sleep').textContent = 'Sleep';
-    // Açık Wake kullanıcı eylemidir: yerel KWS hatasının micBlocked kilidi,
-    // normal Live dinlemeyi sonsuza kadar engellememeli. İzin/cihaz yeniden doğrulanır.
+    // Open Wake is user action: micBlocked lock of local KWS error,
+    // It shouldn't hinder normal Live listening forever. The permission/device is re-verified.
     micBlocked = false; micBlockReason = null; setState('idle', true); paintMic();
     document.getElementById('textStatus').textContent = 'Awake. Waiting for speech.';
     void listenAutomatically().then(scheduleAutoSleep);
@@ -881,7 +881,7 @@ export function initAssistantControls() {
     stopTask.addEventListener('click', async () => {
       pendingClockAnnouncements.clear();
       if (sleepPending) { sleepOperation.markUnknown(); return; }
-      // Stop yalnız bu turu ve eski ses tamponunu durdurur; On tercihini kapatmaz.
+      // Stop only stops this turn and the old audio buffer; It does not turn off the on preference.
       if (liveMic.active) cancelMic();
       if (!textBusy) liveAudio.close();
       if (!textBusy) { if(microphoneEnabled)void listenAutomatically(); return; }
@@ -896,13 +896,13 @@ export function initAssistantControls() {
         cancelBeforeSend = true;
         liveAudio.stop(target);
         if (preparingAudio) { cancelBeforeSend = true; return; }
-        if (playbackOnly) return; // Model bitmiştir; yalnız kalan sesi durdur.
+        if (playbackOnly) return; // The model is finished; stop the lonely voice.
         stopTask.disabled = true;
         stopTask.textContent = 'Cancellation requested…';
         const response = await emit('stop_task', { request_id: target });
         if (activeTextRequest !== target) return;
-        // İptal kabulü UI kilidini açmaz. Asıl sohbet yanıtı araçların
-        // gerçek bitişini doğruladıktan sonra kontrolleri açar.
+        // Accepting cancellation does not unlock the UI. Actual chat response tools
+        // After verifying its actual ending, it opens the controls.
         if (!response.ok) {
           stopTask.disabled = false;
           stopTask.textContent = stopLabel;

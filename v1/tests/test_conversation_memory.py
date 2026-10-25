@@ -1,7 +1,7 @@
-"""Geçici hafıza: gerçek SDK/core, sınırlı RAM ve sentetik socket kabulü.
+"""Volatile memory: real SDK/core, limited RAM and synthetic socket acceptance.
 
-Hatırlama içeriği provider history'ye veri olarak gider; yeni kullanıcı turu
-veya tool replay değildir. Bu testler gerçek modelin anlama başarısı değildir.
+The recall content goes as data to provider history; new user turn
+or tool is not replay. These tests are not the comprehension success of the real model.
 """
 import json
 from concurrent.futures import ThreadPoolExecutor
@@ -15,7 +15,7 @@ from test_live_tools import call, notes
 
 
 def histories(sent):
-    """Gerçek SDK'nin wire biçiminde yalnız bağlam aktarımını ayır."""
+    """Only reserve context transfer in the actual SDK's wire format."""
     return [message['client_content'] for message in sent if 'client_content' in message]
 
 
@@ -90,7 +90,7 @@ def test_stop_preserves_committed_note_and_memory_without_replaying_tools(socket
         try:
             future = pool.submit(chat.run_live, 'Add a temporary note', 'future-live', notes_ready=True, request_id='old')
             assert socket.waiting.wait(5)
-            assert not chat.reset_live(clear_memory=True)  # Meşgulken kayıt silinmez.
+            assert not chat.reset_live(clear_memory=True)  # The recording will not be deleted while you are busy.
             assert chat.stop('old')['accepted']
             assert future.result(5)['stopped'] and len(notes(taskvex_home)) == 1
             socket.stall = False

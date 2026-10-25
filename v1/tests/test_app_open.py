@@ -1,8 +1,8 @@
-"""apps.open sonucunu core hattında, gerçek uygulama başlatmadan dene.
+"""Try the apps.open result in core, without starting the actual application.
 
-Gözlem/Windows başlatma sınırı taklit edilir; registry, policy ve manager
-gerçektir. Çift gönderim, iptal ve belirsizlikte ek yan etki olmamalıdır.
-Gerçek Windows kabulü ayrı raporda tutulur; bu dosya kullanıcı penceresi açmaz.
+Observation/Windows startup limit is emulated; registry, policy and management
+it is real. There should be no additional side effects of double submissions, cancellations and ambiguity.
+Actual Windows adoption is kept in separate report; This file does not open a user window.
 """
 
 from concurrent.futures import ThreadPoolExecutor
@@ -19,13 +19,13 @@ from app.tools.local import apps, windows_apps
 
 
 def request(request_id="open", **changes):
-    """Kimlikleri güvenilir masaüstü girişine göre oluştur; parametre eklemeyi dene."""
+    """Generate identities based on trusted desktop login; Try adding parameters."""
     return ToolRequest(**{"request_id": request_id, "source": "desktop", "principal": "local-user",
                           "tool": "apps.open", "arguments": {"app_id": "notepad"}, **changes})
 
 
 def snapshot(running=False, visible=False, complete=True):
-    """Pencere/kimlik kanıtının biçimini koruyan kontrollü bir gözlem üret."""
+    """Produce a controlled observation that preserves the form of the proof Window/identity."""
     return {"app_id": "notepad", "running": running, "visible_window": visible,
             "processes": [{"pid": 123, "identity": "test", "created": "1"}] if running else [],
             "windows": [{"pid": 123, "hwnd": 456, "minimized": False}] if visible else [],
@@ -34,7 +34,7 @@ def snapshot(running=False, visible=False, complete=True):
 
 @pytest.fixture
 def boundary(monkeypatch):
-    """Sadece OS sınırını değiştir; çağrı sayıları ikinci başlatmayı yakalar."""
+    """Just change the OS limit; call counts capture the second launch."""
     calls = {"launch": [], "resolve": [], "observe": [], "responses": [snapshot()]}
     def observe(cancel):
         responses = calls["responses"]
@@ -54,7 +54,7 @@ def boundary(monkeypatch):
 
 
 def run(core, req):
-    """Kabul edildi durumunu değil gerçek terminal sonucu bekle."""
+    """Expect the actual terminal result, not the Accepted status."""
     return core.wait(core.submit(req).task_id, 3)
 
 

@@ -1,9 +1,9 @@
-"""Live metin/araç turu: transkripti, core sonuçlarını ve gerçek süreleri döndür.
+"""Live text/tool ​​lap: return transcript, core results and actual times.
 
-Mikrofon burada açılmaz; UI'ın sınırlı PCM klibi veya akışı aynı oturuma gider.
-Ses alıcısı varsa PCM parçaları sınırlı UI oynatıcısına
-aktarılır, yoksa atılır. Kaynak verilirse aynı socket korunur; bağımsız probe kendi kaynağını
-kapatır. İzinli araçları ModelTools üzerinden yürütür; otomatik retry yapmaz.
+The microphone does not turn on here; The UI's limited PCM clip or stream goes into the same session.
+PCM tracks to limited UI player if audio receiver is present
+transferred or discarded. If the resource is given, the same socket is maintained; independent probe its own source
+closes. Executes permissioned tools through ModelTools; It does not automatically retry.
 """
 
 import asyncio
@@ -21,14 +21,14 @@ from app.core.contracts import ContractError, TaskStatus
 from app.session.model_tools import ModelTools, NoteTargetError, assistant_control_request
 from app.storage.credentials import CredentialError, load_gemini_key
 
-# Parçaları gelmeye devam eden uzun yanıt eski 25 s toplam sürede kesilmesin.
-# Olay sessizliği ve toplam tur sınırı ayrıdır; hiçbiri tekrar gönderim yapmaz.
+# Don't cut off the old 25 s total time for the long response that continues to come in parts.
+# Event silence and total lap limit are separate; none of them resubmit.
 LIVE_TURN_SECONDS = 120
 LIVE_IDLE_SECONDS = 25
 
 
 async def _next_message(messages, sender):
-    """Gönderici hata verirse gelen yanıtı/deadline'ı beklemeden aynı turu bitir."""
+    """If the sender gives an error, finish the same round without waiting for the incoming response/deadline."""
     receiving = asyncio.create_task(anext(messages))
     try:
         if sender is not None:
@@ -47,11 +47,11 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
                           transcript_sink: Callable[[str, str, int], bool] | None = None,
                           audio_input: bytes | LiveInput | None = None, profile: dict | None = None,
                           context: str = '', voice: str | None = None) -> dict:
-    """25 s olay sessizliği / 120 s toplam tur; süre aşımı tekrar izni değildir.
+    """25 s event silence / 120 s total lap; Timeout is not a repeat permit.
 
-    first_event_ms ilk içerik/ses parçasını, first_text_ms ilk transkript/metni
-    ölçer. elapsed_ms bağlantı ve kapanış dahil toplamdır. Ses üretilmesi sağlayıcı
-    kotası tüketebilir; oynatılmaması ücretsiz olduğu anlamına gelmez.
+    first_event_ms first content/audio, first_text_ms first transcript/text
+    measures. elapsed_ms is the total including connection and closure. sound generation provider
+    may consume its quota; Just because it's not playable doesn't mean it's free.
     """
     owned = connection is None
     connection = connection or LiveConnection()
@@ -60,7 +60,7 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
               "model": model, "model_attempts": [model], "mode": "live_latency_test",
               "first_event_ms": None, "first_text_ms": None, "audio_bytes_discarded": 0,
               "audio_bytes_forwarded": 0, "audio_error": None}
-    # Bu sayılar ses/metin içeriği kaydetmeden 25 s beklemenin yerini ayırır.
+    # These numbers voice/text reserve the place to wait 25 s without saving the content.
     report.update(received_events=0, last_received_ms=None, input_final_ms=None)
     transcript: list[str] = []
     plain: list[str] = []
@@ -72,7 +72,7 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
     usage = GeminiUsage()
 
     async def publish(role: str, value: str):
-        """Birikimli metni kimlikli alıcıya ilet; ekran hatası araç sonucunu bozmaz."""
+        """Forward accumulated text to identified recipient; Screen error will not distort the tool result."""
         nonlocal sequence
         sequence += 1
         if transcript_sink:
@@ -107,15 +107,15 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
                 report["tools_enabled"] = bound_tools is not None
                 report["connect_ms"] = round((perf_counter() - started) * 1000)
                 if isinstance(audio_input, LiveInput):
-                    # Gönderme ve alma aynı socket/event loop sahibindedir.
-                    # Alınan her olaydan önce gönderici hatası da denetlenir;
-                    # sessizce ses kaybedip araç çalıştırmaya devam etmek yoktur.
+                    # Sending and receiving are on the same socket/event loop owner.
+                    # Sender error is also checked before each received event;
+                    # There is no silently losing sound and continuing to start the tool.
                     sender = asyncio.create_task(audio_input.send(session))
                 elif audio_input is None:
                     await session.send_realtime_input(text=text)
                 else:
-                    # Tek, açıkça bitirilmiş konuşma: sessizlikten niyet tahmin
-                    # edilmez. Aynı socket/Stop hattında en çok 15 saniye gönder.
+                    # A single, clearly finished speech: guessing intent from silence
+                    # It is not done. Send up to 15 seconds on the same socket/Stop line.
                     await session.send_realtime_input(activity_start=types.ActivityStart())
                     for offset in range(0, len(audio_input), 3200):
                         if stop_event and stop_event.is_set():
@@ -141,15 +141,15 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
                             return report
                     except StopAsyncIteration:
                         break
-                    # Son sağlayıcı bildirimi: toplamayız; kota/oturum toplamı değildir.
+                    # Final provider notice: we do not collect; It is not the sum of quota/session.
                     if message.usage_metadata is not None:
                         usage.observe_live(message.usage_metadata)
                     messages += 1
                     report['received_events'] = messages
                     report['last_received_ms'] = round((perf_counter() - started) * 1000)
                     if message.go_away is not None:
-                        # GoAway bir ön bildirimdir; devam eden mesajı tekrar
-                        # gönderme. Süre/deadline içinde gerçek bitişi bekle.
+                        # GoAway is a preliminary notification; Repeat ongoing message
+                        # sending Wait for the real ending in Duration/deadline.
                         connection.draining = True
                         report["goaway_received"] = True
                     if messages > 2000:
@@ -171,9 +171,9 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
                         await publish('u', report['input_text'])
                         if bound_tools:
                             bound_tools.observe_input(report['input_text'])
-                    # Yalnız ayarlı hitap bir görev değildir. İlk kesin konuşma
-                    # bitişinde/araç teklifinde kapat; modelden selam/araç bekleme.
-                    # KWS ile aynı hitap tanımı; görev cümlesi veya niyeti yorumlanmaz.
+                    # Only adjusted address is not a task. First definitive speech
+                    # Close on offer/tool; expect model greetings/tool.
+                    # Same address definition as KWS; The duty statement or intent is not interpreted.
                     wake_only = (audio_input is not None and not report['tool_results'] and
                         is_wake_only(report.get('input_text', ''), (profile or {}).get('pWake', 'Vex')))
                     if wake_only and (message.tool_call or content and (content.turn_complete or
@@ -187,16 +187,16 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
                              content.output_transcription and content.output_transcription.text or content.turn_complete or
                              any(not part.thought and (part.text or part.inline_data and part.inline_data.data)
                                  for part in ((content.model_turn.parts or []) if content.model_turn else [])))):
-                        # Bitmiş kullanıcı transkripti eski PCM kabulünü hemen kapatır;
-                        # yanıt/araç devam edebilir. Düşünce parçası bitiş değildir. Yeni barge-in ayrı kaynakta kalır.
+                        # The finished user transcript immediately closes the old PCM acceptance;
+                        # answer/tool can continue. The thought piece is not the ending. The new barge-in remains in the separate resource.
                         audio_input.close()
                         if sender:
                             sender.cancel()
                             await asyncio.gather(sender, return_exceptions=True)
                             sender = None
-                        # Final transkriptte yerel kaynak kapanırsa açık etkinliği
-                        # de kapat. Otomatik VAD kapalıyken audio_stream_end değil,
-                        # activity_end aynı socket sahibinden gönderilmelidir.
+                        # Open event if local resource is closed in final transcript
+                        # close it too. audio_stream_end is not when auto VAD is off,
+                        # activity_end must be sent from the same socket owner.
                         if audio_input.end_sent_at is None:
                             if stop_event and stop_event.is_set():
                                 raise asyncio.CancelledError
@@ -215,8 +215,8 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
                                 report.update(code="invalid_tool_call", error="Live tool call requires a non-empty id.")
                                 return report
                             try:
-                                # Transkript gelmeden modelin ses komutunu doğru
-                                # anladığı varsayılarak hiçbir araç çalıştırılmaz.
+                                # Correct the model's voice command before the transcript arrives.
+                                # No tool is operated assuming it understands.
                                 if audio_input is not None and not report.get("input_text", "").strip():
                                     report.update(code="voice_transcript_required", error="No speech transcript was confirmed; no tool was started.")
                                     return report
@@ -229,8 +229,8 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
                                 report.update(code=getattr(error, "code", "invalid_tool_call"), error="Live tool call was rejected.")
                                 return report
                             connection.calls[call.id] = task.task_id
-                            # Kabul edilen görevi beklemeden önce rapora koy:
-                            # timeout olursa gerçekleşmiş olabilecek işlem kaybolmaz.
+                            # Put the accepted task in the report before waiting:
+                            # If there is a timeout, any transaction that may have occurred will not be lost.
                             outcome = bound_tools.result(task.task_id)
                             report["tool_results"].append(outcome)
                             final = await asyncio.to_thread(bound_tools.result, task.task_id, timeout=5)
@@ -276,8 +276,8 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
                         if part.inline_data and part.inline_data.data:
                             data, mime = part.inline_data.data, part.inline_data.mime_type
                             if audio_sink and not report["audio_error"]:
-                                # Parça ve tur boyutu sınırlı; taşıma onayı
-                                # fiziksel hoparlörden ses geldiğinin kanıtı değildir.
+                                # Track and turn size limited; transport confirmation
+                                # It is not proof that sound is coming from the physical speaker.
                                 if mime != "audio/pcm;rate=24000" or len(data) % 2 or len(data) > 131072:
                                     report["audio_error"] = "invalid_pcm"
                                 elif report["audio_bytes_forwarded"] + len(data) > 2880000:
@@ -296,8 +296,8 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
                                 report["audio_bytes_discarded"] += len(data)
                             if report["first_event_ms"] is None:
                                 report["first_event_ms"] = round((perf_counter() - started) * 1000)
-                    # Extended thinking'de turn_complete tek başına bitiş
-                    # değildir; sağlayıcı IDLE bildirdiyse tamamlanmıştır.
+                    # turn_complete ending alone in extended thinking
+                    # is not; If the provider reported IDLE, it is complete.
                     status = content.interaction_status
                     finished = status == types.InteractionStatus.IDLE if status and status != types.InteractionStatus.INTERACTION_STATUS_UNSPECIFIED else bool(content.turn_complete)
                     if report["tool_results"] and "extended-thinking" in model:
@@ -306,17 +306,17 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
                         answer = "".join(transcript or plain)
                         if answer.strip():
                             report.update(ok=True, text=answer)
-                            # Gerçek model yanıtı tamamlandı. UI aynı ses kuyruğunu
-                            # boşalttıktan sonra host uyku geçişini isteyebilir;
-                            # transkripti erken kesip yerel onay uydurmayız.
+                            # The actual model response is complete. UI same audio queue
+                            # After unloading, the host may request a sleep transition;
+                            # We do not cut the transcript early and fabricate local approval.
                             report.update(assistant_control_request(report, previous_tasks))
                             return report
                         break
                 report.update(code="live_incomplete", error="Live returned no complete text transcript.")
     except asyncio.CancelledError:
-        # Ağ coroutine'ini kesmek çalışan Python aracını öldürmez. Yalnız bu
-        # turun kabul edilmiş görevlerine iptal verip gerçek sonuçlarını oku.
-        # Daha önce doğrulanmış dosya yazıları başarılı olarak korunur.
+        # Hacking the network coroutine does not kill the running Python tool. only this
+        # Cancel the accepted missions of the turn and read the real results.
+        # Previously verified file writings are successfully preserved.
         unresolved = False
         try:
             if bound_tools:
@@ -327,7 +327,7 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
                     outcome.clear()
                     outcome.update(final)
         except Exception:
-            # Core sonucu okunamazsa önceki kanıtı sakla; iptal olmuş varsayma.
+            # If the Core result is unreadable, keep the previous evidence; Don't assume it's cancelled.
             unresolved = True
         unresolved |= any(not TaskStatus(item["status"]).terminal or item["status"] == "unknown"
                           for item in report["tool_results"])
@@ -348,8 +348,8 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
         elif error.code in {1000, 1001, 1006, 1008, 1011, 1012, 1013}:
             report["websocket_code"] = error.code
     except Exception as error:
-        # WebSocket kapanışının serbest reason/metni anahtar içerebilir; yalnız
-        # sayısal standart kodu göster. Ham exception asla UI'a taşınmaz.
+        # The WebSocket closure may contain the free key reason/text; alone
+        # Show numeric standard code. The raw exception is never carried to the UI.
         code = getattr(getattr(error, "rcvd", None), "code", None)
         if type(code) is int and code in {1000, 1001, 1006, 1008, 1011, 1012, 1013}:
             report["websocket_code"] = code
@@ -358,7 +358,7 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
             report.update(code="live_go_away", error="Live disconnected before the turn completed; this message was not retried.")
     finally:
         usage.finish_live(report)
-        # Başarısız/kesilen turun alınmış metni de kalır; başarıya çevrilmez.
+        # The retrieved text of the Interrupted turn also remains; does not translate into success.
         report['text'] = ''.join(transcript or plain)[:32000]
         if isinstance(audio_input, LiveInput):
             report['input_boundary'] = 'manual_activity'

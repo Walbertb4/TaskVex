@@ -1,5 +1,5 @@
 /**
- * skills.js - Yerel skill tanımları ve editörü; backend yürütücü henüz yok.
+ * skills.js - Native skill definitions and editor; There is no backend player yet.
  */
 
 import { sfx } from './sfx.js';

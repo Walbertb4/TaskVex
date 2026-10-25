@@ -32,7 +32,7 @@ export function sanitizeError(err) {
   return str;
 }
 
-/** Uzun oturumda log DOM'u sınırsız büyümesin; sır/HTML metin olarak kalır. */
+/** Do not allow log DOM to grow unlimitedly during long sessions; the secret/HTML remains as text. */
 export function addLog(message, isSub = false) {
   const logEl = document.getElementById('log');
   if (logEl) {
@@ -95,10 +95,10 @@ export async function emit(name, data = null) {
     else throw new Error('Backend offline');
     inspectResponse(response);
   } catch (error) {
-    // Anahtar taşıyan bir event'in hatası da ham yanıtı da sır içerebilir.
+    // Both the error and the raw response of a key-carrying event may contain a secret.
     const safeError = name === 'apikey' ? new Error('API key storage was not confirmed') : error;
-    // Beklenen kapanış hata spam'i değildir; dönüş hâlâ ok:false kalır.
-    // Belirsiz/başarısız iptal ve bozuk/taşmış ses kuyruğu gizlenmez.
+    // The expected closing is not error spam; The return still remains ok:false.
+    // Ambiguous/failed cancellation and broken/overflowed audio queue are not suppressed.
     const stopped = ['text', 'live_text', 'live_audio', 'live_audio_start', 'clock_finished', 'read_reply'].includes(name) &&
       typeof data?.request_id === 'string' && response?.request_id === data.request_id &&
       (response?.code === 'stopped' && response.stopped === true ||
@@ -128,7 +128,7 @@ export function setConnectionStatus(status, text = null) {
     netEl.className = 'pill net wait';
     netEl.textContent = '● ' + (text || 'RECONNECTING');
   } else {
-    // Hazır/idle açık socket iddiası değildir; normal Stop hata sayılmaz.
+    // Ready/idle is not an open socket assertion; Normal Stop is not considered an error.
     netEl.className = status === 'idle' ? 'pill net idle' : 'pill net off';
     netEl.textContent = '● ' + (text || (status === 'idle' ? 'READY' : 'OFFLINE'));
   }
@@ -265,7 +265,7 @@ export function initApi(handlers = {}) {
       else if (handlers.loadStore) return handlers.loadStore(snapshot);
     },
     startupStatus(status) {
-      // Native açılış/kurtarma durumu model online bilgisinden ayrıdır.
+      // Native boot/recovery status is separate from model online information.
       if (handlers.startupStatus) handlers.startupStatus(status);
     },
     loadStore(o) {

@@ -1,9 +1,9 @@
-"""Gemini metin turu: sağlayıcı çağrılarını TaskVex'in ortak araç hattına bağla.
+"""Gemini text turn: connect provider calls to TaskVex's partner tool pipeline.
 
-SDK yalnız modelle konuşur; araçları kendisi yürütmez. Bir run çağrısı bir
-kullanıcı isteğidir. Araç sonucunu geri gönderirken modelin Content nesnesi
-aynen korunur; düşünme imzası gibi sağlayıcı bağlamı yeniden üretilmez.
-UI/Live bağlantısı burada yoktur. Core ve ModelTools'un sahibi güvenilir host'tur.
+The SDK talks to the model only; It does not run the tools itself. A rune call is a
+is user request. Content object of the model when returning the tool result
+is preserved as is; The provider context, like the think signature, is not reproduced.
+UI/Live connection is not available here. Core and ModelTools are owned by trusted host.
 """
 
 from random import uniform
@@ -29,23 +29,23 @@ TOOL_WAIT_SECONDS = 5
 
 
 def gemini_token_count(metadata, *, interaction: bool = False) -> int | None:
-    """SDK metadata'sını güvenli tam sayıya çevir; eksik veri sıfır değildir.
+    """Convert SDK metadata to secure integer; missing data is not zero.
 
-    GenerateContent/Live total_token_count, Interactions TTS total_tokens kullanır.
-    Bunlar toplam alanlarıdır; alt kalemleri yeniden ekleyip çift saymayız.
+    GenerateContent/Live total_token_count uses Interactions TTS total_tokens.
+    These are the total areas; We do not re-add sub-items and double count them.
     """
     value = getattr(metadata, 'total_tokens' if interaction else 'total_token_count', None)
     return value if type(value) is int and 0 <= value <= 9007199254740991 else None
 
 
 class GeminiUsage:
-    """Tek uygulama oturumunun Gemini kullanım sahibi; yalnız RAM, sır/metin tutmaz.
+    """Gemini user owner of a single application session; RAM alone, secret/text does not hold.
 
-    REST'te her gerçek HTTP yanıtı (araç turları dahil) bir kez eklenir. Live'da
-    aynı üretimdeki ara usage bildirimleri ayrı istek değildir: son snapshot
-    araç çağrısı veya tur bitiş sınırında bir kez eklenir. Stop/model/transport değişimi
-    bu nesneyi yenilemez. Eksik/başarısız isteğin maliyetini tahmin etmeyiz;
-    bilinen toplam korunur ve eksik ölçüm işareti oturum boyunca kalır.
+    In REST, each actual HTTP response (including tool turns) is appended once. on live
+    intermediate usage notifications in the same production are not separate requests: last snapshot
+    It is added once at the ride call or turn end limit. Stop/model/transport replacement
+    Does not refresh this object. We do not estimate the cost of a Incomplete/failed request;
+    The known total is maintained and the missing measurement mark remains throughout the session.
     """
     def __init__(self) -> None:
         self._lock = Lock()
@@ -56,17 +56,17 @@ class GeminiUsage:
         self._live_seen = False
 
     def observe_live(self, metadata) -> None:
-        """Aynı Live üretiminin son snapshot'ını tut; güncellemeleri toplama."""
+        """Keep the last snapshot of the same Live production; collecting updates."""
         self._live_pending = gemini_token_count(metadata)
         self._live_seen = True
 
     def live_boundary(self) -> None:
-        """Araç çağrısı/final yanıt bir üretimi kapatır; sonraki üretim ayrı sayılır."""
+        """The tool shuts down a production response call/final; subsequent production is counted separately."""
         self.add(self._live_pending)
         self._live_pending = None
 
     def finish_live(self, result: dict) -> None:
-        """Tur özeti çıkar; aynı yanıtı UI'da tekrar göstermek yeniden toplamaz."""
+        """Turn summary appears; Showing the same response again in the UI does not reaggregate."""
         self.live_boundary()
         snapshot = self.report({})
         if self._live_seen:
@@ -74,7 +74,7 @@ class GeminiUsage:
         result['usage_partial'] = snapshot['usage_partial']
 
     def add(self, count: int | None, *, partial: bool = False) -> None:
-        """Ayrı sağlayıcı isteğini ekle; negatif/bool/taşma toplamı bozamaz."""
+        """Add separate provider request; negative/bool/overflow cannot break the total."""
         with self._lock:
             self._partial = self._partial or partial
             if type(count) is not int or count < 0 or self._total + count > 9007199254740991:
@@ -84,26 +84,26 @@ class GeminiUsage:
                 self._seen = True
 
     def report(self, result: dict) -> dict:
-        """UI'a aynı toplamı verir; sonucu okumak kullanım eklemez."""
+        """Returns the same total to the UI; Reading the result does not add usage."""
         with self._lock:
             return {**result, 'usage_tokens':self._total if self._seen else None,
                 'usage_scope':'session', 'usage_partial':self._partial}
 
 
 class _Stopped(Exception):
-    """Yalnız adaptör içi akış kesmesi; sağlayıcı hatası veya başarı değildir."""
+    """Only internal adapter flow cut; It is not provider error or success."""
 
 
 def _failure(code: str, message: str, results: list[dict]) -> dict:
-    """Hata halinde önceki araç sonuçlarını koru; ham SDK hatası/sır taşıma."""
+    """Preserve previous tool results in case of error; raw SDK error/secret porting."""
     return {"ok": False, "code": code, "error": message, "text": "", "tool_results": results}
 
 
 def _api_failure(error: errors.APIError, results: list[dict]) -> dict:
-    """Teşhis kodlarını koru; serbest hata metni, URL ve metadata'yı taşıma.
+    """Maintain diagnostic codes; moving free error text, URL and metadata.
 
-    SDK exception metni anahtar veya kişisel veri içerebilir. Yalnız HTTP kodu
-    ve açık listedeki standart durum/nedenler sonuç JSON'una girebilir.
+    SDK exception text may contain keys or personal data. HTTP code only
+    and can enter the standard case/reasons result JSON in the open list.
     """
     code = {400: "invalid_request", 401: "authentication_failed", 402: "billing_required",
             403: "permission_denied", 404: "model_unavailable",
@@ -133,11 +133,11 @@ def _api_failure(error: errors.APIError, results: list[dict]) -> dict:
 
 
 class GeminiText:
-    """Bir SDK istemcisini kullan; ağ isteği yalnız açık run çağrısında başlar.
+    """Use an SDK client; The network request only starts with an open run call.
 
-    api_key verilmezse süreç ortamı, yoksa profilin Windows kimlik deposu okunur.
-    Anahtar bu adaptörce kaydedilmez ve sonuçlara eklenmez. model ve tools host tarafından seçilir.
-    Bu istemciyi with ile kullan veya close çağır; core'u ayrıca host kapatır.
+    If api_key is not given, the process environment is read, otherwise the profile's Windows identity store is read.
+    The key is not recorded by this adapter and is not included in the results. Model and tools are selected by the host.
+    Use this client with with or call close; The host also shuts down the core.
     """
 
     def __init__(self, tools: ModelTools, *, model: str = DEFAULT_MODEL,
@@ -163,21 +163,21 @@ class GeminiText:
             automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
             system_instruction=model_instruction(profile, tools_enabled=bool(declarations)),
         )
-        # SDK retry'ı kapalıdır; aşağıdaki sınırlı politika hangi modelin kaç
-        # kez çağrıldığını kontrol eder. HTTP timeout milisaniye cinsindedir.
+        # SDK retry is off; The following limited policy is which model and how many
+        # Checks if it has been called twice. HTTP timeout is in milliseconds.
         self._client = genai.Client(api_key=key, vertexai=False, http_options=types.HttpOptions(
             timeout=30_000, retry_options=types.HttpRetryOptions(attempts=1),
         ))
 
     def close(self) -> None:
-        """Bu adaptörün sahip olduğu HTTP istemcisini kapat; core'a dokunma."""
+        """Close the HTTP client that this adapter has; Don't touch the core."""
         self._client.close()
 
     def stop(self) -> str | None:
-        """İptali kaydet; bitişi bekleme. Dönen metin neyin beklendiğini belirtir.
+        """Save cancellation; Don't wait for the end. The text returned indicates what is expected.
 
-        Kapı kilidi yeni araç/HTTP denemesinin kabulünü Stop ile sıralar. Devam
-        eden senkron HTTP zorla kapatılmaz; sonuç gelene kadar sahibi bekler.
+        The door lock sequences the acceptance of the new tool/HTTP attempt with Stop. Continue
+        Synchronous HTTP is not forcibly turned off; The owner waits until the result comes.
         """
         with self._gate:
             if self._finished:
@@ -192,16 +192,16 @@ class GeminiText:
             return "http_response" if self._http_active else "tool_result" if self._active_task else "turn_completion"
 
     def _check_stop(self) -> None:
-        """İptal edilmiş tur yeni HTTP/araç işlemi başlatmamalı."""
+        """Canceled round should not start new transaction HTTP/tool."""
         if self._stop.is_set():
             raise _Stopped
 
     def _wait_retry(self, seconds: float) -> None:
-        """Geri çekilme beklemesi iptal sinyaliyle hemen uyanır."""
+        """The withdrawal standby wakes up immediately with the cancellation signal."""
         self._stop.wait(seconds)
 
     def _stopped(self, results: list[dict]) -> dict:
-        """Kabul edilmiş görevleri gözle; iptali dosya yazısının geri alınması sayma."""
+        """Observe accepted tasks; Cancellation does not count as the withdrawal of the file text."""
         unknown = self._stop_unconfirmed
         for outcome in results:
             try:
@@ -216,21 +216,21 @@ class GeminiText:
                 "stopped": not unknown, "unknown": unknown}
 
     def __enter__(self):
-        """with bloğunda ağ kaynaklarının sahibini açık tut."""
+        """Keep the owner of network resources open in the with block."""
         return self
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:
-        """Başarılı turda da istisnada da SDK bağlantılarını bırak."""
+        """Drop SDK links in both successful round and exception."""
         self.close()
 
     def run(self, text: str) -> dict:
-        """Tek metin isteğini sınırlı model/araç turlarıyla işle.
+        """Process single text request in limited model/tool rounds.
 
-        Araç başlamadan önce geçici ağ/sunucu hataları sınırlı tekrar edilir.
-        Araç sonucu alındıktan sonra retry/fallback yapılmaz; sonuç korunur.
-        Önceki run'ı hatadan sonra yeniden çağırmak işlem tekrarına yol açabilir;
-        host önce tool_results içindeki bilinen/pending sonuçları incelemelidir.
-        Bekleme timeout'u çalışan aracı öldürmez veya başarısız yapmaz.
+        Temporary network/server errors are repeated on a limited basis before the tool starts.
+        retry/fallback is not made after the tool result is received; the result is preserved.
+        Recalling the previous run after an error may result in a repeat operation;
+        The host must first examine the known/pending results in tool_results.
+        Waiting timeout does not kill or fail the running tool.
         """
         attempts: list[str] = []
         details: list[dict] = []
@@ -241,27 +241,27 @@ class GeminiText:
         try:
             report = self._run(text, attempts, details)
             with self._gate:
-                # Son yanıt ile Stop yarışırsa bu kilit bitiş sınırını belirler.
+                # If Stop competes with the last response, this lock determines the finishing limit.
                 if self._stop.is_set():
                     report = self._stopped(report["tool_results"])
                 self._finished = True
         finally:
             with self._gate:
                 self._finished = True
-        # Host/UI gerçek kullanılan modeli görebilsin; seçili ana modeli
-        # alternatif modelmiş gibi kalıcı değiştirmiyoruz. Sır taşınmaz.
+        # Let Host/UI see the actual used model; selected main model
+        # We do not change it permanently as if it were an alternative model. The secret cannot be carried.
         report.update(model=attempts[-1] if attempts else self._model, model_attempts=attempts,
                       model_attempt_details=details, elapsed_ms=round((perf_counter() - started) * 1000))
         return report
 
     def _generate(self, contents: list[types.Content], results: list[dict],
                   attempts: list[str], details: list[dict]) -> types.GenerateContentResponse:
-        """Yalnız araç öncesi isteği tekrar et; model imzalarını modeller arası taşıma.
+        """Just repeat the request before the tool; Porting model signatures between models.
 
-        Ana modelde iki deneme, ardından alternatifte tek deneme vardır.
-        Açıkça farklı model seçen host için o modelde iki deneme yapılır.
-        Her run ana modelden başlar; fallback seçildiyse o turun devamı orada kalır.
-        429 kota/limit ayrımı yapılmadığından burada tekrar edilmez.
+        There are two trials in the main model, then one trial in the alternative.
+        For the host that clearly chooses a different model, two attempts are made on that model.
+        Each run starts from the main model; If fallback is selected, the rest of that round remains there.
+        Since 429 quota/limit is not distinguished, it is not repeated here.
         """
         models = [attempts[-1]] if results else [self._model, self._model]
         if not results and self._model == DEFAULT_MODEL:
@@ -286,10 +286,10 @@ class GeminiText:
                 return response
             except (errors.APIError, httpx.TransportError, OSError) as error:
                 if self._usage is not None:
-                    self._usage.add(None)  # Sağlayıcı maliyet kanıtı vermedi; retry sıfır maliyet demek değildir.
-                # Yalnız sınırlı teşhis alanları: payload, anahtar, yanıt metni
-                # ve ham exception kaydedilmez. Süre gerçek HTTP denemesine aittir;
-                # retry beklemesi ve araç süresi yalnız toplam elapsed_ms'dedir.
+                    self._usage.add(None)  # The provider did not provide proof of cost; retry does not mean zero cost.
+                # Only limited diagnostic fields: payload, key, response text
+                # and the raw exception is not recorded. The duration is from the actual HTTP attempt;
+                # retry wait and tool time are only included in total elapsed_ms.
                 if isinstance(error, errors.APIError):
                     detail.update(outcome="http_error", http_status=error.code)
                 else:
@@ -305,7 +305,7 @@ class GeminiText:
         raise AssertionError("Model attempt list must not be empty")
 
     def _run(self, text: str, attempts: list[str], details: list[dict]) -> dict:
-        """Araç turunun tek yürütme yolu; retry yalnız _generate sınırındadır."""
+        """The only way to conduct the tool turn is; retry is only in the _generate limit."""
         results: list[dict] = []
         if not isinstance(text, str) or not text.strip():
             return _failure("invalid_text", "Expected non-empty text", results)
@@ -339,7 +339,7 @@ class GeminiText:
                 answer = "".join(part.text for part in content.parts if part.text and not part.thought)
                 if not answer.strip():
                     return _failure("empty_response", "Gemini returned no answer", results)
-                # Araç döngüsünün toplamını uydurma: yalnız son generation bildirimi.
+                # Fitting the total of the tool cycle: last generation statement only.
                 count = gemini_token_count(reply.usage_metadata)
                 usage = {'usage_tokens':count} if count is not None else {}
                 return {"ok": True, "text": answer, "tool_results": results, **usage}
@@ -350,10 +350,10 @@ class GeminiText:
             for index, call in calls:
                 if call.id is not None and not call.id.strip():
                     return _failure("invalid_tool_call", "Model tool call id is empty", results)
-                # Bazı model biçimleri id vermez. O parça için kimlik bir kez
-                # host tarafından belirlenir; sağlayıcının Content'i değiştirilmez.
-                # Sağlayıcı id'sini kullanıcı turuna bağla: yeni run eski çağrı
-                # sanılmasın; aynı run içindeki replay hâlâ aynı göreve gitsin.
+                # Some model formats do not provide ids. ID for that piece once
+                # determined by the host; The provider's Content is not changed.
+                # Bind provider id to user turn: new run old call
+                # Don't be mistaken; Replay within the same run will still go to the same quest.
                 call_id = f"{turn_id}:{call.id}" if call.id is not None else f"local:{turn_id}:{round_index}:{index}"
                 try:
                     with self._gate:
@@ -361,8 +361,8 @@ class GeminiText:
                         task = self._tools.submit({"id": call_id, "name": call.name,
                                                    "arguments": call.args if call.args is not None else {}})
                         self._active_task = task.task_id
-                        # Beklemeden önce kaydet: Stop geldiğinde kabul edilmiş
-                        # görevin kimliği ve olası yan etkisi kaybolmamalı.
+                        # Save before wait: Accepted when stop arrives
+                        # The identity of the task and its possible side effects should not be lost.
                         outcome = {"id": call.id if call.id is not None else call_id, "name": call.name,
                             "task_id": task.task_id, "status": task.status.value,
                             "result": task.result.to_dict() if task.result else None}
@@ -376,7 +376,7 @@ class GeminiText:
                                     "Model tool call was rejected", results)
                 outcome.update(self._tools.result(task.task_id, timeout=TOOL_WAIT_SECONDS))
                 if call.id is not None:
-                    outcome["id"] = call.id  # Gemini'ye sağlayıcının özgün kimliği geri döner.
+                    outcome["id"] = call.id  # The provider's unique ID is returned to Gemini.
                 if self._stop.is_set():
                     return self._stopped(results)
                 status = TaskStatus(outcome["status"])
@@ -387,6 +387,6 @@ class GeminiText:
                 responses.append(types.Part(function_response=types.FunctionResponse(
                     id=call.id, name=call.name, response=outcome,
                 )))
-            # Content'i metne çevirip yeniden kurmak düşünme imzasını düşürür.
+            # Converting Content to text and reinstalling it reduces the thinking signature.
             contents.extend([content, types.Content(role="user", parts=responses)])
         return _failure("turn_limit", "Model/tool turn limit reached", results)

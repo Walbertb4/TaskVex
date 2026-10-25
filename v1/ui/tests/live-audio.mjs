@@ -1,6 +1,6 @@
-/** PCM kaynak sahipliği ve kuyruk sınırını cihaz/ağ açmadan doğrula.
- * AudioContext taklidi byte dönüşümünü, planlanan kaynakları ve gerçek bitiş
- * ayrımını gözler. Native smoke ayrıca gerçek Web Audio motorunu çalıştırır.
+/** Verify PCM resource ownership and queue limit without powering on device/network.
+ * AudioContext mock byte conversion, planned sources and actual ending
+ * observes the distinction. Native smoke also runs the actual Web Audio engine.
  */
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -60,7 +60,7 @@ const muted = liveAudio.finish('next'); contexts.at(-1).nodes[0].onended();
 assert.equal((await muted).status, 'muted');
 liveAudio.setMuted(false);
 
-// Seviye canlı GainNode'a uygulanır; mute kaldırınca tercih geri gelir.
+// The level is applied to the live GainNode; When you remove mute, the preference comes back.
 liveAudio.setVolume(0.35);
 liveAudio.begin('volume');
 assert.equal(contexts.at(-1).gain.gain.value, 0.35);

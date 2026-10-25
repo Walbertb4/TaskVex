@@ -1,9 +1,9 @@
-/** Live ve REST TTS PCM çıkışının tek sahibi: mikrofon/disk/önbellek kullanmaz.
- * Her kullanıcı isteği ayrı kaynak grubu alır. Kuyruk en çok 20 saniye/512
- * parçadır; Stop ve sayfa kapanışı kaynakları durdurup AudioContext'i bırakır.
- * Web Audio'nun bitişi fiziksel hoparlörden duyulduğunun kanıtı değildir.
- * begin ikinci parametreyle özel çıkışı hazırlar; başarısızsa varsayılana
- * sessizce dönmez. Stop, bekleyen cihaz hazırlığını da serbest bırakır.
+/** Single owner of Live and REST TTS PCM output: does not use microphone/disk/cache.
+ * Each user request gets separate resource group. Queue up to 20 seconds/512
+ * is a piece; Stop and page close stop the resources and release the AudioContext.
+ * The end of Web Audio is not proof that it is heard through the physical speaker.
+ * begin prepares the custom output with the second parameter; if unsuccessful, to default
+ * does not return quietly. Stop also releases pending device preparation.
  */
 let current = null, muted = false, volume = 1;
 
@@ -31,14 +31,14 @@ export const liveAudio = {
       state.gain = state.context.createGain();
       state.gain.gain.value = muted ? 0 : volume;
       state.gain.connect(state.context.destination);
-      // Gönder düğmesinin kullanıcı hareketi içinde başlatılır; otomatik
-      // çalma reddedilirse metin/araç sonucu başarısız sayılmaz.
+      // The submit button is initiated within the user action; automatic
+      // If the play is rejected, the text/tool result is not considered unsuccessful.
       state.context.resume().catch(() => { state.error ||= 'audio_unavailable'; dispose(state); });
       if (deviceId) {
         let timer;
         try {
           if (typeof state.context.setSinkId !== 'function') throw new Error();
-          // Sürücü yanıtı beklenirken Stop/Disconnect kullanıcıyı kilitlemez.
+          // Stop/Disconnect does not lock out the user while waiting for a driver response.
           await Promise.race([state.context.setSinkId(deviceId),
             new Promise(resolve => { state.routeDone = resolve; }),
             new Promise((_, reject) => { timer = setTimeout(() => reject(new Error()), 3000); })]);
@@ -80,7 +80,7 @@ export const liveAudio = {
       return true;
     } catch {
       state.error ||= 'invalid_audio';
-      // Sonuç, finish çağrısına kadar tutulur; geç paketler yeniden çalamaz.
+      // The result is kept until the finish call; Late packets cannot be replayed.
       for (const node of state.nodes) { node.onended = null; try { node.stop(); } catch {} node.disconnect(); }
       state.nodes.clear();
       return false;
@@ -92,7 +92,7 @@ export const liveAudio = {
     return new Promise(resolve => {
       state.resolve = resolve;
       if (!state.nodes.size || state.error || state.stopped) return dispose(state);
-      // Sürücü/context askıda kalırsa kullanıcıyı sonsuza dek kilitleme.
+      // Locking out the user forever if the driver/context hangs.
       state.timer = setTimeout(() => { state.error = 'audio_timeout'; dispose(state); }, 22000);
     });
   },
@@ -112,8 +112,8 @@ export const liveAudio = {
     if (current?.gain) current.gain.gain.value = muted ? 0 : volume;
   },
   setVolume(value) {
-    // Tercih yalnız PCM çıkış kazancıdır; mute, mikrofon ve efektleri değiştirmez.
-    // Geçersiz snapshot mevcut düzeyi değiştirmesin veya NaN kazanç üretmesin.
+    // Preference is PCM output gain only; mute does not change the microphone and effects.
+    // Invalid snapshot should not change the current level or generate NaN gain.
     if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 1) return false;
     volume = value;
     if (current?.gain) current.gain.gain.value = muted ? 0 : volume;
@@ -130,5 +130,5 @@ if (typeof navigator !== 'undefined') navigator.mediaDevices?.addEventListener?.
     const devices = await navigator.mediaDevices.enumerateDevices();
     if (current === state && !devices.some(d => d.kind === 'audiooutput' && d.deviceId === state.deviceId))
       liveAudio.fail(state.id, 'output_device_unavailable');
-  } catch { /* Liste erişimi reddi, cihazın çıkarıldığına dair kanıt değildir. */ }
+  } catch { /* List access denial is not evidence that the device has been removed. */ }
 });

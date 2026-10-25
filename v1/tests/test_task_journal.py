@@ -1,7 +1,7 @@
-"""Kalıcı görev günlüğünü geçici profiller ve gerçek alt süreçlerle sınar.
+"""Tests the persistent task log with temporary profiles and real child processes.
 
-Sayaç dosyası yalnız test yan etkisidir; model/ağ/kullanıcı notu kullanılmaz.
-Crash noktaları Event veya dosya işaretiyle seçilir; rastgele zamanlama yoktur.
+The counter file is just a testing side effect; Note model/network/user is not used.
+Crash points are selected by Event or file flag; There is no random timing.
 """
 
 from concurrent.futures import ThreadPoolExecutor
@@ -23,7 +23,7 @@ from test_task_manager import allow, done, registry_with, request
 
 
 def manager(home, handler=None, capacity=4):
-    """Gerçek disk günlüğü, sahte handler ve küçük RAM sınırıyla yönetici kur."""
+    """Install administrator with real disk logger, fake handler and small RAM limit."""
     return TaskManager(registry_with(handler or (lambda a, c: done(c))),
                        authorize=allow, capacity=capacity, journal_home=home)
 
@@ -191,7 +191,7 @@ def test_missing_journal_during_session_is_not_recreated(tmp_path):
 
 
 def test_persisted_results_remain_history_not_restored_ram_resources(tmp_path, monkeypatch):
-    """Gerçek bootstrap aynı handler'ı yeniden çağırmaz; sayaç RAM'i diriltilmez."""
+    """Real bootstrap does not call the same handler again; counter RAM is not resurrected."""
     from app.bootstrap import create_core
     monkeypatch.setenv('TASKVEX_HOME', str(tmp_path))
     req = ToolRequest(request_id='create-clock', source='desktop', principal='local-user',
@@ -237,7 +237,7 @@ def test_real_process_restart_and_killed_handler_never_repeat_effect(tmp_path, c
                                  stderr=subprocess.PIPE, text=True)
         assert child.stdout is not None and child.stderr is not None
         try:
-            # communicate timeout yerine stdout beklemesini ayrı future ile sınırla.
+            # Instead of communicate timeout, limit stdout wait to separate future.
             with ThreadPoolExecutor(max_workers=1) as pool:
                 line = pool.submit(child.stdout.readline)
                 try:

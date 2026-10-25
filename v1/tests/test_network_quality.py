@@ -1,7 +1,7 @@
-"""Kalite adaptörünü sahte Windows DLL'leriyle dene; ağ paketi gönderilmez.
+"""Try the quality adapter with fake Windows DLLs; No network packets are sent.
 
-ICMP hedefi/süresi, yalnız fiziksel default route seçimi, konumsuz Wi-Fi opcode,
-başarısız/eksik/sıfır ölçüm ve bütün handle/buffer kapanışları doğrulanır.
+ICMP destination/duration, physical default route selection only, locationless Wi-Fi opcode,
+The failed/incomplete/zero measurement and all handle/buffer closures are verified.
 """
 import ctypes as c
 from ctypes import wintypes as w

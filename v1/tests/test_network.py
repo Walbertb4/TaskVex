@@ -1,7 +1,7 @@
-"""Pasif ağ örneklerini sahte Windows tablosuyla dene; internet kullanılmaz.
+"""Try passive network examples with a fake Windows table; internet is not used.
 
-64 bit sayaçlar, ilk/sıfır/reset/cihaz değişimi ve bellek bırakma doğrulanır.
-Model ve native UI'nin aynı Telemetry örneğini okuması ayrı kontrol edilir.
+64-bit counters, initial/zero/reset/device replacement and memory release are verified.
+It is checked separately that the model and native UI read the same Telemetry instance.
 """
 import ctypes as c
 from ctypes import wintypes as w
@@ -38,7 +38,7 @@ def test_counter_reset_disconnection_or_adapter_change_is_not_speed(changed):
     sample = meter.sample(2)
     assert sample['network_receive_bps'] is None and sample['network_send_bps'] is None
     assert sample['network_link'] is changed['up']
-    # Bir sonraki sabit örnek, bağlantı hâlâ açıksa gerçek sıfırdır.
+    # The next constant example is true zero if the connection is still open.
     assert meter.sample(4)['network_receive_bps'] == (0 if changed['up'] else None)
 
 
@@ -84,7 +84,7 @@ class IpHelper:
             entry.oper_status, entry.media_state = 1, 1
             entry.rx_bytes, entry.tx_bytes = 2**40, 2**41
             entry.alias = 'Private adapter name'
-        self.table.rows[1].flags = 0       # VPN/sanal arabirim.
+        self.table.rows[1].flags = 0       # VPN/virtual interface.
         self.table.rows[2].flags = 3       # Hardware + filtre.
         self.table.rows[3].flags = 129     # Hardware + endpoint.
         self.table.rows[4].type = 24       # Loopback.

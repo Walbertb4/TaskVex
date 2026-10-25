@@ -1,8 +1,8 @@
-"""Live devam ettirmeyi gerçek SDK/core ve planlı sentetik socket'lerle dene.
+"""Try live sustain with real SDK/core and planned synthetic sockets.
 
-Her bağlantının setup, aktif tur ve idle mesajları ayrıdır. Böylece eski kullanıcı
-metninin yeniden gönderilmediği ve yalnız güvenli checkpoint'in kullanıldığı
-taşıma sınırında gözlenir. Gerçek hesap/ücretli API kullanılmaz.
+Each connection's setup, active turn and idle messages are separate. So the old user
+The text is not resent and only the secure checkpoint is used.
+observed at the transport limit. The actual account/paid API is not used.
 """
 
 import asyncio
@@ -34,7 +34,7 @@ def checkpoint(*, resumable=True, token=TOKEN):
 
 @pytest.fixture
 def wire(monkeypatch):
-    """Boş socket bekler; yalnız planda belirtilen idle kopma hata üretir."""
+    """Empty socket waits; Breaking only with the id specified in the plan produces an error."""
     state = SimpleNamespace(plans=[], sent=[], opened=0, closed=0, waiting=Event())
     monkeypatch.setenv("GEMINI_API_KEY", "synthetic-key")
     @asynccontextmanager
@@ -250,8 +250,8 @@ def test_stop_during_resume_setup_discards_checkpoint_and_ledger(wire):
         try:
             assert host.ask("First", "future-live")["ok"]
             running = pool.submit(host.ask, "Stop before send", "future-live", request_id="resume")
-            # İlk preflight da waiting'i ayarlar; setup gerçekten başladıktan
-            # sonra iptal ver ki test yalnız erken sinyali ölçmesin.
+            # The first preflight also sets waiting; once the setup actually starts
+            # Then cancel so that the test does not only measure the early signal.
             for _ in range(300):
                 if wire.opened == 2:
                     break

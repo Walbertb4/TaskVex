@@ -1,4 +1,4 @@
-/** Stop/kapanış log ayrımı, sınırlı DOM ve geç deadline'ları API kullanmadan doğrular. */
+/** Stop/close log separation validates limited DOM and late deadlines without using API. */
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
@@ -14,7 +14,7 @@ const {emit,addLog,createPendingOperation,setConnectionStatus,sanitizeError}=awa
 const request={request_id:'current'};
 response={ok:false,code:'stopped',stopped:true,completed:true,request_id:'current'};
 assert.equal((await emit('live_audio_start',request)).ok,false);
-assert.equal(log.childElementCount,0); // Normal iptal başarıya çevrilmez, hata da değildir.
+assert.equal(log.childElementCount,0); // Normal cancellation does not translate into success, nor is it an error.
 response={...response,unknown:true};await emit('live_audio_start',request);assert.equal(log.childElementCount,1);
 response={...response,unknown:false,request_id:'old'};await emit('text',request);assert.equal(log.childElementCount,2);
 response={ok:false,closed:true,failed:false};await emit('live_audio_feed',request);assert.equal(log.childElementCount,2);
@@ -50,8 +50,8 @@ try {
 } finally {globalThis.setTimeout=originalSet;globalThis.clearTimeout=originalClear;}
 console.log('PASS normal Stop/close vs real errors, redacted bounded log and stale/unknown deadlines');
 
-// Gerçek hata satırı sıfır PCM/olay değerini kayıp veri sanmamalı; serbest
-// sağlayıcı metni yerine mevcut sanitizeError sınırından geçen kodları göster.
+// The actual error line should not mistake a zero PCM/event value as missing data; free
+// Show codes that pass the current sanitizeError limit instead of provider text.
 const appSource=fs.readFileSync(new URL('../js/assistant_session.js',import.meta.url),'utf8');
 const diagnostics=new Function('sanitizeError', appSource.match(/function textDiagnostics\(report\) \{[\s\S]*?\n\}/)[0]+';return textDiagnostics;')(sanitizeError);
 const detail=diagnostics({code:'live_idle_timeout',input_sent_packets:0,received_events:0,wait_phase:'before_input_final'});

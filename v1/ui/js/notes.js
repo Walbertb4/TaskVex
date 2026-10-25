@@ -1,7 +1,7 @@
 /**
- * Not görünümü ve kullanıcı eylemleri. Tarayıcıda yerel mod korunur; native
- * modda tek kalıcı sahip backend'dir. İlk aktarım açık kullanıcı onayı ister.
- * Başarı gelmeden liste değiştirilmez; belirsiz işlem otomatik gönderilmez.
+ * Note view and user actions. Native mode is preserved in the browser; native
+ * The only permanent owner in the mod is the backend. The first transfer requires explicit user consent.
+ * The list cannot be changed before success occurs; The uncertain transaction is not automatically sent.
  */
 import { sfx } from './sfx.js';
 import { emit, isBackendAvailable, createPendingOperation, sanitizeError } from './api.js';
@@ -26,7 +26,7 @@ function normalize(list) {
         t: String(item?.t ?? ''), d: item?.d ? 1 : 0 });
 }
 
-/** Native kayıtlar görünüm biçimine çevrilir; id aktarımda asla düşürülmez. */
+/** Native records are converted to view format; id is never dropped on transfer. */
 function acceptNative(list) {
   if (!Array.isArray(list) || list.some(n => !n || typeof n.id !== 'string' || !n.id.trim() ||
       typeof n.text !== 'string' || typeof n.done !== 'boolean' || !validNoteCreatedAt(n.created_at)) ||
@@ -35,7 +35,7 @@ function acceptNative(list) {
     ...(n.created_at !== undefined ? { created_at: n.created_at } : {}) }));
 }
 
-/** Yerel kopya yalnız önbellek/yedek içindir; yazılamaması backend başarısını silmez. */
+/** Local copy is for cache/backup only; Failure to write does not delete backend success. */
 function cacheNative() {
   if (saveStoreCb && saveStoreCb({ emitSave: false }) === false)
     status = 'Notes saved in backend; local backup cache could not be saved.';
@@ -96,22 +96,22 @@ async function nativeCommand(name, args) {
   }
 }
 
-/** El sıkışması tamamlanınca önce salt okunur durum sorgulanır; otomatik aktarım yok. */
+/** Once the handshake is completed, the read-only status is first queried; There is no automatic transfer. */
 export function connectNativeNotes() {
   if (!isBackendAvailable()) return false;
   if (mode === 'local') mode = 'waiting';
   return nativeCommand('notes_init', { notes: null });
 }
 
-/** İçe aktarım sırasında not işlemleri başka bir kayıtla yarışmasın. */
+/** Note operations should not compete with another record during import. */
 export function setNotesImportLock(locked) { importLocked = locked; renderNotes(); }
-/** Model not yazarken kullanıcı mutasyonu/import başlatmasın; ayrı kilit sahipliği. */
+/** The user should not initiate mutation/import while writing a model note; separate lock ownership. */
 export function setNotesChatLock(locked) { chatLocked = locked; renderNotes(); }
 export function canRestoreNativeNotes() { return mode === 'native' && !busy && !importLocked && !chatLocked; }
-/** İlk aktarım beklerken sohbet açıktır; süren/belirsiz not yazımıyla yarışılmaz. */
+/** Chat is open while waiting for the first transfer; There is no competition with continuous/indefinite note writing. */
 export function canSendNativeText() { return !busy && !importLocked && !chatLocked && mode !== 'unknown'; }
 
-/** Açık yedek yükleme komutu; eski kimliksiz kayıtlara yalnız burada kimlik üret. */
+/** Open backup installation command; Generate ID for old IDless records only here. */
 export function restoreNativeNotes(list) {
   if (mode !== 'native' || busy || chatLocked) return false;
   const records = normalize(list);
@@ -160,7 +160,7 @@ export function renderNotes() {
     cb.addEventListener('change', async e => {
       const done = e.target.checked;
       if (mode === 'native') {
-        // Tarayıcının checkbox değişimini geri al; yalnız kesin sonuç uygulansın.
+        // Undo browser checkbox change; Only the final result should be applied.
         cb.checked = !!n.d;
         if (await nativeCommand('note_done', { id: n.id, done })) sfx.check();
         return;
@@ -207,7 +207,7 @@ export function addNote(text, options = {}) {
   return true;
 }
 
-/** Native modda eski setter kalıcı otoriteyi atlayamaz; yanıtlar içeriden uygulanır. */
+/** In native mode, old setter cannot bypass persistent authority; The answers are implemented from within. */
 export function setNotes(list, options = {}) {
   if (mode !== 'local') return false;
   notes = normalize(list); renderNotes();

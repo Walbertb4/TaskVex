@@ -1,8 +1,8 @@
-"""Asistanın sohbet kontrollerini ortak araç hattından isteyen yerel araç.
+"""Local tool that requests the assistant's chat controls from the shared tool line.
 
-Bu araçlar uykuya geçirmez, pencere kapatmaz, mikrofon veya Live yönetmez.
-Yalnız doğrulanmış bir geçiş isteği üretir. Gerçek uygulama, başarılı yanıt
-ve ses bitişinden sonra mevcut UI/host yaşam döngüsü sahibindedir.
+These tools do not sleep, do not close windows, do not manage microphone or Live.
+It only produces a verified migration request. Real application, successful response
+and after the audio end the current UI/host life cycle is in the owner.
 """
 from app.core.contracts import TaskStatus, ToolContext, ToolError, ToolResult
 
@@ -16,11 +16,11 @@ SLEEP_SCHEMA = {
 
 
 def request_sleep_mode(arguments: dict, context: ToolContext) -> ToolResult:
-    """Kipi doğrula ve istek üret; başarılı sonuç gerçek uyku kanıtı değildir.
+    """Validate the mode and generate the request; A successful result is not proof of actual sleep.
 
-    TaskManager başarısı bu yan etkisiz isteğin kabulüdür. applied=false alanı,
-    modelin henüz uyunduğunu iddia etmemesi için özellikle sonuçta bulunur.
-    Registry şema kontrolüne ek olarak doğrudan çağrıda da hatalı kip reddedilir.
+    TaskManager success is the acceptance of this side-effectless request. applied=false field,
+    It is specifically included in the result so that the model does not yet claim to be fit.
+    In addition to the registry schema check, the direct call also rejects the incorrect mode.
     """
     if set(arguments) != {"mode"} or arguments["mode"] not in ("once", "persistent", "off"):
         return ToolResult(task_id=context.task_id, status=TaskStatus.FAILED,
@@ -36,11 +36,11 @@ SHUTDOWN_SCHEMA = {"type": "object", "additionalProperties": False}
 
 
 def request_shutdown(arguments: dict, context: ToolContext) -> ToolResult:
-    """Yalnız TaskVex'i kapatma isteğini kabul et; worker pencereyi kapatmaz.
+    """Just accept the request to close TaskVex; worker does not close the window.
 
-    Ana uygulama mevcut yanıt/çalma döngüsünden sonra Shutdown host yolunu
-    kullanır. İşletim sistemini kapatma, restart veya serbest komut yoktur.
-    Bu sonuç gerçek pencere kapanışı değil, doğrulanmış bekleyen istektir.
+    The main application enters the Shutdown host path after the current response/ring cycle.
+    uses. There is no operating system shutdown, restart or free command.
+    This result is not the actual window closing, but the validated pending request.
     """
     if arguments:
         return ToolResult(task_id=context.task_id, status=TaskStatus.FAILED,

@@ -31,6 +31,8 @@ It is a development project, not a production-ready general computer-use agent.
   shared with system.status. This is not a speed test or proof of internet access;
   local IPv4 gateway ping and location-free Wi-Fi signal quality are available
   when Windows exposes them. These are not internet/API latency measurements.
+- Read-only title, artist and playback state from the current Windows media
+  session, shared by the dashboard and media.status. Playback controls are pending.
 - Saved interface preferences, Live voice selection and separate reply volume,
   plus a limited set of active personalization fields.
 - Gemini API key storage in Windows Credential Manager and automatic Live model
@@ -55,8 +57,8 @@ Google Drive/Calendar/mail access, Telegram/Discord integration,
 general GUI automation and
 backend skill/routine scheduling are planned.
 Camera, screen inspection, location, weather and media controls are not connected.
-Intel/AMD GPU monitoring, CPU temperature and Wi-Fi/network monitoring are not implemented. CPU sampling
-currently supports Windows processor groups with at most 64 logical processors;
+CPU/GPU temperature and VRAM capacity are not available from the current sources.
+CPU sampling currently supports Windows processor groups with at most 64 logical processors;
 unsupported readings remain unavailable.
 Some saved legacy profile fields have no backend effect and are marked as planned.
 
@@ -82,6 +84,25 @@ locations and test commands are in [the development guide](v1/README.md).
 The dependency snapshot reproduces the tested development environment; it is
 not a cross-platform, hash-locked release installer.
 
+## Windows demo build
+
+A portable Windows x64 development demo can be built with
+[the packaging guide](v1/tools/README.md). Extract the complete ZIP and open
+`TaskVexDemo.exe`; Python is bundled. Windows 10/11 x64, .NET Framework 4.8
+or newer 4.x, and Microsoft Edge WebView2 Runtime are required. Standard Windows
+11 includes the latter two components; modified installations can differ.
+
+The unsigned demo uses `%LOCALAPPDATA%/TaskVexDemo` by default, separately from
+the source application's profile. No developer key, notes or personal settings
+are bundled. Supply your own Gemini key. Wake-model weights are not distributed;
+the optional `Setup wake model.cmd` invokes the existing verified upstream setup.
+
+The actual EXE passed startup checks and a second check after extracting its ZIP
+to a different directory, without Python environment variables or a model key.
+[Build evidence](docs/reports/demo-build-checks.json). This is not clean-machine,
+microphone, real-account or all-hardware certification. No signed installer or
+GitHub binary release is provided by the source repository.
+
 ## Data and current limits
 
 Active conversation input and model tool results are sent to Google. During
@@ -106,18 +127,27 @@ Model availability, network conditions and hardware affect behavior.
 
 ## Verification and documentation
 
-The latest gateway/Wi-Fi quality change passed 1,154 Python tests, 9 JavaScript
-suites, 15 browser groups, 10 native phases and targeted type checking using
-temporary profiles and synthetic providers. A local gateway echo and Windows
-Wi-Fi quality query also succeeded on the development machine.
-[Test evidence](docs/reports/network-quality-checks.json).
+The latest read-only media change passed 1,172 Python tests, 9 JavaScript suites,
+16 browser groups, 10 native phases, targeted type checking and dependency checks
+using temporary profiles and synthetic providers. A read-only Windows media query
+also succeeded; actual track/artist metadata was not recorded in the report.
+[Media evidence](docs/reports/media-read-checks.json).
 
-Manual acceptance of this quality slice is pending; preceding local traffic,
-GPU dashboard, memory decisions and session token counting were reported working.
-These checks do not establish real-account availability, physical microphone
-accuracy, support for every adapter/Windows version or production readiness.
-Gateway ping is not internet/API latency. The API latency field remains unavailable
-until a real transport metric is defined.
+The English repository cleanup reran 1,172 Python tests, nine JavaScript suites,
+16 browser groups and ten sequential native phases. Archive hashes/links and the
+rebuilt demo startup/relocation were also checked.
+[Publication checks](docs/reports/english-publication-checks.json). One concurrent
+native run failed during pythonnet/WinForms teardown after successful reopen
+assertions; the sequential rerun passed, but that intermittent teardown issue
+was not diagnosed or fixed.
+
+The first Python/native catalog expectations failed after the new media.status
+tool was added; those fixtures were updated and all checks rerun. Manual acceptance
+of this media slice is pending. Preceding local network/quality, GPU dashboard,
+memory decisions and session token counting were reported working.
+These checks do not establish real-account availability, support for every player
+or production readiness. Playback controls are a separate pending step; API latency
+also remains unavailable until a real transport metric is defined.
 
 - [Architecture](docs/ARCHITECTURE.md): current ownership and planned boundaries.
 - [Plan](docs/PLAN.md): remaining work and acceptance status.

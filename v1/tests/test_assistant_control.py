@@ -1,8 +1,8 @@
-"""Uyku isteğinin ortak araç/izin hattını ve tur sınırlarını doğrular.
+"""Verifies the common tool/permit line and turn limits of the sleep request.
 
-Sağlayıcı seçimi sentetiktir; gerçek modelin bütün dilleri anladığını kanıtlamaz.
-Registry, policy, TaskManager ve SDK taşıması gerçek koddan geçer; gerçek
-kullanıcı kaydı, mikrofon veya ücretli API kullanılmaz.
+The choice of provider is synthetic; It does not prove that the real model understands all languages.
+Registry, policy, TaskManager and SDK migration goes through the actual code; real
+No user registration, microphone or paid API is used.
 """
 import pytest
 from concurrent.futures import ThreadPoolExecutor
@@ -60,7 +60,7 @@ def test_live_replayed_old_control_does_not_schedule_another_transition(socket):
     socket.frames = [{'setupComplete': {}}, sleep_call('persistent', 'replayed-control'), frame('Accepted', complete=True)]
     with create_core() as core:
         chat = TextChat(core)
-        first = chat.run_live('Uyku moduna kalıcı olarak gir', 'future-live', notes_ready=False)
+        first = chat.run_live('Enter sleep mode permanently', 'future-live', notes_ready=False)
         assert first['ok'] and first['sleep_mode'] == 'persistent'
         socket.frames = [sleep_call('persistent', 'replayed-control'), frame('Old call replayed', complete=True)]
         second = chat.run_live('Another request', 'future-live', notes_ready=False)
@@ -84,7 +84,7 @@ def test_model_acknowledgement_alone_does_not_change_mode(socket):
     socket.frames = [{'setupComplete': {}}, frame('I will sleep now', complete=True)]
     with create_core() as core:
         chat = TextChat(core)
-        report = chat.run_live('Uyku moduna kalıcı olarak gir', 'future-live')
+        report = chat.run_live('Enter sleep mode permanently', 'future-live')
         assert report['ok'] and not report.get('sleep_requested') and 'sleep_mode' not in report
         assert chat.close()
 
@@ -116,7 +116,7 @@ def test_conflicting_control_requests_do_not_guess(socket):
 
 @pytest.mark.parametrize('mode', ['rest', 'live'])
 def test_shutdown_acceptance_waits_for_completed_reply_and_does_not_close_core(mode, transport, socket):
-    """İki SDK yolu aynı kayıtlı isteği üretir; worker kapanışı yapmaz."""
+    """The two SDK paths produce the same registered request; worker does not close."""
     if mode == 'rest':
         transport.responses = [reply([call('assistant.request_shutdown', {}, 'close')]), reply([{'text': 'Closing TaskVex'}])]
     else:

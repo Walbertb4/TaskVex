@@ -1,8 +1,8 @@
-"""Kimlik deposunun Win32 sınırını taklit ederek doğrula; gerçek kayıt yazma.
+"""Verify identity store by spoofing Win32 boundary; actual record writing.
 
-Blob ve C pointer yerleşimi gerçektir. Windows hata, bellek bırakma, profil
-izolasyonu ve bozuk kayıt durumları denetlenir. Gerçek Windows/UI kabulü ayrı
-native smoke senaryosudur; burada kullanıcının kimlik deposu değiştirilmez.
+Blob and C pointer placement are real. Windows error, memory release, profile
+isolation and corrupt record situations are checked. Real Windows/UI acceptance separate
+native smoke scenario; here the user's identity store is not changed.
 """
 
 import ctypes as c
@@ -16,7 +16,7 @@ pytestmark = pytest.mark.skipif(os.name != "nt", reason="Windows credential ABI 
 
 
 class MemoryCredentials:
-    """Yalnız testin kayıtlarını tut; Win32'nin pointer sahipliğini taklit et."""
+    """Just keep records of the test; Emulate Win32's pointer ownership."""
     def __init__(self):
         self.entries, self.freed = {}, 0
         self.fail_read = self.fail_write = False

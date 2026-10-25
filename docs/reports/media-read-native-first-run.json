@@ -1,0 +1,9 @@
+{
+  "ok": false,
+  "phase": "chat",
+  "checks_before_failure": "Media view, GPU, network and native startup passed",
+  "failure": "Synthetic REST transport still asserted the old BASE_MODEL_TOOLS set; media.status declaration raised an assertion before text_started was signaled",
+  "effect": "Native UI correctly surfaced an unconfirmed text result; no live API request or user notes were used",
+  "fix": "Update the explicit synthetic catalog expectation to include media.status; native suite must be rerun",
+  "production_media_reader_failure": false
+}

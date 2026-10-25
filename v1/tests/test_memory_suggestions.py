@@ -1,8 +1,8 @@
-"""Konuşmadan çıkarılan adayın kullanıcı onayı olmadan profil olmamasını dene.
+"""Try to ensure that the candidate removed from the conversation does not have a profile without user approval.
 
-Gerçek registry/policy/TaskManager, geçici profil ve sentetik REST/Live kullanılır.
-Bu test, dil modelinin sosyal bağlamı doğru yorumladığını ispatlamaz; kullanıcı
-kararının model tarafından atlanamadığını ve kayıt bütünlüğünü doğrular.
+Real registry/policy/TaskManager, temporary profile and synthetic REST/Live are used.
+This test does not prove that the language model correctly interprets the social context; user
+It verifies that the decision cannot be bypassed by the model and the integrity of the record.
 """
 import json
 from uuid import uuid4
@@ -34,7 +34,7 @@ def setup(store: JsonStore, *, learning=True):
 
 
 def suggest(core, store, *, name='Candidate', quote='My name is Ada', turn='My name is Ada'):
-    """Metin doğal dilde yorumlanmaz; sağlayıcının yapılandırılmış önerisi simüle edilir."""
+    """The text is not interpreted in natural language; The provider's structured recommendation is simulated."""
     tools = ModelTools(core, principal='local-user', session_id=uuid4().hex,
                        allowed_tools=('memory.read','memory.patch','memory.propose'))
     tools.begin_turn(turn)
@@ -147,7 +147,7 @@ def test_live_voice_quote_reaches_proposal_without_extra_provider_request(socket
     profile=stored(store)['prof']
     args={'text':'Name: Ada','expected_snapshot':memory_snapshot(profile)}
     if model_quote is not None:
-        args['source_quote']=model_quote  # Eski sağlayıcı alıntısı gerçek kaynağın yerini alamaz.
+        args['source_quote']=model_quote  # The old provider quote cannot replace the actual source.
     socket.frames=[{'setupComplete':{}}, {'serverContent':{'inputTranscription':{
         'text':'My name is Ada' if source_available else '', 'finished':True}}},
         live_call('memory.read',{},'read'),live_call('memory.propose',args,'propose'),frame('Review the suggestion',complete=True)]
@@ -161,7 +161,7 @@ def test_live_voice_quote_reaches_proposal_without_extra_provider_request(socket
                 assert proposal['text']=='Name: Ada' and proposal['source_quote']=='My name is Ada'
             else:
                 assert not report['ok'] and report['code']=='voice_transcript_required'
-                assert not report['tool_results']  # ASR yokken hiçbir araç çalıştırılmaz.
+                assert not report['tool_results']  # No tool can be operated without ASR.
             assert stored(store)['prof']['pMem']=='User-approved original'
             assert len([item for item in socket.sent if 'setup' in item])==1
         finally:
@@ -209,7 +209,7 @@ def test_proposal_source_proof_is_host_owned_and_replay_stays_stable(bridge):
 
 
 def test_model_paraphrase_does_not_reject_valid_current_turn_suggestion(bridge):
-    """Sağlayıcı kaynak cümlesini başka sözlerle döndürse de gerçek kaynak host'tandır."""
+    """Even though the provider paraphrases the source sentence, the real source is from the host."""
     setup(bridge._store)
     current='I study engineering.'
     result=suggest(bridge._core,bridge._store, name='Education: engineering',
@@ -294,7 +294,7 @@ def test_auto_save_failure_never_claims_persisted_success(bridge,monkeypatch):
 @pytest.mark.parametrize('approve', [True, False])
 @pytest.mark.parametrize('live', [True, False])
 def test_later_spoken_or_text_answer_uses_shared_decision(socket, transport, taskvex_home, approve, live):
-    """Gerçek SDK/core hattında ASR ve REST aynı bekleyen ID'yi karara bağlar."""
+    """On the actual SDK/core line, ASR and REST resolve the same pending ID."""
     store = JsonStore(taskvex_home/'settings.json')
     setup(store)
     with create_core(settings_store=store) as core:
@@ -339,7 +339,7 @@ def test_model_cannot_self_approve_even_after_reread_but_later_answer_can(bridge
         tools.submit(decision)
     tools.begin_turn('Yes, save that')
     with pytest.raises(ContractError):
-        tools.submit(decision)  # Önceki turun ID bilgisi yeterli değildir.
+        tools.submit(decision)  # ID information of the previous turn is not sufficient.
     read = tools.submit({'id':'new-read','name':'memory.read','arguments':{}})
     tools.result(read.task_id,timeout=3)
     task = tools.submit(decision)
@@ -347,7 +347,7 @@ def test_model_cannot_self_approve_even_after_reread_but_later_answer_can(bridge
     tools.begin_turn('Other message')
     assert tools.submit(decision).task_id == task.task_id
     assert stored(bridge._store)['prof']['pMem'].count('Name: Ada') == 1
-    assert decide(bridge._core, proposal).status.value == 'failed'  # Geç UI onayı ikinci kez yazmaz.
+    assert decide(bridge._core, proposal).status.value == 'failed'  # Late UI confirmation will not write twice.
 
 
 def test_fresh_read_cannot_authorize_replaced_or_expired_pending_id(bridge):

@@ -1,5 +1,5 @@
-/** Debloat sonrası gerçek tarayıcı/UI kabulü. API ve fiziksel cihaz açılmaz.
- * Yerel HTTP dışında ağ engellenir; modül grafiği ve korunmuş kayıtlar denenir.
+/** Real browser/UI adoption after debloat. API and physical device are not opened.
+ * Network other than local HTTP is blocked; module graph and preserved registers are tried.
  */
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -86,7 +86,7 @@ try {
     await p.reload();await p.waitForFunction(()=>!!window.vex);
     assert.equal(await p.locator('#pMemory').isChecked(),true);
     assert.equal(await p.locator('#pMem').inputValue(),'I study engineering.');
-    // Eski profilde onay alanı yoksa önceki hesabın açık tercihi miras kalmaz.
+    // If the old profile does not have a confirmation field, the previous account's open preference will not be inherited.
     await p.evaluate(()=>window.vex.loadStore({prof:{pMem:'Legacy private fact'}}));
     assert.equal(await p.locator('#pMemory').isChecked(),false);
     await p.evaluate(()=>window.vex.loadStore({prof:{}}));
@@ -396,6 +396,54 @@ try {
     await p.evaluate(async()=>{const {setNetwork}=await import('/js/connections.js');setNetwork(null);});
     assert.equal(await p.locator('#nWifi').getAttribute('title'),null);
     assert.equal(await p.locator('#nPing').getAttribute('title'),null);
+  });
+  await test('Windows media metadata is safe, stateful, read-only and clears missing or stale sessions',async()=>{
+    const p=await setup();
+    const first=await p.evaluate(async()=>{
+      const view=await import('/js/media_view.js');
+      const accepted=view.applyMediaSample({sampled_at:10,status:'available',title:'<img src=x>',artist:'Synthetic',state:'playing'});
+      const playing=document.getElementById('eq').classList.contains('on');
+      const stale=view.applyMediaSample({sampled_at:9,status:'no_session'});
+      const invalid=view.applyMediaSample({sampled_at:11,status:'available',title:123});
+      return {accepted,playing,stale,invalid};
+    });
+    assert.deepEqual(first,{accepted:true,playing:true,stale:false,invalid:false});
+    assert.equal(await p.locator('#mTitle2').innerText(),'<img src=x>');
+    assert.equal(await p.locator('#mTitle2 img').count(),0);
+    for(const button of await p.locator('#w_media [data-m]').all())assert.equal(await button.isDisabled(),true);
+    await p.evaluate(async()=>{
+      const {applyMediaSample}=await import('/js/media_view.js');
+      applyMediaSample({sampled_at:11,status:'available',title:'Paused track',state:'paused'});
+    });
+    assert.equal(await p.locator('#eq').evaluate(el=>el.classList.contains('on')),false);
+    assert.match(await p.locator('#mArt').innerText(),/paused/);
+    await p.evaluate(async()=>{
+      const {applyMediaSample}=await import('/js/media_view.js');
+      applyMediaSample({sampled_at:12,status:'no_session'});
+    });
+    assert.equal(await p.locator('#mTitle2').innerText(),'No media session');
+    const polling=await p.evaluate(async()=>{
+      const view=await import('/js/media_view.js');
+      let time=100,resolve,calls=0;
+      Object.defineProperty(performance,'now',{value:()=>time,configurable:true});
+      window.pywebview={api:{event:(name)=>{
+        if(name!=='query_media')throw new Error('Unexpected mutation');
+        calls++;return new Promise(done=>{resolve=done;});
+      }}};
+      view.startMediaView();await view.refreshMedia();
+      time=11000;await view.refreshMedia();
+      const cleared=document.getElementById('mTitle2').textContent;
+      resolve({ok:true,completed:true,data:{sampled_at:13,status:'available',title:'Recovered',state:'paused'}});
+      await new Promise(done=>setTimeout(done,0));
+      window.vex.online(false,'MODEL OFFLINE');
+      return {calls,cleared,recovered:document.getElementById('mTitle2').textContent};
+    });
+    assert.deepEqual(polling,{calls:1,cleared:'Media unavailable',recovered:'Recovered'});
+    await p.evaluate(async()=>{
+      const {applyMediaSample}=await import('/js/media_view.js');
+      applyMediaSample({sampled_at:14,status:'unsupported'});
+    });
+    assert.equal(await p.locator('#mTitle2').innerText(),'Media unavailable');
   });
   console.log(`${results.length} browser cleanup groups passed`);
 } finally { await browser.close(); await new Promise(resolve=>server.close(resolve)); }

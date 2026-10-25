@@ -1,7 +1,7 @@
-"""UI önbellek düzeltmesi: gerçek Bottle/WSGI yanıtları; GUI veya API açılmaz.
+"""UI cache fix: real Bottle/WSGI replies; The GUI or API does not open.
 
-Origin/profil değişmeden dosya yolları her açılışta değişmelidir. Statik import
-grafiğinin tamamı aynı yeni kökten gelir; eski dosya yanıtı yeniden kullanılmaz.
+Origin/profile should not change file paths at every boot. Static import
+The entire graph comes from the same new root; The old file response is not reused.
 """
 from io import BytesIO
 from pathlib import Path
@@ -11,7 +11,7 @@ from app.main import _ui_app
 
 
 def request(app, path, **extra):
-    """WSGI sunucusunun verdiği durum/başlık/gövdeyi ağ açmadan gözle."""
+    """Observe the status/title/body given by the WSGI server without opening the network."""
     environ = {}
     setup_testing_defaults(environ)
     environ.update(PATH_INFO=path, **extra)

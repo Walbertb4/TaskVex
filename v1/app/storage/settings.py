@@ -1,7 +1,7 @@
-"""Generic UI save içinden yalnız izinli tercihleri seç ve doğrula.
+"""Select and verify only allowed preferences from Generic UI save.
 
-Not/skill/rutin ve credential sahipliği bu modüle ait değildir. Kayıt dosyası
-da aynı şemadan geçer; geçerli JSON olması geçerli ayar olduğu anlamına gelmez.
+Not/skill/routine and credential ownership do not belong to this module. log file
+also goes through the same scheme; Just because it's valid JSON doesn't mean it's a valid setting.
 """
 
 from jsonschema import Draft202012Validator
@@ -40,19 +40,19 @@ _FIELDS = {
 }
 _VALIDATOR = Draft202012Validator({"type": "object", "properties": _FIELDS, "additionalProperties": False})
 
-# Reset yalnız görünüm/davranış tercihlerini kapsar; profil, cihaz/bağlantı ve
-# koleksiyonlar burada yoktur. Her kullanımda kopya alınarak varsayılan korunur.
+# Reset covers appearance/behavior preferences only; profile, device/connection and
+# collections are not available here. The default is preserved by making a copy with each use.
 INTERFACE_DEFAULTS = {"theme": "#a78bfa", "colors": {}, "sfx": True, "vol": 0.8, "replyVolume": 1,
                       "wake": 50, "sleepDelay": 10, "noise": 420, "onTop": False, "cmp": "auto",
                       "tab": "theme", "layout": None}
 
 
 def validate_settings(data: dict, *, from_ui: bool = False) -> dict:
-    """UI payload'ını projekte et; disk kaydındaki bilinmeyen alanı ise reddet.
+    """Project UI payload; Reject the unknown area in the disk record.
 
-    UI store koleksiyonlar taşır; bunları yazmayız. İzinli bir alanın içindeki
-    bilinmeyen alan (ör. conn.apikey) ise sessiz saklanmaz, bütün kayıt reddedilir.
-    Dönüş bağımsız kopyadır; hata kullanıcı verisini mesajına koymaz.
+    UI store carries collections; We do not write these. within a permitted area
+    If the unknown field (e.g. conn.apikey) is not kept silent, the entire record is rejected.
+    The return is independent copy; The error does not put user data in its message.
     """
     if type(data) is not dict:
         raise ContractError("Expected settings object")

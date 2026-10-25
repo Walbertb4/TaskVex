@@ -1,8 +1,8 @@
-"""Kullanıcı hafızası işlemleri ve onay bekleyen adaylar için tek alan sahibi.
+"""Owner of a single space for user memory operations and candidates awaiting approval.
 
-Yeni depo veya doğal dil çözücüsü yoktur. Model yapılandırılmış değişikliği
-seçer; taze snapshot ve tekil hedef diskte tekrar doğrulanır. Native host aynı
-JsonStore örneğinin kilidini paylaşır; UI kaydıyla yarışıp tercih kaybetmeyiz.
+There is no new repository or natural language solver. Model configured change
+chooses; The fresh snapshot and the individual target are validated again on disk. Native host is the same
+Shares the lock of the JsonStore instance; We do not lose preference by competing with UI registration.
 """
 from hashlib import sha256
 import json
@@ -30,12 +30,12 @@ DECIDE_SCHEMA = {"type":"object", "additionalProperties":False,
 
 
 def memory_base(profile: dict) -> dict:
-    """UI karşılaştırması için yalnız hafıza metni ve açık gönderim tercihi."""
+    """Only memory text and explicit submission preference for UI comparison."""
     return {"pMem": profile.get("pMem", ""), "pMemory": profile.get("pMemory", False)}
 
 
 def memory_snapshot(profile: dict) -> str:
-    """Metin ve izin değişimi eski model seçimini birlikte geçersiz kılar."""
+    """The change of text and permission together overrides the old model selection."""
     return sha256(json.dumps({**memory_base(profile), "pLearn":profile.get("pLearn", False), "pMemoryConfirm":profile.get("pMemoryConfirm", True)}, sort_keys=True, ensure_ascii=True).encode()).hexdigest()
 
 
@@ -45,15 +45,15 @@ def _failure(context: ToolContext, code: str, message: str, *, unknown: bool = F
 
 
 class PersonalMemory:
-    """Profil belgesinin alan aracı; dosyanın sahibi mevcut ayar deposudur."""
+    """Field tool of the profile document; The owner of the file is the current settings store."""
 
     def __init__(self, store: JsonStore) -> None:
         self._store = store
-        # Tek aday RAM'de bekler; yeni öneri eskisini geçersiz kılar. Restart onay sayılmaz.
+        # A single candidate waits in RAM; The new proposal overrides the old one. Restart is not considered confirmation.
         self._proposal: dict | None = None
 
     def read(self, arguments: dict, context: ToolContext) -> ToolResult:
-        """İzin kapalıysa yerel metni modele sızdırmadan reddet."""
+        """If permission is off, reject local text without leaking it to the model."""
         if arguments:
             return _failure(context, "invalid_arguments", "Memory read accepts no arguments")
         with self._store.lock:
@@ -67,7 +67,7 @@ class PersonalMemory:
                 data={**result.to_dict()['data'], 'proposal':proposal}, evidence=result.to_dict()['evidence'])
 
     def patch(self, arguments: dict, context: ToolContext) -> ToolResult:
-        """Dar değişikliği uygula; hedef eksik/çokluysa bütün belgeyi koru."""
+        """Apply narrow change; If target is missing/multiple, protect entire document."""
         action = arguments.get("action")
         fields = {"append": {"text"}, "replace": {"text", "replacement"}, "forget": {"text"}, "clear": set()}
         if (not isinstance(action, str) or action not in fields
@@ -78,10 +78,10 @@ class PersonalMemory:
         return self._apply(arguments, context)
 
     def propose(self, arguments: dict, context: ToolContext) -> ToolResult:
-        """Kullanıcı tercihine göre aday üret veya aynı append yoluyla doğrulayarak kaydet.
+        """Generate candidates according to user preference or save by verifying via the same append.
 
-        ModelTools bu turun gerçek girdisini kaynak olarak kendisi bağlar. Burada
-        güncel izin/snapshot tekrar doğrulanır; eski onay yeni adayı kaydedemez.
+        ModelTools itself links the actual input of this round as a source. here
+        current permission/snapshot is verified again; The old confirmation cannot register the new candidate.
         """
         if arguments.get('source_verified') is not True:
             return _failure(context, 'source_unavailable', 'Source quote is not in the current user input; skip the suggestion and continue the reply')
@@ -99,8 +99,8 @@ class PersonalMemory:
                 return ToolResult(task_id=context.task_id, status=TaskStatus.SUCCEEDED, verified=True,
                                   data={'proposal':None}, evidence={'already_saved':True, 'persisted':False})
             if profile.get('pMemoryConfirm', True) is False:
-                # Sormadan kayıt yalnız kullanıcının kalıcı tercihinden gelir;
-                # model bir auto_save/onay parametresi gönderemez.
+                # Registration without prompting comes only from the user's permanent preference;
+                # The model cannot send a auto_save/approval parameter.
                 saved = self._apply({'action':'append', 'text':text,
                     'expected_snapshot':result.data['snapshot']}, context)
                 if saved.verified:
@@ -115,10 +115,10 @@ class PersonalMemory:
                               data={'proposal':self._proposal}, evidence={'persisted':False, 'approval_required':True})
 
     def decide(self, arguments: dict, context: ToolContext) -> ToolResult:
-        """Düğme veya sonraki kullanıcı yanıtından aynı adayı onayla/reddet.
+        """Same candidate from button or next user response approve/reject.
 
-        Onaylanan metin UI payload'ından değil bu alan sahibindeki adaydan alınır.
-        Aynı append iş mantığı kullanılır. Değişmiş izin/belge ve eski ID ret verir.
+        The approved text is taken from the candidate who owns this domain, not from the UI payload.
+        The same append business logic is used. Changed permission/document and old ID gives rejection.
         """
         with self._store.lock:
             proposal = self._proposal
@@ -140,10 +140,10 @@ class PersonalMemory:
             return result
 
     def _apply(self, change: dict | None, context: ToolContext) -> ToolResult:
-        """Kontrol/yazma/readback tek kısa kilitte; geç iptal gerçek etkiyi silmez.
+        """Control/write/readback single short lock; Late cancellation does not erase the actual effect.
 
-        Yazma başladıktan sonraki doğrulama hatası belirsizdir; otomatik tekrar
-        yapılmamalıdır. Günlük eski metni tutabilir, unutma geçmiş silme değildir.
+        The validation error after the write starts is uncertain; auto repeat
+        should not be done. The diary can keep the old text, remember history is not deleted.
         """
         with self._store.lock:
             written = False

@@ -1,8 +1,8 @@
-"""Yerel wake varyasyonlarını gerçek KWS ve yapay SAPI sesleriyle kontrol et.
+"""Control local wake variations with real KWS and artificial SAPI sounds.
 
-Yalnız test aracıdır; uygulamaya konuşma sesi/oynatıcı eklemez. Önceden kurulu,
-hash doğrulamalı runtime/wake-model kullanılır. Ağ ve mikrofon kullanılmaz;
-WAV dosyaları geçici klasörde üretilip silinir. Fiziksel kullanıcı kabulü değildir.
+It is only a testing tool; Does not add speech audio/player to the application. pre-installed,
+runtime/wake-model with hash verification is used. Network and microphone are not used;
+WAV files are generated and deleted in the temporary folder. It is not physical user acceptance.
 """
 import argparse
 import json
@@ -17,13 +17,13 @@ from app.session import wake_word
 
 
 def run() -> None:
-    """Aynı motoru yeniden başlatarak olumlu/olumsuz sesleri gerçek PCM'den geçir."""
+    """By restarting the same engine positive/negative passes the sounds through the actual PCM."""
     parser = argparse.ArgumentParser()
     parser.add_argument('--report', type=Path, required=True)
     args = parser.parse_args()
     model = Path(__file__).resolve().parents[1] / 'runtime' / 'wake-model'
     wake_word.model_home = lambda: model
-    # Sabit test metinleri; kullanıcı metni veya dosya yolu shell'e eklenmez.
+    # Fixed test texts; user text or file path is not included in the shell.
     script = r"""
 Add-Type -AssemblyName System.Speech
 $synth = New-Object System.Speech.Synthesis.SpeechSynthesizer
