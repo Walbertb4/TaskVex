@@ -366,3 +366,7 @@ reopen checks; the sequential rerun passed. Its root cause remains open and is n
 claimed fixed. Real-account/paid API and clean-PC acceptance were not performed.
 Explicit user authorization permits publication; physical media/demo acceptance
 remains distinct. See reports/english-publication-checks.json and english-native.json.
+
+Translated archive files use canonical LF bytes under the archive -text rule;
+current manifest hashes were recalculated after normalization. Source hashes and
+Git provenance remain unchanged. The final staged whitespace check is clean.

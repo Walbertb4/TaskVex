@@ -6,7 +6,8 @@
     "native": "chat phase expected translated sleep reply but fixture retained an ASCII Turkish fragment; aligned",
     "translation": "JS CRLF offsets mismatched on the initial conversion; restored original JS, normalized parser input, and regenerated before final tests",
     "full_retry": "2 failed, 1170 passed: two remaining Hello input-transcript fragment fixtures; corrected without changing production transport",
-    "native_parallel_shutdown": "Reopen assertions passed, then process exited with Python.Runtime.InternalPythonnetException / System.ComponentModel.InvalidAsynchronousStateException during teardown. No production fix applied; separate sequential rerun pending."
+    "native_parallel_shutdown": "Reopen assertions passed, then process exited with Python.Runtime.InternalPythonnetException / System.ComponentModel.InvalidAsynchronousStateException during teardown. No production fix applied; separate sequential rerun pending.",
+    "staged_archive_line_endings": "The first staged check treated archive CRLF bytes as trailing whitespace. Translated archive files were normalized to LF, current hashes recalculated, and the staged check rerun before push."
   },
   "limits": [
     "No real account or paid API requests",
