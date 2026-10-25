@@ -5,6 +5,47 @@ The state is in ARCHITECTURE.md, the work to be done is in PLAN.md. The version 
 
 ## Unreleased
 
+### Publish camera and permissions status
+
+- Updated README with current camera/permission behavior, actual validation and
+  unresolved full-native startup/teardown failures. Replaced stale media acceptance
+  and older test totals; historical evidence remains linked rather than implied current.
+- Explicit user request authorizes committing/pushing the pending implementation.
+  Camera/OS/provider manual acceptance and native stability remain open; the demo
+  EXE was not rebuilt and no additional feature stage was started.
+
+
+### Central permission settings — 6.8.1a
+
+- Added Camera/Microphone/Location requests and honest browser status under
+  Settings > System, independent of Live/model readiness or device selection.
+- Requests briefly probe default media then release it, or discard a location;
+  no feature toggle, sharing, provider call or saved weather preference is changed.
+- Added timeout/late-grant cleanup and active-device checks; pending microphone
+  setup alone is not treated as granted access. No automatic startup prompts.
+- Added allowlisted Windows privacy-page navigation with explicit failure handling;
+  it cannot grant permission or open arbitrary caller URLs.
+- Validation: 1,269 pytest, 9 JS suites, 25 browser groups, 2 targeted native
+  phases and Pyright 0. Full native regression did not finish cleanly: a UI startup
+  timeout and a Python.NET teardown failure remain open. Camera/OS manual acceptance
+  is separate; see reports/permissions-checks.json and permissions-native.json.
+
+
+### Camera input on the existing Live session — 6.8.1
+
+- Added explicit camera On/Off and browser camera device selection with video-only
+  permission, timeout/late-permission cleanup and no automatic startup capture.
+- Added bounded request-scoped JPEG input on the existing Live socket, including
+  the speech activity boundary, one-frame-per-second sending, latest-only RAM,
+  stale/replay rejection and Stop cleanup. No new package or execution authority.
+- Camera Off preserves microphone and reply; sleep/disconnect/scope changes and
+  uncertain outcomes release capture. Visual instructions are untrusted observations.
+- Source UI cleanup was accepted and committed as 6e18e99 before this step.
+- Validation: 1,265 pytest, 9 JS suites, 23 browser groups, 10 native phases and
+  Pyright 0 errors/warnings. Evidence: reports/camera-checks.json and camera-native.json;
+  real camera/provider acceptance remains pending. No paid API or real camera used.
+
+
 ### Simplify weather, media and memory presentation
 
 - Moved visible weather/place source credits to README; retained location consent and weather freshness status.

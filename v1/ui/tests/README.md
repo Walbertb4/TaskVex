@@ -30,8 +30,10 @@ node ui/tests/audit-fixes.mjs
 
 BROWSER_PATH optionally selects Edge/Chromium. The test opens its own local server,
 uses an isolated profile and blocks external requests. It never reads user storage.
-The current 16 groups cover honest status, shared preferences, notes, compatibility
-storage, memory, usage accounting and system/network/media views.
+The current 25 groups cover honest status, shared preferences, notes, compatibility
+storage, memory, usage accounting, system/network/media/weather views and camera
+permission/capture/cleanup with Chromium synthetic video, plus default-device
+permission probes, discarded location, denial and late-grant cleanup. No physical camera is opened.
 
 Native coverage is in tests/native_smoke.py and native_scenarios.py. It uses the real
 core/WebView2 with synthetic providers/PCM across ten phases. Physical microphone,

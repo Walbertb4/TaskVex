@@ -42,6 +42,8 @@ microphone On/Off and Stop remain local lifecycle operations.
 | Native host, process, restart and shutdown | `v1/app/main.py` |
 | UI startup and snapshots | `ui/js/app.js`; connects modules without a second domain state |
 | Conversation, microphone, sleep and Stop | `ui/js/assistant_session.js`; request and audio IDs stay together |
+| Camera capture | `ui/js/live_video.js`; opt-in device resource, RAM JPEG capture and request-scoped sending under assistant_session.js |
+| Live visual input | `app/session/live_video.py`; one latest-frame slot on the existing PersistentLive socket, no task executor or disk records |
 | Visual shell and startup effects | `ui/js/shell.js`; does not execute model actions |
 | Preference object | `ui/js/preferences.js`; settings/devices/layout share it |
 | Native boundary | `app/bridge/webview_bridge.py`; versioned data, readiness and short locks |
@@ -396,7 +398,7 @@ integrations; they are not all implemented today.
 
 ## Not implemented
 
-Google service integrations, camera/screen inspection, system
+Google service integrations, screen inspection, system
 audio control, file attachments, base-instruction override/greetings, backend
 skill/routine execution/scheduling, GUI L1–L4 and external messaging channels.
 Media metadata and bounded current-session playback controls are implemented. Preserve existing
@@ -418,3 +420,47 @@ Original TaskVex work is MIT. Reference code is not imported automatically;
 third-party rights remain in THIRD_PARTY_NOTES.md. Record changes in CHANGELOG.md.
 Debloating must preserve security, cancellation and verification. Create modules
 for responsibility boundaries rather than arbitrary file-length targets.
+
+## Camera input ownership
+
+Camera On is a local user input control, like microphone On/Off, not a model tool.
+Only the user can enable capture. Device IDs use the same browser device preference
+adapter, with exact selection and no fallback to another camera. The browser owns
+permission and its video-only track; settings store a device preference, never an
+active camera grant. Startup does not open the camera or request permission.
+
+During an active Live user turn, the camera owner supplies bounded JPEG input through
+NativeBridge -> TextChat -> PersistentLive -> probe_live_text on the existing socket.
+Text turns receive an initial image before their prompt; speech frames follow the
+same explicit activity start as PCM. One sender samples at most once per second,
+retaining only the latest frame and dropping queued images older than two seconds.
+Images are capped at 256 KiB; browser capture scales the longest edge to 640 pixels.
+JPEG framing/size are checked at the boundary; actual image decoding is the provider's
+responsibility. No second connection, tool executor, audio player or frame history exists.
+Provider contract: [Live video input](https://ai.google.dev/gemini-api/docs/live-api/capabilities#sending-video).
+
+Idle camera frames stay local. Camera Off releases the device and closes only the
+video input; microphone and model output continue. Stop ends current transmission,
+while camera may remain locally ready for a future user message. Sleep, Disconnect,
+model/key/mode change, unknown results, shutdown and pagehide release capture.
+Request IDs/sequences reject stale or duplicate frames; no reconnect replays pixels.
+Already sent/in-flight images cannot be recalled; Camera Off does not erase provider
+conversation context. Image content is observation data, not action authorization;
+model actions still require the existing tools, policy and TaskManager.
+
+## Permission settings
+
+Settings > System > Permissions is owned by ui/js/permissions.js. It queries
+browser permission status only when opened/refreshed; status queries never start
+capture or geolocation. Explicit Request access uses a short default-device probe
+and stops every returned track immediately, or requests one approximate position
+and discards it. Existing live_mic/live_video capture is not replaced; an active
+device does not need a second probe. No toggle, profile grant flag, Live socket,
+weather preference or provider request is created. Timeouts/pagehide reject stale
+results, and a late media grant still releases its tracks.
+
+The browser and Windows control actual permission and persistence. Unsupported
+status queries remain Not reported; browser Allowed is not a guarantee of working
+hardware or OS policy. NativeBridge.permission_settings opens one of three fixed
+Windows privacy URIs from a user button. It cannot take arbitrary URLs or grant
+access; remembered browser denials and Windows policy may still require user action.

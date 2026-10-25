@@ -16,6 +16,7 @@ from google import genai
 from google.genai import errors, types
 from google.genai.live import AsyncSession
 from app.session.live_input import LiveInput
+from app.session.live_video import LiveVideo
 from app.session.model_tools import ModelTools
 from app.session.model_instruction import model_instruction
 from app.core.contracts import ContractError
@@ -196,6 +197,7 @@ class PersistentLive:
         self._guard = Lock()
         self._pending: tuple[str, Event] | None = None
         self._input: LiveInput | None = None
+        self._video: LiveVideo | None = None
 
     def _start(self):
         if self._loop is None:
@@ -204,19 +206,19 @@ class PersistentLive:
             self._thread = Thread(target=self._loop.run_forever, name="taskvex-live-io", daemon=True)
             self._thread.start()
 
-    async def _request(self, text, model, tools, stop_event, audio_sink, audio_input, transcript_sink, profile, context, voice):
+    async def _request(self, text, model, tools, stop_event, audio_sink, audio_input, transcript_sink, profile, context, voice, video_input):
         from app.session.live_probe import probe_live_text
         self._active = asyncio.current_task()
         try:
             return await probe_live_text(text, model, connection=self._connection, tools=tools, stop_event=stop_event,
                                          audio_sink=audio_sink, audio_input=audio_input, transcript_sink=transcript_sink,
-                                         profile=profile, context=context, voice=voice)
+                                         profile=profile, context=context, voice=voice, video_input=video_input)
         finally:
             self._active = None
 
     def ask(self, text: str, model: str, tools: ModelTools | None = None, *, request_id: str | None = None, audio_sink=None,
             transcript_sink=None, audio_input: bytes | LiveInput | None = None, profile: dict | None = None,
-            context: str = '', voice: str | None = None) -> dict:
+            context: str = '', voice: str | None = None, video_input: LiveVideo | None = None) -> dict:
         """Request event/total manages time limit; The host does not automatically replay."""
         self._start()
         assert self._loop is not None
@@ -226,12 +228,14 @@ class PersistentLive:
         with self._guard:
             self._pending = (request_id or uuid4().hex, stop_event)
             self._input = audio_input if isinstance(audio_input, LiveInput) else None
+            self._video = video_input
         try:
-            return asyncio.run_coroutine_threadsafe(self._request(text, model, tools, stop_event, audio_sink, audio_input, transcript_sink, profile, context, voice), self._loop).result()
+            return asyncio.run_coroutine_threadsafe(self._request(text, model, tools, stop_event, audio_sink, audio_input, transcript_sink, profile, context, voice, video_input), self._loop).result()
         finally:
             with self._guard:
                 self._pending = None
                 self._input = None
+                self._video = None
 
     def input(self, request_id: str, sequence=None, data=None) -> dict:
         """Only deliver a status query or packet to the matching active microphone turn."""
@@ -247,6 +251,17 @@ class PersistentLive:
             self.stop(request_id)
         return {"ok": accepted, "closed": stream.closed, "failed": failed}
 
+    def video_input(self, request_id: str, sequence=None, data=None) -> dict:
+        """Forward only to this active turn; old IDs and Stop cannot feed a new request."""
+        with self._guard:
+            video = self._video
+            if not self._pending or self._pending[0] != request_id or video is None or self._pending[1].is_set():
+                return {'ok': data is None, 'closed': True}
+            if sequence is None:
+                return {'ok': True, 'ready': video.ready, 'closed': video.closed}
+            accepted = video.feed(sequence, data)
+            return {'ok': accepted, 'closed': video.closed, 'failed': video.failed}
+
     def stop(self, request_id: str) -> bool:
         """Only request cancellation to the matching active turn; True is not proof of ending."""
         with self._guard:
@@ -255,6 +270,8 @@ class PersistentLive:
             event = self._pending[1]
             if not event.is_set():
                 event.set()
+                if self._video:
+                    self._video.close()
                 self._loop.call_soon_threadsafe(self._interrupt, event)
             return True
 

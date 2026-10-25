@@ -1597,3 +1597,7 @@ input[type=color] {
 .media-volume input:focus-visible {outline:1px solid var(--gold); outline-offset:4px;}
 .weather-choices {display:flex; flex-direction:column; align-items:stretch; gap:5px; margin-top:6px;}
 .weather-choices .cb {white-space:normal; text-align:left;}
+
+/* Permission controls use the same theme and wrap inside the settings modal. */
+.permission-row {flex-wrap:wrap; gap:8px;}
+.permission-row .sub {display:block; margin-top:3px;}

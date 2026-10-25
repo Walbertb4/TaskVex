@@ -1,0 +1,70 @@
+{
+  "ok": true,
+  "scope": "targeted save/reopen with synthetic camera; full native regression did not complete cleanly, see permissions-checks.json",
+  "phases": [
+    {
+      "native_local_memory_and_system_sample": true,
+      "native_windows_gpu_zero_and_static_label": true,
+      "native_local_network_link_and_rates": true,
+      "native_gateway_ping_and_wifi_signal": true,
+      "native_read_only_media_view": true,
+      "native_media_controls_shared_core_verified": true,
+      "native_player_volume_shared_core_and_hidden_status": true,
+      "native_weather_selection_persistence_zero_and_dashboard": true,
+      "native_synthetic_camera_capture_jpeg_and_cleanup": true,
+      "native_default_camera_permission_without_live_or_capture": true,
+      "default_purple": true,
+      "audio_without_gesture": true,
+      "f11_toggle": true,
+      "reply_volume_native_saved": true,
+      "live_only_voices_selected_and_saved": true,
+      "settings_saved": true,
+      "invalid_save_preserved": true,
+      "unsupported_rejected": true,
+      "snapshot_no_echo": true,
+      "native_on_top": true,
+      "ok": true,
+      "phase": "save",
+      "native": {
+        "alias": true,
+        "api": [
+          "event"
+        ],
+        "online": "● MODEL OFFLINE",
+        "system": "brave.exe"
+      },
+      "native_restart_closed": true,
+      "restart_launch_requested": true
+    },
+    {
+      "native_local_memory_and_system_sample": true,
+      "native_windows_gpu_zero_and_static_label": true,
+      "native_local_network_link_and_rates": true,
+      "native_gateway_ping_and_wifi_signal": true,
+      "native_read_only_media_view": true,
+      "native_weather_location_restored_without_geolocation": true,
+      "memory_review_choice_cross_process_restored": true,
+      "personal_memory_cross_process_restored": true,
+      "reply_volume_cross_process_restored": true,
+      "live_voice_cross_process_restored": true,
+      "on_top_restored": true,
+      "reopened_settings": true,
+      "local_note_preserved": true,
+      "failed_save_modal_open": true,
+      "reply_volume_reset_to_default": true,
+      "reset_preserved_collections_profile": true,
+      "reset_failure_preserved_preferences": true,
+      "ok": true,
+      "phase": "reopen",
+      "native": {
+        "alias": true,
+        "api": [
+          "event"
+        ],
+        "online": "● MODEL OFFLINE",
+        "system": "brave.exe"
+      },
+      "native_shutdown": true
+    }
+  ]
+}

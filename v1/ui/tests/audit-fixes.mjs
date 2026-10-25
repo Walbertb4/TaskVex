@@ -19,7 +19,7 @@ const server = http.createServer((req, res) => {
 });
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 const origin = `http://127.0.0.1:${server.address().port}`;
-const browser = await chromium.launch({executablePath: process.env.BROWSER_PATH || 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', headless:true});
+const browser = await chromium.launch({executablePath: process.env.BROWSER_PATH || 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', headless:true, args:['--use-fake-ui-for-media-stream','--use-fake-device-for-media-stream']});
 let context;
 const pageErrors = [];
 async function setup() {
@@ -66,9 +66,109 @@ try {
     await p.reload();await p.waitForFunction(()=>!!window.vex);
     assert.deepEqual(await state(),{volume:0,muted:false,effects:0.55,slider:'0'});
   });
+  await test('camera uses explicit video-only permission, bounded Live frames and independent Off',async()=>{
+    const p=await setup();
+    await context.grantPermissions(['camera'],{origin});
+    assert.equal(await p.locator('#camB').getAttribute('aria-pressed'),'false');
+    await p.evaluate(async()=>{
+      const media=navigator.mediaDevices, original=media.getUserMedia.bind(media);
+      window.cameraOptions=[];media.getUserMedia=async options=>{cameraOptions.push(options);window.cameraStream=await original(options);return cameraStream;};
+      window.cameraCalls=[];window.pywebview={api:{event:async(name,data)=>{
+        cameraCalls.push({name,data});return {ok:true,ready:true,closed:false};
+      }}};
+      window.cameraModule=(await import('/js/live_video.js')).liveVideo;
+      if(!await cameraModule.start(''))throw new Error('Synthetic camera failed');
+      window.cameraReply=new Promise(resolve=>window.finishCameraReply=resolve);
+      window.cameraTurn=cameraModule.withInput('camera-request',visual=>{window.initialCamera=visual;return cameraReply;});
+    });
+    assert.equal(await p.locator('#camB').getAttribute('aria-pressed'),'true');
+    await p.evaluate(()=>document.querySelector('[data-request-permission="camera"]').click());
+    await p.waitForFunction(()=>document.getElementById('permission-camera').dataset.state==='granted');
+    assert.equal(await p.evaluate(()=>cameraOptions.length),1); // Existing capture is borrowed, never reopened/stopped.
+    assert.equal(await p.evaluate(()=>cameraStream.getTracks().every(t=>t.readyState==='live')),true);
+    await p.waitForFunction(()=>cameraCalls.some(c=>c.name==='live_video_feed'&&c.data.data),{timeout:6000});
+    assert.equal(await p.evaluate(()=>cameraOptions.length),1);
+    assert.equal(await p.evaluate(()=>cameraOptions[0].audio),false);
+    assert.equal(await p.evaluate(()=>initialCamera.video.startsWith('/9j/')),true);
+    assert.equal(await p.evaluate(()=>initialCamera.video.length<=349528),true);
+    await p.evaluate(()=>cameraModule.stop());
+    await p.waitForFunction(()=>cameraCalls.some(c=>c.data?.data===null));
+    assert.equal(await p.locator('#camB').getAttribute('aria-pressed'),'false');
+    assert.equal(await p.evaluate(()=>cameraStream.getTracks().every(t=>t.readyState==='ended')),true);
+    assert.equal(await p.evaluate(()=>cameraCalls.some(c=>c.name==='stop_task')),false);
+    const count=await p.evaluate(()=>cameraCalls.length);
+    await p.waitForTimeout(1200);
+    assert.equal(await p.evaluate(()=>cameraCalls.length),count);
+    await p.evaluate(async()=>{finishCameraReply({ok:true});await cameraTurn;});
+  });
+  await test('camera late permission is released and selected-device failure has no silent fallback',async()=>{
+    const p=await setup();
+    const state=await p.evaluate(async()=>{
+      const {liveVideo}=await import('/js/live_video.js');
+      let resolvePermission,stops=0;
+      navigator.mediaDevices.getUserMedia=options=>{window.requestedCamera=options;return new Promise(resolve=>resolvePermission=resolve);};
+      const opening=liveVideo.start('chosen-camera');liveVideo.stop();
+      resolvePermission({getTracks:()=>[{stop:()=>stops++}]});await opening;
+      navigator.mediaDevices.getUserMedia=async()=>{throw new DOMException('denied','NotAllowedError');};
+      const denied=await liveVideo.start('chosen-camera');
+      return {stops,active:liveVideo.active,denied,device:requestedCamera.video.deviceId.exact,audio:requestedCamera.audio};
+    });
+    assert.deepEqual(state,{stops:1,active:false,denied:false,device:'chosen-camera',audio:false});
+  });
+  await test('System permissions request default devices without starting capture or sharing location',async()=>{
+    const p=await setup();
+    await p.evaluate(async()=>{
+      window.permissionProbes=[];window.permissionStops=0;window.permissionCalls=[];window.locationChecks=0;
+      Object.defineProperty(navigator,'permissions',{configurable:true,value:{query:async()=>({state:'prompt',onchange:null})}});
+      navigator.mediaDevices.getUserMedia=async options=>{permissionProbes.push(options);return {getTracks:()=>[{stop:()=>permissionStops++}]};};
+      Object.defineProperty(navigator,'geolocation',{configurable:true,value:{getCurrentPosition(success){locationChecks++;success({coords:{latitude:41.123456,longitude:29.123456}});}}});
+      window.pywebview={api:{event:async(name,data)=>{permissionCalls.push({name,data});return {ok:true,completed:true,opened:name==='permission_settings'};}}};
+      const {openM}=await import('/js/panels.js');const settings=await import('/js/settings.js');
+      openM('mSet');settings.switchTab('system');
+    });
+    await p.waitForFunction(()=>document.getElementById('permission-camera').dataset.state==='prompt');
+    assert.equal(await p.evaluate(()=>permissionProbes.length+locationChecks),0);
+    const before=await p.locator('#micB').getAttribute('aria-pressed');
+    for(const name of ['camera','microphone','geolocation']){
+      await p.locator(`[data-request-permission="${name}"]`).click();
+      await p.waitForFunction(name=>document.getElementById('permission-'+name).dataset.state==='granted',name);
+    }
+    assert.deepEqual(await p.evaluate(()=>permissionProbes),[{audio:false,video:true},{audio:true,video:false}]);
+    assert.equal(await p.evaluate(()=>permissionStops),2);
+    assert.equal(await p.evaluate(()=>locationChecks),1);
+    assert.equal(await p.locator('#camB').getAttribute('aria-pressed'),'false');
+    assert.equal(await p.locator('#micB').getAttribute('aria-pressed'),before);
+    assert.equal(await p.evaluate(()=>permissionCalls.some(c=>['weather_location','save','text','live_text','live_audio_start'].includes(c.name))),false);
+    await p.locator('[data-permission-windows="camera"]').click();
+    assert.equal(await p.evaluate(()=>permissionCalls.filter(c=>c.name==='permission_settings')[0].data),'camera');
+    assert.match(await p.locator('#permissionMessage').textContent(),/settings opened/);
+  });
+  await test('permission denial and unsupported query remain honest; timed-out media is released after a late grant',async()=>{
+    const p=await setup();
+    await p.evaluate(async()=>{
+      Object.defineProperty(navigator,'permissions',{configurable:true,value:{query:async()=>{throw new TypeError('unsupported');}}});
+      navigator.mediaDevices.getUserMedia=async()=>{throw new DOMException('blocked','NotAllowedError');};
+      const {openM}=await import('/js/panels.js');const settings=await import('/js/settings.js');openM('mSet');settings.switchTab('system');
+    });
+    await p.waitForFunction(()=>document.getElementById('permission-camera').dataset.state==='unknown');
+    await p.locator('[data-request-permission="camera"]').click();
+    await p.waitForFunction(()=>document.getElementById('permission-camera').dataset.state==='denied');
+    assert.match(await p.locator('#permissionMessage').textContent(),/cannot override/);
+    await p.evaluate(()=>{
+      window.latePermissionStops=0;navigator.mediaDevices.getUserMedia=()=>new Promise(resolve=>window.resolveLatePermission=resolve);
+      const timeout=window.setTimeout;window.setTimeout=(fn,ms,...args)=>ms===12000?(window.permissionTimeout=fn,-1):timeout(fn,ms,...args);
+    });
+    await p.locator('[data-request-permission="camera"]').click();
+    await p.evaluate(()=>permissionTimeout());
+    await p.waitForFunction(()=>document.getElementById('permission-camera').dataset.state==='Unavailable');
+    await p.evaluate(()=>resolveLatePermission({getTracks:()=>[{stop:()=>latePermissionStops++}]}));
+    await p.waitForFunction(()=>latePermissionStops===1);
+    assert.equal(await p.locator('#permission-camera').getAttribute('data-state'),'Unavailable');
+    assert.equal(await p.locator('#camB').getAttribute('aria-pressed'),'false');
+  });
   await test('planned controls stay disabled and do not claim connected actions',async()=>{
     const p=await setup();
-    for(const id of ['camB','audioModeB','attB','gConnB','locSaveB','locAutoB','vSel','pSys','pGreet','pSc','scrT','inspectBtn'])
+    for(const id of ['audioModeB','attB','gConnB','locSaveB','locAutoB','vSel','pSys','pGreet','pSc','scrT','inspectBtn'])
       assert.equal(await p.locator('#'+id).isDisabled(),true,id);
     assert.equal(await p.evaluate(()=>[...intervals.values()].filter(x=>[15000,30000].includes(x.ms)).length),0);
   });

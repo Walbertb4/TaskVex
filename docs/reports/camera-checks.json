@@ -1,0 +1,59 @@
+{
+  "step": "6.8.1 camera input on the existing Live session",
+  "status": "implemented; automatic/native checks passed; real camera/provider acceptance pending",
+  "previous_accepted_commit": "6e18e99",
+  "ownership": "live_video.js owns the opt-in browser track; assistant_session.js owns turn/sleep/Stop; NativeBridge -> TextChat -> PersistentLive -> probe_live_text uses the existing socket and tool pipeline",
+  "input_contract": {
+    "initial": "optional base64 JPEG on live_text/live_audio_start/live_audio; never REST or timer notifications",
+    "feed": "live_video_feed request_id status, or request_id/sequence/data; null closes only video",
+    "bounds": "longest browser image edge 640px, decoded JPEG <=256KiB, latest-only RAM slot, two-second stale discard, at most 1 socket frame/s, 120 feed packets per turn",
+    "storage": "no images in settings, backups, task records or text summaries; no images replayed after reconnect"
+  },
+  "validation": {
+    "full_pytest": 1265,
+    "full_pytest_seconds": 110.79,
+    "camera_tests": 13,
+    "focused_camera_stream_stop": 46,
+    "focused_camera_profile": 35,
+    "javascript_suites": 9,
+    "browser_groups": 23,
+    "native_phases": 10,
+    "native_synthetic_camera_capture_jpeg_and_cleanup": true,
+    "pyright_scope": "app and test_live_video.py",
+    "pyright_errors": 0,
+    "pyright_warnings": 0,
+    "pip_check": "No broken requirements found",
+    "compileall": true,
+    "diff_check": true
+  },
+  "covered": [
+    "explicit video-only permission; no automatic startup capture",
+    "late permission/Off releases tracks; exact selected device and no silent fallback",
+    "initial JPEG before text and inside the explicit speech activity before PCM",
+    "same real SDK socket for camera/audio/text; no second model connection",
+    "latest-only updates, stale frame drop, bounded payloads, sender failure without retry",
+    "actual Stop closes visual ingress, stale IDs cannot alter next request, camera Off does not Stop reply",
+    "Chromium synthetic camera JPEGs, independent Off, no feed after Off",
+    "real WebView2 synthetic canvas camera capture/JPEG/track cleanup; ten-phase regression"
+  ],
+  "corrections_during_validation": [
+    "Oversized parametrized bytes generated an excessively long Windows fixture ID; cases now have explicit short IDs.",
+    "An existing microphone test wrapped _next_message with its original two-argument signature; no-video callers retain that signature.",
+    "Existing VM tests needed camera owner stubs for shared sleep/shutdown cleanup.",
+    "Optional media kwargs received a shared TypedDict for type narrowing; no suppression added.",
+    "The image trust instruction initially exceeded the existing bounded prompt test; integrated it into the existing tool-data rule without raising the limit.",
+    "A full test command was initially issued from repository root instead of v1; final full regression used v1 and its pyproject configuration."
+  ],
+  "manual_acceptance": "Not run: real camera permission/device/lighting, real paid Live model image understanding and observed latency. User acceptance required.",
+  "limits": [
+    "Camera On keeps a local track open while idle, but sends pixels only during user Live turns.",
+    "Sleep/disconnect/model/key/mode changes release capture; re-enable manually after wake/reconnect. Selected device can persist through Save Settings; camera On never persists.",
+    "Already sent/in-flight images cannot be recalled; Camera Off does not erase provider context.",
+    "Transport validates JPEG framing and bounds; provider decodes image content.",
+    "No model camera-activation tool, REST image input, screen sharing, image files, extra audio source or GUI automation.",
+    "Existing persistent-unknown reconciliation and native teardown diagnostic limits were not changed.",
+    "No paid API, real camera, real user notes or user location used in automatic checks; portable demo not rebuilt."
+  ],
+  "new_dependencies": [],
+  "commit": "Publication explicitly authorized by the user; included in the camera/permissions commit. Manual acceptance remains open."
+}

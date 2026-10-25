@@ -6,6 +6,7 @@ Text model does not hold hyperlink lock during long wait. Grades go to common co
 """
 
 import json
+import os
 from base64 import b64decode, b64encode
 from binascii import Error as Base64Error
 from importlib import import_module
@@ -24,6 +25,7 @@ from app.storage.settings import INTERFACE_DEFAULTS, validate_settings
 from app.session.gemini import DEFAULT_MODEL
 from app.session.text_chat import TextChat
 from app.session.live_input import LiveInput
+from app.session.live_video import LiveVideo, VideoOptions, validate_frame
 from app.session.catalog import load_live_catalog, live_voice_catalog, selected_live_voice
 from app.session.wake_word import WakeWord, WakeAlignmentError
 from app.tools.local.clocks import Clocks
@@ -75,6 +77,44 @@ class NativeBridge:
             raise RuntimeError("Native window is not attached")
         serialized = json.dumps(args, ensure_ascii=True, allow_nan=False)
         return self._window.evaluate_js(f"window.vex[{json.dumps(method)}](...{serialized})")
+
+    def _permission_settings(self, data) -> dict:
+        """Open only a fixed OS privacy page; opening it is not a permission grant."""
+        # Only fixed Windows privacy pages can be opened; never a caller-supplied URI.
+        pages = {'camera': 'ms-settings:privacy-webcam',
+                 'microphone': 'ms-settings:privacy-microphone',
+                 'geolocation': 'ms-settings:privacy-location'}
+        if not self._ready or type(data) is not str or data not in pages:
+            return {'ok': False, 'error': 'Unsupported permission settings page'}
+        try:
+            os.startfile(pages[data])
+        except OSError:
+            return {'ok': False, 'error': 'Windows privacy settings could not be opened'}
+        return {'ok': True, 'completed': True, 'opened': True}
+
+    def _camera_data(self, data) -> bytes:
+        """Bound and decode trusted native camera transport; never store the pixels."""
+        if not isinstance(data, str) or len(data) > 349528:
+            raise ContractError('Invalid camera encoding')
+        try:
+            return validate_frame(b64decode(data, validate=True))
+        except (Base64Error, ValueError) as error:
+            raise ContractError('Invalid camera encoding') from error
+
+    def _video_event(self, data) -> dict:
+        """Short request-scoped input; closing video does not cancel model or microphone."""
+        if (not self._ready or self._sleeping or type(data) is not dict
+                or not isinstance(data.get('request_id'), str) or not 1 <= len(data['request_id']) <= 128):
+            return {'ok': False, 'closed': True, 'error': 'Camera input unavailable'}
+        if set(data) == {'request_id'}:
+            return self._chat.video_input(data['request_id'])
+        if set(data) != {'request_id', 'sequence', 'data'} or type(data['sequence']) is not int or data['sequence'] < 0:
+            return {'ok': False, 'error': 'Invalid camera packet'}
+        try:
+            chunk = self._camera_data(data['data']) if data['data'] is not None else None
+        except ContractError:
+            return {'ok': False, 'error': 'Invalid camera JPEG'}
+        return self._chat.video_input(data['request_id'], data['sequence'], chunk)
 
     def _audio_chunk(self, request_id: str, data: bytes, mime: str) -> bool:
         """Pass the PCM part of the host request with JSON; save to file/log/history."""
@@ -496,6 +536,8 @@ class NativeBridge:
                     or not isinstance(data["request_id"], str) or not 1 <= len(data["request_id"]) <= 128):
                 return {"ok": False, "error": "Stop requires the active request_id"}
             return self._chat.stop(data["request_id"])
+        if name == 'live_video_feed':
+            return self._video_event(data)
         if name == 'live_audio_feed':
             # This short transport does not require long waits for the model to unlock. Raw PCM alone
             # matching is accepted into the active round; past/different is not carried over to the option.
@@ -568,12 +610,21 @@ class NativeBridge:
                     report.setdefault('completed', True)
                 return report
             request_id = None
+            visual: VideoOptions = {}
+            if type(data) is dict and 'video' in data:
+                if name not in {'live_text', 'live_audio_start', 'live_audio'}:
+                    return {'ok': False, 'error': 'Camera requires a user Live turn'}
+                try:
+                    visual = {'video_input': LiveVideo(self._camera_data(data['video']))}
+                except ContractError:
+                    return {'ok': False, 'error': 'Invalid initial camera JPEG'}
+                data = {key: value for key, value in data.items() if key != 'video'}
             if name == 'live_audio_start':
                 if (type(data) is not dict or set(data) != {'request_id'}
                         or not isinstance(data['request_id'], str) or not 1 <= len(data['request_id']) <= 128):
                     return {'ok': False, 'error': 'Invalid microphone stream request'}
                 return self._memory_reply(self._chat.run_live('', live_model, notes_ready=notes_ready,
-                                           request_id=data['request_id'], audio_input=LiveInput(), profile=profile, voice=voice))
+                                           request_id=data['request_id'], audio_input=LiveInput(), profile=profile, voice=voice, **visual))
             if name == "live_audio":
                 if (type(data) is not dict or set(data) != {"request_id", "mime_type", "data"}
                         or not isinstance(data["request_id"], str) or not 1 <= len(data["request_id"]) <= 128
@@ -585,7 +636,7 @@ class NativeBridge:
                 except (Base64Error, ValueError):
                     return {"ok": False, "error": "Invalid microphone encoding"}
                 return self._memory_reply(self._chat.run_live("", live_model, notes_ready=notes_ready,
-                                           request_id=data["request_id"], audio_input=audio, profile=profile, voice=voice))
+                                           request_id=data["request_id"], audio_input=audio, profile=profile, voice=voice, **visual))
             if isinstance(data, dict):
                 if (set(data) != {"request_id", "text"} or not isinstance(data["request_id"], str)
                         or not 1 <= len(data["request_id"]) <= 128):
@@ -597,7 +648,7 @@ class NativeBridge:
                         self._wake = None
                         self._wake_detected = False
                         self._sleeping = False  # The clear scripted UI makes you want to.
-                return self._memory_reply(self._chat.run_live(data, live_model, notes_ready=notes_ready, request_id=request_id, profile=profile, voice=voice))
+                return self._memory_reply(self._chat.run_live(data, live_model, notes_ready=notes_ready, request_id=request_id, profile=profile, voice=voice, **visual))
             return self._memory_reply(self._chat.run(data, model, notes_ready=notes_ready, request_id=request_id, profile=profile))
         with self._lock:
             try:
@@ -683,6 +734,8 @@ class NativeBridge:
                     if "onTop" in candidate:
                         self._set_on_top(candidate["onTop"])
                     return {"ok": True, "completed": True, "saved": True, "memory_base": memory_base(candidate.get("prof", {}))}
+                if name == 'permission_settings':
+                    return self._permission_settings(data)
                 if name == "ontop":
                     if type(data) is not bool or not self._ready:
                         return {"ok": False, "error": "Expected a boolean and a ready native window"}

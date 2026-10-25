@@ -17,7 +17,7 @@ function fixture(){
     nativeInitialized:true,sleeping:false,sleepPending:false,wakeSession:null,micBlocked:false,micBlockReason:null,connectionRevision:0,
     wakeRetryTimer:null,wakeRetryCount:0,automaticSleep:false,autoSleepTimer:null,autoSleepRevision:0,store:{sleepDelay:3},preparingAudio:false,replyMicRequest:null,pendingBargeIn:null,
     liveMic:{active:false,cancel(){this.active=false;},async prepareStream(fail){prepared++;this.fail=fail;this.active=true;return true;},waitForWake(packet,wake){this.packet=packet;this.wake=wake;}},
-    liveAudio:{close(){}},liveTranscript:{finish(){}},getState:()=> 'sleeping',setState(){},
+    liveVideo:{stop(){}},liveAudio:{close(){}},liveTranscript:{finish(){}},getState:()=> 'sleeping',setState(){},
     isBackendAvailable:()=>true,getAudioDeviceId:()=>'',sanitizeError:String,setConnectionStatus(){},addLog:s=>logs.push(s),
     setTimeout(fn,delay){const timer={fn,delay};timers.push(timer);return timer;},clearTimeout(timer){if(timer)timer.cleared=true;},
     emit:async(name,data)=>{events.push({name,data});return {ok:true,response:{completed:true,sleeping:true,request_id:'local-'+events.length,wake_word:'Vex'}};},

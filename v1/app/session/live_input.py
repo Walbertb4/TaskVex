@@ -50,13 +50,14 @@ class LiveInput:
                 self.closed = True
             return True
 
-    async def send(self, session):
+    async def send(self, session, *, activity_started: bool = False):
         """Export limit of single local conversation to SDK with open start/end.
 
         Ready cannot be opened until the startup is sent. Last packet from sequential queue
         then generates activity_end; With the automatic VAD/EOS there are no two separate finishers.
         """
-        await session.send_realtime_input(activity_start=types.ActivityStart())
+        if not activity_started:
+            await session.send_realtime_input(activity_start=types.ActivityStart())
         self.ready = True
         while True:
             if self.failed:

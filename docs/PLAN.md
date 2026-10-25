@@ -1,6 +1,54 @@
 # TaskVex — Current plan
 
-## Now: 6.4 weather/location — accepted; UI copy cleanup implemented
+## Now: 6.8.1a Permissions settings — implemented; manual acceptance/native stability open
+
+The user could not grant camera access from the default-device selector. Selecting
+a device does not request access; Camera On also waits for a ready Live session.
+This correction adds Settings > System > Permissions independently of model readiness.
+Camera acceptance stays open. The user explicitly authorized README publication
+and committing/pushing this work; that authorization does not imply manual camera
+acceptance or advancement to screen sharing.
+
+- [x] Camera, microphone and location request buttons plus browser permission status.
+- [x] Short default-device probes close tracks; location is discarded, never saved/shared.
+- [x] Skip a second probe for an already open device; pending microphone setup is not a grant.
+- [x] Bounded waits, late-grant cleanup, denial/unsupported status and no startup prompts.
+- [x] Fixed Windows privacy-page links; opening Settings does not claim permission granted.
+- [x] 1,269 pytest, 105 focused tests, 9 JS suites, 25 browser groups,
+  2 targeted native phases and Pyright 0. Evidence: reports/permissions-checks.json
+  and reports/permissions-native.json.
+- [ ] Full native regression: startup timeout and WinForms/Python.NET teardown
+  failures remain unresolved; do not treat targeted success as full closure.
+- [ ] User test: default-camera permission, Camera On and actual Live understanding.
+
+Browser/Windows remain the authorities. Save Settings does not grant/revoke access.
+A blocked OS/browser policy cannot be overridden by an application checkbox.
+No new model connection, provider call or feature stage is introduced.
+
+## 6.8.1 Camera — implemented; manual acceptance pending
+
+The preceding UI cleanup was accepted and committed as `6e18e99`.
+This step connects explicit camera input to the existing Live conversation owner.
+It does not start screen sharing, additional audio capture or GUI automation.
+
+- [x] Explicit Camera On/Off, exact saved device selection and automatic device listing.
+- [x] Video-only browser permission; late permissions, denial and device end cleanup.
+- [x] Bounded JPEG input on the existing Live socket for active user messages only.
+- [x] Request IDs, sequence, latest-only RAM, one-frame-per-second send ceiling and expiry.
+- [x] Stop ends transmission; Camera Off preserves the current microphone and reply.
+- [x] Sleep, Disconnect, model/key/mode change, unknown outcome and page close release capture.
+- [x] 1,265 pytest, 13 camera tests, 9 JS suites, 23 browser groups,
+  10 native phases, Pyright 0 errors/warnings and clean dependency/diff checks.
+  Evidence: reports/camera-checks.json and reports/camera-native.json.
+- [ ] User acceptance with a real camera/provider; no paid API or real camera was used in automatic checks.
+
+Camera defaults Off on every launch and after sleep/disconnect; its selected device
+can persist through Save Settings. Idle capture stays local; visual data is sent
+only inside a Live user turn. Previously sent frames cannot be recalled and may
+remain in the provider session context. The portable demo has not been rebuilt.
+Next step after acceptance: **6.8.2 screen sharing**.
+
+## 6.4 weather/location — accepted; UI cleanup accepted
 
 Accepted weather work: commit `9910ae4`. Requested source-credit, media-label and
 memory-help cleanup is implemented; all 21 browser groups and git diff checks
@@ -150,7 +198,7 @@ It is not shown as if it is working today.
 | 3 | OK/accept was | Backend note CRUD/transfer/backup and real IDs |
 | 4 | First plugin ok | Allowlist Notepad catalog/status/open; not general GUI automation |
 | 5 | Functional basic acceptance; remaining limits saved, user requested to move to stage 6 | Gemini REST/Live, sound, Stop/interrupt, resume, temporary memory, sleep, note/counter/shutdown |
-| 6 | Memory/telemetry/media accepted; weather now, multimodal inputs next | Weather/location, camera, screen and scoped additional audio inputs |
+| 6 | Memory/telemetry/media/weather accepted; camera awaiting user acceptance | Screen sharing, scoped additional audio inputs and closure |
 | 7 | Not started | Local files/context, web/browser tools, GUI L1-L4 and skill execution |
 | 8 | Not started | Single backend routine/scheduler, background lifecycle, maintenance and core packaging |
 | 9 | Deferred by user | External-service safeguards, Google integrations and Telegram/Discord channels |
@@ -440,7 +488,7 @@ This type of new feature was not coded; The following tranches have not started 
 
 Timeline/log remains the current local view; new data producers are only real
 feeds events. Inspect/Create Skill, skill execution and routine scope are in this UI
-It is outside the desire to prioritize. 6.8 is now approved scope; its camera/screen/audio slices remain unimplemented until their own steps.
+It is outside the desire to prioritize. 6.8 is now approved scope; camera input is implemented in 6.8.1; screen/audio slices remain unimplemented.
 
 
 ### 6.2.4 first tranche — final provider token notification

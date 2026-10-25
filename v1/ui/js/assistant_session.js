@@ -7,6 +7,7 @@ import { uniqueRecordId } from './schema.js';
 import { sfx } from './sfx.js';
 import { liveAudio } from './live_audio.js';
 import { liveMic } from './live_mic.js';
+import {liveVideo} from './live_video.js';
 import { liveTranscript } from './live_transcript.js';
 import { setState, getState, setMicLevel } from './reactor.js';
 import { store, queryDevices, getAudioDeviceId, applyMemoryProfile, resolveMemoryProposal, showMemoryProposal } from './settings.js';
@@ -118,6 +119,7 @@ function blockMicrophone(message, reason = 'microphone_unavailable') {
   if (textBusy && getState() === 'listening') setState('thinking', true);
 }
 function resetLiveAudio(pause = true) {
+  liveVideo.stop();
   pendingClockAnnouncements.clear();
   if (sleepPending) sleepOperation.markUnknown();
   liveTranscript.finish(activeTextRequest, {}, 'interrupted');
@@ -221,6 +223,7 @@ function settleMicrophoneFailure(report, connection) {
   } else label.textContent += ' · ' + (MIC_FAILURES[reason] || MIC_FAILURES.microphone_unavailable) + ' Toggle Microphone Off and On.';
 }
 const textOperation = createPendingOperation(() => {
+  liveVideo.stop();
   liveTranscript.finish(activeTextRequest, {}, 'unknown');
   liveAudio.close();
   blockMicrophone(undefined, 'unknown');
@@ -398,8 +401,8 @@ function textDiagnostics(report) {
  * cannot be moved. At the first response the old entry closes; response listener new
  * The front bumper is not affected by the finally cleaning of the old turn.
  */
-async function streamMicrophone(requestId) {
-  const result = emit('live_audio_start', {request_id:requestId});
+async function streamMicrophone(requestId, visual = {}) {
+  const result = emit('live_audio_start', {request_id:requestId, ...visual});
   let finished = false;
   result.then(() => { finished = true; });
   let sequence = 0;
@@ -470,6 +473,7 @@ async function streamMicrophone(requestId) {
  * there is no auto-repeat or operating system shutdown command.
  */
 export async function shutdownApplication() {
+  liveVideo.stop();
   cancelAutoSleep();
   cancelMic();
   const shut = document.getElementById('shut');
@@ -564,10 +568,12 @@ export async function sendText(text = null, audio = null, notification = null) {
     }
     const result = cancelBeforeSend || connectionRevision !== replyConnectionRevision
       ? {ok:true, response:{stopped:true, completed:true}}
-      : audio?.stream ? await streamMicrophone(activeTextRequest)
       : notification ? await emit('clock_finished', {...notification, request_id:activeTextRequest})
-      : await emit(audio ? 'live_audio' : liveTest ? 'live_text' : 'text',
-        audio ? {...audio, request_id:activeTextRequest} : { text: v, request_id: activeTextRequest });
+      : !liveTest && !audio ? await emit('text', {text:v, request_id:activeTextRequest})
+      : await liveVideo.withInput(activeTextRequest, visual => audio?.stream
+        ? streamMicrophone(activeTextRequest, visual)
+        : emit(audio ? 'live_audio' : liveTest ? 'live_text' : 'text',
+          audio ? {...audio, request_id:activeTextRequest, ...visual} : {text:v, request_id:activeTextRequest, ...(liveTest ? visual : {})}));
     if (!textOperation.isCurrent(revision)) return;
     const report = result.response;
     setSessionTokens(report);
@@ -785,6 +791,19 @@ export function receiveAudioChunk(packet) {
 export function initAssistantControls() {
   const stopTask = document.getElementById('stopTask');
   const stopLabel = stopTask?.textContent;
+  const camB = document.getElementById('camB');
+  if (camB) camB.addEventListener('click', async () => {
+    sfx.blip();
+    if (liveVideo.active || liveVideo.opening) { liveVideo.stop(); return; }
+    if (textBusy || sleepPending || sleeping || textOperation.uncertain || !isBackendAvailable() ||
+        !nativeInitialized || !document.getElementById('liveLatencyTest')?.checked || !document.getElementById('mSel')?.value) {
+      addLog('Camera requires an awake, ready Live model. Wait for the current reply first.', true); return;
+    }
+    try {
+      if (await liveVideo.start(getAudioDeviceId('dCam'))) void queryDevices();
+    } catch { addLog('Choose an available camera in Audio settings.', true); }
+  });
+  document.getElementById('dCam')?.addEventListener('change', () => liveVideo.stop());
   // Microphone toggle button
   const micB = document.getElementById('micB');
   if (micB) {
@@ -881,6 +900,7 @@ export function initAssistantControls() {
   // Stop task button
   if (stopTask) {
     stopTask.addEventListener('click', async () => {
+      liveVideo.endTurn(activeTextRequest);
       pendingClockAnnouncements.clear();
       if (sleepPending) { sleepOperation.markUnknown(); return; }
       // Stop only stops this turn and the old audio buffer; It does not turn off the on preference.

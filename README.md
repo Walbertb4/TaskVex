@@ -54,6 +54,18 @@ It is a development project, not a production-ready general computer-use agent.
   Disconnect and model changes; restarting the app resets it. Missing usage
   marks the total incomplete. It is not account quota or a billing guarantee.
 
+Settings > System > Permissions can request camera, microphone and location access
+without a Live connection; probes do not save/share content or turn input On.
+Windows privacy links are provided for blocked access. Media permission probes
+briefly open the system-default device and immediately close it; location probes
+discard coordinates. Browser/Windows remain the permission authorities.
+
+Camera input is available through explicit Camera On/Off and the selected device.
+Images stay local while idle and are shared only during Live user messages, using
+the existing connection: bounded JPEG frames at most once per second, rather than
+a full-frame-rate video stream. Sleep/disconnect release capture; Camera Off preserves
+microphone and reply. Real camera/provider acceptance for this step is pending.
+
 A small allowlisted application plugin exists in the core. The conversational
 model currently sees its catalog, not unrestricted app-launch or desktop control.
 Skill and routine editors store definitions locally; they do not execute them yet.
@@ -64,7 +76,7 @@ A separate REST adapter remains available for development and future channels.
 Google Drive/Calendar/mail access, Telegram/Discord integration,
 general GUI automation and
 backend skill/routine scheduling are planned.
-Camera, screen inspection and additional audio-input sources are not connected.
+Screen inspection and additional audio-input sources are not connected.
 CPU/GPU temperature and VRAM capacity are not available from the current sources.
 CPU sampling currently supports Windows processor groups with at most 64 logical processors;
 unsupported readings remain unavailable.
@@ -126,6 +138,10 @@ are local files. Skill/routine definitions use browser storage. Timers and
 conversation context do not survive application exit. User-edited personal memory
 is saved separately in the profile and sent to the model only when explicitly enabled.
 
+Camera frames are not saved to disk, task records or text conversation summaries.
+Already sent images can remain in the provider session context; Camera Off does
+not recall them. Location permission checks do not set the saved weather location.
+
 Native tool requests and results are kept in a local SQLite journal. Reusing
 the same request ID does not run the action again, including after restart.
 The 256-record limit bounds active work and RAM records, rather than lifetime
@@ -141,37 +157,30 @@ Model availability, network conditions and hardware affect behavior.
 
 ## Verification and documentation
 
-The media-control slice passed 1,191 Python tests, 9 JavaScript suites,
-18 browser groups, 10 sequential native phases, type checking and dependency checks
-using temporary profiles and synthetic providers. Native UI buttons reached the
-same core as both model transports; no real player was mutated during these tests.
-[Media evidence](docs/reports/media-control-checks.json).
+The latest camera/permission work passed **1,269 Python tests**, **nine JavaScript
+suites**, **25 browser groups**, focused type checking and dependency checks.
+Two targeted native phases verified default-camera permission checks, immediate
+probe cleanup and restart persistence with temporary profiles and synthetic input.
+[Current validation](docs/reports/permissions-checks.json) ·
+[Targeted native evidence](docs/reports/permissions-native.json).
 
-Manual testing then exposed false stale-target rejection from recreating Windows
-media managers. The manager-identity fix passed 1,196 Python tests and a real
-read-only identity/cancelled-preflight check; the user then reported successful playback tests.
-[Identity fix](docs/reports/media-identity-fix.json).
+**The full native regression did not complete cleanly.** Runs encountered a UI
+startup timeout and a Python.NET/WinForms teardown failure, including a process
+failure after successful chat assertions. Their root causes are not established;
+targeted successes do not close these issues. Actual camera/microphone/location
+permissions and real Live camera understanding still require manual acceptance.
+Automatic checks used no paid API or real camera/user content.
 
-The application-volume step passed 1,230 Python tests, 9 JavaScript suites,
-19 browser groups and 10 sequential native phases, with clean focused type checks.
-Automated real-device mapping was read-only; the user subsequently reported
-successful tests. Specific provider/hardware coverage was not separately enumerated. [Volume evidence](docs/reports/media-volume-checks.json).
+Weather and media controls were reported working by the user; precise hardware
+and provider coverage was not separately enumerated. Historical evidence is in
+[weather checks](docs/reports/weather-checks.json),
+[player-volume checks](docs/reports/media-volume-checks.json) and
+[camera checks](docs/reports/camera-checks.json). These checks do not establish
+production readiness, all-player/hardware support or real-account availability.
 
-The English repository cleanup reran 1,172 Python tests, nine JavaScript suites,
-16 browser groups and ten sequential native phases. Archive hashes/links and the
-rebuilt demo startup/relocation were also checked.
-[Publication checks](docs/reports/english-publication-checks.json). One concurrent
-native run failed during pythonnet/WinForms teardown after successful reopen
-assertions; the sequential rerun passed, but that intermittent teardown issue
-was not diagnosed or fixed.
-
-Initial fixture/type failures and their corrections are recorded in the reports.
-Manual acceptance of media controls is pending. Preceding local network/quality, GPU dashboard,
-memory decisions and session token counting were reported working.
-These checks do not establish real-account availability, support for every player
-or production readiness. Same-title skips may remain unknown; existing persistent
-safety locks do not clear on restart. API latency remains unavailable until a real
-transport metric is defined. The portable demo predates this media-control change.
+Unknown tool outcomes still require investigation and do not clear on restart.
+API latency is not measured. The existing portable demo predates these camera
+and permissions changes; it was not rebuilt for this update.
 
 - [Architecture](docs/ARCHITECTURE.md): current ownership and planned boundaries.
 - [Plan](docs/PLAN.md): remaining work and acceptance status.

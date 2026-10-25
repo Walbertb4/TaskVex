@@ -1,5 +1,5 @@
 /** Single UI adapter that manages device list and browser device IDs.
- * Does not initiate permission/registration; The I/O resource remains with the live_mic/live_audio owner.
+ * Does not initiate permission/registration; I/O resources remain with live_mic/live_audio/live_video.
  * Preference registration is delivered to the existing saveAll line of the form. */
 import {store} from './preferences.js';
 import {sfx} from './sfx.js';
@@ -68,8 +68,8 @@ export function setDevices(data) {
       const target = String(store.devs[selId]);
       if ([...s.options].some(o => o.value === target)) {
         s.value = target;
-      } else if (isBackendAvailable() && ['dIn', 'dOut'].includes(selId)) {
-        // If the registered device is lost, show the first device as selected.
+      } else if (isBackendAvailable() && ['dIn', 'dOut', 'dCam'].includes(selId)) {
+        // Keep a missing saved device visible; never silently select a replacement.
         const missing = new Option('Saved device unavailable — choose a device', target, true, true);
         missing.disabled = true;
         s.append(missing);
@@ -84,11 +84,11 @@ export function setDevices(data) {
       if (!selectedOpt) return;
 
       const devKind = selectedOpt.dataset.devKind;
-      if (isBackendAvailable() && ['dIn', 'dOut'].includes(selId)) {
+      if (isBackendAvailable() && ['dIn', 'dOut', 'dCam'].includes(selId)) {
         const message = document.getElementById('devMsg');
         const saved = savePreference?.({emitSave:false});
         if (message) message.textContent = saved
-          ? 'Selection cached; applies to the next recording / Live reply. Save Settings to persist in desktop storage.'
+          ? 'Selection cached; applies to the next capture / Live reply. Save Settings to persist in desktop storage.'
           : 'Device preference could not be saved; check storage before restarting.';
         return;
       }
@@ -136,21 +136,21 @@ export async function queryDevices() {
     const revision = ++deviceQueryRevision;
     deviceQueryPending = true;
     const message = document.getElementById('devMsg');
-    if (message) message.textContent = 'Refreshing audio devices…';
+    if (message) message.textContent = 'Refreshing audio and camera devices…';
     try {
-      // Listing does not initiate permission or registration. Permission comes from the Mic button alone;
+      // Listing never requests capture permission; only Mic/Camera On can request it.
       // after permission, the same function lists device names and devices again.
       const devices = await navigator.mediaDevices.enumerateDevices();
       if (revision !== deviceQueryRevision) return;
       const list = kind => [{deviceId:'default', name:'System default'}, ...devices
         .filter(d => d.kind === kind && d.deviceId && d.deviceId !== 'default')
-        .map((d, i) => ({deviceId:d.deviceId, name:d.label || `Audio device ${i + 1}`}))];
-      setDevices({inputs:list('audioinput'), outputs:list('audiooutput')});
+        .map((d, i) => ({deviceId:d.deviceId, name:d.label || `${kind === 'videoinput' ? 'Camera' : 'Audio device'} ${i + 1}`}))];
+      setDevices({inputs:list('audioinput'), outputs:list('audiooutput'), cameras:list('videoinput')});
       nativeDevicesScanned = true;
-      if (message) message.textContent = 'Audio devices listed automatically. If names are hidden, enable the microphone once to grant permission. Camera is not connected.';
+      if (message) message.textContent = 'Audio and camera devices listed automatically. If names are hidden, enable the relevant Microphone or Camera once to grant permission. Camera capture never starts automatically.';
     } catch {
       if (revision === deviceQueryRevision && message)
-        message.textContent = 'Audio devices unavailable or permission denied. Existing preferences were kept.';
+        message.textContent = 'Audio/camera devices unavailable or permission denied. Existing preferences were kept.';
     } finally {
       if (revision === deviceQueryRevision) {
         deviceQueryPending = false;

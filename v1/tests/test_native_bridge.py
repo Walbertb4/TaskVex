@@ -617,3 +617,30 @@ def test_saved_live_model_is_restored_before_automatic_catalog(bridge, monkeypat
     assert ready(reopened)['ok']
     monkeypatch.setattr(webview_bridge,'load_live_catalog',lambda:{'ok':True,'completed':True,'models':[{'id':'first-live'},{'id':'saved-live'}]})
     assert reopened.event('query_catalog')['currentModel']=='saved-live'
+
+
+@pytest.mark.parametrize('name,page', [
+    ('camera','ms-settings:privacy-webcam'),
+    ('microphone','ms-settings:privacy-microphone'),
+    ('geolocation','ms-settings:privacy-location'),
+])
+def test_permission_settings_opens_only_fixed_privacy_pages(bridge, monkeypatch, name, page):
+    opened=[]
+    monkeypatch.setattr('app.bridge.webview_bridge.os.startfile', lambda path: opened.append(path))
+    assert not bridge.event('permission_settings', name)['ok']
+    bridge.event('ui_ready', {'version':'1.0'})
+    report=bridge.event('permission_settings', name)
+    assert report == {'ok':True,'completed':True,'opened':True}
+    assert opened == [page]
+    for invalid in ['ms-settings:privacy-webcam','file:///private','camera;anything',None,{},['camera']]:
+        assert not bridge.event('permission_settings', invalid)['ok']
+    assert opened == [page]
+
+
+def test_permission_settings_launch_failure_is_not_a_grant(bridge, monkeypatch):
+    bridge.event('ui_ready', {'version':'1.0'})
+    def fail(path):
+        raise OSError('Synthetic OS refusal')
+    monkeypatch.setattr('app.bridge.webview_bridge.os.startfile', fail)
+    report=bridge.event('permission_settings','camera')
+    assert not report['ok'] and 'opened' not in report

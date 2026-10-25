@@ -622,6 +622,32 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 assert '0 km/h' in window.evaluate_js("document.getElementById('wM').textContent")
                 js("const p=await import('./js/panels.js');p.closeM();return true;")
                 outcome['native_weather_selection_persistence_zero_and_dashboard']=True
+                camera = js("const {liveVideo}=await import('./js/live_video.js');"
+                    "const devices=navigator.mediaDevices,original=devices.getUserMedia.bind(devices);"
+                    "const canvas=document.createElement('canvas');canvas.width=320;canvas.height=240;"
+                    "canvas.getContext('2d').fillRect(0,0,320,240);const stream=canvas.captureStream(1);"
+                    "let requested=null;devices.getUserMedia=async options=>{requested=options;return stream;};"
+                    "try{const ready=await liveVideo.start();const image=liveVideo.snapshot();liveVideo.stop();"
+                    "return {ready,jpeg:image?.startsWith('/9j/'),bounded:image?.length<=349528,"
+                    "videoOnly:requested.audio===false,ended:stream.getTracks().every(t=>t.readyState==='ended'),"
+                    "off:document.getElementById('camB').getAttribute('aria-pressed')==='false'};}"
+                    "finally{liveVideo.stop();devices.getUserMedia=original;}")
+                assert camera == {'ready':True,'jpeg':True,'bounded':True,'videoOnly':True,'ended':True,'off':True}, camera
+                outcome['native_synthetic_camera_capture_jpeg_and_cleanup']=True
+                permission = js("const devices=navigator.mediaDevices,original=devices.getUserMedia.bind(devices);"
+                    "const canvas=document.createElement('canvas');canvas.width=160;canvas.height=120;"
+                    "canvas.getContext('2d').fillRect(0,0,160,120);const stream=canvas.captureStream(1);"
+                    "let options=null;devices.getUserMedia=async value=>{options=value;return stream;};"
+                    "try{const settings=await import('./js/settings.js');const panels=await import('./js/panels.js');"
+                    "panels.openM('mSet');settings.switchTab('system');"
+                    "document.querySelector('[data-request-permission=\"camera\"]').click();"
+                    "await new Promise(resolve=>setTimeout(resolve,50));"
+                    "return {allowed:document.getElementById('permission-camera').dataset.state==='granted',"
+                    "videoOnly:options.audio===false&&options.video===true,ended:stream.getTracks().every(t=>t.readyState==='ended'),"
+                    "off:document.getElementById('camB').getAttribute('aria-pressed')==='false'};}"
+                    "finally{devices.getUserMedia=original;stream.getTracks().forEach(t=>t.stop());(await import('./js/panels.js')).closeM();}")
+                assert permission == {'allowed':True,'videoOnly':True,'ended':True,'off':True}, permission
+                outcome['native_default_camera_permission_without_live_or_capture']=True
             if phase=='reopen':
                 wait_until(lambda:window.evaluate_js("document.getElementById('wT').textContent")=='0°')
                 outcome['native_weather_location_restored_without_geolocation']=True
@@ -1055,7 +1081,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                    "Object.defineProperty(navigator.mediaDevices,'enumerateDevices',{configurable:true,value:async()=>deviceList});"
                    "Object.defineProperty(navigator.mediaDevices,'getUserMedia',{configurable:true,value:async(options)=>{window.lastMicOptions=options;return deviceStream;}});"
                    "const p=await import('./js/panels.js');p.openM('mSet');return true;")
-                wait_until(lambda: 'Audio devices listed' in window.evaluate_js("document.getElementById('devMsg').textContent"))
+                wait_until(lambda: 'Audio and camera devices listed' in window.evaluate_js("document.getElementById('devMsg').textContent"))
                 wait_until(lambda: window.evaluate_js("Array.from(document.getElementById('dIn').options).some(o=>o.value==='12345')"))
                 assert window.evaluate_js("window.lastMicOptions===undefined && deviceStream.getTracks().every(t=>t.readyState==='live')")
                 js("document.getElementById('dIn').value='12345';document.getElementById('dIn').onchange();"

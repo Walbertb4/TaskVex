@@ -16,6 +16,7 @@ from app.session.model_tools import ModelTools, assistant_control_request
 from app.storage.credentials import CredentialError
 from app.session.live_session import PersistentLive
 from app.session.live_input import LiveInput
+from app.session.live_video import LiveVideo, VideoOptions
 from app.session.speech import GeminiSpeech
 from app.session.conversation_memory import ConversationMemory
 from app.session.model_instruction import personal_memory
@@ -119,7 +120,7 @@ class TextChat:
 
     def run_live(self, text: object, model: str, *, notes_ready: bool = False, request_id: str | None = None,
                  audio_input: bytes | LiveInput | None = None, profile: dict | None = None, notification: bool = False,
-                 voice: str | None = None) -> dict:
+                 voice: str | None = None, video_input: LiveVideo | None = None) -> dict:
         """A message to the same Live session; busy/shutdown lock common with REST."""
         if audio_input is not None:
             # Don't trust UI: 15 seconds, mono/16 kHz/16-bit; PCM is not written on the report.
@@ -155,8 +156,10 @@ class TextChat:
             sink = (lambda data, mime: output(request_id, data, mime)) if output and request_id else None
             text_output = self._transcript_sink
             text_sink = (lambda role, value, sequence: text_output(request_id, role, value, sequence)) if text_output and request_id else None
+            visual: VideoOptions = {"video_input": video_input} if video_input is not None else {}
             report = self._live.ask(text, model, tools, request_id=request_id, audio_sink=sink, profile=profile,
                                     voice=voice,
+                                    **visual,
                                     context=self._memory.snapshot(),
                                     **({'transcript_sink': text_sink} if text_sink else {}),
                                     **({"audio_input": audio_input} if audio_input is not None else {}))
@@ -172,6 +175,10 @@ class TextChat:
     def audio_input(self, request_id: str, sequence=None, data=None) -> dict:
         """Make limited submissions to your Live queue without waiting for a long chat unlock."""
         return self._live.input(request_id, sequence, data)
+
+    def video_input(self, request_id: str, sequence=None, data=None) -> dict:
+        """Camera pixels use the current Live input owner, never the task journal."""
+        return self._live.video_input(request_id, sequence, data)
 
     def read_reply(self, request_id: str) -> dict:
         """Just read the last successful REST response once; UI cannot select text.

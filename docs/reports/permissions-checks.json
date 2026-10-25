@@ -1,0 +1,55 @@
+{
+  "step": "6.8.1a centralized permission settings",
+  "status": "implemented; permission-focused checks passed; real OS/manual acceptance and full native stability remain open",
+  "previous_commit": "6e18e99; subsequent camera/permissions publication explicitly authorized without claiming manual acceptance",
+  "ownership": "ui/js/permissions.js performs explicit local probes; live_mic/live_video retain capture ownership; NativeBridge opens fixed Windows privacy pages only",
+  "behavior": [
+    "Camera/microphone/location status and Request access under Settings > System",
+    "Permission request is independent of model readiness and system-default device selection",
+    "Default media probes stop tracks immediately; already active capture is not reopened/stopped",
+    "Location probe discards coordinates; no weather_location, preference save, Live/tool call or provider upload",
+    "No grant flags in settings, no startup permission requests; browser/Windows remain authorities",
+    "12-second watchdog, late-grant cleanup, denial and unsupported-query handling",
+    "Windows settings permits only camera/microphone/geolocation names mapped to fixed privacy URIs; opening is not a grant"
+  ],
+  "validation": {
+    "full_pytest": 1269,
+    "full_pytest_seconds": 102.96,
+    "targeted_bridge_and_camera": 105,
+    "new_bridge_permission_tests": 4,
+    "javascript_suites": 9,
+    "browser_groups": 25,
+    "focused_native_phases": 2,
+    "native_default_camera_permission_without_live_or_capture": true,
+    "native_reopen_persistence": true,
+    "pyright_scope": "app",
+    "pyright_errors": 0,
+    "pyright_warnings": 0,
+    "pip_check": "No broken requirements found",
+    "compileall": true,
+    "diff_check": true
+  },
+  "native_report": "permissions-native.json (targeted save/reopen; not a clean ten-phase result)",
+  "full_native_regression": {
+    "status": "not clean; unresolved",
+    "observations": [
+      "An outdated device-list text assertion was updated for the implemented camera listing.",
+      "A subsequent runner invocation from repo root failed its credentials subprocess import; corrected to run from v1 as documented.",
+      "A v1 run completed all chat behavior assertions but the process failed during Python.NET/WinForms teardown. Similar teardown boundaries were already documented; this run is still a failure.",
+      "Another sequential v1 run timed out before the persistence-phase UI bootstrap became ready. Its root cause is not established; do not claim it was fixed.",
+      "A browser run also stalled in page setup; separate sequential rerun completed all 25 groups.",
+      "The final isolated native save/reopen run passed the new default-camera permission, closed probe, unchanged Camera Off, camera capture and restart checks."
+    ]
+  },
+  "initial_type_check": "Bridge.event exceeded Pyright complexity after adding the case; fixed by extracting only the cohesive permission-settings helper, without suppression.",
+  "limits": [
+    "No real camera, microphone, GPS coordinates, Windows permission dialog or real OS privacy-page navigation was exercised; native camera is synthetic and unit URI launch is mocked.",
+    "Existing Microphone On/Camera On requests may continue once OS permission is granted; the menu does not change their On/Off preferences.",
+    "Browser/OS policy and remembered denial cannot be overridden by an app checkbox. Allowed in browser does not prove device availability.",
+    "Screen sharing, new audio sources and real model image understanding remain outside this correction.",
+    "Full native startup/teardown stability is open; user manual camera acceptance remains open.",
+    "No paid API or real user data used. Portable demo was not rebuilt."
+  ],
+  "new_dependencies": [],
+  "commit": "Publication explicitly authorized by the user; included in the camera/permissions commit. Manual acceptance remains open."
+}

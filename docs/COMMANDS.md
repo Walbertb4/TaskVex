@@ -202,9 +202,9 @@ intent should lead to clarification. This interpretation is model-dependent.
 For "sleep after another task", that task must finish successfully first.
 No speaker identification separates simultaneous background speakers.
 
-**Source: Mic** is a disabled placeholder: only microphone capture is implemented.
-Camera, screen inspection and Google/location
-are disabled until their backend integrations exist. Skill/routine definitions
+**Source: Mic** remains a disabled audio-source placeholder; microphone is the only
+audio input. Camera is a separate opt-in Live visual input. Screen inspection and
+Google services remain planned; weather/location is available through its own controls. Skill/routine definitions
 can be edited locally; Run reports that execution is not connected.
 
 With the default Vex wake word, **Vex**, **Veks** (the same pronunciation)
@@ -578,3 +578,38 @@ Location consent is native-only and is not imported/exported by legacy UI backup
   the existing verified upstream download; model weights are not in the ZIP.
   Without setup, local wake from sleep is unavailable. This is setup, not a
   natural-language command or a claim that all hardware has been tested.
+
+## Camera — Live input
+
+- **Camera On** -> explicitly opens the camera selected in Settings > Audio.
+  While idle, images stay local; during the next Live voice/text message, current
+  images are shared with the model. No camera is opened automatically at launch.
+- **Camera Off** -> releases capture and stops new images; the current reply and
+  microphone continue. Images already sent remain part of the provider context.
+- Say or type **"Describe what you can see through the camera"** -> with Camera On,
+  Vex can answer from the current Live images. This is understanding, not GUI control.
+- **Stop Task** -> ends this turn's image transmission as well as the model turn.
+  Camera may stay locally ready; another explicit user message starts fresh input.
+- **Sleep / Disconnect / model or key change** -> releases the camera. Enable it
+  manually after wake/reconnect. Device selection persists through Save Settings;
+  camera On does not persist, and no permission is silently re-requested.
+
+No REST camera input, screen sharing, image file attachment or model-controlled
+camera activation is included. Images are bounded JPEGs; real camera permissions,
+lighting and provider understanding require separate manual acceptance.
+
+## Permissions settings
+
+- **Settings > System > Permissions > Request access** -> ask for Camera,
+  Microphone or Location independently of Live readiness/device selection.
+  Media is briefly opened then closed; location is checked and discarded. This
+  does not turn input On, connect Live, share images/audio or set weather location.
+- **Windows settings** beside a permission -> open that Windows privacy page;
+  enable access there if needed, then return and request access again.
+- **Refresh permissions** -> read reported browser states without requesting access.
+  Not reported means the browser cannot query this permission. Allowed in browser
+  does not prove OS/hardware access. There is no fake Save Settings permission flag.
+
+Permissions can remain blocked by OS/browser policy; the app cannot force a grant.
+Use Camera On/Microphone On for ongoing input and Weather Auto for an explicitly
+approved saved weather location. Their existing lifecycle/consent rules remain.

@@ -25,7 +25,7 @@
   <span class="pill net off" id="netP">● OFFLINE</span><span class="pill" id="wkP" style="display:none">◌ AWAITING WAKE WORD</span>
   <button class="hb on" id="audioModeB" title="Audio Listening Mode (Microphone / Entire PC / Application)" disabled title="Not connected yet; planned in PLAN.md"><i class="dot"></i><span id="audioModeTxt">Source: Mic</span></button>
   <button class="hb" id="micB" aria-pressed="true"><i class="dot"></i>Microphone On</button>
-  <button class="hb" id="camB" disabled title="Not connected yet; planned in PLAN.md"><i class="dot"></i>Camera Off</button>
+  <button class="hb" id="camB" aria-pressed="false" title="Enable camera for Live messages; never opens automatically."><i class="dot"></i>Camera Off</button>
   <button class="hb" id="btnOpenSkill">Skills</button>
   <button class="hb" id="btnOpenRut">Routines</button>
   <button class="hb" id="btnOpenTl">Timeline</button>
@@ -153,7 +153,7 @@
   </div><div class="tp" data-t="audio"><span class="lbl">Audio &amp; Camera</span>
   <div class="f"><label>Microphone (input)</label><select id="dIn"></select></div>
   <div class="f"><label>Live reply speaker (output)</label><select id="dOut"></select></div>
-  <div class="f"><label>Camera</label><select id="dCam" disabled title="Not connected yet; planned in PLAN.md"></select></div>
+  <div class="f"><label>Camera</label><select id="dCam" aria-label="Camera device"></select></div>
   <div class="row"><span class="sub" id="devMsg" role="status" aria-live="polite">Audio devices refresh automatically.</span></div>
   <div class="row"><span>Sound effects</span><input type="checkbox" id="sfxT" checked></div>
   <div class="f"><label>Effects volume</label><input type="range" id="volR" min="0" max="100" value="80"></div>
@@ -177,6 +177,13 @@
   </div><div class="tp" data-t="system"><span class="lbl">Window</span>
   <div class="row"><span>Always on top</span><input type="checkbox" id="onTop"></div>
   <div class="row"><span>Personalization &amp; memory</span><button class="cb" id="btnOpenProfFromSet">Open</button></div>
+  <section aria-label="Permissions"><span class="lbl sec">Permissions</span>
+  <div class="sub">Request access without starting Live or sharing content. Camera/microphone checks briefly open the default device and close it; location checks discard coordinates.</div>
+  <div class="row permission-row"><span>Camera <span class="sub" id="permission-camera" role="status">Not checked</span></span><span><button class="cb" data-request-permission="camera" aria-label="Request camera access">Request access</button> <button class="cb" data-permission-windows="camera" aria-label="Open Windows camera privacy settings">Windows settings</button></span></div>
+  <div class="row permission-row"><span>Microphone <span class="sub" id="permission-microphone" role="status">Not checked</span></span><span><button class="cb" data-request-permission="microphone" aria-label="Request microphone access">Request access</button> <button class="cb" data-permission-windows="microphone" aria-label="Open Windows microphone privacy settings">Windows settings</button></span></div>
+  <div class="row permission-row"><span>Location <span class="sub" id="permission-geolocation" role="status">Not checked</span></span><span><button class="cb" data-request-permission="geolocation" aria-label="Request location access">Request access</button> <button class="cb" data-permission-windows="geolocation" aria-label="Open Windows location privacy settings">Windows settings</button></span></div>
+  <button class="cb" id="refreshPermissions">Refresh permissions</button>
+  <div class="sub" id="permissionMessage" role="status" aria-live="polite">Permissions belong to browser/Windows; Save Settings does not grant or revoke them.</div></section>
   <span class="lbl sec">Context Token Capacity</span>
   <div class="sub" id="tokSub">Remaining: — · Used: —</div><div class="bar"><i id="tokBar" style="width:0%"></i></div>
   <span class="lbl sec">Backup</span><div class="row"><span>Export / restore settings to file</span><span style="display:flex;gap:8px"><button class="cb" id="expB">Export</button><button class="cb" id="impB">Import</button></span></div><input type="file" id="impF" accept=".json" hidden>

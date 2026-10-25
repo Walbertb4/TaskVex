@@ -39,7 +39,7 @@ remain blocked until initialization; corrupt settings require explicit recovery.
 | media_command | Versioned UI mutation submitted to the same media.control tool used by the model |
 | fullscreen, shutdown, restart | Window lifecycle without abandoning active work |
 
-Camera, location, Google, skill/routine execution, inspect and screen_share
+Google, skill/routine execution, inspect and screen_share
 commands are not implemented. Local timeline/drawer controls do not imply
 external execution or verified success.
 
@@ -330,3 +330,39 @@ The existing WebView2/Windows geolocation permission may still depend on OS poli
 Temporary profiles and synthetic providers validate contracts, not real-account
 availability, quota, every player or microphone accuracy. Provider resume/GoAway
 acceptance remains separate. See [AUDIT](AUDIT.md) and reports/ for actual evidence.
+
+## Camera input — 6.8.1
+
+`live_text`, `live_audio_start` and `live_audio` optionally accept `video`, a base64
+JPEG without a data-URL prefix, along with their existing request fields. REST,
+timer notifications and other event envelopes cannot attach camera input.
+`live_video_feed` accepts `{request_id}` for input status or exactly
+`{request_id,sequence,data}`. Sequences start at zero; data is base64 JPEG or null
+to close video only. Maximum decoded image: 262144 bytes; JPEG start/end markers
+and base64 are validated. Sequence/replay errors close video input. Closed old
+input can acknowledge a harmless close/status but never accept another image.
+Only a ready, awake native host accepts packets; there is no standalone-browser grant.
+
+One LiveVideo object belongs to the matching active request in PersistentLive.
+Short feed calls do not wait for the conversation lock. The single-slot buffer,
+frame expiry, 120-packet limit and one-second socket send interval bound input.
+Stop closes this input immediately; an image already sent cannot be withdrawn.
+The result may include video_frames_sent and video_error, never image data.
+Camera frames are absent from settings/backups, task records and RAM text summaries.
+Camera Off is independent of Stop, microphone On/Off and audio playback.
+
+## Permission settings — 6.8.1a
+
+`permission_settings` accepts exactly the string camera, microphone or geolocation,
+after native startup. The host opens the corresponding fixed Windows privacy page
+and returns `{ok:true,completed:true,opened:true}` only when OS launch succeeds.
+This means navigation was requested, not that permission was granted. Caller URLs,
+paths, commands and unknown permission kinds are rejected. OS failure does not
+become a permission success or tool-unknown lock.
+
+Permission status and explicit probes use browser APIs locally. They neither call
+Live/tools nor emit weather_location/save. No coordinates/media or permission grant
+flags are persisted by the panel. Camera/microphone checks briefly open the system
+default device if there is no active owner; all tracks are stopped, including late
+grants. Location checks discard the coordinates. Feature controls still own ongoing
+capture/sharing, and browser/OS policy can reject a request despite saved app settings.

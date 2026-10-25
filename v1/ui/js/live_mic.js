@@ -24,6 +24,7 @@ function release(state) {
 
 export const liveMic = {
   get active() { return current !== null; },
+  get hasDeviceAccess() { return current?.stream?.getAudioTracks().some(track => track.readyState === 'live') === true; },
   get waitingForSpeech() { return !!current?.waiting && !current.triggered; },
   get speaking() { return current?.speaking === true; },
   setNoiseThreshold(value) {

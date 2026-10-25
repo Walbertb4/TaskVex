@@ -7,7 +7,7 @@ import vm from 'node:vm';
 const source=fs.readFileSync(new URL('../js/assistant_session.js',import.meta.url),'utf8');
 function fixture(result){
   const nodes={shut:{disabled:false},textStatus:{textContent:''}}, calls=[];
-  const ctx=vm.createContext({document:{getElementById:id=>nodes[id]},
+  const ctx=vm.createContext({liveVideo:{stop(){}},document:{getElementById:id=>nodes[id]},
     cancelAutoSleep(){calls.push('cancelAutoSleep');},cancelMic(){calls.push('cancelMic');},
     isBackendAvailable:()=>true,emit:async name=>{calls.push(name);return result;},
     sanitizeError:()=> 'redacted',textOperation:{uncertain:false,markUnknown(){this.uncertain=true;}}});

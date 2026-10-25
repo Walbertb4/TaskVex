@@ -3,6 +3,7 @@
  */
 
 import { sfx, setSfxConfig } from './sfx.js';
+import {initPermissions, refreshPermissions} from './permissions.js';
 import { liveAudio } from './live_audio.js';
 import { emit, logBridgeError, isBackendAvailable } from './api.js';
 import { writeStoredJSON } from './storage.js';
@@ -320,6 +321,7 @@ export function switchTab(t) {
   document.querySelectorAll('#mSet .tp').forEach(p => p.classList.toggle('a', p.dataset.t === t));
   document.querySelectorAll('#setTabs .tab').forEach(b => b.classList.toggle('a', b.dataset.t === t));
   store.tab = t;
+  if(t==='system')void refreshPermissions();
 }
 
 let memoryProposal = null;
@@ -497,6 +499,7 @@ export function loadStore(o, options = {}) {
 }
 
 export function initSettings(options = {}) {
+  initPermissions();
   initDeviceSettings(saveAll);
   loadStoredData();
   setSfxConfig(store.sfx, store.vol);

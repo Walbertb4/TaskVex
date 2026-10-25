@@ -15,6 +15,7 @@ from google.genai import errors, types
 
 from app.session.live_session import LiveConnection
 from app.session.live_input import LiveInput
+from app.session.live_video import LiveVideo
 from app.session.gemini import GeminiUsage
 from app.session.wake_word import is_wake_only
 from app.core.contracts import ContractError, TaskStatus
@@ -27,14 +28,16 @@ LIVE_TURN_SECONDS = 120
 LIVE_IDLE_SECONDS = 25
 
 
-async def _next_message(messages, sender):
+async def _next_message(messages, sender, video_sender=None):
     """If the sender gives an error, finish the same round without waiting for the incoming response/deadline."""
     receiving = asyncio.create_task(anext(messages))
     try:
-        if sender is not None:
-            await asyncio.wait((receiving, sender), return_when=asyncio.FIRST_COMPLETED)
-            if sender.done():
-                sender.result()
+        senders = [task for task in (sender, video_sender) if task is not None]
+        if senders:
+            await asyncio.wait((receiving, *senders), return_when=asyncio.FIRST_COMPLETED)
+            for task in senders:
+                if task.done():
+                    task.result()
         return await receiving
     finally:
         receiving.cancel()
@@ -46,7 +49,7 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
                           audio_sink: Callable[[bytes, str], bool] | None = None,
                           transcript_sink: Callable[[str, str, int], bool] | None = None,
                           audio_input: bytes | LiveInput | None = None, profile: dict | None = None,
-                          context: str = '', voice: str | None = None) -> dict:
+                          context: str = '', voice: str | None = None, video_input: LiveVideo | None = None) -> dict:
     """25 s event silence / 120 s total lap; Timeout is not a repeat permit.
 
     first_event_ms first content/audio, first_text_ms first transcript/text
@@ -67,6 +70,7 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
     text_length = 0
     bound_tools = None
     sender = None
+    video_sender = None
     streaming = isinstance(audio_input, LiveInput)
     sequence = 0
     usage = GeminiUsage()
@@ -106,17 +110,25 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
                     bound_tools.begin_turn(text)
                 report["tools_enabled"] = bound_tools is not None
                 report["connect_ms"] = round((perf_counter() - started) * 1000)
+                visual_activity = video_input is not None and audio_input is not None
+                if visual_activity:
+                    # Camera frames must fall inside the same explicit speech activity.
+                    await session.send_realtime_input(activity_start=types.ActivityStart())
+                if video_input is not None:
+                    await video_input.start(session)
+                    video_sender = asyncio.create_task(video_input.send(session))
                 if isinstance(audio_input, LiveInput):
                     # Sending and receiving are on the same socket/event loop owner.
                     # Sender error is also checked before each received event;
                     # There is no silently losing sound and continuing to start the tool.
-                    sender = asyncio.create_task(audio_input.send(session))
+                    sender = asyncio.create_task(audio_input.send(session, **({"activity_started": True} if visual_activity else {})))
                 elif audio_input is None:
                     await session.send_realtime_input(text=text)
                 else:
                     # A single, clearly finished speech: guessing intent from silence
                     # It is not done. Send up to 15 seconds on the same socket/Stop line.
-                    await session.send_realtime_input(activity_start=types.ActivityStart())
+                    if not visual_activity:
+                        await session.send_realtime_input(activity_start=types.ActivityStart())
                     for offset in range(0, len(audio_input), 3200):
                         if stop_event and stop_event.is_set():
                             raise asyncio.CancelledError
@@ -130,7 +142,7 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
                         idle = asyncio.timeout(LIVE_IDLE_SECONDS)
                         try:
                             async with idle:
-                                message = await _next_message(incoming, sender)
+                                message = await _next_message(incoming, sender, **({'video_sender': video_sender} if video_sender else {}))
                         except TimeoutError:
                             if not idle.expired():
                                 raise
@@ -357,6 +369,14 @@ async def probe_live_text(text: str, model: str, *, connection: LiveConnection |
         if connection.draining:
             report.update(code="live_go_away", error="Live disconnected before the turn completed; this message was not retried.")
     finally:
+        if video_input is not None:
+            video_input.close()
+            if video_sender:
+                video_sender.cancel()
+                await asyncio.gather(video_sender, return_exceptions=True)
+            report["video_frames_sent"] = video_input.sent_frames
+            if video_input.failed:
+                report["video_error"] = "camera_input_rejected"
         usage.finish_live(report)
         # The retrieved text of the Interrupted turn also remains; does not translate into success.
         report['text'] = ''.join(transcript or plain)[:32000]
