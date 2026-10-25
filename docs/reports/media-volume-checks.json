@@ -1,0 +1,70 @@
+{
+  "step": "6.2.5c player application volume and quiet media UI",
+  "previous_accepted_commit": "c8d159d",
+  "status": "implemented; automated/native checks passed; user reported successful tests",
+  "user_scope": "Only the media player's application volume, explicitly not Windows master volume",
+  "ownership": "Media -> media.control -> registry/policy/TaskManager; dashboard and REST/Live share action set_volume",
+  "implementation": {
+    "adapter": "app/tools/local/media_volume.py; fixed Windows Core Audio interfaces through ctypes; no new dependency",
+    "scope": "one unambiguously matched active application audio session, or one inactive match if none active",
+    "identity": "exact GSMTC source to process app ID/executable name/stem; private endpoint/session-instance/PID target",
+    "volume": "absolute finite 0-100; readback tolerance 0.1 percentage points; existing mute is preserved",
+    "ui": "theme-bound range commits on change, never on every input event; operation status is off-screen aria-live, not visible text",
+    "excluded": "endpoint/master volume, keyboard volume, Vex reply/effects volume, mute writes and arbitrary PID/session selection"
+  },
+  "validation": {
+    "full_pytest": 1230,
+    "full_pytest_seconds": 87.7,
+    "focused_media_tests": 76,
+    "focused_seconds": 2.51,
+    "javascript_suites": 9,
+    "browser_groups": 19,
+    "native_phases": 10,
+    "native_volume_core_and_hidden_status": true,
+    "pyright_scope": "app, test_media_volume.py and native_scenarios.py",
+    "pyright_errors": 0,
+    "pip_check": "No broken requirements found",
+    "compileall": true,
+    "diff_check": true,
+    "visual_preview_reviewed": true
+  },
+  "covered": [
+    "exact identity matching and real ambiguity refusal; active versus old inactive selection",
+    "zero, invalid percentage, missing source, unsupported sessions and preserved mute",
+    "stale audio target, device/session changes, Stop before dispatch and late Stop after verified change",
+    "unknown write/readback/metadata-loss outcomes and persistent core locking after restart",
+    "real REST/Live SDK with synthetic transport through the same tools; repeated call ID writes only once",
+    "UI input preview versus committed change, capability/chat locks, correct action/target/percent",
+    "saved theme follows the range while reactor state changes do not recolor it",
+    "native WebView2 range -> bridge -> actual core -> synthetic application volume; hidden operation status"
+  ],
+  "real_read_only_probe": {
+    "media_available": true,
+    "matched_application_volume_available": true,
+    "process_ids_app_ids_levels_or_metadata_recorded": false,
+    "volume_write_performed": false
+  },
+  "initial_failures_and_corrections": [
+    "First test collection omitted the parametrized mode argument; fixture signature corrected.",
+    "First browser color assertion tried to read a Chromium native slider pseudo-element and received the input background. Verification now observes real theme changes and stability across reactor states; visual preview also reviewed.",
+    "Initial type inference rejected unpacking the adapter result. The adapter now declares its dictionary return contract; final type checking passed.",
+    "Real read-only mapping initially included stale inactive browser sessions as competing targets. Explicit active-session preference was added and tested; multiple active matches remain refused.",
+    "Review found that metadata failure after a volume write could lose dispatch knowledge. Shared native dispatch tracking now preserves unknown, with a dedicated regression.",
+    "First standalone preview import used a Windows path instead of an ESM file URL, then an early screenshot caught the entry animation before visibility. Import fixed and preview recaptured after the entry animation."
+  ],
+  "native_report": "media-volume-native.json",
+  "sdk_references": [
+    "https://learn.microsoft.com/en-us/windows/win32/api/audioclient/nn-audioclient-isimpleaudiovolume",
+    "https://learn.microsoft.com/en-us/windows/win32/api/audiopolicy/nn-audiopolicy-iaudiosessioncontrol2"
+  ],
+  "limits": [
+    "Browser volume is application audio, not a single tab. Multiple applicable sessions, unmapped IDs, denied access or exclusive-mode streams may disable volume control.",
+    "No fallback to system volume or another application; existing per-application mute is not cleared.",
+    "Native Core Audio calls are synchronous. A surrounding timeout does not prove the underlying call was cancelled; unknown stays locked without automatic retry.",
+    "Earlier same-title playback, persistent reconciliation, pythonnet teardown and native-smoke type-complexity boundaries remain open.",
+    "No real application volume writes, paid API requests or user-data mutations were performed. User reported successful tests; specific provider/hardware coverage was not enumerated. Portable EXE was not rebuilt."
+  ],
+  "manual_test": "Restart source app, play media, move PLAYER VOLUME and compare only that application in Windows Volume Mixer. Ask Vex to set player volume to 30%. Check system and Vex reply-volume preferences remain unchanged.",
+  "commit": "Accepted work committed under AGENTS.md; no push requested",
+  "manual_acceptance": "User accepted this step; specific actual-provider/hardware coverage was not enumerated."
+}

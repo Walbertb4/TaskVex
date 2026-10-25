@@ -7,17 +7,21 @@ methods run inside an initialized COM apartment. UI/model use the same core tool
 import asyncio
 from copy import deepcopy
 import os
+import math
 from threading import Lock
 from time import monotonic
 from uuid import uuid4
 
 from app.core.contracts import TaskStatus, ToolContext, ToolError, ToolResult
+from app.tools.local import media_volume
 
 
 ACTIONS = ('play', 'pause', 'next', 'previous')
 CONTROL_SCHEMA = {'type':'object', 'additionalProperties':False,
-    'properties':{'action':{'type':'string','enum':list(ACTIONS)},
-                  'target_id':{'type':'string','pattern':r'^[0-9a-f]{32}$'}},
+    'properties':{'action':{'type':'string','enum':[*ACTIONS,'set_volume']},
+                  'target_id':{'type':'string','pattern':r'^[0-9a-f]{32}$'},
+                  'percent':{'type':'number','minimum':0,'maximum':100,
+                             'description':'Required only for set_volume. Absolute application volume 0-100; never system/master volume.'}},
     'required':['action','target_id']}
 
 
@@ -48,7 +52,7 @@ async def _current(manager) -> dict:
     return {'status':'available','title':properties.title,'artist':properties.artist,
         'state':{0:'closed',1:'opened',2:'changing',3:'stopped',4:'playing',5:'paused'}.get(int(playback.playback_status)),
         'controls':{k:getattr(controls,'is_'+k+'_enabled',False) is True for k in ACTIONS},
-        '_session':session}
+        '_session':session,'_source':getattr(session,'source_app_user_model_id',None)}
 
 
 async def _read_async(manager=None) -> dict:
@@ -75,6 +79,13 @@ async def _control_async(target, action, expected, cancel, attempt) -> dict:
         return result('failed','media_target_changed')
     if cancel.is_set():
         return result('cancelled','cancelled')
+    if action=='set_volume':
+        if expected.get('_volume_target') is None or expected.get('controls',{}).get('set_volume') is not True:
+            return result('failed','media_action_unsupported')
+        outcome = media_volume.set_volume(before.get('_source'),expected.get('_volume_target'),
+            expected['percent'],cancel,lambda:manager.get_current_session()==target)
+        attempt['sent'] = outcome['status']=='unknown' or outcome.get('evidence',{}).get('dispatched') is True
+        return result(outcome['status'],outcome['code'],await _current(manager),**outcome.get('evidence',{}))
     goal = {'play':'playing','pause':'paused'}.get(action)
     if goal and before['state'] == goal:
         return result('succeeded','already_in_state',read_back=True,already_in_state=True)
@@ -155,6 +166,7 @@ class Media:
         self._sample = None
         self._session: object | None = None
         self._manager: object | None = None
+        self._volume_target = None
         self._target_id: str | None = None
         self._uncertain = False
 
@@ -174,8 +186,10 @@ class Media:
         """Strip private WinRT identity and invalidate stale control target IDs."""
         data = {'source':'windows-gsmtc','sampled_at':self._clock(),'status':'unavailable',
                 'title':None,'artist':None,'state':None,'target_id':None,
-                'controls':{k:False for k in ACTIONS},'control_unknown':self._uncertain}
+                'controls':{k:False for k in (*ACTIONS,'set_volume')},'control_unknown':self._uncertain,
+                'volume':{'status':'unavailable','percent':None,'muted':None,'scope':'application'}}
         session = None
+        volume_target = None
         self._manager = raw.get('_manager') if isinstance(raw,dict) else None
         if isinstance(raw,dict) and raw.get('status') in (
                 'available','no_session','session_changed','timeout','unsupported','unavailable'):
@@ -188,17 +202,27 @@ class Media:
                 session = raw.get('_session')
                 if session is not None:
                     data['controls'] = {k:raw.get('controls',{}).get(k) is True for k in ACTIONS}
-                    if session != self._session or self._sample is None or _signature(data) != _signature(self._sample):
+                    volume = media_volume.read(raw.get('_source'))
+                    volume_target = volume.get('_target')
+                    data['volume'].update({k:volume[k] for k in ('status','percent','muted') if k in volume})
+                    data['controls']['set_volume'] = volume.get('status')=='available' and volume_target is not None
+                    if (session != self._session or self._sample is None or _signature(data) != _signature(self._sample)
+                            or volume_target != self._volume_target):
                         self._target_id = uuid4().hex
                     data['target_id'] = self._target_id
         if session is None:self._target_id = None
         self._session = session
+        self._volume_target = volume_target
         self._sample = data
         return deepcopy(data)
 
     def control(self, arguments: dict, context: ToolContext) -> ToolResult:
         """Mutate the exact observed target through the shared task/replay boundary."""
-        if (set(arguments) != {'action','target_id'} or arguments.get('action') not in ACTIONS
+        volume_action = arguments.get('action')=='set_volume'
+        if (set(arguments) != ({'action','target_id','percent'} if volume_action else {'action','target_id'})
+                or arguments.get('action') not in (*ACTIONS,'set_volume')
+                or volume_action and (type(arguments.get('percent')) not in (int,float)
+                    or not math.isfinite(arguments['percent']) or not 0<=arguments['percent']<=100)
                 or not isinstance(arguments.get('target_id'),str)):
             return ToolResult(task_id=context.task_id,status=TaskStatus.FAILED,
                 error=ToolError(code='invalid_arguments',message='Expected an action and current media target ID'))
@@ -213,7 +237,8 @@ class Media:
                     error=ToolError(code='media_target_changed',message='Read media.status again; the old target is no longer current'))
             outcome: dict
             try:
-                expected = {**deepcopy(self._sample),'_manager':self._manager}
+                expected = {**deepcopy(self._sample),'_manager':self._manager,'_volume_target':self._volume_target,
+                            **({'percent':arguments['percent']} if volume_action else {})}
                 outcome = self._controller(self._session,arguments['action'],expected,context.cancel_event)
             except Exception:
                 outcome = {'status':'unknown','code':'media_result_unknown'}

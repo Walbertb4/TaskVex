@@ -34,6 +34,9 @@ It is a development project, not a production-ready general computer-use agent.
 - Title, artist and playback state from the current Windows media session, with
   play/pause/previous/next shared by dashboard buttons and model tools. Control
   success requires observed state/track changes; unsupported actions stay disabled.
+- Player application volume from a themed range or model request, with Windows
+  readback. It does not change system/master or Vex reply volume; browser scope
+  covers that browser's audio, and ambiguous session mapping stays disabled.
 - Saved interface preferences, Live voice selection and separate reply volume,
   plus a limited set of active personalization fields.
 - Gemini API key storage in Windows Credential Manager and automatic Live model
@@ -136,8 +139,13 @@ same core as both model transports; no real player was mutated during these test
 
 Manual testing then exposed false stale-target rejection from recreating Windows
 media managers. The manager-identity fix passed 1,196 Python tests and a real
-read-only identity/cancelled-preflight check; playback acceptance awaits retest.
+read-only identity/cancelled-preflight check; the user then reported successful playback tests.
 [Identity fix](docs/reports/media-identity-fix.json).
+
+The application-volume step passed 1,230 Python tests, 9 JavaScript suites,
+19 browser groups and 10 sequential native phases, with clean focused type checks.
+Automated real-device mapping was read-only; the user subsequently reported
+successful tests. Specific provider/hardware coverage was not separately enumerated. [Volume evidence](docs/reports/media-volume-checks.json).
 
 The English repository cleanup reran 1,172 Python tests, nine JavaScript suites,
 16 browser groups and ten sequential native phases. Archive hashes/links and the

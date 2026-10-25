@@ -7,6 +7,7 @@ import {uniqueRecordId} from './schema.js';
 import {sfx} from './sfx.js';
 import {setMedia} from './connections.js';
 let current=null,busy=false,uncertain=false,chatLocked=false,lastSeen=-Infinity;
+let volumeEditing=false;
 let started=false,pending=false,closed=false,lastAttempt=-Infinity,lastSuccess=-Infinity,sample=-Infinity;
 window.addEventListener('pagehide',()=>{closed=true;renderControls();},{once:true});
 const states=['closed','opened','changing','stopped','playing','paused'];
@@ -25,13 +26,26 @@ function renderControls(){
     button.title=uncertain?'Media result unknown; do not retry':action[0].toUpperCase()+action.slice(1)+' current Windows media';
     button.setAttribute('aria-label',button.title);
   }
+  const slider=document.getElementById('mediaVolume'),value=document.getElementById('mediaVolumeValue');
+  if(slider&&value){
+    const available=current?.volume?.status==='available'&&Number.isFinite(current.volume.percent);
+    slider.disabled=!started||closed||busy||uncertain||chatLocked||!isBackendAvailable()||!fresh||!available||current?.controls?.set_volume!==true;
+    if(!volumeEditing||slider.disabled){
+      slider.value=available?String(current.volume.percent):'0';
+      value.textContent=available?Math.round(current.volume.percent)+'%'+(current.volume.muted?' · MUTED':''):'—';
+    }
+    slider.title=uncertain?'Media result unknown; do not retry':available?
+      'Media application volume; browser-wide, not a single tab. System volume is unchanged.':
+      'Media application volume unavailable or ambiguous; system volume is unchanged.';
+  }
 }
-async function control(action){
+async function control(action,percent){
   if(!canSendMediaText()||chatLocked||closed||!current?.target_id||!isBackendAvailable()||performance.now()-lastSeen>=10000)return;
   if(current.controls?.[action]!==true)return;
   const target=current.target_id,request=uniqueRecordId([], 'media');
   busy=true;const revision=operation.begin();status('Waiting for media confirmation…');renderControls();sfx.blip();
-  const result=await emit('media_command',{version:1,request_id:request,arguments:{action,target_id:target}});
+  const result=await emit('media_command',{version:1,request_id:request,arguments:{action,target_id:target,
+    ...(action==='set_volume'?{percent}:{})}});
   if(closed||!operation.isCurrent(revision))return;
   const response=result.response;
   if(response?.data)applyMediaSample(response.data);
@@ -51,6 +65,11 @@ export function applyMediaSample(data) {
     !(data.state==null||states.includes(data.state))||
     !(data.target_id==null||typeof data.target_id==='string'&&/^[0-9a-f]{32}$/.test(data.target_id))||
     !(data.controls==null||typeof data.controls==='object'&&['play','pause','next','previous'].every(k=>typeof data.controls[k]==='boolean'))||
+    !(data.controls?.set_volume==null||typeof data.controls.set_volume==='boolean')||
+    !(data.volume==null||typeof data.volume==='object'&&['available','unavailable','ambiguous'].includes(data.volume.status)&&
+      (data.volume.percent==null||Number.isFinite(data.volume.percent)&&data.volume.percent>=0&&data.volume.percent<=100)&&
+      (data.volume.muted==null||typeof data.volume.muted==='boolean')&&
+      (data.volume.status!=='available'||Number.isFinite(data.volume.percent)))||
     !(data.control_unknown==null||typeof data.control_unknown==='boolean'))return false;
   sample=data.sampled_at;current=data;lastSeen=performance.now();
   if(data.control_unknown===true)uncertain=true;
@@ -64,6 +83,14 @@ export function applyMediaSample(data) {
 }
 
 export function startMediaView() {
+  if(!started){
+    const slider=document.getElementById('mediaVolume');
+    slider?.addEventListener('input',()=>{
+      volumeEditing=true;document.getElementById('mediaVolumeValue').textContent=slider.value+'%';
+    });
+    slider?.addEventListener('change',()=>{volumeEditing=false;void control('set_volume',slider.valueAsNumber);});
+    slider?.addEventListener('blur',()=>{volumeEditing=false;renderControls();});
+  }
   if(!started)for(const button of document.querySelectorAll('#w_media [data-m]'))button.addEventListener('click',()=>{
     if(button.disabled)return;
     const action=button.dataset.m==='toggle'?(current?.state==='playing'?'pause':'play'):button.dataset.m==='prev'?'previous':'next';

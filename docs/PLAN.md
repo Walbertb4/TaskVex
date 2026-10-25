@@ -1,6 +1,53 @@
 # TaskVex — Current plan
 
-## Now: 6.2.5b Windows media controls — accepted by the user
+## Now: 6.2.5c accepted; next planned slice is 6.3 file reading
+
+User accepted 6.2.5b after the identity fix; committed as c8d159d before this step.
+The requested new scope is application volume, explicitly excluding Windows master
+volume. The user reported successful tests and accepted this step. No 6.3 implementation
+has started; the accepted changes are committed under AGENTS.md.
+
+- [x] Remove visible operation text below playback buttons; retain accessible status/logs.
+- [x] Theme-bound PLAYER VOLUME range, confirmed OS level, one write on change.
+- [x] Shared media.control set_volume action for UI, REST and Live, with fresh targets.
+- [x] Exact source/process matching, active-session selection and ambiguity refusal.
+- [x] Readback, Stop/unknown/replay, device/session identity, mute and master-volume boundaries.
+- [x] 1,230 full pytest, 76 focused media tests, 9 JS suites, 19 browser groups,
+  10 sequential native phases, app/focused-test Pyright 0 and clean dependency check.
+- [x] User reported successful tests. Specific provider/hardware coverage was not separately enumerated.
+
+Core Audio controls the matching application's shared-mode audio session. Browser
+volume affects that browser's audio, not just one tab. Multiple active matches,
+unmapped app IDs, inaccessible/unsupported sessions or exclusive-mode audio may
+disable control; no fallback to system volume or another application is allowed.
+Mute is preserved, and TaskVex does not save a competing volume preference.
+Native and aggregate evidence: reports/media-volume-native.json and
+reports/media-volume-checks.json. Existing persistent-unknown and native-test
+teardown/type-complexity limits remain unchanged. The portable demo was not rebuilt.
+
+## Remaining stage 6 work — current summary
+
+- 6.2's implemented telemetry/network/token/media slices are accepted. Sensor
+  temperatures/VRAM and a real API transport-latency metric remain explicit source
+  limits, not silently completed functionality.
+- 6.3: file attachment/reading first, then authorized modification with exact
+  targets, bounded reads, readback and cancellation/replay protection.
+- 6.4: weather/location and web search; permission/manual location, caching,
+  freshness and untrusted external-content boundaries.
+- 6.7 prerequisites: approve risky external writes, enforce channel/principal
+  authority, handle untrusted content and reconcile unknown delivery outcomes.
+  These relevant protections must precede 6.5/6.6 writing, despite their numbering.
+- 6.5: Google OAuth and Calendar/Drive/mail in separately verified slices.
+- 6.6: Telegram/Discord channels with real destination IDs and delivery evidence.
+- 6.8 remains a scope recommendation: camera, Live screen sharing and additional
+  audio sources, each with permission/cleanup; separate from GUI automation.
+- Remaining 5.F8.3 profile fields (greeting, bounded personal instructions,
+  browser/application preferences and shortcuts) attach to their relevant slices.
+- Stage 6 closure needs current regression and accurate documentation of remaining
+  limits. Skill execution and GUI layers remain stage 7; routines/reminders and
+  the single backend scheduler remain stage 8.
+
+## 6.2.5b Windows media controls — accepted by the user
 
 The current user instruction authorizes this next slice. The preceding read-only
 implementation is already published; the user has now accepted the media tests and authorized continuation;

@@ -256,8 +256,10 @@ manager while exposing no controllable target. An observed session,
 metadata, state or capabilities change rotates the target; missing session clears it.
 Metadata alone does not grant control permission.
 
-media_command accepts exactly `{version:1,request_id,arguments:{action,target_id}}`;
-version is an integer, action is play/pause/next/previous. The bridge requires a ready
+media_command accepts exactly `{version:1,request_id,arguments:{action,target_id}}`
+or `{version:1,request_id,arguments:{action:'set_volume',target_id,percent}}`.
+percent is a finite number 0-100, required only for set_volume; other actions reject
+it. version is an integer, action is play/pause/next/previous/set_volume. The bridge requires a ready
 host and no active model reply or unresolved operation. It submits media.control to
 the existing policy/TaskManager with separate media.control permission. ModelTools
 requires a fresh media.status result in the current turn; replayed reads from an old
@@ -273,6 +275,24 @@ is readback evidence; a true native boolean without it is unknown. Same-title sk
 and previous restarting the current track are intentionally not claimed verified.
 No new action, retry or fallback follows Stop; completed effects are preserved.
 Native control timeout is four seconds, bridge wait eight, UI deadline ten.
+
+Snapshots add volume `{scope:'application',status,percent,muted}` and boolean
+controls.set_volume. Status is available/unavailable/ambiguous; missing percentage
+and mute are null. Zero is valid. Native app/audio target identities remain private.
+Exactly one active matching Core Audio session is controllable, or one inactive
+match if no active session exists. Multiple applicable matches disable volume; no
+fuzzy app matching, arbitrary PID selection or system/master-volume fallback exists.
+GSMTC and audio-session identity are revalidated before dispatch and readback.
+Core Audio calls are synchronous; the surrounding deadline can report unknown
+without claiming that an in-flight OS call was cancelled. Never repeat such a write.
+
+The range displays observed application volume. input only previews the number;
+change sends one versioned media_command through the same core as model calls.
+Browser volume applies to the browser application's audio, not a single tab.
+Vex reply volume, effects volume, system volume and mute stay independent. The
+former visible media status is an off-screen aria-live announcement; failures
+remain in Engine log and control tooltips. No visible success text is added below
+the playback buttons.
 
 ## Verification boundary
 

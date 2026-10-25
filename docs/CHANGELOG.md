@@ -5,6 +5,17 @@ The state is in ARCHITECTURE.md, the work to be done is in PLAN.md. The version 
 
 ## Unreleased
 
+### Player application volume and quiet media controls — 6.2.5c
+
+- Replaced visible playback-operation text with an accessible off-screen status;
+  failures remain observable in logs/tooltips. Added a theme-bound PLAYER VOLUME range.
+- Added media.control set_volume through the same registry/policy/TaskManager for
+  UI and REST/Live. Only the unambiguously matched player application is changed;
+  browser-wide scope is explicit. Windows master, Vex reply/effects and mute are unchanged.
+- Added Core Audio session/process matching, private audio-target identity and real
+  volume readback. Stop, replay and persistent unknown protections remain active.
+- No dependency added. Prior accepted media work committed as c8d159d; this step
+  was accepted after the user reported successful tests. Validation: reports/media-volume-checks.json.
 ### Fix false media target changes
 
 - Reused the issuing Windows GSMTC manager across polling and controls. Separate

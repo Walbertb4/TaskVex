@@ -521,12 +521,15 @@ timeout; missing data must not become a claim that nothing is playing.
 The UI updates every few seconds and clears stale/failed samples. Model reads
 may store returned metadata in the existing task journal; background UI polling
 does not journal each sample or send it to a model.
+
 | Say or type → | What Vex does |
 |---|---|
 | “Pause the current music.” | Reads the current session and requests pause; verifies the paused state. |
 | “Resume playback.” | Reads the current session, requests play and verifies the playing state. |
 | “Skip to the next track.” | Requests next once, then verifies changed title/artist on the same session. |
 | “Go to the previous track.” | Requests previous once; requires an observed track change for verified success. |
+| “Set the player volume to 30%.” | Reads the current media/audio target, sets only its application volume and verifies the Windows readback. |
+| “Lower the player volume by 10 percentage points.” | Reads the actual level, then requests an absolute level 10 points lower, bounded to 0-100. |
 
 The Media panel's previous/play-pause/next buttons use the same backend tools.
 Unsupported or stale controls stay disabled; manual buttons wait during a model
@@ -536,6 +539,14 @@ An accepted request without observable confirmation remains unknown and is never
 automatically retried. Same-title skips or a player restarting the same track may
 be unknown. Restart does not clear the persistent safety lock. Real player/provider
 acceptance is separate from synthetic/native transport checks.
+
+The PLAYER VOLUME range below the buttons uses the same media.control action
+set_volume. It does not change Windows master volume or Vex reply/effects volume.
+Browser audio is application-wide, not a per-tab volume control. Unsupported or
+ambiguous audio-session mapping disables the range; it never targets another app
+or falls back to system volume. Existing mute is preserved. Windows owns the actual
+level; TaskVex does not save a second preference. Operation results stay in the
+accessible status/Engine log rather than visible text below the buttons.
 
 
 ## Portable Windows demo

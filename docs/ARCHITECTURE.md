@@ -318,13 +318,33 @@ persistent TaskManager safety lock; polling/restart do not authorize a retry.
 Stop prevents undispatched actions but preserves confirmed effects already made.
 The native control wait is four seconds, bridge wait eight and UI deadline ten.
 Model replies and manual media controls exclude each other; stale/unsupported
-controls remain disabled. There is no arbitrary session/app selector or volume tool.
+controls remain disabled. There is no arbitrary session/app selector or system/master-volume tool.
 
 Manager activation is lazy and reused across UI polls and worker controls. Different
 GSMTC manager instances can expose unequal session objects for the same underlying
 player; identity comparisons are valid only within the issuing manager. Source loss
 invalidates that manager and its target before a later read reacquires it. An empty
 current session retains the manager so a newly opened player can be observed.
+
+Player volume is media.control action set_volume, through the same permission,
+queue, replay and Stop rules. media_volume.py is a native adapter, not a second
+state owner: it enumerates active render endpoints and matches audio-session
+process identity to the GSMTC source app ID or exact executable name/stem. A
+single active match takes precedence over old inactive sessions; multiple active
+matches, or multiple inactive matches with no active session, disable control.
+Private endpoint/session instance IDs bind the observed target and never enter
+snapshots or journals. An audio target change rotates the existing media target ID;
+volume-level changes do not. Core Audio references/strings/process handles are
+released on the same calling thread, including failure paths.
+
+Only ISimpleAudioVolume changes application volume, with an absolute 0-100 value
+and readback within 0.1 percentage points. No endpoint/master volume, keyboard
+shortcut, Vex reply-volume or mute write is used. A browser target is browser audio,
+not one tab. Unknown/unsupported mapping never falls back to system volume. Polling
+reads Windows' actual level; this is not a saved TaskVex preference. The UI range
+commits once on change and shows confirmed values; its status remains screen-reader
+accessible without visible dashboard text. Controls and range use the saved UI theme.
+[Session volume API](https://learn.microsoft.com/en-us/windows/win32/api/audioclient/nn-audioclient-isimpleaudiovolume).
 
 ## Target L0 and four GUI layers — planned
 

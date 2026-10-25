@@ -513,5 +513,59 @@ try {
     assert.equal(await p.evaluate(()=>mediaCalls.length),1);
     assert.match(await p.locator('#mArt').innerText(),/playing/);
   });
+  await test('media application volume uses the shared command, hides status, follows theme and rejects invalid data',async()=>{
+    const p=await setup();
+    await p.evaluate(async()=>{
+      const view=await import('/js/media_view.js');
+      window.volumeCalls=[];
+      window.volumeSample={sampled_at:100,status:'available',title:'Synthetic player',state:'playing',target_id:'c'.repeat(32),
+        controls:{play:true,pause:true,next:true,previous:true,set_volume:true},
+        volume:{status:'available',scope:'application',percent:65,muted:false}};
+      window.pywebview={api:{event:async(name,data)=>{
+        if(name==='query_media')return {ok:true,completed:true,data:volumeSample};
+        if(name!=='media_command')throw new Error('Unexpected volume mutation');
+        volumeCalls.push(data);
+        volumeSample={...volumeSample,sampled_at:volumeSample.sampled_at+1,
+          volume:{...volumeSample.volume,percent:data.arguments.percent}};
+        return {ok:true,completed:true,verified:true,request_id:data.request_id,data:volumeSample};
+      }}};
+      view.startMediaView();await new Promise(done=>setTimeout(done,0));view.applyMediaSample(volumeSample);
+    });
+    const slider=p.locator('#mediaVolume');
+    assert.equal(await slider.isDisabled(),false);
+    assert.equal(await slider.inputValue(),'65');
+    await slider.evaluate(el=>{el.value='25';el.dispatchEvent(new Event('input'));});
+    assert.equal(await p.evaluate(()=>volumeCalls.length),0);
+    await slider.dispatchEvent('change');
+    await p.waitForFunction(()=>document.getElementById('mediaStatus').textContent==='Media action verified.');
+    assert.equal(await p.locator('#mediaVolumeValue').innerText(),'25%');
+    assert.deepEqual(await p.evaluate(()=>volumeCalls[0].arguments),{action:'set_volume',target_id:'c'.repeat(32),percent:25});
+    assert.equal(await p.locator('#mediaStatus').evaluate(el=>getComputedStyle(el).position),'absolute');
+    assert.equal(await p.locator('#mediaStatus').evaluate(el=>getComputedStyle(el).clipPath),'inset(50%)');
+    const initialColor=await slider.evaluate(el=>getComputedStyle(el).backgroundColor);
+    await p.evaluate(async()=>{
+      const {setState}=await import('/js/reactor.js');
+      window.vex.loadStore({theme:'#4fd8ff'});setState('sleeping');
+    });
+    const sleepingColor=await slider.evaluate(el=>getComputedStyle(el).backgroundColor);
+    assert.notEqual(sleepingColor,initialColor);
+    await p.evaluate(async()=>{(await import('/js/reactor.js')).setState('idle');});
+    assert.equal(await slider.evaluate(el=>getComputedStyle(el).backgroundColor),sleepingColor);
+    await p.evaluate(async()=>{
+      const view=await import('/js/media_view.js');
+      view.applyMediaSample({...volumeSample,sampled_at:110,volume:{status:'available',percent:0,muted:false}});
+      view.setMediaChatLock(true);
+    });
+    assert.equal(await slider.inputValue(),'0');assert.equal(await slider.isDisabled(),true);
+    await p.evaluate(async()=>{(await import('/js/media_view.js')).setMediaChatLock(false);});
+    const invalid=await p.evaluate(async()=> (await import('/js/media_view.js')).applyMediaSample({
+      ...volumeSample,sampled_at:111,volume:{status:'available',percent:101}}));
+    assert.equal(invalid,false);
+    await p.evaluate(async()=>{
+      (await import('/js/media_view.js')).applyMediaSample({...volumeSample,sampled_at:112,
+        controls:{...volumeSample.controls,set_volume:false},volume:{status:'ambiguous',percent:null,muted:null}});
+    });
+    assert.equal(await slider.isDisabled(),true);assert.equal(await p.locator('#mediaVolumeValue').innerText(),'—');
+  });
   console.log(`${results.length} browser cleanup groups passed`);
 } finally { await browser.close(); await new Promise(resolve=>server.close(resolve)); }

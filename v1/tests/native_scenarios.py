@@ -14,11 +14,13 @@ def check_native_media(window, api, js, wait_until, outcome):
     meter = api._media
     raw = {'status':'available','title':'Native control track','artist':'Synthetic artist',
            'state':'paused','_session':object(),'controls':{k:True for k in ('play','pause','next','previous')}}
+    volume = {'status':'available','percent':65,'muted':False,'_target':('synthetic-device','synthetic-session',123)}
     calls = []
     def control(target, action, expected, cancel):
         assert target is raw['_session'] and not cancel.is_set()
         calls.append(action)
-        if action in ('play','pause'):raw['state'] = 'playing' if action=='play' else 'paused'
+        if action=='set_volume':volume['percent'] = expected['percent']
+        elif action in ('play','pause'):raw['state'] = 'playing' if action=='play' else 'paused'
         else:raw['title'] = 'Native '+action+' track'
         return {'status':'succeeded','code':'verified','raw':dict(raw),'evidence':{'accepted':True,'read_back':True}}
     meter._reader = lambda:dict(raw)
@@ -34,6 +36,22 @@ def check_native_media(window, api, js, wait_until, outcome):
     assert calls == ['play','pause','next','previous']
     assert len([e for e in api._core._entries.values() if e.task.request.tool=='media.control'])==4
     outcome['native_media_controls_shared_core_verified'] = True
+    from app.tools.local import media_volume
+    original = media_volume.read
+    media_volume.read = lambda source:dict(volume)
+    try:
+        raw['_source'] = 'Native synthetic player'
+        meter._sample = None
+        js("const m=await import('./js/media_view.js');const r=await window.pywebview.api.event('query_media');m.applyMediaSample(r.data);return true;")
+        assert not window.evaluate_js("document.getElementById('mediaVolume').disabled")
+        js("const s=document.getElementById('mediaVolume');s.value='25';s.dispatchEvent(new Event('input'));s.dispatchEvent(new Event('change'));return true;")
+        wait_until(lambda:volume['percent']==25 and window.evaluate_js("document.getElementById('mediaVolumeValue').textContent")=='25%')
+        assert calls==['play','pause','next','previous','set_volume']
+        assert window.evaluate_js("getComputedStyle(document.getElementById('mediaStatus')).clipPath")=='inset(50%)'
+        outcome['native_player_volume_shared_core_and_hidden_status'] = True
+    finally:
+        media_volume.read = original
+        raw.pop('_source',None)
 
 def check_native_note_ui(home, window, js, wait_until, outcome):
     """Note panel's native CRUD, delayed response, and record rejection scenario."""

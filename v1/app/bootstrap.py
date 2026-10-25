@@ -138,7 +138,7 @@ def create_core(*, principal: str = "local-user", clocks: Clocks | None = None, 
         required_capabilities=('media.read',),
     ))
     registry.register(ToolSpec(name='media.control',
-        description='Control the current Windows media session only on an explicit user request. Read media.status in THIS turn first and use its exact target_id. action is play, pause, next or previous; never guess a session or retry an unknown skip. Only verified readback is success; acceptance alone is not completion. No arbitrary app selection, volume or OS shutdown.',
+        description='Control the current Windows media session only on an explicit user request. Read media.status in THIS turn first and use its exact target_id. action is play, pause, next, previous or set_volume. set_volume requires percent 0-100, changes ONLY the matched player application volume (browser-wide, not a tab), never system/master volume or Vex reply volume. Use the returned volume.percent for requested relative changes; clarify missing amounts. Unsupported/ambiguous volume targets cannot be guessed. Never retry an unknown action. Only verified readback is success; acceptance alone is not completion. No arbitrary app selection or OS shutdown.',
         input_schema=MEDIA_CONTROL_SCHEMA,handler=media.control,
         required_capabilities=('media.control',),exclusive_resources=('media',)))
     policy = PolicyEngine(principal=principal,

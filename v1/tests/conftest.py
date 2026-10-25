@@ -36,3 +36,5 @@ def isolate_network_quality(monkeypatch):
 def isolate_media(monkeypatch):
     """The tests do not query the user's actual track/media history."""
     monkeypatch.setattr('app.tools.local.media._read_windows',lambda manager=None:{'status':'no_session'})
+    def unavailable():raise OSError('Synthetic unavailable application audio')
+    monkeypatch.setattr('app.tools.local.media_volume._load_audio',unavailable)
