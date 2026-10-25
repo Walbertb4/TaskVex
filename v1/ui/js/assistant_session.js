@@ -12,6 +12,7 @@ import { setState, getState, setMicLevel } from './reactor.js';
 import { store, queryDevices, getAudioDeviceId, applyMemoryProfile, resolveMemoryProposal, showMemoryProposal } from './settings.js';
 import { setSessionTokens } from './connections.js';
 import { applyClockSnapshot, canSendClockText, setClocksChatLock } from './clocks.js';
+import {canSendMediaText,setMediaChatLock} from './media_view.js';
 import { connectNativeNotes, setNotesChatLock, canSendNativeText } from './notes.js';
 
 // REST network turn can be extended by retry/fallback. Timeout is not a cancellation/success;
@@ -497,7 +498,7 @@ export function flushClockAnnouncement(snapshot = null) {
     if(!snapshot.clocks.some(c=>c.id===id&&c.generation===pending.generation))pendingClockAnnouncements.delete(id);
   }
   if (!pendingClockAnnouncements.size || !nativeInitialized || !isBackendAvailable() || sleeping || sleepPending || textBusy ||
-      textOperation.uncertain || !canSendClockText() || liveMic.speaking || liveMic.active && !liveMic.waitingForSpeech ||
+      textOperation.uncertain || !canSendClockText() || !canSendMediaText() || liveMic.speaking || liveMic.active && !liveMic.waitingForSpeech ||
       micBlockReason === 'disconnected' || !document.getElementById('mSel')?.value) return;
   const [id, pending] = pendingClockAnnouncements.entries().next().value;
   pendingClockAnnouncements.delete(id);
@@ -512,6 +513,7 @@ export async function sendText(text = null, audio = null, notification = null) {
   if (!v && !audio && !notification) return;
   if (isBackendAvailable()) {
     if (textBusy || sleepPending || textOperation.uncertain) return;
+    if(!canSendMediaText()){document.getElementById('textStatus').textContent='A media action is pending or unknown. Wait before a new message.';return;}
     if(!canSendClockText()){document.getElementById('textStatus').textContent='A clock action is pending or unknown. Wait or reopen before retrying.';return;}
     cancelAutoSleep();
     if (sleeping && !audio) {
@@ -537,7 +539,7 @@ export async function sendText(text = null, audio = null, notification = null) {
     }
     if (v.length > 20000) { addLog('Message is too long (maximum 20000 characters).', true); return; }
     textBusy = true;
-    setNotesChatLock(true); setClocksChatLock(true);
+    setNotesChatLock(true); setClocksChatLock(true); setMediaChatLock(true);
     const controls = ['inp', 'send', 'stopTask', 'liveLatencyTest', 'sleep'].map(id => document.getElementById(id)).filter(Boolean);
     controls.forEach(el => { el.disabled = true; });
     const liveStop = document.getElementById('stopTask');
@@ -701,7 +703,7 @@ export async function sendText(text = null, audio = null, notification = null) {
     textOperation.finish();
     // A note may also have been recorded before the failed model response. with Setter
     // instead of writing, read from a single backend authority; producing outbound mutation.
-    setNotesChatLock(false); setClocksChatLock(false);
+    setNotesChatLock(false); setClocksChatLock(false); setMediaChatLock(false);
     setState('idle');
     controls.forEach(el => { el.disabled = false; });
     textBusy = false;

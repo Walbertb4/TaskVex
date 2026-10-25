@@ -46,6 +46,7 @@ class NativeBridge:
         self._telemetry = telemetry
         self._media = media
         self._clock_uncertain = False
+        self._media_uncertain = False
         self._memory_uncertain = False
         self._credentials = GeminiCredentials(store.path.parent)
         self._window: Window | None = None
@@ -382,6 +383,38 @@ class NativeBridge:
             self._clock_uncertain = submitted
             return {'ok': False, 'unknown': submitted, 'error': 'Clock action could not be confirmed; no automatic retry'}
 
+    def _media_command(self, data) -> dict:
+        """UI mutations use the same policy/queue as the model; waiting is not success."""
+        if not self._ready or self._media is None:
+            return {'ok':False,'completed':True,'error':'Media controls are not ready'}
+        if self._media_uncertain or self._core.uncertain:
+            return {'ok':False,'unknown':True,'error':'An operation result is unknown; do not retry'}
+        if self._chat.busy:
+            return {'ok':False,'completed':True,'error':'Wait for the model reply before using media buttons'}
+        if (type(data) is not dict or set(data) != {'version','request_id','arguments'}
+                or type(data['version']) is not int or data['version'] != 1):
+            return {'ok':False,'completed':True,'error':'Expected a version 1 media command'}
+        submitted = False
+        try:
+            task = self._core.submit(ToolRequest(request_id=data['request_id'],source='desktop',
+                principal='local-user',tool='media.control',arguments=data['arguments']))
+            submitted = True
+            finished = self._core.wait(task.task_id,timeout=8)
+            result = finished.result
+            self._media_uncertain = finished.status == TaskStatus.UNKNOWN
+            return {'ok':finished.status == TaskStatus.SUCCEEDED and bool(result and result.verified),
+                'completed':finished.status.terminal,'verified':bool(result and result.verified),
+                'unknown':self._media_uncertain,'request_id':data['request_id'],
+                'data':result.data if result else None,
+                'error':result.error.code if result and result.error else None}
+        except (ContractError,TaskManagerError) as error:
+            self._media_uncertain = submitted or self._core.uncertain
+            return {'ok':False,'completed':not self._media_uncertain,'unknown':self._media_uncertain,
+                    'error':error.code if isinstance(error,TaskManagerError) else 'Invalid media command'}
+        except Exception:
+            self._media_uncertain = submitted
+            return {'ok':False,'unknown':submitted,'completed':not submitted,'error':'Media action could not be confirmed'}
+
     def event(self, name: str, data=None) -> dict:
         """Give exact result to UI request; return secret payload/error detail.
 
@@ -393,7 +426,15 @@ class NativeBridge:
             # Same pure example; UI polling worker/journal does not open the record.
             if data is not None or not self._ready or self._media is None:
                 return {'ok':False,'completed':True,'error':'Media view is not ready'}
-            return {'ok':True,'completed':True,'data':self._media.snapshot()}
+            data = self._media.snapshot()
+            data['control_unknown'] = data['control_unknown'] or self._media_uncertain or self._core.uncertain
+            return {'ok':True,'completed':True,'data':data}
+        if name == 'media_command':
+            with self._lock:
+                result = self._media_command(data)
+                if isinstance(data,dict) and isinstance(data.get('request_id'),str):
+                    result['request_id'] = data['request_id']
+                return result
         if name == 'query_system':
             # Pure snapshot like Clocks: same owner, no new task/writing or workers.
             if data is not None or not self._ready or self._telemetry is None:
@@ -462,8 +503,8 @@ class NativeBridge:
             # Settings, window and other short API requests are the same while the network is waiting
             # RLock should not wait behind. TextChat maintains its own single-turn lock.
             with self._lock:
-                if self._clock_uncertain or self._memory_uncertain:
-                    return {"ok": False, "unknown": True, "error": "An operation result is unknown; reopen before a new message"}
+                if self._clock_uncertain or self._memory_uncertain or self._media_uncertain or self._core.uncertain:
+                    return {"ok": False, "unknown": True, "error": "An operation result is unknown; new messages remain blocked"}
                 if not self._ready:
                     return {"ok": False, "error": "Native startup is incomplete. Retry startup or reopen the app."}
                 if self._sleeping and name in {'live_audio', 'live_audio_start'}:

@@ -101,7 +101,7 @@ console.log('PASS multi-clock IDs, automatic tab/focus, stale snapshots, pause/c
 const appSource=fs.readFileSync(new URL('../js/assistant_session.js',import.meta.url),'utf8');
 const notices=[],pending=new Map([['timer-a',{generation:2,connection:4}]]);
 const view=vm.createContext({pendingClockAnnouncements:pending,nativeInitialized:true,isBackendAvailable:()=>true,
- sleeping:false,sleepPending:false,textBusy:true,textOperation:{uncertain:false},canSendClockText:()=>true,
+ sleeping:false,sleepPending:false,textBusy:true,textOperation:{uncertain:false},canSendClockText:()=>true,canSendMediaText:()=>true,
  liveMic:{speaking:false,active:false},micBlockReason:null,connectionRevision:4,
  document:{getElementById:()=>({value:'live-model'})},sendText:(...args)=>notices.push(args)});
 vm.runInContext(appSource.match(/function flushClockAnnouncement\([^]*?\n\}/m)[0],view);

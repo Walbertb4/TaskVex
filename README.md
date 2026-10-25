@@ -31,8 +31,9 @@ It is a development project, not a production-ready general computer-use agent.
   shared with system.status. This is not a speed test or proof of internet access;
   local IPv4 gateway ping and location-free Wi-Fi signal quality are available
   when Windows exposes them. These are not internet/API latency measurements.
-- Read-only title, artist and playback state from the current Windows media
-  session, shared by the dashboard and media.status. Playback controls are pending.
+- Title, artist and playback state from the current Windows media session, with
+  play/pause/previous/next shared by dashboard buttons and model tools. Control
+  success requires observed state/track changes; unsupported actions stay disabled.
 - Saved interface preferences, Live voice selection and separate reply volume,
   plus a limited set of active personalization fields.
 - Gemini API key storage in Windows Credential Manager and automatic Live model
@@ -56,7 +57,7 @@ A separate REST adapter remains available for development and future channels.
 Google Drive/Calendar/mail access, Telegram/Discord integration,
 general GUI automation and
 backend skill/routine scheduling are planned.
-Camera, screen inspection, location, weather and media controls are not connected.
+Camera, screen inspection, location and weather are not connected.
 CPU/GPU temperature and VRAM capacity are not available from the current sources.
 CPU sampling currently supports Windows processor groups with at most 64 logical processors;
 unsupported readings remain unavailable.
@@ -127,11 +128,16 @@ Model availability, network conditions and hardware affect behavior.
 
 ## Verification and documentation
 
-The latest read-only media change passed 1,172 Python tests, 9 JavaScript suites,
-16 browser groups, 10 native phases, targeted type checking and dependency checks
-using temporary profiles and synthetic providers. A read-only Windows media query
-also succeeded; actual track/artist metadata was not recorded in the report.
-[Media evidence](docs/reports/media-read-checks.json).
+The media-control slice passed 1,191 Python tests, 9 JavaScript suites,
+18 browser groups, 10 sequential native phases, type checking and dependency checks
+using temporary profiles and synthetic providers. Native UI buttons reached the
+same core as both model transports; no real player was mutated during these tests.
+[Media evidence](docs/reports/media-control-checks.json).
+
+Manual testing then exposed false stale-target rejection from recreating Windows
+media managers. The manager-identity fix passed 1,196 Python tests and a real
+read-only identity/cancelled-preflight check; playback acceptance awaits retest.
+[Identity fix](docs/reports/media-identity-fix.json).
 
 The English repository cleanup reran 1,172 Python tests, nine JavaScript suites,
 16 browser groups and ten sequential native phases. Archive hashes/links and the
@@ -141,13 +147,13 @@ native run failed during pythonnet/WinForms teardown after successful reopen
 assertions; the sequential rerun passed, but that intermittent teardown issue
 was not diagnosed or fixed.
 
-The first Python/native catalog expectations failed after the new media.status
-tool was added; those fixtures were updated and all checks rerun. Manual acceptance
-of this media slice is pending. Preceding local network/quality, GPU dashboard,
+Initial fixture/type failures and their corrections are recorded in the reports.
+Manual acceptance of media controls is pending. Preceding local network/quality, GPU dashboard,
 memory decisions and session token counting were reported working.
 These checks do not establish real-account availability, support for every player
-or production readiness. Playback controls are a separate pending step; API latency
-also remains unavailable until a real transport metric is defined.
+or production readiness. Same-title skips may remain unknown; existing persistent
+safety locks do not clear on restart. API latency remains unavailable until a real
+transport metric is defined. The portable demo predates this media-control change.
 
 - [Architecture](docs/ARCHITECTURE.md): current ownership and planned boundaries.
 - [Plan](docs/PLAN.md): remaining work and acceptance status.

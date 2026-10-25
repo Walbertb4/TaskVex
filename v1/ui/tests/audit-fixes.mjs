@@ -445,5 +445,73 @@ try {
     });
     assert.equal(await p.locator('#mTitle2').innerText(),'Media unavailable');
   });
+  await test('media buttons share explicit actions, capabilities, chat lock and verified acknowledgments',async()=>{
+    const p=await setup();
+    await p.evaluate(async()=>{
+      const view=await import('/js/media_view.js');
+      window.mediaCalls=[];window.mediaReply='verified';
+      window.mediaSample={sampled_at:100,status:'available',title:'Synthetic',state:'paused',target_id:'a'.repeat(32),
+        controls:{play:true,pause:true,next:true,previous:true},control_unknown:false};
+      window.pywebview={api:{event:async(name,data)=>{
+        if(name==='query_media')return {ok:true,completed:true,data:mediaSample};
+        if(name!=='media_command')throw new Error('Unexpected media mutation');
+        mediaCalls.push(data);
+        if(mediaReply==='rejected')return {ok:false,completed:true,request_id:data.request_id,error:'Synthetic rejection'};
+        if(mediaReply==='unknown')return {ok:false,unknown:true,request_id:data.request_id};
+        mediaSample={...mediaSample,sampled_at:mediaSample.sampled_at+1,
+          state:data.arguments.action==='pause'?'paused':'playing'};
+        return {ok:true,completed:true,verified:true,request_id:data.request_id,data:mediaSample};
+      }}};
+      view.startMediaView();await new Promise(done=>setTimeout(done,0));
+      view.applyMediaSample(mediaSample);
+    });
+    const play=p.locator('#mPlay');
+    assert.equal(await play.isDisabled(),false);
+    await play.click();await p.waitForFunction(()=>document.getElementById('mediaStatus').textContent==='Media action verified.');
+    await play.click();
+    await p.locator('#w_media [data-m="next"]').click();
+    await p.locator('#w_media [data-m="prev"]').click();
+    assert.deepEqual(await p.evaluate(()=>mediaCalls.map(c=>c.arguments.action)),['play','pause','next','previous']);
+    assert.equal(await p.evaluate(()=>new Set(mediaCalls.map(c=>c.request_id)).size),4);
+    await p.evaluate(async()=>{(await import('/js/media_view.js')).setMediaChatLock(true);});
+    assert.equal(await play.isDisabled(),true);
+    await p.evaluate(async()=>{(await import('/js/media_view.js')).setMediaChatLock(false);window.mediaReply='rejected';});
+    await play.click();await p.waitForFunction(()=>document.getElementById('mediaStatus').textContent.includes('not confirmed'));
+    assert.equal(await play.isDisabled(),false);
+    await p.evaluate(()=>{window.mediaReply='unknown';});await play.click();
+    await p.waitForFunction(()=>document.getElementById('mediaStatus').textContent.includes('unknown'));
+    await p.evaluate(async()=>{(await import('/js/media_view.js')).applyMediaSample({...mediaSample,sampled_at:200});});
+    assert.equal(await play.isDisabled(),true);
+    assert.equal(await p.evaluate(async()=> (await import('/js/media_view.js')).canSendMediaText()),false);
+  });
+  await test('media timeout ignores late success and never duplicates a pending mutation',async()=>{
+    const p=await setup();
+    await p.evaluate(async()=>{
+      const view=await import('/js/media_view.js');
+      window.mediaCalls=[];
+      window.mediaSample={sampled_at:100,status:'available',title:'Synthetic',state:'playing',target_id:'b'.repeat(32),
+        controls:{play:true,pause:true,next:false,previous:true}};
+      window.pywebview={api:{event:(name,data)=>{
+        if(name==='query_media')return Promise.resolve({ok:true,completed:true,data:mediaSample});
+        if(name!=='media_command')throw new Error('Unexpected media mutation');
+        mediaCalls.push(data);return new Promise(done=>{window.finishMedia=done;});
+      }}};
+      view.startMediaView();await new Promise(done=>setTimeout(done,0));view.applyMediaSample(mediaSample);
+      const nativeTimeout=window.setTimeout;
+      window.setTimeout=(fn,ms,...args)=>ms===10000?(window.expireMedia=fn,1):nativeTimeout(fn,ms,...args);
+    });
+    assert.equal(await p.locator('#w_media [data-m="next"]').isDisabled(),true);
+    await p.locator('#mPlay').click();
+    assert.equal(await p.locator('#mPlay').isDisabled(),true);
+    await p.evaluate(()=>{
+      document.getElementById('mPlay').click();expireMedia();
+      finishMedia({ok:true,completed:true,verified:true,request_id:mediaCalls[0].request_id,
+        data:{...mediaSample,sampled_at:101,state:'paused'}});
+    });
+    await p.waitForFunction(()=>document.getElementById('mediaStatus').textContent.includes('unknown'));
+    assert.equal(await p.locator('#mPlay').isDisabled(),true);
+    assert.equal(await p.evaluate(()=>mediaCalls.length),1);
+    assert.match(await p.locator('#mArt').innerText(),/playing/);
+  });
   console.log(`${results.length} browser cleanup groups passed`);
 } finally { await browser.close(); await new Promise(resolve=>server.close(resolve)); }

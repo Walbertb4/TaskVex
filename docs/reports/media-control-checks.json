@@ -1,0 +1,54 @@
+{
+  "step": "6.2.5b current Windows media controls",
+  "status": "implemented; automated/native validation passed; real player/provider manual acceptance pending",
+  "ownership": "shared Media -> registry/policy/TaskManager; UI media_command and REST/Live media.control use the same owner",
+  "actions": ["play", "pause", "next", "previous"],
+  "validation": {
+    "focused_media_pytest": 37,
+    "focused_media_seconds": 1.77,
+    "full_pytest": 1191,
+    "full_pytest_seconds": 104.61,
+    "javascript_suites": 9,
+    "browser_groups": 18,
+    "native_phases": 10,
+    "native_control_assertions": "save phase: real WebView2 buttons -> bridge -> actual core; synthetic player; four verified actions and four journal tasks",
+    "pyright_scope": "app, test_media.py, test_media_control.py and native_scenarios.py; native_smoke.py analyzed separately",
+    "pyright_errors": 0,
+    "expanded_native_pyright": "One pre-existing complexity diagnostic at native_smoke.py:484. Reproduced on HEAD baseline; no new diagnostic in the changed code.",
+    "pip_check": "No broken requirements found",
+    "diff_check": true
+  },
+  "covered": [
+    "capability-gated native actions and readback",
+    "stale token, metadata and session revalidation before dispatch",
+    "cancel before dispatch, late cancellation preserving verified success",
+    "accepted without readback, post-dispatch session loss, exception and timeout become unknown",
+    "persistent unknown blocks after restart; no blind retry",
+    "REST and Live real SDK transports with synthetic responses and shared execution owner",
+    "fresh current-turn read gate; replayed historical reads cannot authorize new control",
+    "persistent mutation replay returns old result without another player action",
+    "native bridge strict version validation and no journal tasks from background polling",
+    "browser explicit actions, distinct request IDs, unsupported/stale and chat locks",
+    "pending command is not duplicated; UI deadline ignores late success; polling cannot unlock unknown"
+  ],
+  "initial_failures": [
+    "Initial Pyright check rejected dictionary evidence unpack inference. Explicit outcome dictionary type fixed it.",
+    "First focused run: 18 failed, 19 passed. Existing autouse media isolation fixture supplied no_session; new synthetic-native fixture now restores native reader while replacing Windows manager activation.",
+    "Second focused run: 3 failed, 34 passed. Unknown-result assertions reused a now-missing target and the REST fixture selected an unsupported synthetic model. Tests now reuse the original target and the supported configured model; no production checks were relaxed.",
+    "Initial JavaScript regression found missing canSendMediaText in the timer-announcement VM fixture. Added the real function's independent dependency stub without weakening its existing assertions.",
+    "Initial expanded Pyright found three optional test result accesses. Assertions now explicitly narrow them. Final check: zero errors."
+  ],
+  "limits": [
+    "No real player was mutated, no user notes or paid API were used.",
+    "Only the OS-selected current Windows media session is targeted; no arbitrary app/session or volume control.",
+    "Same-title/artist skips and previous restarting the same track cannot be proved from metadata and can remain unknown.",
+    "Unknown reconciliation UI is not implemented; existing persistent safety lock is intentionally retained across restart.",
+    "Earlier intermittent pythonnet/WinForms teardown race remains open. This step's sequential ten-phase native run passed; that is not proof its root cause is fixed.",
+    "The native smoke test exercise function exceeds Pyright complexity analysis. Baseline and current script both report the same diagnostic; runtime assertions passed, but this function is not fully statically analyzed.",
+    "Portable demo was not rebuilt; source implementation and existing demo differ until the next build."
+  ],
+  "native_report": "media-control-native.json",
+  "manual_acceptance": "pending",
+  "commit": "not created; awaiting user manual acceptance under AGENTS.md",
+  "new_dependencies": []
+}

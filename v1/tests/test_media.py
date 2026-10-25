@@ -75,7 +75,7 @@ def test_com_initialization_balanced_and_timeout_is_not_no_session(monkeypatch,f
         if failure == 'init': raise OSError('incompatible apartment')
     monkeypatch.setattr(runtime,'init_apartment',init)
     monkeypatch.setattr(runtime,'uninit_apartment',lambda:calls.append('uninit'))
-    async def read():
+    async def read(manager=None):
         if failure == 'timeout':raise TimeoutError()
         if failure == 'os':raise OSError('private provider failure')
         return {'status':'no_session'}

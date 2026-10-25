@@ -1,0 +1,55 @@
+{
+  "step": "6.2.5b false media_target_changed rejection",
+  "user_reproduction": "Pause, next and previous buttons failed before dispatch with media_target_changed.",
+  "root_cause": "RequestAsync was repeated for reads and controls. Separate GSMTC managers exposed unequal session identities for the same underlying player, causing false stale-target rejection.",
+  "real_read_only_before": {
+    "first_status": "available",
+    "second_status": "available",
+    "same_session_across_managers": false,
+    "same_signature": true,
+    "changed_metadata_fields": [],
+    "same_session_within_manager": true,
+    "same_source_application": true
+  },
+  "change": "The existing Media owner retains the issuing Agile manager privately, reuses it across polls and worker controls, and discards it on transport loss. Empty current sessions retain the manager. Session/metadata/capability and cancellation checks remain active.",
+  "real_read_only_after": {
+    "available": true,
+    "same_manager_across_polls": true,
+    "stable_target": true,
+    "same_metadata": true,
+    "cross_thread_cancelled_preflight_status": "cancelled",
+    "playback_action_dispatched": false,
+    "metadata_values_recorded": false
+  },
+  "validation": {
+    "focused_pytest": 42,
+    "focused_seconds": 1.89,
+    "full_pytest": 1196,
+    "full_seconds": 85.84,
+    "pyright_scope": "app, test_media.py and test_media_control.py",
+    "pyright_errors": 0,
+    "native_phases_passed": 10,
+    "native_media_control_assertions_passed": true,
+    "pip_check": "No broken requirements found",
+    "ui_regression_scope": "No UI code changed in this fix; preceding slice passed 9 JS suites and 18 browser groups. Native UI/core checks rerun in all ten phases.",
+    "diff_check": true,
+    "native_report": "media-identity-native.json"
+  },
+  "new_regressions": [
+    "All four actions use manager-local wrappers across repeated polls and a separate TaskManager worker thread.",
+    "Target remains stable on unchanged samples; native references never enter JSON.",
+    "An empty current session retains its manager while invalidating the old target.",
+    "A failed source drops the manager; a later read reacquires it without performing playback actions."
+  ],
+  "initial_failures": [
+    "Pyright flagged unpacking an optional cached sample after the fix. The stale-target guard now explicitly rejects missing cached samples; final type check passed."
+  ],
+  "limits": [
+    "Original synthetic fixtures returned the same session identity for every manager activation and therefore missed this real Windows behavior. Dedicated manager-local identity regressions now cover it.",
+    "Actual playback mutation/provider acceptance remains pending; real probes were read-only or cancelled before dispatch.",
+    "Existing same-title skip/previous-restart verification limits, persistent unknown locking and the earlier native teardown/type-complexity boundaries are unchanged.",
+    "No paid API, production credentials or real note data were used; the portable EXE was not rebuilt."
+  ],
+  "manual_retest": "User reported all media tests successful after the identity fix; actual provider coverage was not specified.",
+  "commit": "Accepted by user; committed before requested next step under AGENTS.md"
+}

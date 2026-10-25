@@ -55,7 +55,7 @@ microphone On/Off and Stop remain local lifecycle operations.
 | Personal memory | `app/tools/local/personal_memory.py`; shared settings store and short storage lock |
 | Notes | `app/tools/local/notes.py`; stable IDs, dates, selection snapshots and atomic writes |
 | Timers and stopwatches | `app/tools/local/clocks.py`; shared process-memory state and monotonic time |
-| Current media metadata | `app/tools/local/media.py`; same Media instance in core/bridge; media_view.js renders it |
+| Current media and controls | `app/tools/local/media.py`; same Media instance in core/bridge; media_view.js renders it |
 | System/network measurements | `app/tools/local/telemetry.py`; same Telemetry instance in core/bridge |
 | Credentials | `app/storage/credentials.py`; Windows Credential Manager, no key in UI snapshots/backups |
 | JSON persistence | `app/storage/json_store.py`; schema envelope, atomic replacement, corrupt-file preservation |
@@ -284,7 +284,7 @@ GUID/index or SSID/MAC. Query polling can trigger the bounded gateway probe but
 does not journal every sample. WLAN clients/buffers and ICMP handles close in finally.
 API transport latency is not derived from local traffic or total reply time.
 
-### Current Windows media metadata
+### Current Windows media session
 
 main gives the same Media instance to create_core and NativeBridge. media.status
 uses media.read and the shared model execution path; query_media reads the same
@@ -298,12 +298,33 @@ Media.Control projections supply API types, not a new player or model framework.
 
 The backend caller runs a temporary asyncio loop with a two-second wait bound.
 MTA initialization/uninitialization is balanced without forcing another apartment
-mode. WinRT objects do not escape into UI/state. One lock/cache shares two-second
+mode. The owner retains the private Agile manager and its session reference for exact target identity;
+WinRT objects never enter JSON, UI snapshots or task records. One lock/cache shares two-second
 samples; session changes during await invalidate old results. media_view.js uses
 the existing tick, at least three seconds between nonoverlapping queries, and clears
 after ten seconds without fresh data. no_session is distinct from unsupported,
 unavailable, timeout and session_changed. Failures clear stale titles/animations.
-Playback-control tools are not registered and their UI buttons remain disabled.
+media.control has separate media.control permission and shares this owner through
+the registry/policy/TaskManager path. UI media_command submits the same tool; it is
+not a second executor. The model must read media.status in the current turn and
+use its opaque target_id. Session, metadata, state or capability changes invalidate
+that target. Native revalidation occurs immediately before a single dispatch.
+
+Play/pause succeed only after observing the desired state; next/previous require
+changed title/artist on the same session. The native acceptance boolean alone is
+not completion. A same-title skip or previous-track restart cannot be proved with
+this metadata contract and may be unknown. Unknown results latch the existing
+persistent TaskManager safety lock; polling/restart do not authorize a retry.
+Stop prevents undispatched actions but preserves confirmed effects already made.
+The native control wait is four seconds, bridge wait eight and UI deadline ten.
+Model replies and manual media controls exclude each other; stale/unsupported
+controls remain disabled. There is no arbitrary session/app selector or volume tool.
+
+Manager activation is lazy and reused across UI polls and worker controls. Different
+GSMTC manager instances can expose unequal session objects for the same underlying
+player; identity comparisons are valid only within the issuing manager. Source loss
+invalidates that manager and its target before a later read reacquires it. An empty
+current session retains the manager so a newly opened player can be observed.
 
 ## Target L0 and four GUI layers — planned
 
@@ -325,7 +346,7 @@ integrations; they are not all implemented today.
 Google service integrations, location/weather, camera/screen inspection, system
 audio control, file attachments, base-instruction override/greetings, backend
 skill/routine execution/scheduling, GUI L1–L4 and external messaging channels.
-Media metadata is implemented; playback controls are pending. Preserve existing
+Media metadata and bounded current-session playback controls are implemented. Preserve existing
 definitions/user text and clearly mark controls without executors as planned/disabled.
 
 ## Packaged demo host

@@ -5,6 +5,30 @@ The state is in ARCHITECTURE.md, the work to be done is in PLAN.md. The version 
 
 ## Unreleased
 
+### Fix false media target changes
+
+- Reused the issuing Windows GSMTC manager across polling and controls. Separate
+  manager activations can expose unequal wrappers for an unchanged player; those
+  cross-manager comparisons incorrectly rejected every dashboard command.
+- Preserved genuine session/metadata/capability checks, cancellation and replay
+  protection. Source failure discards the private manager and old target before
+  reacquisition; an empty session does not force manager recreation.
+- Added manager-local identity and cross-thread regression cases. Real read-only
+  probes reproduced the original rejection and verified stable targets after the
+  fix without controlling user playback. Manual playback retest remains pending.
+
+### Current Windows media controls — 6.2.5b
+
+- Added play/pause/next/previous through the existing shared Media owner and
+  registry/policy/TaskManager. Dashboard buttons and REST/Live use the same tool.
+- Added separate control permission, fresh observed target IDs, native pre-dispatch
+  checks and observable state/track verification. Acceptance alone is not success.
+- Preserved Stop/replay rules and the persistent unknown lock; stale, unsupported,
+  busy and uncertain controls remain disabled. Late UI replies cannot unlock them.
+- Updated command/ownership/bridge documentation. Automated validation is recorded
+  in reports/media-control-checks.json; actual player/provider acceptance is pending.
+  No new dependencies, later integration, commit or push are included in this slice.
+
 ### English repository language and publication preparation
 
 - Converted current guides, archived prose, code comments/docstrings and local

@@ -110,6 +110,8 @@ class ModelTools:
         self._proposed_this_turn = False
         self._memory_snapshot: str | None = None
         self._memory_reads: set[str] = set()
+        self._media_target: str | None = None
+        self._media_reads: set[str] = set()
         self._clock_ids: set[str] = set()
         self._clock_reads: set[str] = set()
         self._selection: dict | None = None
@@ -131,6 +133,8 @@ class ModelTools:
         self._selection = None
         self._selection_blocked = False
         self._fresh_selections.clear()
+        self._media_target = None
+        self._media_reads.clear()
         self._clock_ids.clear()
         self._clock_reads.clear()
 
@@ -195,6 +199,9 @@ class ModelTools:
         # Replay is recognized before the selection check: the deleted note's old success
         # The call may not be on the list again. Manager checks for content conflict.
         replay = call_id in self._calls.values()
+        if not replay and name == 'media.control' and (not isinstance(call['arguments'],dict)
+                or self._media_target is None or call['arguments'].get('target_id') != self._media_target):
+            raise ContractError('Read media.status in this turn and use its actual target_id before controlling media')
         if not replay and name == 'clocks.control' and (not isinstance(call['arguments'], dict)
                 or call['arguments'].get('id') not in self._clock_ids):
             raise ContractError('Read clocks.list or create the clock in this turn; use an actual ID and clarify ambiguous targets')
@@ -235,6 +242,13 @@ class ModelTools:
         ))
         self._calls[task.task_id] = call_id
         if not replay:
+            if name == 'media.status':
+                self._media_target = None
+                self._media_reads.clear()
+                self._media_reads.add(task.task_id)
+            elif name == 'media.control':
+                self._media_target = None
+                self._media_reads.clear()
             if name == 'memory.propose':
                 # A new suggestion in the same round cannot be saved with the model's own approval.
                 self._proposed_this_turn = True
@@ -278,6 +292,10 @@ class ModelTools:
             task = self._core.wait(task_id, timeout)
         except TimeoutError:
             task = self._core.get(task_id)
+        if task_id in self._media_reads and task.status.terminal:
+            self._media_reads.discard(task_id)
+            if task.result is not None and task.result.verified and task.status.value == 'succeeded':
+                self._media_target = task.result.to_dict()['data'].get('target_id')
         if task_id in self._memory_reads and task.status.terminal:
             self._memory_reads.discard(task_id)
             if task.result is not None and task.result.verified and task.status.value == 'succeeded':

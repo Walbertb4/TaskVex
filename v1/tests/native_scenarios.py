@@ -9,6 +9,32 @@ import os
 from pathlib import Path
 import time
 
+def check_native_media(window, api, js, wait_until, outcome):
+    """Real WebView2 buttons/bridge/core with a synthetic player, never user media."""
+    meter = api._media
+    raw = {'status':'available','title':'Native control track','artist':'Synthetic artist',
+           'state':'paused','_session':object(),'controls':{k:True for k in ('play','pause','next','previous')}}
+    calls = []
+    def control(target, action, expected, cancel):
+        assert target is raw['_session'] and not cancel.is_set()
+        calls.append(action)
+        if action in ('play','pause'):raw['state'] = 'playing' if action=='play' else 'paused'
+        else:raw['title'] = 'Native '+action+' track'
+        return {'status':'succeeded','code':'verified','raw':dict(raw),'evidence':{'accepted':True,'read_back':True}}
+    meter._reader = lambda:dict(raw)
+    meter._controller = control
+    meter._sample = None
+    js("const m=await import('./js/media_view.js');const r=await window.pywebview.api.event('query_media');m.applyMediaSample(r.data);return true;")
+    for button,action in [('toggle','play'),('toggle','pause'),('next','next'),('prev','previous')]:
+        selector = '#w_media [data-m='+button+']'
+        wait_until(lambda:not window.evaluate_js("document.querySelector('"+selector+"').disabled"))
+        js("document.querySelector('"+selector+"').click();return true;")
+        wait_until(lambda:len(calls)>0 and calls[-1]==action and
+            window.evaluate_js("document.getElementById('mediaStatus').textContent")=='Media action verified.')
+    assert calls == ['play','pause','next','previous']
+    assert len([e for e in api._core._entries.values() if e.task.request.tool=='media.control'])==4
+    outcome['native_media_controls_shared_core_verified'] = True
+
 def check_native_note_ui(home, window, js, wait_until, outcome):
     """Note panel's native CRUD, delayed response, and record rejection scenario."""
     from app.storage.json_store import StoreError

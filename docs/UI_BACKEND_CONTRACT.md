@@ -36,10 +36,11 @@ remain blocked until initialization; corrupt settings require explicit recovery.
 | clock_finished | Tool-free announcement after real id/generation verification |
 | system_status, query_system | Core tool / ready-host read of the same Telemetry sample; query has no payload |
 | query_media | Ready-host read of the shared Media snapshot; no payload or playback action |
+| media_command | Versioned UI mutation submitted to the same media.control tool used by the model |
 | fullscreen, shutdown, restart | Window lifecycle without abandoning active work |
 
-Camera, location, Google, skill/routine execution, inspect, screen_share and media
-playback commands are not implemented. Local timeline/drawer controls do not imply
+Camera, location, Google, skill/routine execution, inspect and screen_share
+commands are not implemented. Local timeline/drawer controls do not imply
 external execution or verified success.
 
 ## Native -> UI and ownership
@@ -229,7 +230,7 @@ metric; quality is not inferred from traffic or link speed.
 [IP Helper](https://learn.microsoft.com/en-us/windows/win32/api/netioapi/nf-netioapi-getiftable2),
 [WLAN quality](https://learn.microsoft.com/en-us/windows/win32/api/wlanapi/ns-wlanapi-wlan_realtime_connection_quality).
 
-## Read-only media — 6.2.5a
+## Current media — 6.2.5a/b
 
 query_media requires ready native host and no payload; response is
 `{ok:true,completed:true,data}`. Model media.status reads the same Media with separate
@@ -241,11 +242,37 @@ failure, which returns failed/verified=false for the model, not 'nothing playing
 
 Two-second cache/WinRT wait, three-second nonoverlapping UI queries, rejection of
 older samples and ten-second stale clearing. Titles are textContent data.
-setMedia(null) clears explicit loss; legacy title/artist/playing remains. Controls
-stay disabled: metadata success grants no playback authority. Only Windows current
+setMedia(null) clears explicit loss; legacy title/artist/playing remains. Only Windows current
 session metadata is read, not all sounds/tabs or file/URL/audio content. Model reads
 can journal title/artist; background polls do not log/journal/send model requests.
 [Windows media API](https://learn.microsoft.com/en-us/uwp/api/windows.media.control.globalsystemmediatransportcontrolssession).
+
+Snapshots additionally contain target_id (opaque 32-character lowercase hex or
+null), controls (play/pause/next/previous booleans), and control_unknown (boolean).
+The private Agile WinRT manager/session references are never serialized. One manager
+is reused for polls and controls; targets are never compared across manager
+activations. Transport loss clears the manager and target; no_session retains the
+manager while exposing no controllable target. An observed session,
+metadata, state or capabilities change rotates the target; missing session clears it.
+Metadata alone does not grant control permission.
+
+media_command accepts exactly `{version:1,request_id,arguments:{action,target_id}}`;
+version is an integer, action is play/pause/next/previous. The bridge requires a ready
+host and no active model reply or unresolved operation. It submits media.control to
+the existing policy/TaskManager with separate media.control permission. ModelTools
+requires a fresh media.status result in the current turn; replayed reads from an old
+turn do not authorize a new mutation. Repeated mutation IDs retrieve the old result.
+
+Responses bind request_id and distinguish completed/verified/unknown; accepted or
+pending is not success. Known rejection is completed with ok:false; late/mismatched
+responses or deadline expiry leave controls locked. A later successful poll cannot
+clear an unknown mutation. The existing persistent core lock survives restart.
+Native dispatch is at most once, with immediate session/signature/cancellation
+revalidation. Desired play/pause state or changed title/artist on the same session
+is readback evidence; a true native boolean without it is unknown. Same-title skips
+and previous restarting the current track are intentionally not claimed verified.
+No new action, retry or fallback follows Stop; completed effects are preserved.
+Native control timeout is four seconds, bridge wait eight, UI deadline ten.
 
 ## Verification boundary
 

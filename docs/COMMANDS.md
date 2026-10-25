@@ -203,7 +203,7 @@ For "sleep after another task", that task must finish successfully first.
 No speaker identification separates simultaneous background speakers.
 
 **Source: Mic** is a disabled placeholder: only microphone capture is implemented.
-Camera, screen inspection, Google/location, voice selection and media controls
+Camera, screen inspection and Google/location
 are disabled until their backend integrations exist. Skill/routine definitions
 can be edited locally; Run reports that execution is not connected.
 
@@ -448,8 +448,8 @@ consent invalidates an old approval. No automatic retry or merge is performed.
 | “Which application is active?” | Reads the foreground executable name. It does not read document/window titles or window contents. |
 
 The UI refreshes local readings without requiring a model connection. Missing
-values remain unavailable, never invented zeroes. CPU/GPU temperatures, remote internet probes and
-media controls are still pending. Windows GPU readings are described below. System readings use the existing shared
+values remain unavailable, never invented zeroes. CPU/GPU temperatures and remote
+internet probes remain unavailable. Windows GPU readings are described below. System readings use the existing shared
 registry/policy/TaskManager model path; UI polling reads the same local owner.
 
 
@@ -507,7 +507,7 @@ age. No gateway address, SSID, MAC or device GUID is returned. API transport
 latency remains unavailable until a separate real transport metric is defined.
 
 
-## Current Windows media session — read only
+## Current Windows media session
 
 | Say or type → | What Vex does |
 |---|---|
@@ -521,7 +521,21 @@ timeout; missing data must not become a claim that nothing is playing.
 The UI updates every few seconds and clears stale/failed samples. Model reads
 may store returned metadata in the existing task journal; background UI polling
 does not journal each sample or send it to a model.
-Play/pause/previous/next are not available in this slice; the buttons remain disabled.
+| Say or type → | What Vex does |
+|---|---|
+| “Pause the current music.” | Reads the current session and requests pause; verifies the paused state. |
+| “Resume playback.” | Reads the current session, requests play and verifies the playing state. |
+| “Skip to the next track.” | Requests next once, then verifies changed title/artist on the same session. |
+| “Go to the previous track.” | Requests previous once; requires an observed track change for verified success. |
+
+The Media panel's previous/play-pause/next buttons use the same backend tools.
+Unsupported or stale controls stay disabled; manual buttons wait during a model
+reply. Only Windows' current session is targeted, with no app/tab picker. These
+are examples, not phrase matching rules; REST and Live share structured tools.
+An accepted request without observable confirmation remains unknown and is never
+automatically retried. Same-title skips or a player restarting the same track may
+be unknown. Restart does not clear the persistent safety lock. Real player/provider
+acceptance is separate from synthetic/native transport checks.
 
 
 ## Portable Windows demo

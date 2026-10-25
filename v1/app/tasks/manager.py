@@ -116,6 +116,12 @@ class TaskManager:
                 self._journal.close()
             raise
 
+    @property
+    def uncertain(self) -> bool:
+        """Expose the existing journal/worker safety latch without granting reset authority."""
+        with self._condition:
+            return self._uncertain
+
     def describe_tools(self) -> list[dict]:
         """Notify model adapter only; grant handler and authorization object.
 

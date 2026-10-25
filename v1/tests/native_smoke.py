@@ -24,7 +24,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 
 from native_scenarios import (
-    check_native_note_ui, check_native_note_crud, check_native_note_batches, check_native_clocks, check_native_shutdown_request, check_local_sleep, check_wake_recovery, check_real_local_wake
+    check_native_note_ui, check_native_note_crud, check_native_note_batches, check_native_clocks, check_native_shutdown_request, check_local_sleep, check_wake_recovery, check_real_local_wake, check_native_media
 )
 
 
@@ -51,7 +51,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
     network_module.ping_gateway=lambda _:{'network_ping_ms':0,'network_ping_status':'ok'}
     network_module.wifi_signal=lambda _:{'network_wifi_signal':75,'network_wifi_status':'ok'}
     from app.tools.local import media as media_module
-    media_module._read_windows=lambda:{'status':'available','title':'Native synthetic track','artist':'Synthetic artist','state':'paused'}
+    media_module._read_windows=lambda manager=None:{'status':'available','title':'Native synthetic track','artist':'Synthetic artist','state':'paused'}
     from app.main import main
     from app.storage.json_store import StoreError
 
@@ -441,7 +441,7 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                         "args": {"text": "Must not be saved after REST Stop"}}}]}}]})
             if len(text_requests) == 1:
                 body = json.loads(request.content)
-                assert {item["name"] for item in body["tools"][0]["functionDeclarations"]} == {"apps.catalog", "system.status", "media.status", "assistant.request_sleep_mode", "assistant.request_shutdown", "clocks.create", "clocks.control", "clocks.list"}
+                assert {item["name"] for item in body["tools"][0]["functionDeclarations"]} == {"apps.catalog", "system.status", "media.status", "media.control", "assistant.request_sleep_mode", "assistant.request_shutdown", "clocks.create", "clocks.control", "clocks.list"}
                 text_started.set()
                 assert release_text.wait(20)
             assert responses, "Unexpected model retry"
@@ -604,6 +604,8 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
             assert 'paused' in window.evaluate_js("document.getElementById('mArt').textContent")
             assert window.evaluate_js("document.getElementById('mPlay').disabled && !document.getElementById('eq').classList.contains('on')")
             outcome['native_read_only_media_view']=True
+            if phase == 'save':
+                check_native_media(window,api,js,wait_until,outcome)
             if phase == "chat":
                 # The new autostart should never reach the physical microphone.
                 # Each permission call receives a fresh, quiet synth track.

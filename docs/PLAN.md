@@ -1,6 +1,40 @@
 # TaskVex — Current plan
 
-## Now: 6.2.5a Reading Windows media session; controls 6.2.5b
+## Now: 6.2.5b Windows media controls — accepted by the user
+
+The current user instruction authorizes this next slice. The preceding read-only
+implementation is already published; the user has now accepted the media tests and authorized continuation;
+the accepted step is committed before the requested volume/UI work under AGENTS.md. No later integration is included.
+
+Manual acceptance failed: all dashboard media controls returned media_target_changed.
+A read-only Windows probe reproduced unequal session identities from two separate
+manager activations despite identical metadata. Media now retains and reuses its
+issuing manager for polls and control revalidation. Synthetic identity-regression
+tests cover all four actions, worker-thread use, empty sessions and source recovery.
+Real read-only polling now preserves the target; cancelled preflight reaches
+cancelled instead of false target_changed, with no playback action dispatched.
+User retest passed. See reports/media-identity-fix.json for verification and remaining provider boundaries.
+
+- [x] Shared Media owner, explicit media.control capability and versioned UI command.
+- [x] REST/Live structured calls with fresh current-turn media.status target IDs.
+- [x] Play/pause state and previous/next track readback; no success from acceptance alone.
+- [x] Pre-dispatch target/cancellation checks; replay protection and persistent unknown lock.
+- [x] UI capability/staleness/chat locks, pending deadlines and late-response isolation.
+- [x] Identity-fix checks: 1,196 pytest, 42 focused media tests,
+  10 sequential native phases, app/focused-test Pyright 0 and clean dependency check.
+  UI code is unchanged in this fix; the preceding 9 JS suites and 18 browser groups passed.
+- [x] User reported successful media tests after the identity fix. Actual provider coverage was not specified.
+
+Only the OS-selected current session is controlled. Same-title skips or a previous
+command restarting the current track cannot be verified by metadata alone and may
+lock as unknown. Unsupported players/actions remain disabled. There is no arbitrary
+app/session picker, volume command or automatic retry/reconciliation UI.
+Current native evidence is in reports/media-identity-native.json and the fix summary
+in reports/media-identity-fix.json. Original slice evidence remains in
+reports/media-control-native.json and reports/media-control-checks.json.
+The earlier intermittent pythonnet/WinForms teardown race remains an open boundary.
+Expanded type checking of native_smoke.py also reproduces its existing function
+complexity diagnostic on both HEAD and this change; it was not hidden or called fixed.
 
 Previous 5.R8.6 user acceptance successful, in commit 526bfed.
 5.F6 maintenance accepted by user; In commit ea8aa15.

@@ -35,4 +35,4 @@ def isolate_network_quality(monkeypatch):
 @pytest.fixture(autouse=True)
 def isolate_media(monkeypatch):
     """The tests do not query the user's actual track/media history."""
-    monkeypatch.setattr('app.tools.local.media._read_windows',lambda:{'status':'no_session'})
+    monkeypatch.setattr('app.tools.local.media._read_windows',lambda manager=None:{'status':'no_session'})

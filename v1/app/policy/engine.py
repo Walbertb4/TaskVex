@@ -41,6 +41,7 @@ _TOOL_CAPABILITIES = MappingProxyType({
     "clocks.list": frozenset({"clocks.read"}),
     "system.status": frozenset({"system.read"}),
     "media.status": frozenset({"media.read"}),
+    "media.control": frozenset({"media.control"}),
 })
 _KNOWN_CAPABILITIES = frozenset().union(*_TOOL_CAPABILITIES.values())
 
