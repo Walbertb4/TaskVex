@@ -80,6 +80,14 @@ class TaskScopes:
         scope = self._active.get(request.authorization_id)
         return scope if scope is not None and scope.principal == request.principal else None
 
+    def active(self, authorization_id: str, principal: str) -> bool:
+        """Read scope liveness/ownership without creating or expanding any grant."""
+        if not isinstance(authorization_id, str) or not isinstance(principal, str):
+            return False
+        with self._lock:
+            scope = self._active.get(authorization_id)
+            return scope is not None and scope.principal == principal
+
     def approve(self, request: ToolRequest) -> None:
         """Record a real user decision for exactly this request, arguments and scope."""
         with self._lock:

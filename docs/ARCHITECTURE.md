@@ -78,6 +78,7 @@ microphone On/Off and Stop remain local lifecycle operations.
 | Tool catalog and parameter schemas | `app/session/tool_registry.py`; explicit registration, no automatic plugin imports |
 | Permissions | `app/policy/engine.py`; explicit local-user/desktop capability checks |
 | Optional task grants (backend foundation) | `app/policy/task_scope.py`; host-issued RAM-only scope/resource/input/approval state, checked by PolicyEngine when explicitly configured; desktop UI/lifecycle issuance is not connected yet |
+| GUI target references (backend foundation) | `app/automation/targets.py`; one task-bound RAM reference owner, trusted refresh callbacks and geometry/status contracts; real adapters/discovery/input remain planned |
 | Queue, cancellation and replay | `app/tasks/manager.py`; one worker and request-ID records |
 | Persistent task records | `app/storage/task_journal.py`; SQLite journal |
 | Personal memory | `app/tools/local/personal_memory.py`; shared settings store and short storage lock |
@@ -150,6 +151,12 @@ unknown, without automatically executing them. Any unknown record blocks new
 tools profile-wide. Journal read/write failures stop new handlers. A verified
 domain operation remains real if a later journal write fails; restart may still
 see an unknown outcome. There is no generic external exactly-once guarantee.
+
+## GUI target references
+
+See the [target-reference contract](reference/DOMAIN_ARCHITECTURE.md#shared-gui-target-references--backend-foundation)
+for backend identity, refresh, geometry, fallback and cleanup rules. Real driver
+bindings are not implemented by the shared reference store.
 
 ## Domain rules
 

@@ -6,6 +6,27 @@ Older entries remain part of this record through the dated snapshot below.
 
 ## Unreleased
 
+### 2026-10-27 — Shared target-reference backend (7.P3a)
+
+- Recorded user acceptance of 7.P2a and committed it as e9095d2; no push.
+- Added one bounded, RAM-only target reference owner tied to active host task
+  scopes. Trusted refresh callbacks revalidate identity/version, tab/document,
+  focus, replacement and cancellation before use; issuing a ref grants no control.
+- Added physical capture-region/DPI/frame-time contracts and guarded pixel mapping.
+  Negative monitor origins are valid; logical coordinates, stale/future frames and
+  unknown focus are rejected. Frame-age budgets remain explicit host decisions.
+- Preserved no-match/unsupported/denied/stale/unavailable/cancelled status distinctions.
+  Fallback is eligible only before known dispatch for no-match/unsupported, never
+  after started/uncertain effects. This does not add a router or executor.
+- Synthetic policy/ModelTools/registry/worker integration and lifecycle/geometry
+  checks passed: 168 targeted/regression tests; application/new-test Pyright 0.
+  [Evidence](../logs/reports/targets-checks.json). No full/native rerun: no existing
+  UI, bootstrap, driver, transport or execution behavior was changed.
+- Real native/DOM/visual bindings and acceptance remain 7.P3b alongside 7.1/7.3;
+  the current Notepad probe and passive JPEG stream are not relabelled GUI control.
+  No dependency install, actual desktop capture/input, provider call or new push.
+  7.P3a awaits acceptance; 7.P4a logical tasks is the next prerequisite.
+
 ### 2026-10-27 — Backend task authorization foundation (7.P2a)
 
 - Recorded user acceptance of 7.P1 and committed the accepted privacy/log/docs

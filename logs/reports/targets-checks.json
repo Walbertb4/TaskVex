@@ -1,0 +1,46 @@
+{
+  "date": "2026-10-27",
+  "stage": "7.P3a",
+  "scope": "Shared target-reference backend with synthetic host adapters",
+  "accepted_previous_commit": "e9095d2",
+  "previous_commit_pushed": false,
+  "implementation": [
+    "Task-bound opaque references; issuing a reference never grants resource/control permission",
+    "Fresh trusted reader before use; scope, cancellation, identity/version and replacement rechecked",
+    "Window/process/connection lifetime and tab/document/element identity contracts; no bare HWND/PID proof claim",
+    "Physical capture bounds, DPI, frame ID/monotonic timestamp and explicit host frame-age budget",
+    "No-match/unsupported/denied/stale/unavailable/cancelled distinctions and pre-dispatch-only fallback eligibility",
+    "Bounded live-reference cache with release/scope cleanup; no silent eviction or lifetime-count limit"
+  ],
+  "validation": {
+    "targeted_and_related_regression_passed": 168,
+    "pyright_errors": 0,
+    "pyright_warnings": 0,
+    "compileall": true,
+    "full_pytest_rerun": false,
+    "native_rerun": false,
+    "documentation_and_target_recheck_passed": 45
+  },
+  "covered": [
+    "Process/window lifetime reuse, navigation/tab/document and generation changes",
+    "Focus/DPI/frame/region changes, negative monitor origins, invalid/logical geometry",
+    "Expired/future frames and explicit age budget without choosing a production default",
+    "Concurrent refresh replacement, task end and cancellation; foreign scope/principal rejection",
+    "300 released observations with capacity 1 and no active target eviction",
+    "Policy/ModelTools/registry/TaskManager integration; stale target rejected before synthetic effect"
+  ],
+  "initial_corrections": [
+    "Narrowed optional geometry in a new test for Pyright",
+    "Documentation link check ran before this evidence file was written; final documentation check follows creation"
+  ],
+  "limits": [
+    "No UIA/DOM/visual driver installed, real target discovery, desktop capture, user input or provider call",
+    "Real OS identity/generation/physical geometry must be supplied and proven by trusted 7.P3b adapters",
+    "Current Notepad observation and passive Live JPEG path are unchanged; no new public UI/tool",
+    "Host must perform final driver-boundary freshness checks and lifecycle/Stop cleanup",
+    "Reader deadlines and cooperative cancellation are adapter/lifecycle responsibilities, not forceful thread interruption",
+    "Physical frame-age production budgets remain user/host decisions in the actual visual step",
+    "No new full/native run because existing UI/bootstrap/driver/transport behavior is unchanged",
+    "7.P3a manual acceptance pending; 7.P3b actual bindings remain open; no new commit/push"
+  ]
+}

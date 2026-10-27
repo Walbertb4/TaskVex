@@ -20,6 +20,11 @@ authorization_id is host-selected core/ModelTools metadata, never a field the mo
 or UI can use to grant itself authority. Scope expansion, approval dialogs, physical
 input preference and task lifecycle revocation remain 7.P2b integration work.
 
+Target-reference backend (7.P3a) likewise adds no UI event, capture driver or model
+tool. Refresh callbacks, lifetime/document generations, geometry and frame-age
+budgets are trusted host adapter inputs, never JSON claims of authority. Current
+Live JPEG envelopes are unchanged and do not themselves prove target geometry.
+
 `window.vex === window.jarvis` is a compatibility alias. ui_ready is sent once
 bridge setters exist. Host readiness does not prove model connectivity. Mutations
 remain blocked until initialization; corrupt settings require explicit recovery.

@@ -4,9 +4,11 @@
 
 Stage 6's agreed functional scope is accepted. Stage 7 choices are recorded;
 7.P1 is accepted by the user and committed as `1126fba` (not pushed).
-**Current: 7.P2a, backend task scopes and concrete-operation approvals.**
-7.P2a is implemented/automatically verified; manual acceptance is pending.
-Next is 7.P3 target references, then 7.P4 lifecycle and 7.P2b UI binding.
+7.P2a was accepted and committed as `e9095d2` (not pushed).
+**Current: 7.P3a, shared target-reference backend.**
+Backend implementation is automatically verified; acceptance is pending.
+Real driver bindings (7.P3b) accompany their UIA/DOM/visual steps; those libraries
+are not selected or installed. Next prerequisite is 7.P4a logical task lifecycle.
 The accepted screen-sharing/startup-recovery baseline and stage 7 plan were
 published as `79b5a04`. Documentation/log cleanup remains separate from stage 7.
 
@@ -52,7 +54,8 @@ Read Now, open limits and the current step; search other sections only as needed
 | Screen sharing | User accepted; [1,279 pytest, nine JS suites, 29 browser groups and other checks](../logs/reports/screen-sharing-checks.json); [two targeted native phases](../logs/reports/screen-sharing-native.json), not a clean full-native run |
 | Publication of baseline | `79b5a04`; 155 journal/manager/bridge tests passed before push. Not a new full regression |
 | 7.P1 private journal | User accepted; committed 1126fba, not pushed. 215 focused tests, 1,290 full pytest, Pyright 0 and eleven native phases. [Checks](../logs/reports/private-journal-checks.json), [native](../logs/reports/private-journal-native.json) |
-| 7.P2a backend scopes | 113 focused tests, 1,308 pytest on clean rerun, Pyright 0 and one native UNKNOWN/recovery phase. [Checks](../logs/reports/task-scope-checks.json), [native](../logs/reports/task-scope-native.json). No public UI/lifecycle binding; acceptance pending |
+| 7.P2a backend scopes | User accepted; committed e9095d2, not pushed. 113 focused tests, 1,308 pytest on clean rerun, Pyright 0 and one native UNKNOWN/recovery phase. [Checks](../logs/reports/task-scope-checks.json), [native](../logs/reports/task-scope-native.json). No public UI/lifecycle binding |
+| 7.P3a backend targets | 168 targeted/regression tests and Pyright 0 with synthetic adapters; [checks](../logs/reports/targets-checks.json). No real driver/UI/capture/input or full/native rerun; acceptance pending |
 
 ## Roadmap
 
@@ -60,7 +63,7 @@ Read Now, open limits and the current step; search other sections only as needed
 |---|---|---|
 | 0–5 | Functional baseline accepted with open limits above | Core/host, notes, conversation, Stop, wake/sleep, persistent task/replay protection |
 | 6 | Agreed functional scope accepted | Memory, measurements, media/weather, camera and screen sharing |
-| 7 | 7.P1 accepted; 7.P2a automatically verified | Remaining: real targets, lifecycle/permission UI, L0–L4 desktop/file/browser work, Plugins and learned skills |
+| 7 | 7.P1/7.P2a accepted; 7.P3a automatically verified | Remaining: driver-backed targets, lifecycle/permission UI, L0–L4 desktop/file/browser work, Plugins and learned skills |
 | 8 | Planned | Routines, scheduler, persistent background lifecycle, maintenance and packaging |
 | 9 | Deferred integrations | Official external services/channels and additional audio sharing |
 | 10 | Planned after functional stages | Final provider-adapter migration |
@@ -70,7 +73,7 @@ existing coupling is migrated in 10. No new provider framework is authorized.
 
 ## Stage 7 — General desktop operation, local files and learned skills
 
-**Status: 7.P1 accepted; 7.P2a implemented/auto verified; later slices planned.**
+**Status: 7.P1/7.P2a accepted; 7.P3a auto verified; real drivers remain planned.**
 This replaces the earlier narrow-app/format draft. The goal is operation and
 learning across previously unknown applications, not a fixed supported-app list.
 Netflix, WhatsApp, YouTube, Discord and music playlists were illustrative tasks,
@@ -151,8 +154,8 @@ requires it. Tests accompany every slice, not only stage closure.
 | Slice | Deliverable | Acceptance and boundary | Status |
 |---|---|---|---|
 | 7.P1 | Private persistent task journal | Content-free disk receipts, current RAM results, replay/conflict/UNKNOWN/review preservation; atomic legacy migration and restartable SQLite cleanup, without raw backups. Historical results cannot grant fresh targets | User accepted; committed 1126fba, not pushed |
-| 7.P2a | Backend task authorization | Host-issued task scopes, exact resource/action grants, operation-bound high-impact approvals and task-duration input handover; shared schema/ModelTools/policy/worker path | Implemented/auto verified; acceptance pending. Desktop scope issuance/permission UI are not connected |
-| 7.P3 | Shared observations and fresh target references | Real application/window/tab/document IDs and generation, focus, display/DPI/frame geometry; distinguish no match, unsupported, denied, stale and uncertain dispatch. Fallback never retries unknown effects | Planned |
+| 7.P2a | Backend task authorization | Host-issued task scopes, exact resource/action grants, operation-bound high-impact approvals and task-duration input handover; shared schema/ModelTools/policy/worker path | User accepted; committed e9095d2, not pushed. Desktop scope issuance/permission UI remain unconnected |
+| 7.P3a | Shared target-reference backend | Host-observed identity/generation, task ownership, fresh read before use, physical geometry/frame-age contracts and explicit resolution/fallback statuses. Policy/registry/worker path tested with synthetic adapters | Implemented/auto verified; acceptance pending. No discovery/capture/input driver or public UI |
 | 7.P4a | Logical tasks and dependency-aware progress | Task/step identities separate from Live turns; existing execution authority, cancellation, queued independent tasks, corrections and immediate questions. Definite failures block dependents only; no worker self-wait or competing executor | Planned |
 | 7.P4b | Human intervention, recovery and progress limits | Pending human actions and reobservation; manual Continue after restart; bounded per-operation retries/no-progress detection, without a total task-duration cutoff. Preserve UNKNOWN locks and completed effects | Planned |
 | 7.P2b | Authorization UI and lifecycle binding | Trusted user decisions, scope expansion, physical-input preference and task end/Stop/scope-change revocation. Bind real references from 7.P3 and logical tasks from 7.P4; a Live turn is not the whole task | Planned after 7.P3/P4; full 7.P2 remains open |
@@ -166,6 +169,7 @@ requires it. Tests accompany every slice, not only stage closure.
 | 7.3a | Read-only web search/page context (L0) | Bounded untrusted source content and source links; select source/access constraints with the user. No new conversation connection or hidden external writes | Planned |
 | 7.3b | Browser profiles and DOM actions (L2) | User selects daily session or Vex profile, with truthful attach/launch limitations. Choose browser library/connection approach before implementation; fresh tabs/documents, scoped actions, protected session data | Planned |
 | 7.3c | Task-scoped visual fallback (L4) | Relevant fresh window/area capture, known frame/DPI geometry, safe physical input and post-action evidence. Distinguish visual verification; ask on unclear results. Existing passive JPEG sharing is not coordinate automation | Planned |
+| 7.P3b | Bind real target adapters | UIA/DOM/visual steps must prove process/window lifetime, tab/document changes, real focus/physical DPI/capture geometry and driver-bound revalidation/cleanup. A bare PID/HWND or model-supplied generation is insufficient | Planned with 7.1a/b and 7.3b/c; full 7.P3 remains open until actual bindings pass |
 | 7.4a | One backend skill/procedure store | Stable skill IDs, schema/parameter validation, per-app capability grouping, UI inspection/deletion and safe handling of old UI definitions. Unsupported definitions never become executable by import | Planned |
 | 7.2a | Automatic verified procedure learning (L1) | Verified methods saved without prompting, per-app extensions rather than duplicate skills. No secrets/private payloads or success inferred from spoken claims; reuse the 7.4a store | Planned |
 | 7.2b | Fresh procedure reuse and invalidation | Bind current task parameters, resolve current targets, recheck context/version and policy; changed interfaces invalidate/relearn methods without replaying old effects | Planned |
@@ -217,6 +221,8 @@ accepted after the corresponding automation route is available.
   with their tradeoffs; no library has been chosen or installed by this plan.
 - Concrete per-operation timeout/retry/no-progress values for 7.P4b, not an
   arbitrary cutoff for the entire logical task.
+- Visual frame-age budgets with the actual 7.3c driver/provider latency; 7.P3a
+  requires an explicit trusted budget and does not select a production default.
 - Web-search source and any account/cost requirements before 7.3a.
 - Exact built-in metadata grouping and format-operation fidelity matrix when
   implementing their UI/format slices. No universal format-support claim.

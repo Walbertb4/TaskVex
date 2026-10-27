@@ -322,3 +322,44 @@ status queries remain Not reported; browser Allowed is not a guarantee of workin
 hardware or OS policy. NativeBridge.permission_settings opens one of three fixed
 Windows privacy URIs from a user button. It cannot take arbitrary URLs or grant
 access; remembered browser denials and Windows policy may still require user action.
+
+## Shared GUI target references — backend foundation
+
+TargetReferences issues opaque IDs only for active host task scopes. Snapshots bind
+application/process-or-connection lifetime, window lifetime and target generation;
+DOM targets also bind tab/document/element identities. IDs/versions must come from
+trusted real adapters, never the model or a guessed bare HWND/PID. Scope permission
+is separate: issuing a target does not grant control or image upload authority.
+
+access() provides scope metadata to the existing PolicyEngine callback; resolve()
+reobserves through a trusted read-only adapter inside the normal domain/core path.
+Readers run outside the cache lock; cancellation, scope end, replacement, focus and
+identity/version changes are rechecked before returning. Driver code must still
+revalidate at its actual OS/input boundary and distinguish preflight rejection
+from uncertain effects after dispatch. No target method executes an action.
+
+The store keeps at most 256 live references by default, replaces current slot/
+document/frame observations and never silently evicts active targets to admit more.
+Adapters release closed/paged-out refs; lifecycle calls release_scope on task end.
+Inactive scopes are also pruned at issue. No reference, image or reader is persisted.
+Existing notes/media selectors retain their domain ownership; this is not a second
+executor or an alternate registry for those domain IDs.
+
+Visual geometry explicitly uses physical desktop capture bounds, captured image
+dimensions, frame ID, host-monotonic capture time and DPI. Negative monitor origins
+are valid; DPI is not applied twice. Logical/unknown geometry, unknown/background
+focus, stale/future frames and out-of-image points cannot produce physical input.
+resolve_point requires an explicit host-selected frame-age budget; no production
+budget is selected here. A changed frame/region invalidates old coordinate use.
+
+Resolution preserves no-match, unsupported, permission-denied, stale, unavailable
+and cancelled states. can_fallback only admits explicit no-match/unsupported when
+dispatch is known not to have begun. Started or uncertain dispatch never permits
+fallback/replay. This predicate is not a router or authority to execute another tool.
+
+This foundation is tested with synthetic adapters. Current Notepad observation is
+not upgraded to lifetime-safe GUI targeting, passive Live frames are not an input
+driver, and no UIA/DOM/visual library is installed. Actual bindings/OS acceptance
+belong to 7.P3b with 7.1/7.3. Task/Stop cleanup wiring remains 7.P4/7.P2b.
+Read deadlines/cooperative cancellation belong to those adapters and the logical
+task lifecycle. This store does not force-stop synchronous readers or add a worker.
