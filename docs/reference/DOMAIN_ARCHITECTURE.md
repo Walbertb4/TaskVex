@@ -363,3 +363,57 @@ driver, and no UIA/DOM/visual library is installed. Actual bindings/OS acceptanc
 belong to 7.P3b with 7.1/7.3. Task/Stop cleanup wiring remains 7.P4/7.P2b.
 Read deadlines/cooperative cancellation belong to those adapters and the logical
 task lifecycle. This store does not force-stop synchronous readers or add a worker.
+
+## Logical task workflows — backend
+
+The existing TaskManager owns logical workflow IDs, revisioned plans, intake order
+and per-step progress under its existing Condition. workflow.py defines metadata
+and validates an acyclic graph of registered tool operations; it executes nothing.
+One active logical job admits one ready operation to the existing tool queue at a
+time. No worker waits on its own queue. New logical jobs queue behind that job;
+legacy direct tool requests retain their existing behavior and can interleave.
+
+submit_workflow is a trusted host API, not a model tool or public UI event. It
+validates the complete graph and tool schemas before accepting any step. Each
+dispatch still uses registry/policy/TaskManager and domain handlers. Before any
+future model exposure, host integration must enforce ModelTools visibility,
+notes-transfer/fresh-selection, profile and task-authorization gates for every
+step. This API must not become an unrestricted model-callable registry facade.
+
+Worker requests use stable hashed workflow/step IDs. Polling or duplicate plan
+creation never runs handlers. Definite failure blocks dependent steps and preserves
+independent branches; overall failed may therefore include successful effects.
+Unknown outcomes retain the profile-wide latch and stop new work in every job.
+Progress includes workflow_id/revision/status/completed/stop_requested/requires_review
+and each step's real tool task ID, state, blocked prerequisites and error code.
+It excludes private arguments/results; terminal plan arguments are cleared from
+the bounded logical metadata cache. Domain results still belong to TaskManager.
+
+Unsealed plans enter planning when their known steps finish, without occupying the
+worker or a conversation lock. The host can use actual results to append/upsert
+unsent steps or remove them with expected_revision. Sparse patches do not resend
+private completed bodies. Submitted/completed step definitions cannot be rewritten;
+changed revisions, sealed terminal jobs and stopped jobs reject late corrections.
+No phrase router, automatic planner, implicit retry or template expression engine
+is introduced. A text-only synthetic question can finish while a tool is running;
+questions needing that same serialized worker can still wait for the active tool.
+
+cancel_workflow targets one logical ID. Acceptance while a handler runs is
+cancel_requested, not completion. Unsent steps are cancelled; cooperative
+TaskManager cancellation handles accepted work. Late verified success remains
+success, even if the last operation finishes after Stop. A stopped incomplete
+plan can retain successful steps without claiming they were undone. Close applies
+the same rule and never claims an unfinished worker has stopped.
+
+Logical metadata is process-memory only in 7.P4a. Per-step private receipts remain
+durable; a prefix-index history probe makes a lost/evicted plan review_required
+before any new step, regardless of step order. It cannot blindly restart or use
+historical success as fresh context. Automatic restoration/manual Continue,
+human-intervention waiting and no-progress/time budgets remain 7.P4b. Per-handler
+deadlines remain the handlers' responsibility; synchronous I/O is not force-killed.
+
+Conversation classification, UI progress/Stop binding, model-plan validation and
+scope/target teardown on logical completion are not wired in this slice; those
+remain 7.P2b and later skill/routine integration. Existing Live/REST turn and
+audio owners are unchanged. Plan-size/admission/context budgets must be selected
+before exposing untrusted long-plan input; there is no arbitrary total task timeout.

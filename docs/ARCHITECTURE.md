@@ -79,7 +79,7 @@ microphone On/Off and Stop remain local lifecycle operations.
 | Permissions | `app/policy/engine.py`; explicit local-user/desktop capability checks |
 | Optional task grants (backend foundation) | `app/policy/task_scope.py`; host-issued RAM-only scope/resource/input/approval state, checked by PolicyEngine when explicitly configured; desktop UI/lifecycle issuance is not connected yet |
 | GUI target references (backend foundation) | `app/automation/targets.py`; one task-bound RAM reference owner, trusted refresh callbacks and geometry/status contracts; real adapters/discovery/input remain planned |
-| Queue, cancellation and replay | `app/tasks/manager.py`; one worker and request-ID records |
+| Tool queue, logical jobs, cancellation and replay | `app/tasks/manager.py`; one worker/Condition and per-step receipts; `app/tasks/workflow.py` holds only plan/progress contracts |
 | Persistent task records | `app/storage/task_journal.py`; SQLite journal |
 | Personal memory | `app/tools/local/personal_memory.py`; shared settings store and short storage lock |
 | Notes | `app/tools/local/notes.py`; stable IDs, dates, selection snapshots and atomic writes |
@@ -157,6 +157,13 @@ see an unknown outcome. There is no generic external exactly-once guarantee.
 See the [target-reference contract](reference/DOMAIN_ARCHITECTURE.md#shared-gui-target-references--backend-foundation)
 for backend identity, refresh, geometry, fallback and cleanup rules. Real driver
 bindings are not implemented by the shared reference store.
+
+## Logical task backend
+
+TaskManager also owns dependency-aware logical plans, distinct from tool executions
+and conversation turns. See the [workflow contract](reference/DOMAIN_ARCHITECTURE.md#logical-task-workflows--backend)
+for intake ordering, sparse corrections, Stop and history gates. There is no new
+worker, provider loop, scheduler service, model workflow tool or UI binding.
 
 ## Domain rules
 

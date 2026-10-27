@@ -24,6 +24,7 @@ from app.core.contracts import (
 )
 from app.session.tool_registry import RegistryError, ToolRegistry
 from app.storage.task_journal import JournalError, TaskJournal
+from app.tasks.workflow import _Workflow, WorkflowStep, TERMINAL, STEP_TERMINAL, copy_steps, definition_key, validate_steps
 
 
 class TaskManagerError(ContractError):
@@ -94,6 +95,11 @@ class TaskManager:
         self._entries: dict[str, _Entry] = {}
         self._requests: dict[tuple[str, str], str] = {}
         self._queue: deque[str] = deque()
+        # Logical intake order shares this owner/worker; it is not another executor.
+        self._workflows: dict[str, _Workflow] = {}
+        self._workflow_order: deque[str] = deque()
+        self._active_workflow: str | None = None
+        self._workflow_tasks: dict[str, tuple[str, str]] = {}
         # Condition locks both records and prevents the worker from using the processor in an empty queue.
         # It allows him to sleep without getting busy. This lock is not held while the Handler is running.
         self._condition = Condition()
@@ -163,6 +169,221 @@ class TaskManager:
         """
         return [{"name": tool.name, "description": tool.description,
                  "parameters": tool.input_schema} for tool in self._registry.list_tools()]
+
+    def submit_workflow(self, workflow_id: str, steps: tuple[WorkflowStep, ...], *,
+                        principal: str = 'local-user', source: str = 'desktop',
+                        authorization_id: str | None = None, sealed: bool = True) -> dict:
+        """Accept a host plan without holding a conversation turn or running handlers.
+
+        This is not model exposure: the later host binding must enforce ModelTools
+        visibility/domain gates. Actual steps still use registry/policy/this worker.
+        """
+        job = _Workflow(workflow_id, validate_steps(steps), principal, source, authorization_id, sealed)
+        for step in job.steps:
+            self._registry.validate_request(job.request(step))
+        with self._condition:
+            if self._closing:
+                raise TaskManagerError('closed', 'TaskManager is closing')
+            existing = self._workflows.get(workflow_id)
+            if existing is not None:
+                if existing.creation_key != job.creation_key:
+                    raise TaskManagerError('workflow_conflict', 'Workflow ID has different content')
+                return existing.snapshot(safety_locked=self._uncertain)
+            if self._uncertain:
+                raise TaskManagerError('uncertain_state', 'An earlier operation has unknown outcome')
+            for key, old in list(self._workflows.items()):
+                if len(self._workflows) < self._capacity:
+                    break
+                if old.status in TERMINAL:
+                    del self._workflows[key]
+            if len(self._workflows) >= self._capacity:
+                raise TaskManagerError('capacity_exceeded', 'Active logical task capacity reached')
+            history = any(p == principal and rid.startswith(job.prefix) for p, rid in self._requests)
+            if self._journal is not None:
+                try:
+                    history |= self._journal.has_requests(principal, job.prefix)
+                except JournalError:
+                    self._journal_error()
+            # Lost plan/context is not proof that a previous step can be repeated,
+            # nor permission to continue its dependents from a historical success.
+            if history:
+                job.status = 'review_required'
+            else:
+                self._workflow_order.append(workflow_id)
+            self._workflows[workflow_id] = job
+            self._advance_workflows()
+            self._condition.notify_all()
+            return job.snapshot(safety_locked=self._uncertain)
+
+    def get_workflow(self, workflow_id: str) -> dict:
+        """Read progress only; never schedule new operations as a query side effect."""
+        with self._condition:
+            return self._workflow(workflow_id).snapshot(safety_locked=self._uncertain)
+
+    def _workflow(self, workflow_id: str) -> _Workflow:
+        if not isinstance(workflow_id, str) or workflow_id not in self._workflows:
+            raise TaskManagerError('unknown_workflow', 'Logical task ID is not known')
+        return self._workflows[workflow_id]
+
+    def update_workflow(self, workflow_id: str, steps: tuple[WorkflowStep, ...], *,
+                        expected_revision: int, sealed: bool | None = None,
+                        remove: tuple[str, ...] = ()) -> dict:
+        """CAS upsert/remove of unsent steps; no resending private completed bodies."""
+        patches = copy_steps(steps)
+        if type(expected_revision) is not int or expected_revision < 0 or (sealed is not None and type(sealed) is not bool):
+            raise TaskManagerError('invalid_revision', 'Expected workflow revision and optional sealed flag')
+        if (not isinstance(remove, (tuple, list)) or any(not isinstance(v, str) for v in remove)
+                or len(set(remove)) != len(remove) or set(remove) & {s.step_id for s in patches}):
+            raise ContractError('Expected distinct removal IDs without conflicting upserts')
+        with self._condition:
+            job = self._workflow(workflow_id)
+            if job.revision != expected_revision:
+                raise TaskManagerError('workflow_changed', 'Read the current logical task revision')
+            if self._closing or self._uncertain or job.stop_requested or job.status in TERMINAL | {'review_required'}:
+                raise TaskManagerError('workflow_closed', 'Logical task cannot accept this correction')
+            incoming = {s.step_id: s for s in patches}
+            previous = {s.step_id: s for s in job.steps}
+            if set(remove) - previous.keys():
+                raise TaskManagerError('unknown_step', 'Removal names an unknown logical step')
+            for old in job.steps:
+                if old.step_id in job.task_ids and (old.step_id in remove
+                        or (old.step_id in incoming and definition_key(old.definition()) !=
+                            definition_key(incoming[old.step_id].definition()))):
+                    raise TaskManagerError('step_locked', 'Submitted or concluded steps cannot be changed')
+            merged = [incoming.get(s.step_id, s) for s in job.steps if s.step_id not in remove]
+            merged.extend(s for s in patches if s.step_id not in previous)
+            owned = validate_steps(merged)
+            for step in owned:
+                self._registry.validate_request(job.request(step))
+            job.steps = owned
+            job.states = {s.step_id: job.states[s.step_id] if s.step_id in job.task_ids else 'pending' for s in owned}
+            job.codes = {key: value for key, value in job.codes.items() if key in job.task_ids}
+            job.blocked_by.clear()
+            if sealed is not None:
+                job.sealed = sealed
+            job.revision += 1
+            self._advance_workflows()
+            self._condition.notify_all()
+            return job.snapshot(safety_locked=self._uncertain)
+
+    def cancel_workflow(self, workflow_id: str) -> dict:
+        """Accept Stop for this logical ID, not whichever conversation is newest."""
+        with self._condition:
+            job = self._workflow(workflow_id)
+            if job.status not in TERMINAL:
+                self._stop_workflow(job, 'workflow_stopped')
+                self._advance_workflows()
+                self._condition.notify_all()
+            return job.snapshot(safety_locked=self._uncertain)
+
+    def _record_workflow_task(self, task: Task) -> None:
+        """Mirror real worker state into progress; no extra execution/result authority."""
+        owner = self._workflow_tasks.get(task.task_id)
+        if owner is None:
+            return
+        workflow_id, step_id = owner
+        job = self._workflows[workflow_id]
+        job.states[step_id] = task.status.value
+        if task.result is not None and task.result.error is not None:
+            job.codes[step_id] = task.result.error.code
+        if task.status.terminal:
+            job.active_step = None
+            del self._workflow_tasks[task.task_id]
+
+    def _complete_workflow(self, job: _Workflow) -> None:
+        """Aggregate metadata without erasing successful effects or private receipts."""
+        states = set(job.states.values())
+        if 'unknown' in states:
+            job.status = 'unknown'
+        elif job.status == 'review_required' or (job.stop_requested and (not job.sealed or states - {'succeeded'})):
+            job.status = 'cancelled'
+        elif states - {'succeeded'}:
+            job.status = 'failed'
+        else:
+            job.status = 'succeeded'
+        # Terminal progress needs IDs/tool names, not a second RAM payload history.
+        job.steps = tuple(replace(s, arguments={}) for s in job.steps)
+        if job.workflow_id in self._workflow_order:
+            self._workflow_order.remove(job.workflow_id)
+        if self._active_workflow == job.workflow_id:
+            self._active_workflow = None
+
+    def _stop_workflow(self, job: _Workflow, reason: str) -> None:
+        job.stop_requested = True
+        for step in job.steps:
+            if job.states[step.step_id] == 'pending':
+                job.states[step.step_id] = 'cancelled'
+                job.codes[step.step_id] = reason
+        if job.active_step is not None:
+            self.cancel(job.task_ids[job.active_step])
+        if job.active_step is None:
+            self._complete_workflow(job)
+        else:
+            job.status = 'cancel_requested'
+
+    def _advance_workflows(self) -> None:
+        """Admit one ready step to the existing queue; never call/wait on a handler."""
+        if self._closing or self._uncertain:
+            for job in list(self._workflows.values()):
+                if job.status not in TERMINAL:
+                    self._stop_workflow(job, 'manager_closing' if self._closing else 'uncertain_state')
+            return
+        while True:
+            if self._active_workflow is None:
+                while self._workflow_order:
+                    candidate = self._workflow_order.popleft()
+                    if candidate in self._workflows and self._workflows[candidate].status not in TERMINAL:
+                        self._active_workflow = candidate
+                        break
+            if self._active_workflow is None:
+                return
+            job = self._workflows[self._active_workflow]
+            if job.active_step is not None:
+                return
+            if job.stop_requested:
+                self._complete_workflow(job)
+                continue
+            # Propagate definite prerequisite failures; independent branches survive.
+            changed = True
+            while changed:
+                changed = False
+                for step in job.steps:
+                    bad = tuple(d for d in step.depends_on if job.states[d] in STEP_TERMINAL - {'succeeded'})
+                    if job.states[step.step_id] == 'pending' and bad:
+                        job.states[step.step_id] = 'blocked'
+                        job.blocked_by[step.step_id] = bad
+                        job.codes[step.step_id] = 'dependency_failed'
+                        changed = True
+            ready = next((s for s in job.steps if job.states[s.step_id] == 'pending'
+                          and all(job.states[d] == 'succeeded' for d in s.depends_on)), None)
+            if ready is None:
+                if not job.sealed:
+                    job.status = 'planning'
+                    return  # No spin: waiting for a host plan update holds no worker.
+                self._complete_workflow(job)
+                continue
+            try:
+                task = self.submit(job.request(ready))
+            except (TaskManagerError, RegistryError) as error:
+                if error.code == 'capacity_exceeded' and any(not e.task.status.terminal for e in self._entries.values()):
+                    return  # Existing queued/running tools will wake this owner on completion.
+                job.states[ready.step_id] = 'failed'
+                job.codes[ready.step_id] = error.code
+                if self._uncertain or self._closing:
+                    self._advance_workflows()
+                    return
+                continue
+            job.task_ids[ready.step_id] = task.task_id
+            job.states[ready.step_id] = task.status.value
+            job.active_step = ready.step_id
+            job.status = 'running'
+            self._workflow_tasks[task.task_id] = (job.workflow_id, ready.step_id)
+            if task.status.terminal:
+                self._record_workflow_task(task)
+                job.status = 'review_required'
+                self._active_workflow = None
+                continue
+            return
 
     def submit(self, request: ToolRequest) -> Task:
         """Queue the current request or grant the current task for the same identity/content.
@@ -282,6 +503,7 @@ class TaskManager:
                                                     "Cancelled before execution"))
                 else:
                     entry.task = replace(entry.task, status=TaskStatus.CANCEL_REQUESTED)
+                self._record_workflow_task(entry.task)
                 self._condition.notify_all()
             return _snapshot(entry.task)
 
@@ -302,6 +524,8 @@ class TaskManager:
                 if not entry.task.status.terminal:
                     entry.cancel_event.set()
                     entry.task = replace(entry.task, status=TaskStatus.CANCEL_REQUESTED)
+                    self._record_workflow_task(entry.task)
+            self._advance_workflows()
             self._condition.notify_all()
         self._worker.join(timeout)
         stopped = not self._worker.is_alive()
@@ -334,6 +558,7 @@ class TaskManager:
             # If the tool is truly finished, do not consider it as having undone its result. Store
             # error locks new jobs; On restart, the old RUNNING becomes unknown.
             pass
+        self._record_workflow_task(entry.task)
 
     def _cancel_pending(self, reason: str) -> None:
         """Cancel jobs that have not yet run under lock and empty the queue."""
@@ -399,6 +624,7 @@ class TaskManager:
                 if entry.task.status.terminal:
                     continue
                 entry.task = replace(entry.task, status=TaskStatus.RUNNING)
+                self._record_workflow_task(entry.task)
                 self._condition.notify_all()
             result = self._execute(entry)
             with self._condition:
@@ -408,4 +634,5 @@ class TaskManager:
                     # We do not start the next handler considering the common resource is safe.
                     self._uncertain = True
                     self._cancel_pending("Earlier operation has unknown outcome")
+                self._advance_workflows()
                 self._condition.notify_all()

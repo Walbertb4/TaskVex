@@ -25,6 +25,12 @@ tool. Refresh callbacks, lifetime/document generations, geometry and frame-age
 budgets are trusted host adapter inputs, never JSON claims of authority. Current
 Live JPEG envelopes are unchanged and do not themselves prove target geometry.
 
+Logical workflows (7.P4a) are currently a trusted backend API, not UI events or
+model declarations. Their completed/requires_review/stop_requested fields are
+separate from one Live/REST turn's completed flag. Existing Stop targets its current
+turn; logical-task Stop/progress, message classification and scope cleanup require
+7.P2b binding. Do not render these backend APIs as working spoken commands.
+
 `window.vex === window.jarvis` is a compatibility alias. ui_ready is sent once
 bridge setters exist. Host readiness does not prove model connectivity. Mutations
 remain blocked until initialization; corrupt settings require explicit recovery.

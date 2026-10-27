@@ -6,6 +6,28 @@ Older entries remain part of this record through the dated snapshot below.
 
 ## Unreleased
 
+### 2026-10-27 — Logical task backend (7.P4a)
+
+- Recorded user acceptance of 7.P3a and committed it as dd586a1; no push.
+- Added validated dependency graphs, logical intake ordering, stable step IDs and
+  revision-checked sparse corrections under the existing TaskManager Condition.
+  Each child uses the existing registry/policy/worker and durable private receipts.
+- Definite failure blocks dependants while independent branches can continue.
+  UNKNOWN retains the global lock. Logical Stop distinguishes acceptance from
+  actual completion, preserves late success and cannot stop a different job.
+- Bounded RAM progress excludes private bodies; terminal arguments are cleared.
+  An indexed receipt-history probe requires review before a lost plan can dispatch
+  anything, including a reordered new-first step. No blind restart or effect retry.
+- Passed 107 focused tests, 1,371 full pytest, Pyright with zero errors/warnings,
+  compileall and two synthetic native chat/Stop and UNKNOWN compatibility phases.
+  [Checks](../logs/reports/workflow-checks.json),
+  [native evidence](../logs/reports/workflow-native.json).
+- Host backend only: no model workflow tool, conversation classifier, UI progress
+  binding or automatic scope/target teardown. Human waits, persisted logical
+  recovery/manual Continue and selected progress budgets remain 7.P4b/7.P2b.
+  No paid/real provider request, new driver/dependency or public command added.
+  Current work awaits acceptance and remains uncommitted; no push.
+
 ### 2026-10-27 — Shared target-reference backend (7.P3a)
 
 - Recorded user acceptance of 7.P2a and committed it as e9095d2; no push.

@@ -171,6 +171,12 @@ class TaskJournal:
                              'WHERE principal=? AND request_id=?', (principal, request_id)).fetchone()
             return (_decode(row), row[-1]) if row else None
 
+    def has_requests(self, principal: str, prefix: str) -> bool:
+        """Indexed history probe prevents a lost logical plan from blindly restarting."""
+        with self._connect() as db:
+            return db.execute('SELECT 1 FROM tasks WHERE principal=? AND request_id>=? '
+                              'AND request_id<? LIMIT 1', (principal, prefix, prefix + '\uffff')).fetchone() is not None
+
     def get(self, task_id: str) -> Task | None:
         """Query RAM allocated terminal tasks with actual task_id."""
         with self._connect() as db:
