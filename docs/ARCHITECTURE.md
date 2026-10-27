@@ -77,6 +77,7 @@ microphone On/Off and Stop remain local lifecycle operations.
 | Live socket and I/O loop | `app/session/live_session.py`; connection scope, resume and GoAway |
 | Tool catalog and parameter schemas | `app/session/tool_registry.py`; explicit registration, no automatic plugin imports |
 | Permissions | `app/policy/engine.py`; explicit local-user/desktop capability checks |
+| Optional task grants (backend foundation) | `app/policy/task_scope.py`; host-issued RAM-only scope/resource/input/approval state, checked by PolicyEngine when explicitly configured; desktop UI/lifecycle issuance is not connected yet |
 | Queue, cancellation and replay | `app/tasks/manager.py`; one worker and request-ID records |
 | Persistent task records | `app/storage/task_journal.py`; SQLite journal |
 | Personal memory | `app/tools/local/personal_memory.py`; shared settings store and short storage lock |
@@ -100,6 +101,30 @@ Registry rejects duplicate names and invalid types, extra fields and non-finite
 numbers. Policy admits only explicit principal/source/tool/capability combinations.
 Parameters and results cross a copied JSON boundary; secrets and raw exceptions
 are not logged.
+
+ToolRequest optionally carries a host-issued authorization_id outside tool arguments.
+Its default None is omitted from serialization, preserving existing request digests.
+The ID is provenance, not permission: only an active TaskScopes record plus existing
+tool capabilities and the host's access resolver can authorize new scoped work.
+Scopes match principal and exact (kind, opaque reference, action) grants. Resolvers
+are trusted policy configuration, not model fields or plugin-declared permissions.
+Missing/foreign/revoked scopes and resolver failures deny scoped dispatch. The model
+cannot supply authorization_id through its three-field call envelope.
+
+High-impact approval binds the complete request fingerprint, including scope,
+operation ID and arguments. Physical-input handover is separate and lasts only
+until that task scope ends; disabling its question never bypasses resource/risk
+checks. Neither grants nor approvals survive restart or come from journal history.
+Revocation denies subsequent checks; already dispatched effects require normal
+TaskManager cancellation and cannot be claimed undone. Actual desktop issuance,
+Stop/end binding, input preference UI and resource freshness belong to 7.P2b/P3/P4.
+The existing desktop composition still uses its established capability policy;
+this foundation adds no public file/GUI control or automatic task grants.
+Host task IDs identify logical work, not a Live turn or one worker execution.
+Resolve pending approval before submitting an effect; a policy-denied request is
+terminal and replaying that same ID cannot resurrect it after a later approval.
+Resource references still require 7.P3 freshness/OS binding; this store does not
+interpret paths, authorize folder descendants by prefix or capture screens itself.
 
 TaskManager distinguishes queued, running, cancel_requested, succeeded, failed,
 cancelled and unknown. Cancellation acceptance is not completion. A completed,

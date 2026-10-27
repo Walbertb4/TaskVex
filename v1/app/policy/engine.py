@@ -10,8 +10,10 @@ matching text is not real user authentication or Python sandboxing.
 
 from dataclasses import dataclass
 from types import MappingProxyType
+from typing import Callable
 
 from app.core.contracts import ContractError, ToolRequest, ToolSpec
+from app.policy.task_scope import AccessRequirement, TaskScopes
 
 
 # Tool -> core determines the required authorization mapping. Plugin from its own declaration
@@ -57,12 +59,15 @@ class PolicyEngine:
     allows note listing; notes.write does not automatically grant reading permissions.
     Permissions are copied at startup, the outside set cannot change the permission later.
 
-    There is no approval hold or remote channel authorization at this stage. risky
-    Resources other than gadgets and desktop are denied until the application is added.
+    Optional host-owned task scopes add resource/risk checks. They do not suspend
+    handlers for approval or authenticate external channels. UI binding is separate.
     """
 
     principal: str
     capabilities: frozenset[str] = frozenset()
+    scopes: TaskScopes | None = None
+    resolve_access: Callable[[ToolRequest], AccessRequirement | None] | None = None
+    ask_before_input: bool = True
 
     def __post_init__(self) -> None:
         """Make incorrect host configuration a startup error instead of silent permission."""
@@ -76,6 +81,11 @@ class PolicyEngine:
         ):
             raise ContractError("Policy capabilities must contain known capability names")
         object.__setattr__(self, "capabilities", frozenset(self.capabilities))
+        if ((self.scopes is None) != (self.resolve_access is None)
+                or (self.scopes is not None and not isinstance(self.scopes, TaskScopes))
+                or (self.resolve_access is not None and not callable(self.resolve_access))
+                or type(self.ask_before_input) is not bool):
+            raise ContractError('Expected paired task scope store/resolver and boolean input preference')
 
     def authorize(self, request: ToolRequest, tool: ToolSpec) -> bool:
         """TaskManager callback: return True only if all conditions are met.
@@ -90,6 +100,16 @@ class PolicyEngine:
                 or request.tool != tool.name):
             return False
         required = _TOOL_CAPABILITIES.get(tool.name)
-        return (required is not None
-                and frozenset(tool.required_capabilities) == required
-                and required <= self.capabilities)
+        if (required is None or frozenset(tool.required_capabilities) != required
+                or not required <= self.capabilities):
+            return False
+        if self.resolve_access is None or self.scopes is None:
+            return request.authorization_id is None
+        try:
+            requirement = self.resolve_access(ToolRequest(**request.to_dict()))
+        except Exception:
+            return False
+        if requirement is None:
+            return request.authorization_id is None
+        return isinstance(requirement, AccessRequirement) and self.scopes.allows(
+            request, requirement, ask_before_input=self.ask_before_input)

@@ -6,6 +6,29 @@ Older entries remain part of this record through the dated snapshot below.
 
 ## Unreleased
 
+### 2026-10-27 — Backend task authorization foundation (7.P2a)
+
+- Recorded user acceptance of 7.P1 and committed the accepted privacy/log/docs
+  work as 1126fba; no push. Split 7.P2 into backend scopes and later UI/lifecycle
+  binding, ordered after the real-target/logical-task prerequisites.
+- Added host-issued RAM-only task scopes with exact resource/action grants,
+  operation-fingerprint high-impact approval and independent physical-input
+  handover. Revocation removes the task's grants; journal receipts never restore them.
+- ToolRequest/ModelTools carry optional host authorization metadata outside model
+  arguments. Policy keeps its existing capability checks and denies missing,
+  foreign, revoked or out-of-scope access when a trusted resolver is configured.
+  No new tool executor, public UI setting, file access or desktop grant issuance.
+- Centralized the existing fingerprint helper in core contracts; unscoped wire
+  shapes and digests remain identical, preserving schema-1 migration/replay.
+- 113 focused tests and a clean 1,308-test full rerun passed, with Pyright 0 and
+  one temporary-profile native UNKNOWN/recovery compatibility phase. The first
+  full run had 1 failure/1,307 passes in an existing 60 ms Live timing test; that
+  test plus 107 related tests passed in isolation. No provider code was changed.
+  [Evidence](../logs/reports/task-scope-checks.json).
+- Full 7.P2 remains open: real reference validation, lifecycle/Stop binding,
+  permission decisions and input preference UI are later integration work.
+  No real API, actual user files, new automation driver or new commit/push.
+
 ### 2026-10-27 — Approved review resolutions and private task receipts (7.P1)
 
 - Recorded all six approved resolutions in existing stage 7 slices: private

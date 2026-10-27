@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "phase": "unknown",
+  "declined_review_preserved": true,
+  "review_completed": true,
+  "unknown_result_preserved": true,
+  "replay_protection_preserved": true,
+  "settings_preserved": true,
+  "post_recovery_notes_and_clocks_connected": true
+}

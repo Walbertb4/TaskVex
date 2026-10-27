@@ -15,6 +15,11 @@ and unknown outcomes. Promise rejection is caught and secrets are masked. Native
 onEvent is only an observer; its failure cannot resend a delivered command.
 An external browser host does not automatically gain native permissions.
 
+Backend task authorization (7.P2a) adds no public UI event or setting yet.
+authorization_id is host-selected core/ModelTools metadata, never a field the model
+or UI can use to grant itself authority. Scope expansion, approval dialogs, physical
+input preference and task lifecycle revocation remain 7.P2b integration work.
+
 `window.vex === window.jarvis` is a compatibility alias. ui_ready is sent once
 bridge setters exist. Host readiness does not prove model connectivity. Mutations
 remain blocked until initialization; corrupt settings require explicit recovery.

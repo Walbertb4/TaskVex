@@ -91,7 +91,7 @@ class ModelTools:
     """
 
     def __init__(self, core: TaskManager, *, principal: str, session_id: str,
-                 allowed_tools: tuple[str, ...]) -> None:
+                 allowed_tools: tuple[str, ...], authorization_id: str | None = None) -> None:
         if any(not isinstance(value, str) or not value.strip()
                for value in (principal, session_id)):
             raise ContractError("Expected a principal and model session id")
@@ -104,6 +104,9 @@ class ModelTools:
         if not self._allowed <= {item["name"] for item in declarations}:
             raise ContractError("Model tool is not registered")
         self._core, self._principal, self._session_id = core, principal, session_id
+        if authorization_id is not None and (not isinstance(authorization_id, str) or not authorization_id.strip()):
+            raise ContractError('Expected a host-issued authorization ID')
+        self._authorization_id = authorization_id
         self._calls: dict[str, str] = {}
         # Immutable host provenance stays in this logical session, never on disk.
         self._proposal_sources: dict[str, tuple[str, bool]] = {}
@@ -242,6 +245,7 @@ class ModelTools:
         task = self._core.submit(ToolRequest(
             request_id=f"model:{key}", source="desktop", principal=self._principal,
             tool=name, arguments=arguments,
+            authorization_id=self._authorization_id,
         ))
         self._calls[task.task_id] = call_id
         if proposal_source is not None and not replay:

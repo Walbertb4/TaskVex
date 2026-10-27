@@ -3,8 +3,10 @@
 ## Now
 
 Stage 6's agreed functional scope is accepted. Stage 7 choices are recorded;
-7.P1 is implemented and automatically verified; manual acceptance is pending.
-**Current: accept 7.P1, private task journal. Following slice: 7.P2.**
+7.P1 is accepted by the user and committed as `1126fba` (not pushed).
+**Current: 7.P2a, backend task scopes and concrete-operation approvals.**
+7.P2a is implemented/automatically verified; manual acceptance is pending.
+Next is 7.P3 target references, then 7.P4 lifecycle and 7.P2b UI binding.
 The accepted screen-sharing/startup-recovery baseline and stage 7 plan were
 published as `79b5a04`. Documentation/log cleanup remains separate from stage 7.
 
@@ -21,6 +23,9 @@ Read Now, open limits and the current step; search other sections only as needed
   underlying issue fixed.
 - Real-account resumption/GoAway and provider quota coverage remain unverified
   where recorded; synthetic transport is not real-account evidence.
+- A synthetic Live timing test with a 60 ms deadline failed once under concurrent
+  validation, passed in isolation and in the next full run. Timing-test stability
+  remains a limit; no provider timeout behavior was changed or proven faulty.
 - Schema-2 receipts omit arguments/result contents and migrate schema 1 before
   tools start; actual pre-existing user-profile migration was not exercised.
   Metadata/history grows on disk and is unencrypted. Fingerprints are not secret
@@ -46,7 +51,8 @@ Read Now, open limits and the current step; search other sections only as needed
 | Startup recovery with explicit UNKNOWN review | User accepted; [checks](../logs/reports/startup-recovery-checks.json) and [eleven-phase native run](../logs/reports/startup-recovery-native-full.json) |
 | Screen sharing | User accepted; [1,279 pytest, nine JS suites, 29 browser groups and other checks](../logs/reports/screen-sharing-checks.json); [two targeted native phases](../logs/reports/screen-sharing-native.json), not a clean full-native run |
 | Publication of baseline | `79b5a04`; 155 journal/manager/bridge tests passed before push. Not a new full regression |
-| 7.P1 private journal | Implemented; 215 focused tests, 1,290 full pytest, Pyright 0, eleven native phases and dependency/syntax checks. [Checks](../logs/reports/private-journal-checks.json), [native](../logs/reports/private-journal-native.json). Temporary profiles/synthetic providers only; manual acceptance and publication pending |
+| 7.P1 private journal | User accepted; committed 1126fba, not pushed. 215 focused tests, 1,290 full pytest, Pyright 0 and eleven native phases. [Checks](../logs/reports/private-journal-checks.json), [native](../logs/reports/private-journal-native.json) |
+| 7.P2a backend scopes | 113 focused tests, 1,308 pytest on clean rerun, Pyright 0 and one native UNKNOWN/recovery phase. [Checks](../logs/reports/task-scope-checks.json), [native](../logs/reports/task-scope-native.json). No public UI/lifecycle binding; acceptance pending |
 
 ## Roadmap
 
@@ -54,7 +60,7 @@ Read Now, open limits and the current step; search other sections only as needed
 |---|---|---|
 | 0–5 | Functional baseline accepted with open limits above | Core/host, notes, conversation, Stop, wake/sleep, persistent task/replay protection |
 | 6 | Agreed functional scope accepted | Memory, measurements, media/weather, camera and screen sharing |
-| 7 | 7.P1 automatically verified; manual acceptance pending | Remaining: shared task authorization/lifecycle, L0–L4 desktop/file/browser work, Plugins and learned skills |
+| 7 | 7.P1 accepted; 7.P2a automatically verified | Remaining: real targets, lifecycle/permission UI, L0–L4 desktop/file/browser work, Plugins and learned skills |
 | 8 | Planned | Routines, scheduler, persistent background lifecycle, maintenance and packaging |
 | 9 | Deferred integrations | Official external services/channels and additional audio sharing |
 | 10 | Planned after functional stages | Final provider-adapter migration |
@@ -64,7 +70,7 @@ existing coupling is migrated in 10. No new provider framework is authorized.
 
 ## Stage 7 — General desktop operation, local files and learned skills
 
-**Status: 7.P1 implemented/automatically verified; later slices remain planned.**
+**Status: 7.P1 accepted; 7.P2a implemented/auto verified; later slices planned.**
 This replaces the earlier narrow-app/format draft. The goal is operation and
 learning across previously unknown applications, not a fixed supported-app list.
 Netflix, WhatsApp, YouTube, Discord and music playlists were illustrative tasks,
@@ -144,11 +150,12 @@ requires it. Tests accompany every slice, not only stage closure.
 
 | Slice | Deliverable | Acceptance and boundary | Status |
 |---|---|---|---|
-| 7.P1 | Private persistent task journal | Content-free disk receipts, current RAM results, replay/conflict/UNKNOWN/review preservation; atomic legacy migration and restartable SQLite cleanup, without raw backups. Historical results cannot grant fresh targets | Implemented/auto verified; manual acceptance pending; evidence above |
-| 7.P2 | Shared task authorization | File/window/browser/person scope, high-impact confirmation, relevant image grants and task-duration physical-control approval; UI preference for asking about handover. Same policy regardless of layer | Planned |
+| 7.P1 | Private persistent task journal | Content-free disk receipts, current RAM results, replay/conflict/UNKNOWN/review preservation; atomic legacy migration and restartable SQLite cleanup, without raw backups. Historical results cannot grant fresh targets | User accepted; committed 1126fba, not pushed |
+| 7.P2a | Backend task authorization | Host-issued task scopes, exact resource/action grants, operation-bound high-impact approvals and task-duration input handover; shared schema/ModelTools/policy/worker path | Implemented/auto verified; acceptance pending. Desktop scope issuance/permission UI are not connected |
 | 7.P3 | Shared observations and fresh target references | Real application/window/tab/document IDs and generation, focus, display/DPI/frame geometry; distinguish no match, unsupported, denied, stale and uncertain dispatch. Fallback never retries unknown effects | Planned |
 | 7.P4a | Logical tasks and dependency-aware progress | Task/step identities separate from Live turns; existing execution authority, cancellation, queued independent tasks, corrections and immediate questions. Definite failures block dependents only; no worker self-wait or competing executor | Planned |
 | 7.P4b | Human intervention, recovery and progress limits | Pending human actions and reobservation; manual Continue after restart; bounded per-operation retries/no-progress detection, without a total task-duration cutoff. Preserve UNKNOWN locks and completed effects | Planned |
+| 7.P2b | Authorization UI and lifecycle binding | Trusted user decisions, scope expansion, physical-input preference and task end/Stop/scope-change revocation. Bind real references from 7.P3 and logical tasks from 7.P4; a Live turn is not the whole task | Planned after 7.P3/P4; full 7.P2 remains open |
 | 7.P5 | Read-only Plugins screen | Built-in capability metadata from existing registration/owners; System default badge, no delete/toggle, separate from learned Skills. No runtime auto-import or speculative third-party plugin framework | Planned |
 | 7.0a | Selected local files and text/code/CSV reading | Real scoped file references, type/size/path/link checks, encoding and changed-file detection; temporary files first, no unrestricted filesystem exploration | Planned |
 | 7.0b | File context and controlled text/code/CSV writes | Deliberately supplied context is untrusted and bounded; explicit destination, expected original snapshot, atomic write/readback and recoverable original where applicable. No silent scope expansion or blind overwrite | Planned |
@@ -170,7 +177,8 @@ requires it. Tests accompany every slice, not only stage closure.
 
 The user approved these six clarifications on 2026-10-27. They extend existing
 acceptance criteria, not a second architecture or permission to implement all six
-in one turn. Resolution 1 is implemented; resolutions 2–6 remain planned.
+in one turn. Resolution 1 is accepted; authorization foundation is implemented.
+The remaining resolutions and full UI/lifecycle/resource integration stay planned.
 
 1. **7.P1 — private receipts:** keep full current results in bounded RAM, persist
    a versioned request fingerprint plus identifiers/status and content-free result

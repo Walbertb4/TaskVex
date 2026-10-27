@@ -6,25 +6,17 @@ Schema 1 migration removes payloads without rerunning tools or making raw backup
 
 from contextlib import contextmanager
 from dataclasses import replace
-from hashlib import sha256
 import json
 from pathlib import Path
 import re
 import sqlite3
 
-from app.core.contracts import Task, TaskStatus, ToolError, ToolRequest, ToolResult
+from app.core.contracts import Task, TaskStatus, ToolError, ToolRequest, ToolResult, request_fingerprint
 from app.storage.instance_lock import SingleInstance
 
 
 class JournalError(RuntimeError):
     """Storage failed closed; never expose SQL, user paths or payloads."""
-
-
-def request_fingerprint(request: ToolRequest) -> str:
-    """Versioned equality digest, not encryption or a secret-storage mechanism."""
-    canonical = json.dumps(request.to_dict(), sort_keys=True, separators=(',', ':'),
-                           ensure_ascii=False, allow_nan=False)
-    return 'sha256-v1:' + sha256(canonical.encode('utf-8')).hexdigest()
 
 
 def _summary(task: Task) -> Task:

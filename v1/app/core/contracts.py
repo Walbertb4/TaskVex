@@ -14,7 +14,9 @@ from __future__ import annotations
 # Type descriptions assist the contract reader and editor; alone
 # Does not validate at runtime. That's why there are also explicit controls below.
 
+import json
 import math
+from hashlib import sha256
 import re
 from dataclasses import dataclass, field
 from enum import StrEnum
@@ -168,23 +170,38 @@ class ToolRequest:
     # default_factory produces a separate dictionary for each request; desires are a common
     # It does not accidentally share the default dictionary.
     arguments: dict[str, Any] = field(default_factory=dict)
+    # Host-issued provenance, never a model argument or a persisted permission.
+    authorization_id: str | None = None
 
     def __post_init__(self) -> None:
         """Validate the dataclass constructor immediately after assigning the fields."""
         for name in ("request_id", "source", "principal"):
             _text(getattr(self, name), name)
         _tool_name(self.tool)
+        if self.authorization_id is not None:
+            _text(self.authorization_id, 'authorization_id')
         # We place the verified copy when setting up the frozen record. this is special
         # Assignment is not a way to change the record in normal use.
         object.__setattr__(self, "arguments", _object(self.arguments))
 
     def to_dict(self) -> dict[str, Any]:
         """Provide a copy of the dictionary suitable for carrying; Generating JSON text is another step."""
-        return {
+        result = {
             "request_id": self.request_id, "source": self.source,
             "principal": self.principal, "tool": self.tool,
             "arguments": _object(self.arguments),
         }
+        # Preserve legacy envelopes/digests when no task scope exists.
+        if self.authorization_id is not None:
+            result['authorization_id'] = self.authorization_id
+        return result
+
+
+def request_fingerprint(request: ToolRequest) -> str:
+    """Versioned equality digest for replay and exact approval, not encryption."""
+    canonical = json.dumps(request.to_dict(), sort_keys=True, separators=(',', ':'),
+                           ensure_ascii=False, allow_nan=False)
+    return 'sha256-v1:' + sha256(canonical.encode('utf-8')).hexdigest()
 
 
 @dataclass(frozen=True, kw_only=True)

@@ -20,10 +20,10 @@ from uuid import uuid4
 
 from app.core.contracts import (
     ContractError, Task, TaskStatus, ToolContext, ToolError,
-    ToolRequest, ToolResult, ToolSpec,
+    ToolRequest, ToolResult, ToolSpec, request_fingerprint,
 )
 from app.session.tool_registry import RegistryError, ToolRegistry
-from app.storage.task_journal import JournalError, TaskJournal, request_fingerprint
+from app.storage.task_journal import JournalError, TaskJournal
 
 
 class TaskManagerError(ContractError):

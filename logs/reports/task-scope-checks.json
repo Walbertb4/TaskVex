@@ -1,0 +1,48 @@
+{
+  "date": "2026-10-27",
+  "stage": "7.P2a",
+  "scope": "Backend task authorization foundation; not public UI/lifecycle binding",
+  "accepted_previous_commit": "1126fba",
+  "previous_commit_pushed": false,
+  "implementation": [
+    "RAM-only host-issued logical-task scopes with exact resource/action grants",
+    "Exact-request high-impact approvals independent of task-duration input handover",
+    "Host-selected authorization_id outside model arguments, validated by shared policy at worker dispatch",
+    "Revocation prevents later authorization checks; restart/journal history never restore grants",
+    "Unscoped serialization and existing replay fingerprints preserved"
+  ],
+  "validation": {
+    "focused_passed": 113,
+    "isolated_timing_and_related_passed": 108,
+    "pytest_full_passed_on_rerun": 1308,
+    "pytest_full_rerun_seconds": 123.49,
+    "pyright_errors": 0,
+    "pyright_warnings": 0,
+    "native_targeted_phases_passed": 1
+  },
+  "initial_failures": [
+    {
+      "check": "full pytest",
+      "passed": 1307,
+      "failed": 1,
+      "seconds": 276.36,
+      "test": "test_events_can_continue_past_idle_duration_but_total_limit_still_applies",
+      "detail": "60 ms synthetic timeout produced no text before expiry. Passed isolated and on full rerun; scheduling/load cause inferred, not proven."
+    },
+    {
+      "check": "new test type annotations",
+      "detail": "Added result/error None narrowing; application type check clean."
+    }
+  ],
+  "native_evidence": "task-scope-native.json",
+  "limits": [
+    "No issuance/UI/preference/lifecycle integration in desktop bootstrap yet; full 7.P2 open",
+    "Real target identity/freshness and filesystem/browser/window/person bindings require 7.P3",
+    "Task end/Stop cancellation and pending human approval UI require 7.P4/7.P2b",
+    "Revocation is not hard cancellation of already authorized/in-flight effects",
+    "Policy-denied requests are terminal; same request ID cannot resurrect them after approval",
+    "No provider/API call, physical input to user apps or access to actual user files",
+    "No new full native run; previous intermittent native and timing limits remain open",
+    "Manual acceptance pending; no commit/push of 7.P2a"
+  ]
+}
