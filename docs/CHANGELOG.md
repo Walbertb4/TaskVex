@@ -6,6 +6,43 @@ Older entries remain part of this record through the dated snapshot below.
 
 ## Unreleased
 
+### 2026-10-27 — README and prerequisite publication
+
+- Updated README with the accepted Stage 7 backend foundations and latest
+  synthetic evidence, explicitly separating them from unimplemented GUI control,
+  whole-task restart recovery and permission/lifecycle UI.
+- Publication includes accepted prerequisite changes through 7.P4b.1. No new
+  functional slice or demo rebuild was attempted in this documentation turn.
+- Marked the generated Gemini smoke report as synthetic regression output; its
+  mocked transport is not real-account/provider acceptance evidence.
+
+### 2026-10-27 — Human waits and trusted progress checkpoints (7.P4b.1)
+
+- Recorded user acceptance of 7.P4a and committed it as 57a49d3; no push.
+- Recorded approved policies: indefinite user-intervention waits, three unchanged
+  evaluations after a baseline, and at most one read-only transient retry with
+  explicit operation deadlines. Retry/deadline execution remains 7.P4b.3.
+- Added revisioned host pause/Continue to the existing TaskManager. Accepted child
+  effects finish before yielding intake; safe independent jobs proceed while a
+  task waits. Continue requires unlocked trusted reobservation, then rechecks
+  revision/object identity, Stop/close and UNKNOWN before admitting any step.
+- Added digest-only planning observations and a no_progress intervention. Failed
+  observations leave state unchanged; polling/rewording plans cannot reset the
+  counter. Fresh changed evidence or verified completed steps reset it.
+- Preserved real late success, per-step policy/replay checks, private receipts and
+  UNKNOWN locks. Old callbacks cannot revive stopped or evicted/recreated tasks.
+  127 focused tests and 1,391 full pytest passed; application/new-test Pyright
+  reported zero errors/warnings. Compileall and three documentation checks also
+  passed. Two synthetic native chat/Stop and UNKNOWN compatibility phases passed;
+  the initial temporary launcher failed to collect its result file and was corrected
+  before repeating the checks, as recorded in
+  [native evidence](../logs/reports/workflow-waits-native.json).
+  [Validation record](../logs/reports/workflow-waits-checks.json).
+- Backend only: no public UI/model command, automation driver or real provider
+  request. Persistent logical recovery is next (7.P4b.2); actual operation wait
+  values accompany the relevant adapters. The user accepted this slice for
+  publication with the README refresh; 7.P4b.2 remains unstarted.
+
 ### 2026-10-27 — Logical task backend (7.P4a)
 
 - Recorded user acceptance of 7.P3a and committed it as dd586a1; no push.

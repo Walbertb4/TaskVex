@@ -5,10 +5,10 @@
     {
       "id": "read",
       "name": "notes.list",
-      "task_id": "2aedb250737449ec81e1bfd5bbd96331",
+      "task_id": "754f8df1206347c3b08e33c50ccb68ae",
       "status": "succeeded",
       "result": {
-        "task_id": "2aedb250737449ec81e1bfd5bbd96331",
+        "task_id": "754f8df1206347c3b08e33c50ccb68ae",
         "status": "succeeded",
         "verified": true,
         "data": {
@@ -23,25 +23,25 @@
     {
       "id": "provider-1",
       "name": "notes.add",
-      "task_id": "da86054402ea443f8cc0215a70a339d5",
+      "task_id": "19f0c9a9db784c2fab9d2c6ee3f2eef3",
       "status": "succeeded",
       "result": {
-        "task_id": "da86054402ea443f8cc0215a70a339d5",
+        "task_id": "19f0c9a9db784c2fab9d2c6ee3f2eef3",
         "status": "succeeded",
         "verified": true,
         "data": {
           "note": {
-            "id": "de250dba30694b18a6166817fab59f5b",
+            "id": "ee7e55f8351c4f8f98a9e99d12cf1b71",
             "text": "TaskVex API acceptance",
             "done": false,
-            "created_at": "2026-10-27T17:43:23.415Z"
+            "created_at": "2026-10-27T19:42:47.863Z"
           }
         },
         "error": null,
         "evidence": {
           "persisted": true,
           "read_back": true,
-          "note_id": "de250dba30694b18a6166817fab59f5b"
+          "note_id": "ee7e55f8351c4f8f98a9e99d12cf1b71"
         }
       }
     }
@@ -55,17 +55,25 @@
     {
       "model": "gemini-3.8-flash",
       "outcome": "response",
-      "elapsed_ms": 6
+      "elapsed_ms": 3
     },
     {
       "model": "gemini-3.8-flash",
       "outcome": "response",
-      "elapsed_ms": 2
+      "elapsed_ms": 3
     }
   ],
-  "elapsed_ms": 55,
+  "elapsed_ms": 87,
   "requested_model": "gemini-3.8-flash",
   "scenario": "temporary_notes",
   "live_request_made": true,
-  "acceptance_verified": false
+  "acceptance_verified": false,
+  "provenance": {
+    "source": "tests/test_gemini.py::test_smoke_entrypoint_isolated_and_checks_actual_tool_use",
+    "scenario": "notes_before_add",
+    "transport": "synthetic MockTransport regression fixture",
+    "real_provider_request_made": false,
+    "real_account_acceptance_verified": false,
+    "note": "live_request_made is the smoke CLI path flag under mocked HTTP, not evidence of network/provider use. Timing values are synthetic."
+  }
 }

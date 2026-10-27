@@ -241,6 +241,8 @@ class TaskManager:
                 raise TaskManagerError('workflow_changed', 'Read the current logical task revision')
             if self._closing or self._uncertain or job.stop_requested or job.status in TERMINAL | {'review_required'}:
                 raise TaskManagerError('workflow_closed', 'Logical task cannot accept this correction')
+            if job.wait_reason is not None:
+                raise TaskManagerError('workflow_waiting', 'Reobserve and continue before changing this plan')
             incoming = {s.step_id: s for s in patches}
             previous = {s.step_id: s for s in job.steps}
             if set(remove) - previous.keys():
@@ -263,6 +265,115 @@ class TaskManager:
                 job.sealed = sealed
             job.revision += 1
             self._advance_workflows()
+            self._condition.notify_all()
+            return job.snapshot(safety_locked=self._uncertain)
+
+    def _check_workflow_revision(self, workflow_id: str, expected_revision: int) -> _Workflow:
+        """Check a host decision under the Condition, including after unlocked reads."""
+        if type(expected_revision) is not int or expected_revision < 0:
+            raise TaskManagerError('invalid_revision', 'Expected a non-negative workflow revision')
+        job = self._workflow(workflow_id)
+        if job.revision != expected_revision:
+            raise TaskManagerError('workflow_changed', 'Read the current logical task revision')
+        if self._closing or self._uncertain or job.stop_requested or job.status in TERMINAL | {'review_required'}:
+            raise TaskManagerError('workflow_closed', 'Logical task cannot accept this decision')
+        return job
+
+    def pause_workflow(self, workflow_id: str, *, expected_revision: int, reason: str) -> dict:
+        """Host-requested intervention; finish any accepted operation before yielding."""
+        if reason not in ('login', 'captcha', 'two_factor', 'elevation', 'user_action'):
+            raise TaskManagerError('invalid_wait', 'Expected a supported intervention reason')
+        with self._condition:
+            job = self._check_workflow_revision(workflow_id, expected_revision)
+            if job.wait_reason is not None:
+                raise TaskManagerError('workflow_waiting', 'Logical task already awaits intervention')
+            job.wait_reason = reason
+            job.revision += 1
+            job.status = 'wait_requested'
+            if job.active_step is None:
+                self._yield_workflow(job)
+            self._advance_workflows()
+            self._condition.notify_all()
+            return job.snapshot(safety_locked=self._uncertain)
+
+    def _yield_workflow(self, job: _Workflow) -> None:
+        """A safe intervention checkpoint releases intake without occupying a worker."""
+        if job.sealed and all(state in STEP_TERMINAL for state in job.states.values()):
+            self._complete_workflow(job)
+            return
+        job.status = 'waiting_for_user'
+        if job.workflow_id in self._workflow_order:
+            self._workflow_order.remove(job.workflow_id)
+        if self._active_workflow == job.workflow_id:
+            self._active_workflow = None
+
+    def resume_workflow(self, workflow_id: str, *, expected_revision: int,
+                        reobserve: Callable[[], bool]) -> dict:
+        """Explicit host Continue; fresh target/permission validation runs outside locks.
+
+        The callback is trusted host code, never a model/UI boolean. It must check
+        current resources and authorization; normal policy still checks each step.
+        """
+        if not callable(reobserve):
+            raise TaskManagerError('invalid_observer', 'Expected a trusted reobservation callback')
+        with self._condition:
+            job = self._check_workflow_revision(workflow_id, expected_revision)
+            if job.status != 'waiting_for_user':
+                raise TaskManagerError('not_waiting', 'Wait for the current operation to finish')
+            observed_job = job
+        try:
+            observed = reobserve() is True
+        except Exception:
+            observed = False
+        with self._condition:
+            job = self._check_workflow_revision(workflow_id, expected_revision)
+            if job is not observed_job:
+                raise TaskManagerError('workflow_changed', 'Logical task changed during reobservation')
+            if job.status != 'waiting_for_user' or not observed:
+                raise TaskManagerError('reobservation_required', 'Fresh state and authorization were not confirmed')
+            job.wait_reason = None
+            job.observation_key = None
+            job.no_progress_count = 0
+            job.revision += 1
+            job.status = 'queued'
+            self._workflow_order.append(workflow_id)
+            self._advance_workflows()
+            self._condition.notify_all()
+            return job.snapshot(safety_locked=self._uncertain)
+
+    def observe_workflow(self, workflow_id: str, *, expected_revision: int,
+                         observe: Callable[[], dict]) -> dict:
+        """Evaluate a planning checkpoint using trusted fresh state, not model prose.
+
+        Retain only a RAM digest. Polling progress or editing a plan never counts
+        as evidence; a verified completed operation resets the counter separately.
+        """
+        if not callable(observe):
+            raise TaskManagerError('invalid_observer', 'Expected a trusted observation callback')
+        with self._condition:
+            job = self._check_workflow_revision(workflow_id, expected_revision)
+            if job.status != 'planning' or job.wait_reason is not None:
+                raise TaskManagerError('not_planning', 'Observe an idle planning checkpoint')
+            observed_job = job
+        try:
+            state = observe()
+            if type(state) is not dict or not state:
+                raise ValueError('Missing observation')
+            key = definition_key(state)
+        except Exception:
+            raise TaskManagerError('observation_unavailable', 'Fresh state could not be observed') from None
+        with self._condition:
+            job = self._check_workflow_revision(workflow_id, expected_revision)
+            if job is not observed_job:
+                raise TaskManagerError('workflow_changed', 'Logical task changed during observation')
+            if job.status != 'planning' or job.wait_reason is not None:
+                raise TaskManagerError('not_planning', 'Planning checkpoint changed during observation')
+            job.no_progress_count = job.no_progress_count + 1 if key == job.observation_key else 0
+            job.observation_key = key
+            job.revision += 1
+            if job.no_progress_count >= 3:
+                job.wait_reason = 'no_progress'
+                self._advance_workflows()
             self._condition.notify_all()
             return job.snapshot(safety_locked=self._uncertain)
 
@@ -289,6 +400,9 @@ class TaskManager:
         if task.status.terminal:
             job.active_step = None
             del self._workflow_tasks[task.task_id]
+            if task.status == TaskStatus.SUCCEEDED:
+                job.no_progress_count = 0
+                job.observation_key = None
 
     def _complete_workflow(self, job: _Workflow) -> None:
         """Aggregate metadata without erasing successful effects or private receipts."""
@@ -303,6 +417,8 @@ class TaskManager:
             job.status = 'succeeded'
         # Terminal progress needs IDs/tool names, not a second RAM payload history.
         job.steps = tuple(replace(s, arguments={}) for s in job.steps)
+        job.wait_reason = None
+        job.observation_key = None
         if job.workflow_id in self._workflow_order:
             self._workflow_order.remove(job.workflow_id)
         if self._active_workflow == job.workflow_id:
@@ -332,7 +448,7 @@ class TaskManager:
             if self._active_workflow is None:
                 while self._workflow_order:
                     candidate = self._workflow_order.popleft()
-                    if candidate in self._workflows and self._workflows[candidate].status not in TERMINAL:
+                    if candidate in self._workflows and self._workflows[candidate].status not in TERMINAL | {'waiting_for_user'}:
                         self._active_workflow = candidate
                         break
             if self._active_workflow is None:
@@ -342,6 +458,9 @@ class TaskManager:
                 return
             if job.stop_requested:
                 self._complete_workflow(job)
+                continue
+            if job.wait_reason is not None:
+                self._yield_workflow(job)
                 continue
             # Propagate definite prerequisite failures; independent branches survive.
             changed = True

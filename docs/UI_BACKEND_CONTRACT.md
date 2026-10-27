@@ -31,6 +31,13 @@ separate from one Live/REST turn's completed flag. Existing Stop targets its cur
 turn; logical-task Stop/progress, message classification and scope cleanup require
 7.P2b binding. Do not render these backend APIs as working spoken commands.
 
+7.P4b.1 adds backend wait_requested/waiting_for_user states and wait_reason /
+no_progress_count metadata. These are separate from turn completion. No public
+pause/Continue event exists yet. Trusted host callbacks reobserve outside locks;
+UI/model assertions cannot supply validation or revive stopped/replaced jobs.
+Waiting has no automatic expiry; three unchanged planning observations after a
+baseline produce a no_progress wait. Restart recovery is not implemented here.
+
 `window.vex === window.jarvis` is a compatibility alias. ui_ready is sent once
 bridge setters exist. Host readiness does not prove model connectivity. Mutations
 remain blocked until initialization; corrupt settings require explicit recovery.

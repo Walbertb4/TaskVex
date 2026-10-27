@@ -103,6 +103,9 @@ class _Workflow:
     codes: dict[str, str] = field(default_factory=dict)
     blocked_by: dict[str, tuple[str, ...]] = field(default_factory=dict)
     creation_key: str = ''
+    wait_reason: str | None = None
+    no_progress_count: int = 0
+    observation_key: str | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.workflow_id, str) or not self.workflow_id.strip() or type(self.sealed) is not bool:
@@ -129,6 +132,7 @@ class _Workflow:
         return {'workflow_id': self.workflow_id, 'revision': self.revision, 'status': self.status,
             'completed': self.status in TERMINAL, 'stop_requested': self.stop_requested,
             'sealed': self.sealed, 'requires_review': safety_locked or self.status in {'unknown', 'review_required'},
+            'wait_reason': self.wait_reason, 'no_progress_count': self.no_progress_count,
             'steps': [{'step_id': s.step_id, 'tool': s.tool, 'status': self.states[s.step_id],
                        'task_id': self.task_ids.get(s.step_id), 'error_code': self.codes.get(s.step_id),
                        'blocked_by': list(self.blocked_by.get(s.step_id, ()))} for s in self.steps]}

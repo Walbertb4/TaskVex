@@ -3,16 +3,19 @@
 ## Now
 
 Stage 6's agreed functional scope is accepted. Stage 7 choices are recorded;
-7.P1 is accepted by the user and committed as `1126fba` (not pushed).
-7.P2a was accepted and committed as `e9095d2` (not pushed).
-7.P3a was accepted and committed as `dd586a1` (not pushed).
-**Current: 7.P4a, backend logical task lifecycle and dependency-aware progress.**
-Implementation and automatic validation passed; user acceptance is pending.
+7.P1 is accepted by the user and committed as `1126fba`.
+7.P2a was accepted and committed as `e9095d2`.
+7.P3a was accepted and committed as `dd586a1`.
+7.P4a was accepted by continuation and committed as `57a49d3`.
+7.P4b.1 was accepted for publication with the updated README.
+**Next: 7.P4b.2, persistent logical recovery. Not started.**
+The approved behavior choices are recorded below. 7.P4b.1 implementation and
+automatic checks passed; persistent recovery and operation deadline/retry binding
+remain 7.P4b.2/7.P4b.3 follow-ups.
 Conversation UI and scope teardown bindings remain follow-up work, not
 capabilities enabled by this backend API.
 Real driver bindings (7.P3b) accompany their UIA/DOM/visual steps; those libraries
-are not selected or installed. Next prerequisite is 7.P4b human intervention/recovery/progress limits;
-concrete budgets require user selection before implementation.
+are not selected or installed. Behavior choices are approved; actual driver-specific wait values remain open.
 The accepted screen-sharing/startup-recovery baseline and stage 7 plan were
 published as `79b5a04`. Documentation/log cleanup remains separate from stage 7.
 
@@ -57,10 +60,11 @@ Read Now, open limits and the current step; search other sections only as needed
 | Startup recovery with explicit UNKNOWN review | User accepted; [checks](../logs/reports/startup-recovery-checks.json) and [eleven-phase native run](../logs/reports/startup-recovery-native-full.json) |
 | Screen sharing | User accepted; [1,279 pytest, nine JS suites, 29 browser groups and other checks](../logs/reports/screen-sharing-checks.json); [two targeted native phases](../logs/reports/screen-sharing-native.json), not a clean full-native run |
 | Publication of baseline | `79b5a04`; 155 journal/manager/bridge tests passed before push. Not a new full regression |
-| 7.P1 private journal | User accepted; committed 1126fba, not pushed. 215 focused tests, 1,290 full pytest, Pyright 0 and eleven native phases. [Checks](../logs/reports/private-journal-checks.json), [native](../logs/reports/private-journal-native.json) |
-| 7.P2a backend scopes | User accepted; committed e9095d2, not pushed. 113 focused tests, 1,308 pytest on clean rerun, Pyright 0 and one native UNKNOWN/recovery phase. [Checks](../logs/reports/task-scope-checks.json), [native](../logs/reports/task-scope-native.json). No public UI/lifecycle binding |
-| 7.P3a backend targets | 168 targeted/regression tests and Pyright 0 with synthetic adapters; [checks](../logs/reports/targets-checks.json). User accepted; committed dd586a1, not pushed. No real driver/UI/capture/input or full/native rerun |
-| 7.P4a logical task backend | 107 focused tests, 1,371 full pytest, Pyright 0 and two synthetic native compatibility phases. [Checks](../logs/reports/workflow-checks.json), [native](../logs/reports/workflow-native.json). Acceptance pending; no public UI/model workflow binding |
+| 7.P1 private journal | User accepted; committed 1126fba. 215 focused tests, 1,290 full pytest, Pyright 0 and eleven native phases. [Checks](../logs/reports/private-journal-checks.json), [native](../logs/reports/private-journal-native.json) |
+| 7.P2a backend scopes | User accepted; committed e9095d2. 113 focused tests, 1,308 pytest on clean rerun, Pyright 0 and one native UNKNOWN/recovery phase. [Checks](../logs/reports/task-scope-checks.json), [native](../logs/reports/task-scope-native.json). No public UI/lifecycle binding |
+| 7.P3a backend targets | 168 targeted/regression tests and Pyright 0 with synthetic adapters; [checks](../logs/reports/targets-checks.json). User accepted; committed dd586a1. No real driver/UI/capture/input or full/native rerun |
+| 7.P4a logical task backend | 107 focused tests, 1,371 full pytest, Pyright 0 and two synthetic native compatibility phases. [Checks](../logs/reports/workflow-checks.json), [native](../logs/reports/workflow-native.json). User accepted; committed 57a49d3. No public UI/model workflow binding |
+| 7.P4b.1 intervention/progress backend | 127 focused tests, 1,391 full pytest, Pyright 0 and two synthetic native compatibility phases. [Checks](../logs/reports/workflow-waits-checks.json), [native](../logs/reports/workflow-waits-native.json). User accepted for publication; no UI/model binding or restart restoration |
 
 ## Roadmap
 
@@ -68,7 +72,7 @@ Read Now, open limits and the current step; search other sections only as needed
 |---|---|---|
 | 0–5 | Functional baseline accepted with open limits above | Core/host, notes, conversation, Stop, wake/sleep, persistent task/replay protection |
 | 6 | Agreed functional scope accepted | Memory, measurements, media/weather, camera and screen sharing |
-| 7 | 7.P1/7.P2a/7.P3a accepted; 7.P4a automatically verified | Remaining: driver-backed targets, lifecycle/permission UI, L0–L4 desktop/file/browser work, Plugins and learned skills |
+| 7 | 7.P1/7.P2a/7.P3a/7.P4a accepted; 7.P4b.1 accepted; 7.P4b.2 next | Remaining: driver-backed targets, lifecycle/permission UI, L0–L4 desktop/file/browser work, Plugins and learned skills |
 | 8 | Planned | Routines, scheduler, persistent background lifecycle, maintenance and packaging |
 | 9 | Deferred integrations | Official external services/channels and additional audio sharing |
 | 10 | Planned after functional stages | Final provider-adapter migration |
@@ -78,7 +82,7 @@ existing coupling is migrated in 10. No new provider framework is authorized.
 
 ## Stage 7 — General desktop operation, local files and learned skills
 
-**Status: 7.P1/7.P2a/7.P3a accepted; 7.P4a auto verified; real drivers remain planned.**
+**Status: 7.P1/7.P2a/7.P3a/7.P4a accepted; 7.P4b.1 accepted; 7.P4b.2 next; real drivers remain planned.**
 This replaces the earlier narrow-app/format draft. The goal is operation and
 learning across previously unknown applications, not a fixed supported-app list.
 Netflix, WhatsApp, YouTube, Discord and music playlists were illustrative tasks,
@@ -158,11 +162,14 @@ requires it. Tests accompany every slice, not only stage closure.
 
 | Slice | Deliverable | Acceptance and boundary | Status |
 |---|---|---|---|
-| 7.P1 | Private persistent task journal | Content-free disk receipts, current RAM results, replay/conflict/UNKNOWN/review preservation; atomic legacy migration and restartable SQLite cleanup, without raw backups. Historical results cannot grant fresh targets | User accepted; committed 1126fba, not pushed |
-| 7.P2a | Backend task authorization | Host-issued task scopes, exact resource/action grants, operation-bound high-impact approvals and task-duration input handover; shared schema/ModelTools/policy/worker path | User accepted; committed e9095d2, not pushed. Desktop scope issuance/permission UI remain unconnected |
-| 7.P3a | Shared target-reference backend | Host-observed identity/generation, task ownership, fresh read before use, physical geometry/frame-age contracts and explicit resolution/fallback statuses. Policy/registry/worker path tested with synthetic adapters | User accepted; committed dd586a1, not pushed. No discovery/capture/input driver or public UI |
-| 7.P4a | Logical tasks and dependency-aware progress | Task/step identities separate from Live turns; same worker/registry/policy path, cancellation, queued logical tasks and revision-checked unsent-step corrections. Immediate text-only questions need not hold the worker. No model workflow tool or UI classifier yet | Implemented/auto verified; acceptance pending. Host backend API only, not conversation integration |
-| 7.P4b | Human intervention, recovery and progress limits | Pending human actions and reobservation; manual Continue after restart; bounded per-operation retries/no-progress detection, without a total task-duration cutoff. Preserve UNKNOWN locks and completed effects | Planned |
+| 7.P1 | Private persistent task journal | Content-free disk receipts, current RAM results, replay/conflict/UNKNOWN/review preservation; atomic legacy migration and restartable SQLite cleanup, without raw backups. Historical results cannot grant fresh targets | User accepted; committed 1126fba |
+| 7.P2a | Backend task authorization | Host-issued task scopes, exact resource/action grants, operation-bound high-impact approvals and task-duration input handover; shared schema/ModelTools/policy/worker path | User accepted; committed e9095d2. Desktop scope issuance/permission UI remain unconnected |
+| 7.P3a | Shared target-reference backend | Host-observed identity/generation, task ownership, fresh read before use, physical geometry/frame-age contracts and explicit resolution/fallback statuses. Policy/registry/worker path tested with synthetic adapters | User accepted; committed dd586a1. No discovery/capture/input driver or public UI |
+| 7.P4a | Logical tasks and dependency-aware progress | Task/step identities separate from Live turns; same worker/registry/policy path, cancellation, queued logical tasks and revision-checked unsent-step corrections. Immediate text-only questions need not hold the worker. No model workflow tool or UI classifier yet | User accepted; committed 57a49d3. Host backend API only, not conversation integration |
+| 7.P4b | Human intervention, recovery and progress limits | Parent slice; preserve UNKNOWN, completed effects and no total task cutoff | Split below; full slice remains open |
+| 7.P4b.1 | Nonblocking intervention and progress checkpoints | Indefinite explicit Continue/Cancel waits; independent jobs proceed at safe checkpoints. Trusted unlocked reobservation, revision/identity race guards, three unchanged-state evaluations after a baseline | User accepted for publication. Trusted backend only |
+| 7.P4b.2 | Persistent logical recovery | Content-free restart metadata and explicit Continue/replanning after fresh observation; no historical payload restoration or blind replay | Planned next; separate storage/recovery change |
+| 7.P4b.3 | Operation deadlines and safe read retry | Explicit per-operation time bounds, at most one read-only transient retry, no automatic side-effect retry; actual outcome remains authoritative | Planned after recovery; no generic timeout falsely kills synchronous handlers |
 | 7.P2b | Authorization UI and lifecycle binding | Trusted user decisions, scope expansion, physical-input preference and task end/Stop/scope-change revocation. Bind real references from 7.P3 and logical tasks from 7.P4; a Live turn is not the whole task | Planned after 7.P3/P4; full 7.P2 remains open |
 | 7.P5 | Read-only Plugins screen | Built-in capability metadata from existing registration/owners; System default badge, no delete/toggle, separate from learned Skills. No runtime auto-import or speculative third-party plugin framework | Planned |
 | 7.0a | Selected local files and text/code/CSV reading | Real scoped file references, type/size/path/link checks, encoding and changed-file detection; temporary files first, no unrestricted filesystem exploration | Planned |
@@ -224,13 +231,32 @@ accepted after the corresponding automation route is available.
 - Actual UIA/browser/document libraries, licenses, Python/runtime compatibility,
   browser attachment approach and packaging impact: propose verified alternatives
   with their tradeoffs; no library has been chosen or installed by this plan.
-- Concrete per-operation timeout/retry/no-progress values for 7.P4b, not an
-  arbitrary cutoff for the entire logical task.
+- Concrete driver/provider operation wait values before production binding.
+  The three-evaluation progress threshold and safe-read retry policy are approved;
+  there is no arbitrary total-task cutoff.
 - Visual frame-age budgets with the actual 7.3c driver/provider latency; 7.P3a
   requires an explicit trusted budget and does not select a production default.
 - Web-search source and any account/cost requirements before 7.3a.
 - Exact built-in metadata grouping and format-operation fidelity matrix when
   implementing their UI/format slices. No universal format-support claim.
+
+### 7.P4b behavior selections — approved 2026-10-27
+
+- Use explicit per-operation deadlines. At most one retry is allowed only for
+  read-only transient failures; no automatic side-effect retry and no uncertain
+  effect replay. Concrete wait values accompany their actual operation adapters.
+- After a baseline, stop/explain at three consecutive unchanged trusted state
+  evaluations. Changed evidence or actual verified step progress resets the
+  counter; polling progress or editing a plan does not. No total task cutoff.
+- Human intervention waits for explicit Continue/Cancel with no automatic expiry.
+  Safe independent work may continue after the active operation actually finishes;
+  Continue requires fresh observation and current authorization.
+
+7.P4b.1 implements host callbacks/checkpoints, not an automatic model planner or
+public UI command. Reobservation failure preserves the wait; callbacks cannot
+revive stopped, replaced or revised jobs. Restart/manual Continue and retry/deadline
+execution remain 7.P4b.2/7.P4b.3. Current evidence:
+[checks](../logs/reports/workflow-waits-checks.json).
 
 ### Gates and deferred scope
 

@@ -79,7 +79,7 @@ microphone On/Off and Stop remain local lifecycle operations.
 | Permissions | `app/policy/engine.py`; explicit local-user/desktop capability checks |
 | Optional task grants (backend foundation) | `app/policy/task_scope.py`; host-issued RAM-only scope/resource/input/approval state, checked by PolicyEngine when explicitly configured; desktop UI/lifecycle issuance is not connected yet |
 | GUI target references (backend foundation) | `app/automation/targets.py`; one task-bound RAM reference owner, trusted refresh callbacks and geometry/status contracts; real adapters/discovery/input remain planned |
-| Tool queue, logical jobs, cancellation and replay | `app/tasks/manager.py`; one worker/Condition and per-step receipts; `app/tasks/workflow.py` holds only plan/progress contracts |
+| Tool queue, logical jobs, cancellation and replay | `app/tasks/manager.py`; one worker/Condition and per-step receipts; `app/tasks/workflow.py` holds only plan/progress contracts; intervention waits yield intake at safe checkpoints, trusted observation callbacks run outside its lock |
 | Persistent task records | `app/storage/task_journal.py`; SQLite journal |
 | Personal memory | `app/tools/local/personal_memory.py`; shared settings store and short storage lock |
 | Notes | `app/tools/local/notes.py`; stable IDs, dates, selection snapshots and atomic writes |

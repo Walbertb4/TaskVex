@@ -405,11 +405,11 @@ success, even if the last operation finishes after Stop. A stopped incomplete
 plan can retain successful steps without claiming they were undone. Close applies
 the same rule and never claims an unfinished worker has stopped.
 
-Logical metadata is process-memory only in 7.P4a. Per-step private receipts remain
+Logical metadata is process-memory only in the current backend. Per-step private receipts remain
 durable; a prefix-index history probe makes a lost/evicted plan review_required
 before any new step, regardless of step order. It cannot blindly restart or use
-historical success as fresh context. Automatic restoration/manual Continue,
-human-intervention waiting and no-progress/time budgets remain 7.P4b. Per-handler
+historical success as fresh context. Persistent logical recovery/manual Continue remains 7.P4b.2; per-operation
+deadlines/read retry remain 7.P4b.3. Intervention/progress checkpoints are below. Per-handler
 deadlines remain the handlers' responsibility; synchronous I/O is not force-killed.
 
 Conversation classification, UI progress/Stop binding, model-plan validation and
@@ -417,3 +417,40 @@ scope/target teardown on logical completion are not wired in this slice; those
 remain 7.P2b and later skill/routine integration. Existing Live/REST turn and
 audio owners are unchanged. Plan-size/admission/context budgets must be selected
 before exposing untrusted long-plan input; there is no arbitrary total task timeout.
+
+### Human intervention and progress checkpoints
+
+pause_workflow accepts a fixed host reason (login, captcha, two_factor, elevation,
+user_action) and expected_revision. An accepted child is not interrupted or
+relabelled complete: wait_requested becomes waiting_for_user only at a safe
+checkpoint. A queued/idle job can yield immediately. Waiting has no timer, worker
+or conversation lock; independent logical jobs may proceed through the same
+worker. A last completed sealed plan still finishes with its actual result.
+Stop/close cancel pending work; global UNKNOWN cancels safe pending work and
+retains its safety lock even when another job was waiting for the user.
+
+resume_workflow is explicit trusted-host Continue, not a model-supplied boolean.
+Its reobserve callback must validate fresh resources/targets and current authority.
+The callback runs outside the manager Condition. After it returns exactly True,
+the manager rechecks revision, object identity, waiting state, Stop/close and
+UNKNOWN before queueing. Failure/exception leaves the wait intact. Normal policy
+checks each new dispatch; Continue never restores revoked grants or replays a
+completed child. A changed or cache-evicted/recreated job rejects stale callbacks.
+After resume the job rejoins intake order, without preempting another active job.
+
+observe_workflow evaluates only an idle planning checkpoint using a trusted host
+callback returning relevant fresh state, not model explanation text or timestamps
+added solely to look different. Only a canonical RAM digest is retained. The first
+observation establishes a baseline; three unchanged subsequent observations yield
+a no_progress intervention. Changed evidence or a verified completed step resets
+the count. Snapshot polling and plan revisions never reset or increment it.
+A failed/empty/malformed observation changes neither the revision nor the count.
+Concurrent observations use revision CAS; pending callbacks cannot overwrite newer
+state. No screenshots/message/file content from observations enter disk receipts.
+
+These APIs are backend foundations. The planner/adapters must supply meaningful
+checkpoints and renew references as needed; there is no automatic GUI detection,
+public Continue dialog or new model tool. Whole-plan restart recovery and operation
+retry/deadline binding remain separate planned steps, as does host scope/target
+teardown. A synchronous handler must finish/yield cooperatively; this layer does
+not force-release a worker while its effect is still running.

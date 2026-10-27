@@ -80,6 +80,25 @@ model currently sees its catalog, not unrestricted app-launch or desktop control
 Skill and routine editors store definitions locally; they do not execute them yet.
 A separate REST adapter remains available for development and future channels.
 
+## Stage 7 backend foundations
+
+The accepted backend prerequisites now include host-issued task scopes, fresh
+GUI-target reference contracts, and logical tasks with dependency-aware progress.
+They use the existing registry, policy and single TaskManager worker. A definite
+failure blocks dependent steps while independent branches can continue; Stop
+acceptance remains separate from actual completion, preserving completed effects.
+
+Trusted host intervention checkpoints can wait indefinitely for explicit Continue
+or Cancel without occupying the worker. Continue requires fresh reobservation and
+cannot revive stopped or replaced tasks. Three unchanged planning observations
+after a baseline produce a no-progress wait; only a RAM digest is retained.
+
+These are backend APIs, not connected desktop controls or a general GUI agent.
+No UIA/DOM/visual automation driver is installed. Logical restart recovery,
+operation deadlines/read retry, task permission dialogs and automatic scope/target
+cleanup remain planned. Existing per-tool durable replay protection is separate
+from whole-task recovery; historical receipts do not restore private arguments.
+
 ## Not implemented yet
 
 Google Drive/Calendar/mail access, Telegram/Discord integration,
@@ -175,6 +194,19 @@ There are no general latency, memory-footprint or acoustic-accuracy guarantees.
 Model availability, network conditions and hardware affect behavior.
 
 ## Verification and documentation
+
+Latest Stage 7 intervention/progress validation passed **1,391 Python tests**,
+including **127 focused checks**, Pyright with zero errors/warnings, and two
+synthetic native compatibility phases covering chat/Stop and UNKNOWN recovery.
+[Backend checks](logs/reports/workflow-waits-checks.json) ·
+[Native evidence](logs/reports/workflow-waits-native.json).
+The initial temporary native launcher did not collect the child report; it was
+corrected and both phases were repeated successfully. These checks used temporary
+profiles and synthetic transports, not paid APIs or real user tasks. They do not
+prove actual GUI-driver support or resolve earlier intermittent native issues.
+
+Earlier camera/permission and startup evidence follows; its test counts belong
+to those changes and are not a new rerun of every hardware/provider scenario.
 
 The latest camera/permission work passed **1,269 Python tests**, **nine JavaScript
 suites**, **25 browser groups**, focused type checking and dependency checks.

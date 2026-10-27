@@ -1,0 +1,44 @@
+{
+  "date": "2026-10-27",
+  "stage": "7.P4b.1",
+  "status": "automatically_verified_user_accepted_for_publication",
+  "scope": "Trusted-host intervention and progress checkpoints; existing worker only",
+  "accepted_previous_commit": "57a49d3",
+  "validation": {
+    "focused_passed": 127,
+    "pyright_errors": 0,
+    "pyright_warnings": 0,
+    "full_pytest_passed": 1391,
+    "full_pytest_seconds": 139.75,
+    "native_phases": [
+      "chat",
+      "unknown"
+    ],
+    "native_passed": true,
+    "native_synthetic_only": true,
+    "collector_correction": "Initial native launcher did not collect report-phase.json; no first-test outcome claimed. Corrected collector and repeated both phases successfully.",
+    "compileall": true,
+    "documentation_tests_passed": 3,
+    "diff_whitespace_check": true,
+    "publication_targeted_and_docs_recheck_passed": 23
+  },
+  "limits": [
+    "No UI/model workflow binding or actual GUI driver",
+    "Logical recovery and per-operation deadlines/read retry remain 7.P4b.2/7.P4b.3",
+    "Synchronous active effects must finish or yield cooperatively; no forceful cancellation",
+    "No paid provider or real user data"
+  ],
+  "covered": [
+    "Indefinite intervention waits release logical intake after actual child completion",
+    "Independent jobs continue; explicit Continue rejoins intake without preemption",
+    "Trusted reobservation outside locks; failure leaves wait unchanged",
+    "Revision CAS and object identity reject stale callbacks after Stop or cache eviction/recreation",
+    "Revoked authorization is still denied by normal policy after Continue",
+    "UNKNOWN from another job retains global lock and cancels pending waiting work",
+    "Three unchanged fresh observations after a baseline yield no_progress",
+    "Snapshot polling and plan corrections do not count as progress",
+    "Changed evidence and verified step completion reset counter",
+    "Observation errors/non-finite/empty state fail closed; private state stays off disk",
+    "Last actual completion and Stop/close preserve real results"
+  ]
+}
