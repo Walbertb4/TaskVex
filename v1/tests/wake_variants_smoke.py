@@ -19,7 +19,8 @@ from app.session import wake_word
 def run() -> None:
     """By restarting the same engine positive/negative passes the sounds through the actual PCM."""
     parser = argparse.ArgumentParser()
-    parser.add_argument('--report', type=Path, required=True)
+    parser.add_argument('--report', type=Path,
+                        default=Path(__file__).resolve().parents[2] / 'logs/reports/wake-variants-smoke.json')
     args = parser.parse_args()
     model = Path(__file__).resolve().parents[1] / 'runtime' / 'wake-model'
     wake_word.model_home = lambda: model
@@ -59,6 +60,7 @@ try {
                                 'boundary_valid': boundary_valid, 'ok': hit == expected and (not hit or boundary_valid)})
     report = {'ok': all(r['ok'] for r in results), 'real_local_kws': True,
               'audio': 'synthetic Windows SAPI, not a user microphone', 'results': results}
+    args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(json.dumps(report, ensure_ascii=False, indent=2)+'\n', 'utf-8')
     print(json.dumps(report, ensure_ascii=True))
     assert report['ok'], 'See the report: a positive or negative synthetic sample failed'

@@ -12,7 +12,6 @@ is rejected. Thread does not force cancellation; The handler must manage its own
 from collections import deque
 from dataclasses import dataclass, field, replace
 from inspect import iscoroutine, iscoroutinefunction
-import json
 import math
 from pathlib import Path
 from threading import Condition, Event, Thread, current_thread
@@ -24,7 +23,7 @@ from app.core.contracts import (
     ToolRequest, ToolResult, ToolSpec,
 )
 from app.session.tool_registry import RegistryError, ToolRegistry
-from app.storage.task_journal import JournalError, TaskJournal
+from app.storage.task_journal import JournalError, TaskJournal, request_fingerprint
 
 
 class TaskManagerError(ContractError):
@@ -58,12 +57,6 @@ def _snapshot(task: Task) -> Task:
     """The external code cannot change the internal record by changing the state copy."""
     return replace(task, request=_copy_request(task.request),
                    result=_copy_result(task.result) if task.result is not None else None)
-
-
-def _fingerprint(request: ToolRequest) -> str:
-    """Request representation that detects content change, regardless of field order."""
-    return json.dumps(request.to_dict(), sort_keys=True, separators=(",", ":"),
-                      ensure_ascii=False, allow_nan=False)
 
 
 def _timeout(value: float | None) -> None:
@@ -179,7 +172,7 @@ class TaskManager:
         If the same user uses the same ID for different request, he will get an error.
         """
         owned = self._registry.validate_request(request)
-        fingerprint = _fingerprint(owned)
+        fingerprint = request_fingerprint(owned)
         key = (owned.principal, owned.request_id)
         with self._condition:
             if self._closing:
@@ -192,11 +185,12 @@ class TaskManager:
                 return _snapshot(entry.task)
             if self._journal is not None:
                 try:
-                    archived = self._journal.find(*key)
+                    record = self._journal.find(*key)
                 except JournalError:
                     self._journal_error()
-                if archived is not None:
-                    if _fingerprint(archived.request) != fingerprint:
+                if record is not None:
+                    archived, original_fingerprint = record
+                    if original_fingerprint != fingerprint:
                         raise TaskManagerError("request_conflict", "Request id has different content")
                     return _snapshot(archived)
             if self._uncertain:
@@ -231,7 +225,8 @@ class TaskManager:
                 except JournalError:
                     self._journal_error()
                 if archived is not None and archived.status.terminal:
-                    return _Entry(task=archived, fingerprint=_fingerprint(archived.request))
+                    # Disk receipts are read-only; their redacted request is never dispatched.
+                    return _Entry(task=archived, fingerprint='')
         raise TaskManagerError("unknown_task", "Task id is not known")
 
     def _journal_error(self) -> NoReturn:

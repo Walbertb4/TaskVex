@@ -23,7 +23,8 @@ from app.tools.local import windows_apps
 def main():
     """verify request line Open/accept/replay/restart; use shutdown authority."""
     parser = argparse.ArgumentParser()
-    parser.add_argument("--report", type=Path, required=True)
+    parser.add_argument("--report", type=Path,
+                        default=Path(__file__).resolve().parents[2] / 'logs/reports/apps-open-smoke.json')
     args = parser.parse_args()
     report, launches = {}, []
     original_start = windows_apps.start_notepad
@@ -67,6 +68,7 @@ def main():
             os.environ.pop("TASKVEX_HOME", None)
         else:
             os.environ["TASKVEX_HOME"] = original_home
+    args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps(report, ensure_ascii=True))
 

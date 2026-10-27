@@ -50,5 +50,7 @@ Thumbs.db
 Desktop.ini
 $RECYCLE.BIN/
 *.log
+# Raw development output can contain local paths or diagnostics; publish only reviewed reports.
+/logs/raw/
 *.tmp
 *.bak

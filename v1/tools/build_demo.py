@@ -61,7 +61,9 @@ def build():
             env=environment,timeout=90,check=True)
         result = json.loads(report.read_text(encoding='utf-8'))
         if not result['ok']:raise RuntimeError('Packaged smoke failed')
-        (work/'smoke.json').write_text(json.dumps(result,indent=2),encoding='utf-8')
+        evidence = ROOT.parent/'logs'/'reports'/'demo-build-smoke.json'
+        evidence.parent.mkdir(parents=True, exist_ok=True)
+        evidence.write_text(json.dumps(result,indent=2),encoding='utf-8')
     archive = Path(shutil.make_archive(str(output/'TaskVexDemo-Windows-x64'),'zip',output,'TaskVexDemo'))
     digest = sha256(archive.read_bytes()).hexdigest()
     archive.with_suffix('.zip.sha256').write_text(digest+'  '+archive.name+'\n',encoding='ascii')

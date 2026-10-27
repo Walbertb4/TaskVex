@@ -1,0 +1,47 @@
+{
+  "date": "2026-10-27",
+  "stage": "7.P1",
+  "scope": "Private durable task receipts and schema-1 migration",
+  "implementation": [
+    "Content-free request/result receipts; full current results stay in RAM",
+    "Versioned SHA256 request fingerprints preserve conflicts and replay IDs",
+    "Historical payload unavailable marker cannot grant fresh model targets",
+    "Atomic legacy conversion preserves UNKNOWN and acknowledgements; no raw backup",
+    "Secure deletion and durable pending-VACUUM cleanup gate before execution",
+    "Existing logical-session memory proposal provenance survives task payload eviction"
+  ],
+  "validation": {
+    "pytest_focused_passed": 215,
+    "pytest_full_passed": 1290,
+    "pytest_full_seconds": 106.3,
+    "pyright_errors": 0,
+    "pyright_warnings": 0,
+    "native_phases_passed": 11,
+    "compileall": true,
+    "pip_check": "No broken requirements found"
+  },
+  "privacy_tests": [
+    "Synthetic marker absent from live database and SQLite sidecars",
+    "Legacy raw payload migration, replay, acknowledged UNKNOWN and no raw backup",
+    "Transaction rollback after injected migration failure",
+    "Cleanup failure leaves a durable pending gate and blocks worker startup",
+    "Real child-process exit during migration followed by safe restart",
+    "Historical model reads grant no current memory target",
+    "Memory proposal replay after RAM eviction produces no second append"
+  ],
+  "initial_failures": [
+    "A new test passed a positional argument to keyword-only create_core; corrected to temporary TASKVEX_HOME",
+    "Old bridge/native tests expected full historical payloads; updated to explicit private receipts",
+    "Type check required narrowing an optional result in a new test; fixed"
+  ],
+  "native_evidence": "private-journal-native.json",
+  "limits": [
+    "No paid API or actual pre-existing user-profile migration",
+    "SHA256 equality digest is not encryption; metadata and low-entropy guesses remain possible",
+    "Existing external backups/provider history/OS snapshots/forensic filesystem copies are not erased",
+    "Schema-1 builds cannot reopen migrated profiles; do not delete journal to downgrade",
+    "Disk metadata grows; no new retention/pruning policy",
+    "Earlier intermittent native startup/teardown issue not proven fixed",
+    "No demo rebuild, commit or push; manual acceptance pending; 7.P2 not started"
+  ]
+}

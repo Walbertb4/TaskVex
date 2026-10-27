@@ -47,8 +47,12 @@ Credentials the key. Skills/routines use localStorage; clocks/chat context use R
 Profile OS locks prevent a second native app or persistent core worker on the same
 profile. Distinct profiles are independent; direct scripts must respect ownership.
 
-The unencrypted tasks/tasks.sqlite3 journal retains historical results, including
-old note/personal-proposal text. The 256-record limit bounds active work/RAM, not
+The unencrypted tasks/tasks.sqlite3 schema-2 journal retains IDs/status and request
+fingerprints, not note/message/file/proposal contents. Disk reads explicitly lack
+historical payloads; bounded current RAM results remain available. Schema 1 migrates
+before execution without losing replay keys or UNKNOWN review; older builds cannot
+open migrated profiles. External backups/provider history are not erased.
+The 256-record limit bounds active work/RAM, not
 lifetime tasks. Unknown outcomes still block new tools after restart. The journal
 is not part of JSON backup; deleting it removes replay protection and is not recovery.
 
@@ -56,7 +60,7 @@ is not part of JSON backup; deleting it removes replay protection and is not rec
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest -q
-.\.venv\Scripts\python.exe tests/native_smoke.py --report ../docs/reports/english-native.json
+.\.venv\Scripts\python.exe tests/native_smoke.py --report ../logs/reports/english-native.json
 ```
 
 Native checks require Windows/WebView2 and use temporary profiles plus synthetic

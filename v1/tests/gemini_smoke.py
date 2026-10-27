@@ -1,6 +1,6 @@
 """Optional true Gemini acceptance; By default it only reads the application catalog.
 
-in v1:python tests/gemini_smoke.py --report ../docs/stage5-gemini-live.json
+in v1:python tests/gemini_smoke.py --report ../logs/reports/gemini-smoke.json
 The key comes from GEMINI_API_KEY or the Windows identity store. Only if --notes is selected
 The synthetic note in the temporary directory is used. Actual user notes are not sent.
 Once imported, the script does not initiate a network request, file write, or model session.
@@ -29,7 +29,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="TaskVex optional live Gemini acceptance")
     parser.add_argument("--notes", action="store_true", help="Use only a temporary synthetic note")
     parser.add_argument("--model", default=DEFAULT_MODEL, help="Generate Content text model; not a Live model")
-    parser.add_argument("--report", type=Path)
+    parser.add_argument("--report", type=Path,
+                        default=Path(__file__).resolve().parents[2] / 'logs/reports/gemini-smoke.json')
     args = parser.parse_args()
     key_error = False
     try:
@@ -78,6 +79,7 @@ def main() -> int:
             else:
                 os.environ["TASKVEX_HOME"] = original_home
     if args.report:
+        args.report.parent.mkdir(parents=True, exist_ok=True)
         args.report.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps(report, ensure_ascii=True))
     return 0 if report["ok"] else 1

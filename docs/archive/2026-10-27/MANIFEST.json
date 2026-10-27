@@ -1,0 +1,51 @@
+{
+  "date": "2026-10-27",
+  "source_revision": "79b5a041aa6c4497cd38c6894f48e5dc6e8da1c4",
+  "files": [
+    {
+      "source_path": "AGENTS.md",
+      "snapshot_path": "AGENTS.md",
+      "sha256": "0e4bd2d0598aa34d94f1ea83434e880b5e6bf61792d95222fe4c1f2ffd7bee05"
+    },
+    {
+      "source_path": "docs/ARCHITECTURE.md",
+      "snapshot_path": "docs/ARCHITECTURE.md",
+      "sha256": "6af0dee223891f44edb77f28d10b7ca1d01bafb8314ba5d4e80cb8fdca61eaf2"
+    },
+    {
+      "source_path": "docs/AUDIT.md",
+      "snapshot_path": "docs/AUDIT.md",
+      "sha256": "0183dedc3e2a2cacee56a1ff3141304c166aacc14e524053a855e2f9f61db172"
+    },
+    {
+      "source_path": "docs/CHANGELOG.md",
+      "snapshot_path": "docs/CHANGELOG.md",
+      "sha256": "da17fab3416678fd7a38b6c12a345ecef87692e593472c8cbf75048e7fb7aab3"
+    },
+    {
+      "source_path": "docs/COMMANDS.md",
+      "snapshot_path": "docs/COMMANDS.md",
+      "sha256": "08a9d7e8d1ca68e40cac4327369b43844682485ef72a57247e27ad5438d8858c"
+    },
+    {
+      "source_path": "docs/PLAN.md",
+      "snapshot_path": "docs/PLAN.md",
+      "sha256": "0862203b1fe66e294a6fd337caa629ddeb2df7b0041214853dee22aba286de86"
+    },
+    {
+      "source_path": "docs/README.md",
+      "snapshot_path": "docs/README.md",
+      "sha256": "3b2dc8c903467c7334828e24c421d64b6b207ad7819ac910c2d97c602f2e6a57"
+    },
+    {
+      "source_path": "docs/THIRD_PARTY_NOTES.md",
+      "snapshot_path": "docs/THIRD_PARTY_NOTES.md",
+      "sha256": "83d904fae706ff235cb4d56b94de4b6928d238a50f585275f7ad8ceab5338832"
+    },
+    {
+      "source_path": "docs/UI_BACKEND_CONTRACT.md",
+      "snapshot_path": "docs/UI_BACKEND_CONTRACT.md",
+      "sha256": "339570a7eae405b86a39b458f6f903ffe56352861cbce7b2d469c7d3ffdcc084"
+    }
+  ]
+}

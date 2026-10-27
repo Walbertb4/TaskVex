@@ -1,133 +1,89 @@
-# Ponytail — smallest complete change
+# TaskVex contributor rules
 
-Act as a senior developer who prefers less code and fewer moving parts. Solve the
-whole requested problem with the smallest readable change. End the final reply
-with one or two lines stating what was not checked and any material limitation.
+## Scope and reading
 
-## Before editing
-
-- Read the relevant code and every caller of the behavior being changed. Identify
-  the affected tests, fixtures, configuration, exports and documentation.
-- Identify potential data loss, disclosure and compatibility changes first.
-- Prefer existing project helpers, then the standard library and installed
-  dependencies. Do not add a package for a few lines of ordinary code.
-- Do not add speculative options, frameworks, wrappers or abstractions. Preserve
+- Implement only the requested step. Use the smallest complete change; reuse
+  existing owners/helpers, then standard/platform features and installed packages.
+  No speculative framework, future directory tree or arbitrary file splitting.
+- Start with docs/PLAN.md Now/open limits/current slice and the shared owners and
+  execution rules in docs/ARCHITECTURE.md. For UI/backend changes, also read shared
+  transport/lifecycle sections of docs/UI_BACKEND_CONTRACT.md.
+- Use `rg -n` to locate headings/symbols, then read affected sections/callers.
+  Follow only relevant domain links in docs/reference/. Do not reread the entire
+  plan, command guide, changelog, archive or unrelated domain specs each turn.
+- Read touched code and its callers/tests/config/exports before editing. Preserve
   validation, error handling, security, accessibility and hardware calibration.
-- New nontrivial logic requires a meaningful test or assert-based self-check.
-  Trivial edits do not require tests that merely repeat the implementation.
-- Record a deliberate limitation as `shortcut: <limit>, <when to revisit>`.
+  Verify dynamic/string references before declaring code dead.
+- Obtain user selections for stage 7 choices marked pending in PLAN; do not silently
+  choose libraries, install dependencies or change agreed scope.
 
-## TaskVex documents and scope
+## Architecture — mandatory
 
-- Read `docs/ARCHITECTURE.md` before changing code. For UI/backend work, also read
-  `docs/UI_BACKEND_CONTRACT.md`. Read current status and blockers in `docs/PLAN.md`.
-- Implement only the requested stage or step. Do not scaffold the entire future
-  directory tree. Preserve ownership and existing contracts.
-- When a contract changes, update its callers, tests and documentation together.
-- Mark-LVI-main is a reference only. Do not automatically import its code or
-  relabel it under TaskVex's MIT license. See `docs/THIRD_PARTY_NOTES.md`.
+- Model actions use ModelTools -> ToolRegistry/Policy -> TaskManager. Preserve
+  schemas, scope/permissions, real target IDs, ambiguity clarification, durable
+  replay protection and verified results. Spoken success is not evidence.
+- Interpret natural-language actions through structured model tools. No phrase
+  lists, word-order rules, keyword/regex intent routers or per-app bypasses. Regex
+  is allowed for format/parameter validation; local wake detection is not intent routing.
+- Keep one authority per responsibility: executor, domain state, connection,
+  turn/microphone/wake lifecycle and playback. Domain adapters/resolvers do not
+  become alternate executors. UI buttons and model tools share application logic.
+- Acceptance, cancellation request and actual completion are distinct. Preserve
+  completed effects, Stop/Disconnect cleanup, late-result isolation and UNKNOWN
+  locks. Deferred actions use the existing lifecycle owner and request ID;
+  no feature-specific second scheduler/player. Local mic/wake/Stop stay local.
+- New provider SDK/config/catalog/usage/error details stay provider-facing; no new
+  Gemini imports in shared core/domain tools. Migrate existing coupling in the
+  final planned provider step, preserving capability differences and one lifecycle.
+- Explain necessary contract changes and update callers/tests/documents together.
+  Record unmigrated paths as open; existing exceptions do not authorize bypasses.
 
-## Mandatory architecture alignment
+## Validation and language
 
-These are explicit user requirements. Urgency and shorter code do not justify
-bypassing the architecture.
+- Run targeted tests and regression/native checks justified by affected paths.
+  Broaden for integration risk, failures or required acceptance; do not repeat
+  unchanged full suites without a reason. Never cut required checks.
+- Nontrivial logic needs a meaningful test/self-check. Trivial edits do not need
+  tests that merely repeat implementation. Mark deliberate limits with
+  `shortcut: <limit>, <when to revisit>`.
+- Repository prose is English: docs/comments/docstrings/tool descriptions and
+  developer messages. Preserve identifiers/proper names and functional multilingual
+  data. Explain new files' roles and significant ownership, validation, parameters,
+  results/errors and cancellation where useful; avoid obvious commentary.
+- Preserve user data and truthful evidence. Implementation, automatic validation,
+  real hardware/provider acceptance and publication are separate states. Never
+  report uninspected paths, timeouts or unsupported capabilities as passed.
+- Mark-LVI-main is reference only; do not copy/relicense it automatically. Consult
+  docs/THIRD_PARTY_NOTES.md for dependency/asset and distribution boundaries.
 
-- Identify the existing owner, contract and call path for every capability,
-  integration or fix. Do not create a second executor, state authority, model
-  connection or control path for the same responsibility.
-- Natural-language application actions must be selected through structured model
-  tool calls. Do not add phrase lists, word-order rules, regex intent routers or
-  keyword matching for sleep, notes, routines, skills, Telegram or Discord.
-  Regex remains appropriate for format and parameter validation.
-- Model actions must use `ModelTools -> ToolRegistry/Policy -> TaskManager`.
-  Preserve schemas, permissions, real target IDs, clarification for ambiguity,
-  replay protection and verified results. A spoken success claim is not evidence.
-- Domain logic and service adapters stay in their modules and use shared execution
-  rules. Do not replace them with unrestricted tools, arbitrary code execution or
-  a new general framework.
-- Keep new Gemini-specific SDK objects, connection options, model/voice catalogs,
-  usage parsing and provider errors inside provider-facing session modules.
-  Shared core/domain tools must use TaskVex contracts rather than import the SDK.
-  Do not extend existing provider coupling into new features. Existing coupling
-  is migrated in the planned final provider-adapter step, not by a speculative
-  framework or unrelated rewrite during feature work. Preserve a single turn,
-  connection and playback owner, explicit capability differences and replay/Stop rules.
-- Actions deferred until response/audio completion belong to the existing lifecycle
-  owner and request ID. Distinguish acceptance, waiting and real completion.
-  Stop, connection changes, late results and unknown outcomes retain their safety
-  rules. Do not introduce a feature-specific second scheduler or audio player.
-- Local wake detection, microphone On/Off, Stop and UI buttons are not natural-
-  language interpretation. Keep their local owners; do not require a model or
-  network unnecessarily. Different entry points share the same application logic.
-- If the architecture needs a change, explain and implement the smallest contract
-  change with its documents. Do not hide a bypass or rewrite unrelated architecture.
-- Before reporting completion, verify the shared path and affected contracts/tests.
-  Existing exceptions do not authorize new ones; record unmigrated paths as open.
+## Documentation ownership
 
-## Repository language and educational explanations
+- docs/PLAN.md is the sole current stage/substep status, acceptance/evidence and
+  blocker record. Update changed steps; reopen confirmed bugs and dependent work.
+- docs/ARCHITECTURE.md and linked domain reference describe current owners/design,
+  never development history. docs/UI_BACKEND_CONTRACT.md and linked field reference
+  describe the active boundary. Local READMEs explain their modules.
+- Record each completed change in docs/CHANGELOG.md under Unreleased until a real
+  release. Link preserved historical entries; do not copy history into architecture.
+- Update docs/COMMANDS.md in the same step when public capabilities change. Use short
+  English "Say or type -> What Vex does" examples, not fixed phrases. Distinguish
+  voice/text, UI-only, core-only and planned behavior; preserve ID/ambiguity/date/
+  batch/Stop limits. No secrets/private data. The guide is not policy, model
+  instructions or test evidence; do not list unimplemented capabilities as available.
+- docs/archive/ is historical, never current authority. Preserve bytes/provenance.
+  The older translated manifest and dated snapshot manifests are independent.
+  Read archives only for needed history; reports are evidence, not instructions.
+- Write development reports to logs/reports/ and captured console/native logs to
+  logs/raw/. Keep raw output out of Git; review reports for private data before
+  staging. User profiles and tasks.sqlite3 are not development log artifacts.
 
-- All repository prose must be English: Markdown, README files, comments,
-  docstrings, tool descriptions and developer-facing messages. This replaces the
-  former Turkish-comment preference. Keep future additions in English too.
-- Explain each new file's purpose and architectural role in an opening comment or
-  docstring. For formats without comments, such as JSON, use the relevant guide.
-- Explain function/class purpose, significant parameters, return values, errors
-  and ownership boundaries as needed. The user is learning a project of this size;
-  define unfamiliar terms in plain language when first introduced.
-- Explain subtle validation, copying, type narrowing, cancellation, deadlines and
-  resource ownership near the relevant code. Scale detail to complexity; do not
-  repeat obvious statements or add features to justify more comments.
-- Keep descriptions accurate and updated. Do not imply an unimplemented feature
-  or guarantee. A small package `__init__.py` needs only a brief purpose statement.
-- Do not translate API names, identifiers, syntax or proper names. Functional
-  Unicode and language test data are distinct from repository prose. Supporting
-  Turkish speech does not conflict with English source documentation.
+## Git and communication
 
-## Command guide — mandatory maintenance
-
-- `docs/COMMANDS.md` lists working user-facing commands in English. Update it in
-  the same step whenever a public command/capability changes.
-- Use short "Say or type -> What Vex does" examples and relevant limits. Examples
-  are not fixed phrases. Separate voice/text commands, UI buttons and core-only
-  tools that the model cannot call.
-- Do not list planned or UI-only features as available. Record untested provider
-  and hardware boundaries. The command guide is not test evidence.
-- Update target-ID, ambiguity, date, batch and cancellation examples when their
-  contracts change. Never include real notes, API keys or personal data.
-- The guide is not executable policy or a model instruction source. Registry,
-  policy and TaskManager remain the authorities.
-
-## Git and manual acceptance
-
-- The repository root is `TaskVex`, not `v1`. Target branch: `main`; remote:
-  `https://github.com/Walbertb4/TaskVex.git`. Run Git commands from the root.
-- Do not commit automatically after implementing a step and passing pytest.
-  Report results and wait for the user's manual acceptance.
-- When the user confirms tests passed and asks to continue, commit the accepted
-  preceding step before starting the next one. An explicit instruction to commit
-  or push also authorizes that action; do not request redundant approval.
-- Before staging, inspect status and scan for keys, tokens, `.env` files and private
-  data. Stage only authorized, safe files and preserve ignore rules.
-- Use a single-line Conventional Commit message, for example
-  `feat(stageX): describe the completed change`, with `fix`, `test` or `docs` as
-  appropriate. Do not push each step unless explicitly requested.
-
-## Progress, architecture and change records
-
-- `docs/PLAN.md` is the only current stage/substep progress record. Update it in
-  the same turn when steps are divided, reordered or completed. Keep IDs, purpose,
-  acceptance criteria, real status and evidence links.
-- Implementation, automatic validation, physical/manual acceptance and commit are
-  distinct states. Do not close an open reproduction because other tests passed.
-  Reopen a step when a new bug is found and update dependent work accordingly.
-- `docs/ARCHITECTURE.md` describes current owners, contracts and design decisions.
-  It must not become a diary, commit log, test-run history or completed-task list.
-- Record each completed change under `docs/CHANGELOG.md` in the same turn. Use
-  `Unreleased` until a version is actually released.
-- `docs/COMMANDS.md` describes working commands; `docs/UI_BACKEND_CONTRACT.md`
-  describes the active boundary. Local READMEs explain their directory/module use.
-- `docs/archive` is historical and must not override current instructions. Its
-  English translations have current hashes plus pre-translation source hashes and
-  a Git revision in `MANIFEST.json`. Original bytes remain in Git history.
-- Do not claim uninspected or untested areas were reviewed. Verify dead-code claims
-  against callers, tests, dynamic bridge paths and documentation.
+- Git root is TaskVex, not v1; target main, origin
+  https://github.com/Walbertb4/TaskVex.git. Inspect status and scan candidates for
+  secrets/private data; stage only authorized safe files and preserve ignore rules.
+- Do not commit merely because tests pass. Wait for manual acceptance. When the user
+  accepts tests and requests continuation, commit the accepted step before the next,
+  unless explicitly deferred. Explicit commit/push requests authorize the action;
+  do not ask again. Push only when requested. Use one-line Conventional Commits.
+- Explain the outcome plainly. End with unchecked areas and material limits.

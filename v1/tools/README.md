@@ -22,4 +22,4 @@ licensing is unresolved; the optional setup command uses the existing verified
 upstream downloader. See the package README.txt for prerequisites and usage.
 
 This does not certify clean PCs, real accounts/microphones or frozen restart.
-Evidence: docs/reports/demo-build-checks.json at repository root.
+Evidence: logs/reports/demo-build-checks.json at repository root.

@@ -43,4 +43,4 @@ Native coverage is in tests/native_smoke.py and native_scenarios.py. It uses the
 core/WebView2 with synthetic providers/PCM across eleven phases, including unknown
 startup review with settings/results/replay keys preserved. Physical microphone,
 echo, device handover and live-account acceptance remain separate. Record changes
-in docs/CHANGELOG.md and actual evidence under docs/reports.
+in docs/CHANGELOG.md and actual evidence under logs/reports.

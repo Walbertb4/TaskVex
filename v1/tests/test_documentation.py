@@ -30,6 +30,7 @@ def test_translated_archive_integrity_and_source_provenance():
 def test_current_document_links_resolve_inside_repository():
     """current/followed guides only: historical archives and virtual media are not scanned."""
     sources = list(ROOT.glob('*.md')) + list((ROOT / 'docs').glob('*.md'))
+    sources += list((ROOT / 'docs/reference').glob('*.md')) + [ROOT / 'logs/README.md']
     sources += [ROOT / name for name in ('v1/README.md', 'v1/ui/README.md', 'v1/ui/tests/README.md')]
     for source in sources:
         text = source.read_text(encoding='utf-8')
@@ -39,3 +40,12 @@ def test_current_document_links_resolve_inside_repository():
             target = (source.parent / unquote(link.split('#', 1)[0])).resolve()
             assert target.is_relative_to(ROOT), (source, link)
             assert target.exists(), (source, link)
+
+
+def test_dated_documentation_snapshot_is_unchanged():
+    """Dated copies retain original bytes independently of translated history."""
+    snapshot = ROOT / 'docs/archive/2026-10-27'
+    manifest = json.loads((snapshot / 'MANIFEST.json').read_text(encoding='utf-8'))
+    for record in manifest['files']:
+        target = snapshot / record['snapshot_path']
+        assert hashlib.sha256(target.read_bytes()).hexdigest() == record['sha256']

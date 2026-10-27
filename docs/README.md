@@ -1,20 +1,24 @@
 # Documentation map
 
-This directory contains current guides, contracts, audits and test evidence.
+Start with the task, not every document. Use `rg -n '^#{1,4} ' docs/FILE.md` to
+find sections, then read the affected section and its linked reference.
 
-| Document | Purpose |
+| Document | Read when |
 |---|---|
-| [Architecture](ARCHITECTURE.md) | Current owners, design and planned boundaries |
-| [Plan](PLAN.md) | Single current stage/substep status and acceptance record |
-| [Changelog](CHANGELOG.md) | Changes; not a substitute for architecture |
-| [Commands](COMMANDS.md) | Working user-facing requests and limits |
-| [UI/backend contract](UI_BACKEND_CONTRACT.md) | Transport, data ownership and completion rules |
-| [Audit](AUDIT.md) | Maintenance findings, remaining risks and customization gaps |
-| [Third-party notes](THIRD_PARTY_NOTES.md) | Dependency and asset licensing boundaries |
-| [Archive manifest](archive/MANIFEST.json) | Current hashes and pre-translation provenance for 133 historical files |
+| [Plan](PLAN.md) | Now, open limits and current step; sole current progress record |
+| [Architecture](ARCHITECTURE.md) | Shared execution, owners and persistence before code changes |
+| [Domain architecture](reference/DOMAIN_ARCHITECTURE.md) | Only the domain being changed: notes/clocks/audio/memory, measurements/media/weather or visual permissions |
+| [UI/backend contract](UI_BACKEND_CONTRACT.md) | Shared transport/readiness, events and lifecycle for boundary changes |
+| [UI domain fields](reference/UI_DATA_FIELDS.md) | Only the affected memory/usage/telemetry/media/weather fields |
+| [Commands](COMMANDS.md) | A working public command changes or usage instructions are needed |
+| [Changelog](CHANGELOG.md) | Record completed changes or inspect recent history; not startup context |
+| [Third-party notes](THIRD_PARTY_NOTES.md) | Dependency, asset, redistribution and license changes |
+| [Audit history](AUDIT.md) | Historical maintenance evidence, not current progress |
+| [Development logs](../logs/README.md) | Structured reports, ignored console output and capture commands |
+| [2026-10-27 snapshot](archive/2026-10-27/README.md) | Exact pre-cleanup files and independent hash manifest |
+| [Older translated archive manifest](archive/MANIFEST.json) | Integrity/provenance of the original 133 historical files |
 
-reports/ contains recorded checks. Synthetic results do not certify real accounts
-or physical devices. archive/ contains English translations of historical files;
-its reports are not new test runs or verbatim original transcripts. Original bytes
-remain in Git history at the manifest's source revision. Historical material does
-not override current instructions. Local READMEs stay beside their modules.
+[logs/](../logs/README.md) holds evidence, not rules. Synthetic results do not certify real accounts
+or devices. Archives never override current guides; preserve their bytes and read
+only for a specific historical question. Local READMEs remain beside modules.
+The working command guide remains complete.

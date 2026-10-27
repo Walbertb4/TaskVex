@@ -570,8 +570,11 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 wait_until(lambda: window.evaluate_js("document.getElementById('nativeIssue').hidden"))
                 wait_until(lambda: js("const t=await import('./js/clocks.js');return t.nativeClocksActive();"))
                 assert not api._core.uncertain
-                assert api._core.get(task.task_id) == task
-                assert api._core.submit(task.request) == task
+                historical = api._core.get(task.task_id)
+                assert historical.task_id == task.task_id and historical.status == task.status
+                assert historical.request.arguments == {}
+                assert historical.result.evidence == {'historical': True, 'content_available': False}
+                assert api._core.submit(task.request) == historical
                 assert api._store.path.read_bytes() == captured['original_settings']
                 assert (home / 'notes.json').read_bytes() == captured['original_notes']
                 assert not list(home.glob('settings.json.*.corrupt'))
@@ -1656,7 +1659,8 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
 def run() -> None:
     """Limit two separate native processes; Also write the result in the optional report."""
     parser = argparse.ArgumentParser()
-    parser.add_argument("--report", type=Path)
+    parser.add_argument("--report", type=Path,
+                        default=Path(__file__).resolve().parents[2] / 'logs/reports/native-smoke.json')
     parser.add_argument("--phase", choices=["save", "reopen", "notes", "persistence", "export_cancel", "credentials", "chat", "unknown", "corrupt", "schema_invalid", "future"])
     parser.add_argument("--home", type=Path)
     parser.add_argument("--debug", action="store_true")
@@ -1665,6 +1669,10 @@ def run() -> None:
         child(args.home, args.phase, args.debug)
         return
     reports = []
+    log_home = Path(__file__).resolve().parents[2] / 'logs/raw/native'
+    log_home.mkdir(parents=True, exist_ok=True)
+    # Retain phase diagnostics after the temporary synthetic profile is removed.
+    run_logs = Path(tempfile.mkdtemp(prefix='run-', dir=log_home))
     with tempfile.TemporaryDirectory(prefix="taskvex-native-", ignore_cleanup_errors=True) as directory:
         home = Path(directory)
         for phase in ["save", "reopen", "notes", "persistence", "export_cancel", "credentials", "chat", "unknown", "corrupt", "schema_invalid", "future"]:
@@ -1678,7 +1686,7 @@ def run() -> None:
             # Windows venv launcher creates a second Python process. run()
             # Only killing the launcher can leave the pipe open; own test
             # We close our tree together at timeout and read the error record from the file.
-            log = home / f"{phase}.log"
+            log = run_logs / f"{phase}.log"
             phase_home = home / (phase + '-profile') if phase in {'chat', 'unknown'} else home
             with log.open("wb") as output:
                 process = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), "--phase", phase,
@@ -1697,6 +1705,7 @@ def run() -> None:
                 raise RuntimeError(f"{report}\n{log.read_text('utf-8', errors='replace')[-3500:]}")
     result = {"ok": True, "renderer": "edgechromium", "hidden_window": True, "phases": reports}
     if args.report:
+        args.report.parent.mkdir(parents=True, exist_ok=True)
         args.report.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
     # Windows console may not be UTF-8; report file UTF-8, console ASCII-safe.
     print(json.dumps(result, ensure_ascii=True, indent=2))

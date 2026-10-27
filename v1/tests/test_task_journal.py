@@ -6,6 +6,7 @@ Crash points are selected by Event or file flag; There is no random timing.
 
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing
+from dataclasses import replace
 from pathlib import Path
 import os
 import sqlite3
@@ -28,6 +29,17 @@ def manager(home, handler=None, capacity=4):
                        authorize=allow, capacity=capacity, journal_home=home)
 
 
+def assert_history(actual, original):
+    """Execution identity/status survive, while disk reads explicitly lack content."""
+    assert actual.task_id == original.task_id and actual.status == original.status
+    assert actual.request == replace(original.request, arguments={})
+    assert actual.result is not None and original.result is not None
+    assert actual.result.verified == original.result.verified
+    assert actual.result.data is None
+    assert actual.result.evidence == {'historical': True, 'content_available': False}
+    return actual
+
+
 def test_acknowledgement_survives_restart_without_changing_unknown_or_replaying(tmp_path):
     """Review permits future work but preserves the original result and replay identity."""
     calls = []
@@ -47,14 +59,15 @@ def test_acknowledgement_survives_restart_without_changing_unknown_or_replaying(
             document = db.execute('SELECT document FROM tasks WHERE task_id=?', (task.task_id,)).fetchone()[0]
         core.acknowledge_unknown([task.task_id])
         assert not core.uncertain and core.unresolved_tasks() == []
-        assert core.get(task.task_id) == original
-        assert core.submit(request()) == original
+        history = assert_history(core.get(task.task_id), original)
+        assert core.submit(request()) == history
         with closing(sqlite3.connect(core._journal.path)) as db:
             assert db.execute('SELECT document FROM tasks WHERE task_id=?', (task.task_id,)).fetchone()[0] == document
         new = core.submit(request('new'))
         assert core.wait(new.task_id, 5).status == TaskStatus.SUCCEEDED
     with manager(tmp_path, unknown) as core:
-        assert not core.uncertain and core.submit(request()) == original
+        assert not core.uncertain
+        assert_history(core.submit(request()), original)
         with pytest.raises(TaskManagerError) as error:
             core.submit(request(value='changed'))
         assert error.value.code == 'request_conflict'
@@ -87,7 +100,7 @@ def test_acknowledgement_storage_failure_keeps_safety_latch(tmp_path, monkeypatc
         with pytest.raises(TaskManagerError) as error:
             core.acknowledge_unknown([task.task_id])
         assert error.value.code == 'journal_unavailable' and core.uncertain
-        assert core.get(task.task_id) == task
+        assert_history(core.get(task.task_id), task)
     with manager(tmp_path) as core:
         assert core.uncertain and core.unresolved_tasks()
 
@@ -124,16 +137,16 @@ def test_more_than_256_jobs_replay_and_restart_keep_ids_and_bounded_ram(tmp_path
             assert core.wait(task.task_id, 5).status == TaskStatus.SUCCEEDED
             assert len(core._entries) <= capacity and len(core._requests) <= capacity
         assert first.task_id not in core._entries
-        assert core.submit(request(value=0)) == original
-        assert core.get(first.task_id) == original
-        assert core.wait(first.task_id, 0) == original
-        assert core.cancel(first.task_id) == original
+        history = assert_history(core.submit(request(value=0)), original)
+        assert core.get(first.task_id) == history
+        assert core.wait(first.task_id, 0) == history
+        assert core.cancel(first.task_id) == history
         with pytest.raises(TaskManagerError, match='different content'):
             core.submit(request(value=999))
         assert len(calls) == 300
     with manager(tmp_path, lambda a, c: pytest.fail('replayed old effect')) as core:
-        assert core.submit(request(value=0)) == original
-        assert core.get(first.task_id) == original
+        assert_history(core.submit(request(value=0)), original)
+        assert_history(core.get(first.task_id), original)
         with pytest.raises(TaskManagerError) as error:
             core.submit(request(value=1))
         assert error.value.code == 'request_conflict'
@@ -247,7 +260,7 @@ def test_corrupt_history_fails_closed_and_is_preserved(tmp_path, damage):
         path.write_bytes(b'broken database')
     else:
         with closing(sqlite3.connect(path)) as db, db:
-            db.execute('PRAGMA user_version=2' if damage == 'version'
+            db.execute('PRAGMA user_version=99' if damage == 'version'
                        else "UPDATE tasks SET document='{}'")
     before = path.read_bytes()
     with pytest.raises(JournalError):
@@ -285,7 +298,7 @@ def test_persisted_results_remain_history_not_restored_ram_resources(tmp_path, m
         first = core.wait(core.submit(req).task_id, 5)
         assert first.status == TaskStatus.SUCCEEDED
     with create_core() as core:
-        assert core.submit(req) == first
+        assert_history(core.submit(req), first)
         listed = core.wait(core.submit(ToolRequest(request_id='fresh-list', source='desktop',
                               principal='local-user', tool='clocks.list')).task_id, 5)
         assert listed.result is not None

@@ -279,6 +279,33 @@ def test_auto_save_replay_keeps_one_fact_and_old_source(bridge):
     assert stored(bridge._store)['prof']['pMem'].count('Name: Ada')==1
 
 
+def test_proposal_replay_after_payload_eviction_does_not_add_again(bridge):
+    """Host provenance survives in the model session, not in the private journal."""
+    setup(bridge._store)
+    data = stored(bridge._store)
+    data['prof']['pMemoryConfirm'] = False
+    bridge._store.write(data)
+    bridge._core._capacity = 1
+    tools = ModelTools(bridge._core, principal='local-user', session_id='evicted-proposal',
+                       allowed_tools=('memory.read', 'memory.propose'))
+    tools.begin_turn('My name is Ada')
+    read = tools.submit({'id': 'read', 'name': 'memory.read', 'arguments': {}})
+    snapshot = tools.result(read.task_id, timeout=3)['result']['data']['snapshot']
+    call = {'id': 'save', 'name': 'memory.propose',
+            'arguments': {'text': 'Name: Ada', 'expected_snapshot': snapshot}}
+    task = tools.submit(call)
+    assert tools.result(task.task_id, timeout=3)['status'] == 'succeeded'
+    before = bridge._store.path.read_bytes()
+    tools.begin_turn('Different source')
+    read = tools.submit({'id': 'evict', 'name': 'memory.read', 'arguments': {}})
+    tools.result(read.task_id, timeout=3)
+    assert task.task_id not in bridge._core._entries
+    assert tools.submit(call).task_id == task.task_id
+    result = tools.result(task.task_id, timeout=3)
+    assert result['result']['evidence']['content_available'] is False
+    assert bridge._store.path.read_bytes() == before
+
+
 def test_auto_save_failure_never_claims_persisted_success(bridge,monkeypatch):
     from app.storage.json_store import StoreError
     setup(bridge._store)

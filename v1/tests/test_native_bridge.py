@@ -84,8 +84,11 @@ def test_valid_settings_with_unknown_task_require_review_not_settings_repair(bri
     result = bridge.event('acknowledge_tasks', {'confirmed': True, 'task_ids': [task.task_id]})
     assert result == {'ok': True, 'completed': True} and bridge._ready
     assert bridge._store.path.read_bytes() == original
-    assert bridge._core.get(task.task_id) == task
-    assert bridge._core.submit(task.request) == task
+    historical = bridge._core.get(task.task_id)
+    assert historical.task_id == task.task_id and historical.status == task.status
+    assert historical.request.arguments == {}
+    assert historical.result.evidence == {'historical': True, 'content_available': False}
+    assert bridge._core.submit(task.request) == historical
     assert bridge.event('retry_startup')['ok']
 
 

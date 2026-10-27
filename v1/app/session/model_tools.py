@@ -105,6 +105,8 @@ class ModelTools:
             raise ContractError("Model tool is not registered")
         self._core, self._principal, self._session_id = core, principal, session_id
         self._calls: dict[str, str] = {}
+        # Immutable host provenance stays in this logical session, never on disk.
+        self._proposal_sources: dict[str, tuple[str, bool]] = {}
         self._user_text = ""
         self._memory_decision_id: str | None = None
         self._proposed_this_turn = False
@@ -220,6 +222,7 @@ class ModelTools:
                 or call['arguments'].get('id') != self._memory_decision_id):
             raise ContractError('Read the pending suggestion in this user turn; only a later explicit user answer can decide it')
         arguments = call['arguments']
+        proposal_source = None
         if name == 'memory.propose':
             if not isinstance(arguments, dict) or 'source_verified' in arguments:
                 raise ContractError('Memory source evidence belongs to the host')
@@ -228,11 +231,11 @@ class ModelTools:
             source = self._user_text
             proof = bool(source.strip())
             if replay:
-                task_id = next(key for key, value in self._calls.items() if value == call_id)
-                original = self._core.get(task_id).request.arguments
-                proof = original.get('source_verified', False)
-                source = original.get('source_quote', '')
+                if call_id not in self._proposal_sources:
+                    raise ContractError('Original memory source is unavailable; do not repeat the proposal')
+                source, proof = self._proposal_sources[call_id]
             arguments = {**arguments, 'source_quote': source, 'source_verified': proof}
+            proposal_source = (source, proof)
         # Prevents JSON encoding of the pair ('ab','c') from being confused with ('a','bc').
         # The same provider call ID should not conflict in separate model sessions.
         key = sha256(json.dumps([self._session_id, call_id], ensure_ascii=True).encode()).hexdigest()
@@ -241,6 +244,8 @@ class ModelTools:
             tool=name, arguments=arguments,
         ))
         self._calls[task.task_id] = call_id
+        if proposal_source is not None and not replay:
+            self._proposal_sources[call_id] = proposal_source
         if not replay:
             if name == 'media.status':
                 self._media_target = None
@@ -292,6 +297,12 @@ class ModelTools:
             task = self._core.wait(task_id, timeout)
         except TimeoutError:
             task = self._core.get(task_id)
+        if task.result is not None and task.result.evidence.get('content_available') is False:
+            # Historical success cannot grant a current target or supply forgotten content.
+            for reads in (self._media_reads, self._memory_reads, self._clock_reads, self._fresh_selections):
+                reads.discard(task_id)
+            return {'id': call_id, 'name': task.request.tool, 'task_id': task.task_id,
+                    'status': task.status.value, 'result': task.result.to_dict()}
         if task_id in self._media_reads and task.status.terminal:
             self._media_reads.discard(task_id)
             if task.result is not None and task.result.verified and task.status.value == 'succeeded':

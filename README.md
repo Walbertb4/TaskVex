@@ -136,7 +136,7 @@ the optional `Setup wake model.cmd` invokes the existing verified upstream setup
 
 The actual EXE passed startup checks and a second check after extracting its ZIP
 to a different directory, without Python environment variables or a model key.
-[Build evidence](docs/reports/demo-build-checks.json). This is not clean-machine,
+[Build evidence](logs/reports/demo-build-checks.json). This is not clean-machine,
 microphone, real-account or all-hardware certification. No signed installer or
 GitHub binary release is provided by the source repository.
 
@@ -153,7 +153,7 @@ Camera/screen frames are not saved to disk, task records or text conversation su
 Already sent images can remain in the provider session context; Camera Off does
 not recall them. Location permission checks do not set the saved weather location.
 
-Native tool requests and results are kept in a local SQLite journal. Reusing
+Native tool execution receipts are kept in a local SQLite journal. Reusing
 the same request ID does not run the action again, including after restart.
 The 256-record limit bounds active work and RAM records, rather than lifetime
 usage; historical records stay on disk. Unknown outcomes block new tools until
@@ -161,9 +161,14 @@ explicit local review. Startup lists the affected tool/task IDs; after checking
 the effects, users can acknowledge uncertainty and continue. This does not turn
 an unknown result into success, undo it or repeat the old action. Settings repair
 is offered for damaged preferences, not unknown tasks.
-The journal is not encrypted, can retain deleted note content and proposed
-personal facts/source messages even after profile memory is cleared, and grows with
-usage. It is not an exactly-once guarantee for external services. Native and
+Schema 2 retains IDs/status and a request fingerprint, not note/file/message bodies
+or personal proposal/source text. Original results remain in bounded RAM; disk
+reads explicitly report unavailable historical content. Existing schema 1 profiles
+migrate before tools start; replay keys and UNKNOWN review remain intact. Do not
+downgrade migrated profiles to schema-1 builds. Metadata is unencrypted, digests
+are not secret storage, and history grows with usage. Migration cannot erase old
+external backups, provider requests or OS/forensic copies. This is not an
+exactly-once guarantee for external services. Native and
 core ownership locks reject a second worker sharing the same data profile.
 
 There are no general latency, memory-footprint or acoustic-accuracy guarantees.
@@ -175,8 +180,8 @@ The latest camera/permission work passed **1,269 Python tests**, **nine JavaScri
 suites**, **25 browser groups**, focused type checking and dependency checks.
 Two targeted native phases verified default-camera permission checks, immediate
 probe cleanup and restart persistence with temporary profiles and synthetic input.
-[Current validation](docs/reports/permissions-checks.json) ·
-[Targeted native evidence](docs/reports/permissions-native.json).
+[Current validation](logs/reports/permissions-checks.json) ·
+[Targeted native evidence](logs/reports/permissions-native.json).
 
 **Earlier camera/permission native runs did not complete cleanly.** They encountered a UI
 startup timeout and a Python.NET/WinForms teardown failure, including a process
@@ -187,22 +192,22 @@ Automatic checks used no paid API or real camera/user content.
 
 Weather and media controls were reported working by the user; precise hardware
 and provider coverage was not separately enumerated. Historical evidence is in
-[weather checks](docs/reports/weather-checks.json),
-[player-volume checks](docs/reports/media-volume-checks.json) and
-[camera checks](docs/reports/camera-checks.json). These checks do not establish
+[weather checks](logs/reports/weather-checks.json),
+[player-volume checks](logs/reports/media-volume-checks.json) and
+[camera checks](logs/reports/camera-checks.json). These checks do not establish
 production readiness, all-player/hardware support or real-account availability.
 
 Startup recovery now distinguishes unknown tasks from invalid settings. Synthetic
 restart tests preserve old results/replay keys, and a focused native test verifies
 explicit review plus notes/clocks readiness. See
-[startup recovery checks](docs/reports/startup-recovery-checks.json).
+[startup recovery checks](logs/reports/startup-recovery-checks.json).
 This correction passed 1,278 Python tests, 119 subsequent focused tests, nine JS
 suites, 26 browser groups, Pyright with zero errors and all eleven native phases.
 The clean native run does not prove earlier intermittent startup/teardown issues
-are eliminated. [Native recovery regression](docs/reports/startup-recovery-native-full.json).
+are eliminated. [Native recovery regression](logs/reports/startup-recovery-native-full.json).
 Unknown tool outcomes still require review and do not clear merely on restart.
 Screen-sharing validation and remaining native/manual limits are recorded in
-[screen sharing checks](docs/reports/screen-sharing-checks.json).
+[screen sharing checks](logs/reports/screen-sharing-checks.json).
 API latency is not measured. The existing portable demo predates these camera
 and permissions changes; it was not rebuilt for this update.
 

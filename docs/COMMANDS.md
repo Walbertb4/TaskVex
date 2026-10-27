@@ -340,9 +340,11 @@ A second native instance using the same data profile is rejected before starting
 its worker/window. Close the existing app first. Separate TASKVEX_HOME profiles
 are independent. A crash releases the OS lock; do not delete the lock file.
 
-Native tool requests keep their IDs and results in a local task journal across
-restarts. A repeated request ID returns its historical result, rather than
-running again. Unfinished started actions become unknown and block new tools;
+Native tool requests keep IDs/status and a request fingerprint in a local journal
+across restarts. A repeated request returns its current RAM result or a historical
+receipt with content unavailable, rather than running again. Schema 1 migrates
+without replay before tools start; do not downgrade the migrated profile. Note,
+message, file and proposal bodies are not stored in schema-2 receipts. Unfinished started actions become unknown and block new tools;
 restarting does not clear that uncertainty. This is separate from conversation
 memory and does not restore timers. There is no lifetime 256-task limit in the
 native app; active work and in-memory records remain bounded. Do not delete the
@@ -432,7 +434,7 @@ The host attaches the actual current user message/transcript as the source;
 Vex does not have to reproduce its wording exactly. Missing user speech
 transcription never authorizes a tool call. In review mode only one candidate waits in RAM; a new one
 replaces it, and restart discards it. Pending candidates are not exported as
-profile memory, but local task history can contain their text. Changed memory or
+profile memory, and private task receipts do not retain their text. Changed memory or
 consent invalidates an old approval. No automatic retry or merge is performed.
 
 
@@ -530,7 +532,7 @@ capture, a browser tab scan or all currently audible sounds. Some apps do not
 publish a media session. No_session is distinct from unavailable/unsupported/
 timeout; missing data must not become a claim that nothing is playing.
 The UI updates every few seconds and clears stale/failed samples. Model reads
-may store returned metadata in the existing task journal; background UI polling
+store content-free execution receipts, not returned media text; background UI polling
 does not journal each sample or send it to a model.
 
 | Say or type → | What Vex does |

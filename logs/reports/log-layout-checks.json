@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-27",
+  "scope": "Development/test output layout only",
+  "moved_reports": 63,
+  "moved_raw_logs": 58,
+  "moved_bytes_sha256_verified": true,
+  "pytest_focused_passed": 6,
+  "cli_help_checks_passed": 4,
+  "syntax_checks": "passed",
+  "current_document_links": "passed",
+  "raw_logs_git_ignored": true,
+  "archives_unchanged": true,
+  "real_provider_used": false,
+  "native_windows_opened": false,
+  "stage7_review_proposals": "Awaiting user approval; not implemented",
+  "limits": [
+    "No full/native regression or demo build",
+    "Historical report payload paths are preserved; see logs/README.md",
+    "Runtime task database, user profiles and app logging unchanged"
+  ]
+}
