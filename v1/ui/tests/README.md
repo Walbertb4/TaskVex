@@ -1,6 +1,6 @@
 # UI regressions
 
-Run these ten synthetic suites from v1, without a real account or physical device:
+Run these eleven synthetic suites from v1, without a real account or physical device:
 
 ```powershell
 node ui/tests/live-audio.mjs
@@ -13,10 +13,11 @@ node ui/tests/shutdown.mjs
 node ui/tests/clocks.mjs
 node ui/tests/catalog.mjs
 node ui/tests/task-permissions.mjs
+node ui/tests/workflow-view.mjs
 ```
 
 They exercise PCM/playback, VAD/levels, transcripts, Stop/unknown, sleep/wake,
-notes/dates, shutdown, clock deletion/themes, catalogs and nonce-bound task consent. The obsolete MediaRecorder
+notes/dates, shutdown, clock deletion/themes, catalogs, task consent and revision-bound workflow Stop. The obsolete MediaRecorder
 path was removed; AudioWorklet regressions remain. Synthetic objects do not certify
 acoustics, real provider access or hardware behavior.
 
@@ -31,7 +32,7 @@ node ui/tests/audit-fixes.mjs
 
 BROWSER_PATH optionally selects Edge/Chromium. The test opens its own local server,
 uses an isolated profile and blocks external requests. It never reads user storage.
-The current 30 groups cover startup unknown review/confirmation, honest status, shared preferences, notes, compatibility
+The current 31 groups cover startup unknown review/confirmation, honest status, shared preferences, notes, compatibility
 storage, memory, usage accounting, system/network/media/weather views and camera
 permission/capture/cleanup with Chromium synthetic video, plus default-device
 permission probes, discarded location, denial and late-grant cleanup. Screen tests
@@ -39,7 +40,8 @@ cover actual click activation, bounded JPEGs, source exclusivity, local preview,
 Off/platform-end/reload cleanup, cancelled/late grants and lifecycle changes.
 Synthetic canvas display streams never capture the user's desktop or system audio.
 Task consent checks cover plain-text rendering, exact decision payloads and the
-saved physical-input preference across reload. No physical camera is opened.
+saved physical-input preference across reload, plus actual task progress and
+revision-bound Stop acceptance versus completion. No physical camera is opened.
 
 Native coverage is in tests/native_smoke.py and native_scenarios.py. It uses the real
 core/WebView2 with synthetic providers/PCM across eleven phases, including unknown

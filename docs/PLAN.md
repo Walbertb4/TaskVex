@@ -3,10 +3,17 @@
 ## Now
 
 Stage 6 is accepted. Stage 7 backend prerequisites through 7.P4b.3 are accepted;
-7.P4b.2 and 7.P4b.3 were committed as `959a64f` and `ac3e6e1` (not pushed).
-The last published accepted baseline is `7c1001a`.
-**Current: 7.P2b.2a, concrete task consent UI and saved input preference. Automatically verified; user acceptance pending.**
-7.P2b.1 was accepted and committed as `8365d55` (not pushed).
+7.P4b.2 and 7.P4b.3 were committed as `959a64f` and `ac3e6e1` (included in this source publication).
+The latest accepted baseline included in this source publication is `d1a807f`.
+The newer 7.P2b.2b.1 source is published with manual acceptance still pending.
+**Current: 7.P2b.2b.1, actual host task progress and revision-bound Stop. Automatically verified; manual acceptance pending. Publication explicitly authorized on 2026-10-29.**
+
+**Next continuation: first remind the user that 7.P2b.2b.1 has NOT been manually
+tested. Push permission is not manual acceptance. Mention the existing chat/Stop/
+microphone smoke check before starting the next implementation slice.**
+
+7.P2b.2a was accepted and committed as `d1a807f` (included in this source publication).
+7.P2b.1 was accepted and committed as `8365d55` (included in this source publication).
 The existing TaskManager now optionally binds the existing TaskScopes and matching
 TargetReferences owners. Terminal task, Stop, close and safe scope replacement
 release authority/references; planning and human waits retain the same task scope.
@@ -14,8 +21,9 @@ release authority/references; planning and human waits retain the same task scop
 create_core now composes the existing scope/reference owners with a fail-closed
 trusted requirement resolver. Existing local model tools remain unscoped. Real
 nonce-bound permission UI and a saved physical-input preference are implemented;
-normal conversation task production, Continue and Stop/Disconnect mapping remain
-7.P2b.2b. No ordinary chat message creates a desktop automation task yet.
+normal conversation task production, Continue and conversation Stop/Disconnect
+mapping remain 7.P2b.2b.2/.3. Actual host tasks now have native progress and
+a separate revision-bound Stop control. No ordinary chat message creates a desktop automation task yet.
 Real UIA/DOM/visual adapters and their production operation budgets are not selected
 or installed; their scope/capture/input proof remains 7.P3b with 7.1/7.3.
 
@@ -66,11 +74,11 @@ Read Now, open limits and the current step; search other sections only as needed
 | 7.P3a backend targets | 168 targeted/regression tests and Pyright 0 with synthetic adapters; [checks](../logs/reports/targets-checks.json). User accepted; committed dd586a1. No real driver/UI/capture/input or full/native rerun |
 | 7.P4a logical task backend | 107 focused tests, 1,371 full pytest, Pyright 0 and two synthetic native compatibility phases. [Checks](../logs/reports/workflow-checks.json), [native](../logs/reports/workflow-native.json). User accepted; committed 57a49d3. No public UI/model workflow binding |
 | 7.P4b.1 intervention/progress backend | 127 focused tests, 1,391 full pytest, Pyright 0 and two synthetic native compatibility phases. [Checks](../logs/reports/workflow-waits-checks.json), [native](../logs/reports/workflow-waits-native.json). User accepted for publication; no UI/model binding or restart restoration |
-| 7.P4b.2 persistent recovery backend | 146 focused tests, 1,410 full pytest, Pyright 0 and eleven synthetic native phases. [Checks](../logs/reports/workflow-recovery-checks.json), [native](../logs/reports/workflow-recovery-native.json). User accepted; committed 959a64f, not pushed. No public UI/model task recovery binding |
-| 7.P4b.3 operation policy backend | 315 focused tests, 1,438 full pytest, Pyright 0 and eleven synthetic native phases. [Checks](../logs/reports/operation-policy-checks.json), [native](../logs/reports/operation-policy-native.json). User accepted; committed ac3e6e1, not pushed. Explicit host registration only, no production policies/UI enabled |
-| 7.P2b.1 managed resource lifetime | 238 focused tests, 1,460 final full pytest, Pyright 0 and eleven native legacy compatibility phases. [Checks](../logs/reports/workflow-resources-checks.json), [native](../logs/reports/workflow-resources-native.json). User accepted; committed 8365d55, not pushed. Host-only binding, no real driver acceptance |
-
-| 7.P2b.2a concrete task consent | 132 focused/documentation tests, 1,474 full pytest, Pyright 0, ten JS suites, 30 browser groups and eleven native phases. [Checks](../logs/reports/task-permissions-checks.json), [native](../logs/reports/task-permissions-native.json). User acceptance pending; conversation task production/Continue remains 7.P2b.2b |
+| 7.P4b.2 persistent recovery backend | 146 focused tests, 1,410 full pytest, Pyright 0 and eleven synthetic native phases. [Checks](../logs/reports/workflow-recovery-checks.json), [native](../logs/reports/workflow-recovery-native.json). User accepted; committed 959a64f, included in this source publication. No public UI/model task recovery binding |
+| 7.P4b.3 operation policy backend | 315 focused tests, 1,438 full pytest, Pyright 0 and eleven synthetic native phases. [Checks](../logs/reports/operation-policy-checks.json), [native](../logs/reports/operation-policy-native.json). User accepted; committed ac3e6e1, included in this source publication. Explicit host registration only, no production policies/UI enabled |
+| 7.P2b.1 managed resource lifetime | 238 focused tests, 1,460 final full pytest, Pyright 0 and eleven native legacy compatibility phases. [Checks](../logs/reports/workflow-resources-checks.json), [native](../logs/reports/workflow-resources-native.json). User accepted; committed 8365d55, included in this source publication. Host-only binding, no real driver acceptance |
+| 7.P2b.2a concrete task consent | 132 focused/documentation tests, 1,474 full pytest, Pyright 0, ten JS suites, 30 browser groups and eleven native phases. [Checks](../logs/reports/task-permissions-checks.json), [native](../logs/reports/task-permissions-native.json). User accepted; committed d1a807f, included in this source publication; conversation task production/Continue remains planned |
+| 7.P2b.2b.1 actual host task view/Stop | 270 targeted/regression plus three documentation tests, Pyright 0, eleven JS suites and 31 browser groups passed. Native chat and UNKNOWN phases passed; final chat rerun covers explicit selection. [Checks](../logs/reports/workflow-view-checks.json), [native](../logs/reports/workflow-view-native.json). Publication explicitly authorized; NOT manually tested. No new full pytest/eleven-phase native run |
 
 ## Roadmap
 
@@ -78,7 +86,7 @@ Read Now, open limits and the current step; search other sections only as needed
 |---|---|---|
 | 0–5 | Functional baseline accepted with open limits above | Core/host, notes, conversation, Stop, wake/sleep, persistent task/replay protection |
 | 6 | Agreed functional scope accepted | Memory, measurements, media/weather, camera and screen sharing |
-| 7 | Backend prerequisites through 7.P4b.3 accepted; 7.P2b.1 accepted; 7.P2b.2a auto verified | Remaining: driver-backed targets, conversation task lifecycle, L0–L4 desktop/file/browser work, Plugins and learned skills |
+| 7 | Backend prerequisites through 7.P4b.3 accepted; 7.P2b.1 accepted; 7.P2b.2a accepted; 7.P2b.2b.1 auto verified | Remaining: driver-backed targets, conversation task lifecycle, L0–L4 desktop/file/browser work, Plugins and learned skills |
 | 8 | Planned | Routines, scheduler, persistent background lifecycle, maintenance and packaging |
 | 9 | Deferred integrations | Official external services/channels and additional audio sharing |
 | 10 | Planned after functional stages | Final provider-adapter migration |
@@ -88,7 +96,7 @@ existing coupling is migrated in 10. No new provider framework is authorized.
 
 ## Stage 7 — General desktop operation, local files and learned skills
 
-**Status: Backend prerequisites through 7.P4b.3 accepted; 7.P2b.1 accepted; 7.P2b.2a auto verified; real drivers remain planned.**
+**Status: Backend prerequisites through 7.P4b.3 accepted; 7.P2b.1 accepted; 7.P2b.2a accepted; 7.P2b.2b.1 auto verified; real drivers remain planned.**
 This replaces the earlier narrow-app/format draft. The goal is operation and
 learning across previously unknown applications, not a fixed supported-app list.
 Netflix, WhatsApp, YouTube, Discord and music playlists were illustrative tasks,
@@ -174,12 +182,15 @@ requires it. Tests accompany every slice, not only stage closure.
 | 7.P4a | Logical tasks and dependency-aware progress | Task/step identities separate from Live turns; same worker/registry/policy path, cancellation, queued logical tasks and revision-checked unsent-step corrections. Immediate text-only questions need not hold the worker. No model workflow tool or UI classifier yet | User accepted; committed 57a49d3. Host backend API only, not conversation integration |
 | 7.P4b | Human intervention, recovery and progress limits | Parent slice; preserve UNKNOWN, completed effects and no total task cutoff | Split below; full slice remains open |
 | 7.P4b.1 | Nonblocking intervention and progress checkpoints | Indefinite explicit Continue/Cancel waits; independent jobs proceed at safe checkpoints. Trusted unlocked reobservation, revision/identity race guards, three unchanged-state evaluations after a baseline | User accepted for publication. Trusted backend only |
-| 7.P4b.2 | Persistent logical recovery | Content-free restart metadata and explicit Continue/replanning after fresh observation; no historical payload restoration or blind replay | User accepted; committed 959a64f, not pushed. Trusted-host API only, no public Continue control |
-| 7.P4b.3 | Operation deadlines and safe read retry | Explicit per-operation time bounds, at most one read-only transient retry, no automatic side-effect retry; actual outcome remains authoritative | User accepted; committed ac3e6e1, not pushed. Host opt-in only; legacy registrations unchanged and no hard thread kill |
+| 7.P4b.2 | Persistent logical recovery | Content-free restart metadata and explicit Continue/replanning after fresh observation; no historical payload restoration or blind replay | User accepted; committed 959a64f, included in this source publication. Trusted-host API only, no public Continue control |
+| 7.P4b.3 | Operation deadlines and safe read retry | Explicit per-operation time bounds, at most one read-only transient retry, no automatic side-effect retry; actual outcome remains authoritative | User accepted; committed ac3e6e1, included in this source publication. Host opt-in only; legacy registrations unchanged and no hard thread kill |
 | 7.P2b | Authorization UI and lifecycle binding | Parent slice: common permission decisions and logical task lifecycle, not one Live turn | Split below; full UI/real-driver integration remains open |
-| 7.P2b.1 | Managed scope/target lifetime | Bind existing scope/reference owners to TaskManager; release on completion/Stop/close/UNKNOWN, validate task ownership and safe scope replacement; preserve in-flight outcomes | Accepted; committed 8365d55, not pushed. Managed host composition |
-| 7.P2b.2a | Concrete host decisions | Nonce-bound scope/input/high-impact decisions and saved physical-input question preference; host recheck required before continuation | Auto verified; user acceptance pending. No automatic conversation task producer |
-| 7.P2b.2b | Conversation task lifecycle | Trusted logical task production/classification, progress/Continue/recovery and correct conversation Stop/Disconnect binding; actual resources with 7.P3b | Planned next; preserve the existing permission owner, no pretend GUI control |
+| 7.P2b.1 | Managed scope/target lifetime | Bind existing scope/reference owners to TaskManager; release on completion/Stop/close/UNKNOWN, validate task ownership and safe scope replacement; preserve in-flight outcomes | Accepted; committed 8365d55, included in this source publication. Managed host composition |
+| 7.P2b.2a | Concrete host decisions | Nonce-bound scope/input/high-impact decisions and saved physical-input question preference; host recheck required before continuation | User accepted; committed d1a807f, included in this source publication. No automatic conversation task producer |
+| 7.P2b.2b | Conversation task lifecycle | Parent: trusted task production, progress/Continue/recovery and conversation Stop/Disconnect; actual resources with 7.P3b | Split below; full binding remains open |
+| 7.P2b.2b.1 | Actual host task view/Stop | Read bounded owner progress; Stop exact displayed ID/revision in local desktop scope, preserving real late effects and unknown locks | Auto verified; publication authorized without manual acceptance. No dummy task or automatic conversation producer |
+| 7.P2b.2b.2 | Trusted conversation task production | Structured model/host intent, current-task corrections vs questions vs queued independent work; ModelTools visibility/domain gates retained | Planned next; no phrase router or new executor |
+| 7.P2b.2b.3 | Continue/recovery and conversation lifecycle | Explicit fresh trusted reobservation/replanning before Continue, real logical task identity for conversation Stop/Disconnect | Planned; depends on actual producer and observation route, never accept a UI/model boolean as proof |
 | 7.P5 | Read-only Plugins screen | Built-in capability metadata from existing registration/owners; System default badge, no delete/toggle, separate from learned Skills. No runtime auto-import or speculative third-party plugin framework | Planned |
 | 7.0a | Selected local files and text/code/CSV reading | Real scoped file references, type/size/path/link checks, encoding and changed-file detection; temporary files first, no unrestricted filesystem exploration | Planned |
 | 7.0b | File context and controlled text/code/CSV writes | Deliberately supplied context is untrusted and bounded; explicit destination, expected original snapshot, atomic write/readback and recoverable original where applicable. No silent scope expansion or blind overwrite | Planned |
@@ -392,3 +403,25 @@ Stage 7 GUI messaging does not implement stage 9 official service integrations.
 Additional audio sharing remains deferred, not required to close stage 6.
 A routine is not a second task engine. Provider migration is behavior-preserving,
 not a promise that every provider supports audio/video/tools/resumption.
+
+
+### 7.P2b.2b.1 - actual host task view and Stop
+
+The native view shows only current-process TaskManager workflows matching the
+local desktop principal/source. Queries return detached content-free snapshots;
+no arguments, grant IDs or new work. The panel stays hidden without real host
+workflows. It is not an automatic conversation task producer or restart-history UI.
+
+Stop selected task requires explicit selection and sends that workflow ID and
+exact plan revision. Disappearance never transfers selection to another task.
+Ownership/revision checks and cancellation happen under the same owner lock.
+Stale/foreign requests are definite rejections. Actual in-flight work may finish;
+its success remains preserved and acceptance is not completion. Unknown delivery
+locks the selector/Stop without retry; disappearance or another task cannot resolve
+it. Fresh matching stopped/terminal progress can settle the pending request.
+
+The conversation Stop Task/Disconnect controls remain in their existing lifecycle
+owner. This separate host-task control does not pretend a Live turn is a logical
+task. Trusted conversation production/classification remains 7.P2b.2b.2; explicit
+fresh Continue/recovery and conversation mapping remain 7.P2b.2b.3. Real drivers,
+production frame/deadline budgets and their user selections remain 7.P3b/7.1/7.3.

@@ -264,6 +264,14 @@ class TaskManager:
         with self._condition:
             return self._workflow(workflow_id).snapshot(safety_locked=self._uncertain)
 
+    def workflows(self, *, principal: str, source: str) -> list[dict]:
+        """Bounded current-process progress only; no payloads, grants or restart dispatch."""
+        if any(type(value) is not str or not value.strip() for value in (principal, source)):
+            raise TaskManagerError('invalid_owner', 'Expected task principal and source')
+        with self._condition:
+            return [job.snapshot(safety_locked=self._uncertain) for job in self._workflows.values()
+                    if job.principal == principal and job.source == source]
+
     def _workflow(self, workflow_id: str) -> _Workflow:
         if not isinstance(workflow_id, str) or workflow_id not in self._workflows:
             raise TaskManagerError('unknown_workflow', 'Logical task ID is not known')
@@ -688,10 +696,19 @@ class TaskManager:
             self._condition.notify_all()
             return job.snapshot(safety_locked=self._uncertain)
 
-    def cancel_workflow(self, workflow_id: str) -> dict:
+    def cancel_workflow(self, workflow_id: str, *, expected_revision: int | None = None,
+                        principal: str | None = None, source: str | None = None) -> dict:
         """Accept Stop for this logical ID, not whichever conversation is newest."""
         with self._condition:
             job = self._workflow(workflow_id)
+            if ((principal is not None and job.principal != principal)
+                    or (source is not None and job.source != source)):
+                raise TaskManagerError('unknown_workflow', 'Logical task does not belong to this host')
+            if expected_revision is not None:
+                if type(expected_revision) is not int or expected_revision < 0:
+                    raise TaskManagerError('invalid_revision', 'Expected a nonnegative task revision')
+                if job.revision != expected_revision:
+                    raise TaskManagerError('workflow_changed', 'Read the current task revision before Stop')
             if job.status not in TERMINAL:
                 if job.recovery_stub and self._journal is not None:
                     try:

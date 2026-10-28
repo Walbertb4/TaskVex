@@ -1,0 +1,60 @@
+{
+  "date": "2026-10-29",
+  "stage": "7.P2b.2b.1",
+  "status": "automatically_verified_manual_acceptance_pending_publication_authorized",
+  "accepted_previous_commit": "d1a807f",
+  "previous_commit_pushed": false,
+  "validation": {
+    "focused_passed": 164,
+    "additional_regression_passed": 106,
+    "pyright_errors": 0,
+    "pyright_warnings": 0,
+    "js_suites_passed": 11,
+    "browser_groups_passed": 31,
+    "native_status": "passed",
+    "documentation_tests_passed": 3,
+    "compileall": true,
+    "diff_whitespace_check": true,
+    "full_pytest_rerun": false,
+    "full_rerun_note": "Risk-based workflow/manager/bridge/policy/model-tools/REST-Stop suites plus browser and targeted native; no claim of a new full pytest or eleven-phase native run.",
+    "native_phases": [
+      "chat",
+      "unknown"
+    ],
+    "native_explicit_selection_final_chat_passed": true,
+    "total_targeted_and_documentation_passed": 273,
+    "native_sequence": "Chat rerun after explicit-selection guard; unknown phase unchanged from prior successful targeted run.",
+    "browser_sequence": "Final 31-group browser run after requiring explicit selection and adding disappearance/no-implicit-handover regression",
+    "js_final_selection_regression_passed": true
+  },
+  "limits": [
+    "Current-process actual host workflows only; normal conversation producer/classifier remains 7.P2b.2b.2",
+    "Trusted fresh Continue/recovery and conversation Stop/Disconnect mapping remain 7.P2b.2b.3",
+    "No real UIA/DOM/visual driver, production budgets, paid API, user profile or demo rebuild",
+    "Existing conversation lifecycle unchanged; no new public model tool or phrase router",
+    "User explicitly authorized source publication without manual testing; manual acceptance remains pending"
+  ],
+  "covered": [
+    "Detached content-free progress for actual host-owned current-process jobs; no query scheduling",
+    "Exact native payload and principal/source ownership checks under TaskManager lock",
+    "Stale revision cannot stop corrected work; old Stop cannot cancel new job",
+    "Stop acceptance remains separate from in-flight completion; real late success preserved",
+    "Explicit task selection; removed job never implicitly selects its replacement",
+    "No repeated Stop on timeout; matching actual owner progress resolves unknown, absence does not",
+    "Plain text for task IDs/status/steps; native readiness and stale-query guards",
+    "Existing conversation Stop/Disconnect and single executor unchanged"
+  ],
+  "manual_test": [
+    "Launch normally: Host tasks stays hidden with no actual host workflow; normal chat must not invent entries",
+    "Verify existing Live chat/Stop and saved input preference remain usable",
+    "Task selector/Stop exercised by actual synthetic scoped manager in native chat test; normal conversation producer/Continue remains planned"
+  ],
+  "publication": {
+    "explicitly_authorized": true,
+    "date": "2026-10-29",
+    "manual_test_performed_by_user": false,
+    "manual_acceptance": false,
+    "next_continuation_reminder_required": true,
+    "binary_release": false
+  }
+}

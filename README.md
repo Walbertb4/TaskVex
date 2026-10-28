@@ -99,11 +99,19 @@ retains content-free restart metadata and requires explicit fresh replanning;
 there is no public task Continue control. Cooperative operation deadlines and one
 safe-read retry are available as host registration primitives; existing tools keep
 their defaults. Configured host workflows now clean up their existing task grants/target refs
-on completion, Stop and close. Production adapter policies, actual desktop task
-issuance remains planned. A native permission panel now handles real host-issued
+on completion, Stop and close. Production adapter policies and actual desktop task
+issuance remain planned. A native permission panel now handles real host-issued
 requests, with a saved ask-before-physical-input setting. Acceptance requires host
-rechecking before continuation; normal chat does not yet create desktop tasks. Existing per-tool durable replay protection is separate
+rechecking before continuation. Current host tasks also have a native progress
+selector and exact-ID/revision Stop control; normal chat does not yet create desktop tasks. Existing per-tool durable replay protection is separate
 from whole-task recovery; historical receipts do not restore private arguments.
+
+The latest source checks passed 270 targeted/regression tests, three documentation
+checks, eleven JavaScript suites and 31 browser groups, plus targeted native chat
+and UNKNOWN checks. [Evidence](logs/reports/workflow-view-checks.json).
+The host-task progress/Stop change has **not been manually tested by the user**;
+it is published by explicit request, not as a release or manual acceptance.
+These checks are not a new full Python regression or eleven-phase native run.
 
 ## Not implemented yet
 

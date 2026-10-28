@@ -120,6 +120,13 @@
       <button class="cb" id="sleep" title="Sleep until the local wake word; Wake exits sleep">Sleep</button>
       </div>
   <div id="memoryProposal" class="memoryReview" role="group" aria-label="Memory suggestion" hidden aria-live="polite"><label>Suggested memory — not saved</label><div id="memoryProposalText" class="sub"></div><div id="memoryProposalSource" class="sub"></div><button class="cb" id="memoryAccept">Save</button> <button class="cb" id="memoryDismiss">Dismiss</button><div class="sub" id="memoryProposalStatus" role="status"></div></div>
+  <section id="workflowPanel" class="taskPermission" aria-label="Host task progress" hidden>
+    <label for="workflowSelect">Host tasks</label>
+    <select id="workflowSelect" aria-label="Select host task"></select>
+    <pre id="workflowDetails" tabindex="0" aria-label="Actual task progress"></pre>
+    <button class="cb" id="workflowStop">Stop selected task</button>
+    <div class="sub" id="workflowStatus" role="status" aria-live="polite"></div>
+  </section>
   <section id="taskPermission" class="taskPermission" aria-label="Task permission request" hidden>
     <span class="lbl" id="taskPermissionTitle">Task permission</span>
     <pre id="taskPermissionDetails" tabindex="0" aria-label="Exact operation and resources"></pre>

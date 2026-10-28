@@ -494,6 +494,27 @@ class NativeBridge:
             return {'ok':False,'completed':name!='weather_location','unknown':name=='weather_location',
                     'error':'Weather request could not be verified'}
 
+    def _workflow_event(self, name: str, data) -> dict:
+        if not self._ready:
+            if name == 'query_workflows' and data is None:
+                return {'ok': True, 'ready': False, 'data': []}
+            return {'ok': False, 'accepted': False, 'error': 'Native bridge is not ready'}
+        try:
+            if name == 'query_workflows' and data is None:
+                return {'ok': True, 'data': self._core.workflows(principal='local-user', source='desktop')}
+            if (name == 'cancel_workflow' and type(data) is dict and set(data) == {'workflow_id', 'revision'}
+                    and type(data['workflow_id']) is str and data['workflow_id'].strip()
+                    and type(data['revision']) is int and data['revision'] >= 0):
+                result = self._core.cancel_workflow(data['workflow_id'], expected_revision=data['revision'],
+                                                   principal='local-user', source='desktop')
+                return {'ok': True, 'accepted': True, 'data': result}
+            return {'ok': False, 'accepted': False, 'error': 'Invalid task control payload'}
+        except (ContractError, TaskManagerError) as error:
+            # Journal/cleanup faults may follow acceptance; only validation is a definite rejection.
+            rejected = getattr(error, 'code', '') in {'unknown_workflow', 'invalid_revision', 'workflow_changed'}
+            return {'ok': False, **({'accepted': False} if rejected else {}),
+                    'code': getattr(error, 'code', 'invalid_workflow'), 'error': str(error)}
+
     def _task_permission_event(self, name: str, data) -> dict:
         if not self._ready:
             if name == 'query_task_permissions' and data is None:
@@ -515,6 +536,8 @@ class NativeBridge:
         does not reapply. save just saves the settings and reads them back. unsupported
         The event is not presented as completed. The error becomes visible to the UI emit.
         """
+        if name in ('query_workflows', 'cancel_workflow'):
+            return self._workflow_event(name, data)
         if name in ('query_task_permissions', 'task_permission_decision'):
             return self._task_permission_event(name, data)
         if name == 'acknowledge_tasks':

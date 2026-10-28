@@ -662,3 +662,17 @@ approved saved weather location. Their existing lifecycle/consent rules remain.
 The panel is hidden without a real pending host request. Normal conversation task
 creation, task Continue/recovery and general desktop control are not connected yet.
 No spoken command grants permission on the user's behalf.
+
+
+## Host task progress (UI only)
+
+- Host tasks selector -> Inspect an actual current-process local desktop workflow
+  and its step statuses. Hidden when no host workflow exists; chat turns alone do
+  not create entries yet.
+- Stop selected task -> After explicitly choosing a task, request cancellation
+  for that task/revision only.
+  Started work can still finish; completed effects remain. Unknown delivery locks
+  controls without automatic retry. Conversation Stop Task keeps its current role.
+
+Automatic conversation task planning, task Continue and restart-history controls
+remain planned. This panel does not add general desktop automation.

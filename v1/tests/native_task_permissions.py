@@ -28,6 +28,15 @@ def check_native_task_permissions(window, api, js, wait_until, outcome):
                     assert calls == []
                 assert core.get_workflow('job')['status'] == 'waiting_for_user'
                 outcome['native_task_consent_scope_input_operation_no_effect_before_host_recheck'] = True
+                js("const v=await import('./js/workflow_view.js');v.startWorkflowView();await v.refreshWorkflows();return true;")
+                wait_until(lambda: not window.evaluate_js("document.getElementById('workflowPanel').hidden"))
+                js("const s=document.getElementById('workflowSelect');s.value='job';s.dispatchEvent(new Event('change'));return true;")
+                assert window.evaluate_js("document.getElementById('workflowDetails').textContent.includes('waiting_for_user')")
+                js("document.getElementById('workflowStop').click();return true;")
+                wait_until(lambda: core.get_workflow('job')['completed'])
+                wait_until(lambda: window.evaluate_js("document.getElementById('workflowStop').disabled"))
+                assert core.get_workflow('job')['stop_requested'] and calls == []
+                outcome['native_workflow_progress_and_revision_bound_stop'] = True
             finally:
                 api._core = original
     js("await (await import('./js/task_permissions.js')).refreshTaskPermissions();return true;")

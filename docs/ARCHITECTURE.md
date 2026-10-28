@@ -66,6 +66,7 @@ microphone On/Off and Stop remain local lifecycle operations.
 |---|---|
 | Native host, process, restart and shutdown | `v1/app/main.py` |
 | UI startup and snapshots | `ui/js/app.js`; connects modules without a second domain state |
+| Host task progress/Stop UI | `ui/js/workflow_view.js`; content-free owner snapshots and exact ID/revision Stop, separate from conversation turns |
 | Conversation, microphone, sleep and Stop | `ui/js/assistant_session.js`; request and audio IDs stay together |
 | Camera/screen capture | `ui/js/live_video.js`; one opt-in visual source, RAM JPEG capture and request-scoped sending under assistant_session.js |
 | Live visual input | `app/session/live_video.py`; one latest-frame slot on the existing PersistentLive socket, no task executor or disk records |
@@ -130,8 +131,9 @@ scoped work. Its legacy local tools retain their unscoped capability policy.
 ui/js/task_permissions.js is a decision consumer, not an executor: it sends only
 a host nonce and boolean, and distinguishes permission acceptance from completion.
 Settings saves askBeforeInput (default true); false never bypasses scope/risk checks.
+Actual host tasks have a read-only native progress view and revision-bound Stop.
 Conversation task issuance/Continue/Disconnect and real adapter freshness remain
-7.P2b.2b/P3b. This adds no public file/GUI control or automatic task grants.
+7.P2b.2b.2/.3 and P3b. This adds no public file/GUI control or automatic task grants.
 Host task IDs identify logical work, not a Live turn or one worker execution.
 Resolve pending approval before submitting an effect; a policy-denied request is
 terminal and replaying that same ID cannot resurrect it after a later approval.

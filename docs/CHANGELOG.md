@@ -6,6 +6,37 @@ Older entries remain part of this record through the dated snapshot below.
 
 ## Unreleased
 
+### 2026-10-29 - Source publication with manual test deferred
+
+- The user explicitly authorized committing/pushing the current source, including
+  7.P2b.2b.1, without having manually tested that slice. Automatic checks remain
+  distinct from manual acceptance; no binary release or updated demo is claimed.
+- Updated README validation/limits and the PLAN continuation warning. The next
+  implementation turn must remind the user about the deferred chat/Stop/microphone
+  smoke check. Existing native instability, timing-test stability, real-account
+  coverage, profile migration and packaging limits remain open in PLAN.
+
+
+### 2026-10-29 - Host task progress and revision-bound Stop (7.P2b.2b.1)
+
+- Accepted 7.P2b.2a was committed as d1a807f; no push.
+- Added detached current-process progress filtered by trusted native principal and
+  source. Queries do not execute tasks or expose private arguments/grants.
+- Added exact-ID/revision Stop with atomic ownership checks in TaskManager, plus
+  an actual native task selector/progress panel. Started effects keep their real
+  result; acceptance is separate from completion. Unknown delivery locks controls
+  without retry; stale replies cannot operate on the next selection.
+- Existing conversation Stop/Disconnect stays unchanged. Split remaining work into
+  trusted conversation production/classification and fresh Continue/recovery plus
+  logical conversation mapping. No dummy tasks, new executor, phrase routing,
+  provider change or library added.
+- Passed 270 targeted/regression plus three documentation tests, Pyright 0,
+  eleven JS suites, 31 browser groups, and native chat/UNKNOWN checks. Final chat
+  rerun covers explicit selection; no new full pytest/eleven-phase native claim.
+  Evidence: [checks](../logs/reports/workflow-view-checks.json),
+  [targeted native](../logs/reports/workflow-view-native.json). Current step awaits
+  acceptance; not committed or pushed. No real account/user data/paid API used.
+
 ### 2026-10-29 - Concrete task permission UI (7.P2b.2a)
 
 - Accepted 7.P2b.1 was committed as 8365d55; no push.

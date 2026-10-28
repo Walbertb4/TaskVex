@@ -611,3 +611,20 @@ The UI is a plain-text observer/decision source and cannot create tasks or resou
 Permission acceptance never dispatches a child. Host continuation still requires
 fresh state and policy checks. Bootstrap shares these owners but existing model
 calls remain unscoped until the separate trusted conversation producer is bound.
+
+
+### Current host task progress and cancellation
+
+TaskManager.workflows returns detached content-free snapshots filtered by trusted
+principal/source, bounded by its existing RAM workflow capacity. It neither reads
+restart plans nor schedules work. The native bridge fixes the desktop owner and
+validates exact workflow ID/revision payloads. cancel_workflow checks ownership
+and revision under its existing Condition before accepting Stop. Legacy trusted
+callers retain their current signature behavior when no revision is supplied.
+
+workflow_view.js renders these snapshots through the existing app tick and requires
+explicit task selection. A removed task never selects its replacement implicitly.
+Acceptance is separate from data.completed; actual child results remain authoritative.
+Unknown delivery locks controls until matching stopped/terminal evidence, never
+absence. The view owns no task state, execution or Continue observer. Automatic
+conversation production and current-turn/logical-task mapping remain planned.

@@ -894,5 +894,37 @@ try {
     assert.deepEqual(await p.evaluate(()=>permissionPayloads),[{id:'browser-consent',approve:true}]);
     assert.equal(await p.locator('#taskPermissionApprove').isDisabled(),true);
   });
+  await test('host task view uses real identity/revision, plain-text progress and honest Stop acceptance',async()=>{
+    const p=await setup();
+    assert.equal(await p.locator('#workflowPanel').isVisible(),false);
+    await p.evaluate(async()=>{
+      window.workflowFixture=[{workflow_id:'<img src=x>',revision:7,status:'running',completed:false,
+        stop_requested:false,requires_review:false,wait_reason:null,steps:[{step_id:'one',tool:'fixture.read',status:'running'}]}];
+      window.workflowCalls=[];
+      window.pywebview={api:{event:async(name,data)=>{
+        if(name==='query_workflows')return {ok:true,data:workflowFixture};
+        if(name==='cancel_workflow'){
+          workflowCalls.push(data);workflowFixture=[{...workflowFixture[0],status:'cancel_requested',stop_requested:true}];
+          return {ok:true,accepted:true,data:workflowFixture[0]};
+        }
+        return {ok:true};
+      }}};
+      const view=await import('/js/workflow_view.js');view.startWorkflowView();await view.refreshWorkflows();
+    });
+    assert.equal(await p.locator('#workflowStop').isDisabled(),true);
+    await p.locator('#workflowSelect').selectOption('<img src=x>');
+    assert.equal(await p.locator('#workflowDetails img').count(),0);
+    assert.ok((await p.locator('#workflowDetails').textContent()).includes('<img src=x>'));
+    await p.locator('#workflowStop').click();
+    await p.waitForFunction(()=>document.getElementById('workflowStatus').textContent.includes('actual completion'));
+    assert.deepEqual(await p.evaluate(()=>workflowCalls),[{workflow_id:'<img src=x>',revision:7}]);
+    assert.equal(await p.locator('#workflowStop').isDisabled(),true);
+    await p.evaluate(async()=>{
+      workflowFixture=[{...workflowFixture[0],completed:true,status:'succeeded'}];
+      await (await import('/js/workflow_view.js')).refreshWorkflows();
+    });
+    assert.ok((await p.locator('#workflowStatus').textContent()).includes('succeeded'));
+    assert.equal(await p.locator('#stopTask').textContent(),'■ Stop Task');
+  });
   console.log(`${results.length} browser cleanup groups passed`);
 } finally { await browser.close(); await new Promise(resolve=>server.close(resolve)); }

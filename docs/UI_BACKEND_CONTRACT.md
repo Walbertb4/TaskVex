@@ -262,3 +262,27 @@ flags are persisted by the panel. Camera/microphone checks briefly open the syst
 default device if there is no active owner; all tracks are stopped, including late
 grants. Location checks discard the coordinates. Feature controls still own ongoing
 capture/sharing, and browser/OS policy can reject a request despite saved app settings.
+
+
+## Current host task progress and Stop
+
+query_workflows accepts no payload and returns data as an array of detached
+current-process TaskManager snapshots for principal local-user/source desktop.
+No arguments, authority IDs or disk history are exposed. Querying schedules nothing.
+Before native readiness, the response is ready=False with an empty array.
+
+cancel_workflow accepts exactly {workflow_id: nonempty string, revision: nonnegative
+integer}, with booleans rejected. Under the owner lock it checks ownership and
+current plan revision before Stop. Unknown/foreign/stale IDs and invalid payloads
+return accepted=False without cancellation. Other failures can follow acceptance
+and must not be interpreted as rejection. Success returns accepted=True and data
+as the actual task snapshot; data.completed is independent of acceptance.
+In-flight success is preserved even after stop_requested=True.
+
+workflow_view.js consumes the existing app tick, gates polling on native startup
+and renders plain text. Task selection is explicit; a missing task never selects
+a replacement implicitly. Stop selected task locks while pending; a timeout never
+retries. Only matching actual stopped/terminal progress settles unknown delivery;
+absence or another job does not. Stale progress disables action until a fresh query.
+It has no Continue button or model task producer. Conversation Stop Task/Disconnect
+retain their current turn behavior until explicit logical-task mapping is bound.
