@@ -25,6 +25,8 @@ from app.core.contracts import (
     ToolRequest, ToolResult, ToolSpec, request_fingerprint,
 )
 from app.session.tool_registry import RegistryError, ToolRegistry
+from app.policy.task_scope import TaskScopes
+from app.automation.targets import TargetReferences
 from app.storage.task_journal import JournalError, TaskJournal
 from app.tasks.workflow import _Workflow, WorkflowStep, TERMINAL, STEP_TERMINAL, copy_steps, definition_key, validate_steps
 
@@ -86,13 +88,22 @@ class TaskManager:
 
     def __init__(self, registry: ToolRegistry, *,
                  authorize: Callable[[ToolRequest, ToolSpec], bool] | None = None,
-                 capacity: int = 256, journal_home: Path | None = None) -> None:
+                 capacity: int = 256, journal_home: Path | None = None,
+                 task_scopes: TaskScopes | None = None,
+                 target_references: TargetReferences | None = None) -> None:
         if not isinstance(registry, ToolRegistry):
             raise TaskManagerError("invalid_registry", "Expected ToolRegistry")
         if authorize is not None and not callable(authorize):
             raise TaskManagerError("invalid_authorizer", "Expected authorization callback")
         if type(capacity) is not int or capacity < 1:
             raise TaskManagerError("invalid_capacity", "Capacity must be a positive integer")
+        if ((task_scopes is not None and not isinstance(task_scopes, TaskScopes))
+                or (target_references is not None and (task_scopes is None
+                    or not isinstance(target_references, TargetReferences)
+                    or not target_references.uses_scopes(task_scopes)))):
+            raise TaskManagerError('invalid_scope_owner', 'Expected matching task scope and target owners')
+        self._task_scopes, self._target_references = task_scopes, target_references
+        self._scope_cleanup_failed = False
         self._registry = registry
         self._authorize = authorize
         self._capacity = capacity
@@ -126,6 +137,12 @@ class TaskManager:
         with self._condition:
             return self._uncertain
 
+    @property
+    def scope_cleanup_failed(self) -> bool:
+        """Distinguish a resource cleanup fault from an uncertain tool outcome."""
+        with self._condition:
+            return self._scope_cleanup_failed
+
     def unresolved_tasks(self) -> list[dict]:
         """Expose IDs/tool names for local review, without private arguments/results."""
         with self._condition:
@@ -149,6 +166,8 @@ class TaskManager:
                 or len(set(task_ids)) != len(task_ids)):
             raise TaskManagerError('invalid_recovery', 'Select valid task IDs for review')
         with self._condition:
+            if self._scope_cleanup_failed:
+                raise TaskManagerError('scope_cleanup_failed', 'Restart after task resource cleanup failure')
             if self._closing or self._journal_failed:
                 raise TaskManagerError('recovery_unavailable', 'Task history must be available before review')
             if any(not entry.task.status.terminal for entry in self._entries.values()):
@@ -215,6 +234,7 @@ class TaskManager:
                 job.status = 'review_required'
                 job.recovery_stub = True
             else:
+                self._check_workflow_scope(job)
                 self._workflow_order.append(workflow_id)
             self._workflows[workflow_id] = job
             self._save_workflows()
@@ -250,6 +270,7 @@ class TaskManager:
                 raise TaskManagerError('workflow_closed', 'Logical task cannot accept this correction')
             if job.wait_reason is not None:
                 raise TaskManagerError('workflow_waiting', 'Reobserve and continue before changing this plan')
+            self._check_workflow_scope(job)
             incoming = {s.step_id: s for s in patches}
             previous = {s.step_id: s for s in job.steps}
             if set(remove) - previous.keys():
@@ -286,6 +307,54 @@ class TaskManager:
         if self._closing or self._uncertain or job.stop_requested or job.status in TERMINAL | {'review_required'}:
             raise TaskManagerError('workflow_closed', 'Logical task cannot accept this decision')
         return job
+
+    def _check_workflow_scope(self, job: _Workflow, *, authorization_id: str | None = None) -> None:
+        scope_id = authorization_id if authorization_id is not None else job.authorization_id
+        if self._task_scopes is not None and scope_id is not None:
+            if (job.source != 'desktop' or not self._task_scopes.active(
+                    scope_id, job.principal, task_id=job.workflow_id)):
+                raise TaskManagerError('invalid_scope', 'Scope must belong to this logical task and principal')
+
+    def _release_workflow_scope(self, job: _Workflow) -> None:
+        """Revoke before cancelling effects; never turn a late real result into rollback."""
+        if self._task_scopes is None or job.recovery_stub or job.scope_released or job.authorization_id is None:
+            return
+        try:
+            try:
+                self._task_scopes.end(job.authorization_id)
+            finally:
+                if self._target_references is not None:
+                    self._target_references.release_scope(job.authorization_id)
+            job.scope_released = True
+        except Exception:
+            # Keep cleaning other jobs, but no further dispatch/review can clear this fault.
+            self._scope_cleanup_failed = self._uncertain = True
+
+    def replace_workflow_scope(self, workflow_id: str, *, expected_revision: int,
+                               authorization_id: str) -> dict:
+        """Bind a fresh host-approved scope only at a safe checkpoint, never grant it.
+
+        The host pauses/reobserves and revokes the old scope before issuing the new
+        one for this same task. Pending UI/model data cannot call begin/approve here.
+        """
+        with self._condition:
+            job = self._check_workflow_revision(workflow_id, expected_revision)
+            if self._task_scopes is None or type(authorization_id) is not str or not authorization_id.strip():
+                raise TaskManagerError('invalid_scope', 'Expected a fresh host-issued task scope')
+            if job.active_step is not None:
+                raise TaskManagerError('task_active', 'Pause and wait for accepted work before scope replacement')
+            if authorization_id == job.authorization_id:
+                raise TaskManagerError('invalid_scope', 'Scope replacement requires a fresh identity')
+            self._check_workflow_scope(job, authorization_id=authorization_id)
+            self._release_workflow_scope(job)
+            if self._scope_cleanup_failed:
+                self._task_scopes.end(authorization_id)
+                raise TaskManagerError('scope_cleanup_failed', 'Restart after resource cleanup failure')
+            job.authorization_id = authorization_id
+            job.scope_released = False
+            job.revision += 1
+            self._save_workflows()
+            return job.snapshot(safety_locked=self._uncertain)
 
     def recoverable_workflows(self, *, principal: str = 'local-user', after: str = '', limit: int = 256) -> list[dict]:
         """Page private restart metadata without loading plans, grants or scheduling."""
@@ -332,6 +401,10 @@ class TaskManager:
             raise TaskManagerError('invalid_observer', 'Expected a trusted fresh-state replanner')
         with self._condition:
             record = self._recovery_record(workflow_id, principal, expected_revision)
+            if self._task_scopes is not None and authorization_id is not None:
+                if record['source'] != 'desktop' or not self._task_scopes.active(
+                        authorization_id, principal, task_id=workflow_id):
+                    raise TaskManagerError('invalid_scope', 'Recovery requires a current scope for this task')
         try:
             steps = validate_steps(replan(deepcopy(record)))
         except Exception:
@@ -347,6 +420,7 @@ class TaskManager:
         with self._condition:
             if self._recovery_record(workflow_id, principal, expected_revision) != record:
                 raise TaskManagerError('workflow_changed', 'Recovery state changed during reobservation')
+            self._check_workflow_scope(job)
             for key, old in list(self._workflows.items()):
                 if len(self._workflows) < self._capacity or workflow_id in self._workflows:
                     break
@@ -420,6 +494,7 @@ class TaskManager:
             job = self._check_workflow_revision(workflow_id, expected_revision)
             if job.status != 'waiting_for_user':
                 raise TaskManagerError('not_waiting', 'Wait for the current operation to finish')
+            self._check_workflow_scope(job)
             observed_job = job
         try:
             observed = reobserve() is True
@@ -431,6 +506,7 @@ class TaskManager:
                 raise TaskManagerError('workflow_changed', 'Logical task changed during reobservation')
             if job.status != 'waiting_for_user' or not observed:
                 raise TaskManagerError('reobservation_required', 'Fresh state and authorization were not confirmed')
+            self._check_workflow_scope(job)
             job.wait_reason = None
             job.observation_key = None
             job.no_progress_count = 0
@@ -455,6 +531,7 @@ class TaskManager:
             job = self._check_workflow_revision(workflow_id, expected_revision)
             if job.status != 'planning' or job.wait_reason is not None:
                 raise TaskManagerError('not_planning', 'Observe an idle planning checkpoint')
+            self._check_workflow_scope(job)
             observed_job = job
         try:
             state = observe()
@@ -469,6 +546,7 @@ class TaskManager:
                 raise TaskManagerError('workflow_changed', 'Logical task changed during observation')
             if job.status != 'planning' or job.wait_reason is not None:
                 raise TaskManagerError('not_planning', 'Planning checkpoint changed during observation')
+            self._check_workflow_scope(job)
             job.no_progress_count = job.no_progress_count + 1 if key == job.observation_key else 0
             job.observation_key = key
             job.revision += 1
@@ -526,6 +604,7 @@ class TaskManager:
             job.status = 'failed'
         else:
             job.status = 'succeeded'
+        self._release_workflow_scope(job)
         # Terminal progress needs IDs/tool names, not a second RAM payload history.
         job.steps = tuple(replace(s, arguments={}) for s in job.steps)
         job.wait_reason = None
@@ -537,6 +616,7 @@ class TaskManager:
 
     def _stop_workflow(self, job: _Workflow, reason: str) -> None:
         job.stop_requested = True
+        self._release_workflow_scope(job)
         for step in job.steps:
             if job.states[step.step_id] == 'pending':
                 job.states[step.step_id] = 'cancelled'

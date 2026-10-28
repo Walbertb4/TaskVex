@@ -6,6 +6,31 @@ Older entries remain part of this record through the dated snapshot below.
 
 ## Unreleased
 
+### 2026-10-28 — Managed task scope and target lifetime (7.P2b.1)
+
+- Accepted 7.P4b.3 was committed as ac3e6e1; no push.
+- Added opt-in binding of the existing TaskScopes/TargetReferences owners to
+  TaskManager. Composition validates matching stores before worker startup;
+  scoped workflows must own the scope for their actual logical task/principal.
+- Added automatic end/Stop/close/UNKNOWN revocation and reference-cache cleanup.
+  Planning and intervention waits retain task-duration authority; real in-flight
+  results are preserved. History stubs cannot revoke another task's proposed grant.
+- Added safe revisioned replacement with fresh host-issued scope, no active child,
+  old-reference cleanup and no inherited input/high-impact approval. Restart
+  recovery rejects stale scope before observation and rechecks before admission.
+- Cleanup faults lock new work without erasing successful effects or allowing
+  UNKNOWN acknowledgement to clear the fault. No new executor/permission store,
+  public command or provider coupling.
+- 238 focused tests and 1,460 final full pytest passed. Application/new-test
+  Pyright reported zero errors/warnings; compileall and three documentation checks
+  passed. Eleven native phases passed for unchanged unscoped desktop behavior;
+  [native evidence](../logs/reports/workflow-resources-native.json). Final managed
+  observer-guard changes were validated by the final complete Python regression.
+- [Validation](../logs/reports/workflow-resources-checks.json). Desktop decision UI,
+  physical-input setting, task/conversation Stop/Disconnect and real driver binding
+  remain 7.P2b.2/P3b. This is host-backend composition, not general GUI control.
+  Current slice awaits acceptance; no current-step commit/push or paid API use.
+
 ### 2026-10-28 — Explicit operation deadlines and safe read retry (7.P4b.3)
 
 - Accepted 7.P4b.2 was committed as 959a64f; no push.

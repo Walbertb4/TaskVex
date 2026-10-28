@@ -2,25 +2,19 @@
 
 ## Now
 
-Stage 6's agreed functional scope is accepted. Stage 7 choices are recorded;
-7.P1 is accepted by the user and committed as `1126fba`.
-7.P2a was accepted and committed as `e9095d2`.
-7.P3a was accepted and committed as `dd586a1`.
-7.P4a was accepted by continuation and committed as `57a49d3`.
-7.P4b.1 was accepted for publication with the updated README.
-7.P4b.2 was accepted by continuation and committed as `959a64f` (not pushed).
-**Current: 7.P4b.3, operation deadlines and safe read retry. Automatically verified; acceptance pending.**
-The approved behavior choices are recorded below. Accepted prerequisites through
-7.P4b.1 were published as 7c1001a. Persistent recovery is implemented at the host
-backend in 7.P4b.2. Operation policy is implemented for explicitly configured
-registrations in 7.P4b.3; real adapter wait values/classification remain unselected.
-Public task UI/Continue binding remains 7.P2b.
-Conversation UI and scope teardown bindings remain follow-up work, not
-capabilities enabled by this backend API.
-Real driver bindings (7.P3b) accompany their UIA/DOM/visual steps; those libraries
-are not selected or installed. Behavior choices are approved; actual driver-specific wait values remain open.
-The accepted screen-sharing/startup-recovery baseline and stage 7 plan were
-published as `79b5a04`. Documentation/log cleanup remains separate from stage 7.
+Stage 6 is accepted. Stage 7 backend prerequisites through 7.P4b.3 are accepted;
+7.P4b.2 and 7.P4b.3 were committed as `959a64f` and `ac3e6e1` (not pushed).
+The last published accepted baseline is `7c1001a`.
+**Current: 7.P2b.1, managed task scope/target lifetime. Automatically verified; acceptance pending.**
+The existing TaskManager now optionally binds the existing TaskScopes and matching
+TargetReferences owners. Terminal task, Stop, close and safe scope replacement
+release authority/references; planning and human waits retain the same task scope.
+
+This is host-backend composition, not desktop UI binding. create_core still uses
+its established unscoped local-tool policy. Real permission dialogs, physical-input
+preference, conversation task IDs and Stop/Disconnect wiring remain 7.P2b.2.
+Real UIA/DOM/visual adapters and their production operation budgets are not selected
+or installed; their scope/capture/input proof remains 7.P3b with 7.1/7.3.
 
 This file owns current progress only. Completed-step narratives are preserved in
 [the 2026-10-27 snapshot](archive/2026-10-27/docs/PLAN.md), with earlier history in
@@ -70,7 +64,8 @@ Read Now, open limits and the current step; search other sections only as needed
 | 7.P4a logical task backend | 107 focused tests, 1,371 full pytest, Pyright 0 and two synthetic native compatibility phases. [Checks](../logs/reports/workflow-checks.json), [native](../logs/reports/workflow-native.json). User accepted; committed 57a49d3. No public UI/model workflow binding |
 | 7.P4b.1 intervention/progress backend | 127 focused tests, 1,391 full pytest, Pyright 0 and two synthetic native compatibility phases. [Checks](../logs/reports/workflow-waits-checks.json), [native](../logs/reports/workflow-waits-native.json). User accepted for publication; no UI/model binding or restart restoration |
 | 7.P4b.2 persistent recovery backend | 146 focused tests, 1,410 full pytest, Pyright 0 and eleven synthetic native phases. [Checks](../logs/reports/workflow-recovery-checks.json), [native](../logs/reports/workflow-recovery-native.json). User accepted; committed 959a64f, not pushed. No public UI/model task recovery binding |
-| 7.P4b.3 operation policy backend | 315 focused tests, 1,438 full pytest, Pyright 0 and eleven synthetic native phases. [Checks](../logs/reports/operation-policy-checks.json), [native](../logs/reports/operation-policy-native.json). Acceptance pending; explicit host registration only, no production policies/UI enabled |
+| 7.P4b.3 operation policy backend | 315 focused tests, 1,438 full pytest, Pyright 0 and eleven synthetic native phases. [Checks](../logs/reports/operation-policy-checks.json), [native](../logs/reports/operation-policy-native.json). User accepted; committed ac3e6e1, not pushed. Explicit host registration only, no production policies/UI enabled |
+| 7.P2b.1 managed resource lifetime | 238 focused tests, 1,460 final full pytest, Pyright 0 and eleven native legacy compatibility phases. [Checks](../logs/reports/workflow-resources-checks.json), [native](../logs/reports/workflow-resources-native.json). Acceptance pending; host-only binding, not desktop permission UI or real driver acceptance |
 
 ## Roadmap
 
@@ -78,7 +73,7 @@ Read Now, open limits and the current step; search other sections only as needed
 |---|---|---|
 | 0–5 | Functional baseline accepted with open limits above | Core/host, notes, conversation, Stop, wake/sleep, persistent task/replay protection |
 | 6 | Agreed functional scope accepted | Memory, measurements, media/weather, camera and screen sharing |
-| 7 | 7.P1/7.P2a/7.P3a/7.P4a accepted; 7.P4b.1 accepted; 7.P4b.2 accepted; 7.P4b.3 auto verified | Remaining: driver-backed targets, lifecycle/permission UI, L0–L4 desktop/file/browser work, Plugins and learned skills |
+| 7 | Backend prerequisites through 7.P4b.3 accepted; 7.P2b.1 auto verified | Remaining: driver-backed targets, lifecycle/permission UI, L0–L4 desktop/file/browser work, Plugins and learned skills |
 | 8 | Planned | Routines, scheduler, persistent background lifecycle, maintenance and packaging |
 | 9 | Deferred integrations | Official external services/channels and additional audio sharing |
 | 10 | Planned after functional stages | Final provider-adapter migration |
@@ -88,7 +83,7 @@ existing coupling is migrated in 10. No new provider framework is authorized.
 
 ## Stage 7 — General desktop operation, local files and learned skills
 
-**Status: 7.P1/7.P2a/7.P3a/7.P4a accepted; 7.P4b.1 accepted; 7.P4b.2 accepted; 7.P4b.3 auto verified; real drivers remain planned.**
+**Status: Backend prerequisites through 7.P4b.3 accepted; 7.P2b.1 auto verified; real drivers remain planned.**
 This replaces the earlier narrow-app/format draft. The goal is operation and
 learning across previously unknown applications, not a fixed supported-app list.
 Netflix, WhatsApp, YouTube, Discord and music playlists were illustrative tasks,
@@ -175,8 +170,10 @@ requires it. Tests accompany every slice, not only stage closure.
 | 7.P4b | Human intervention, recovery and progress limits | Parent slice; preserve UNKNOWN, completed effects and no total task cutoff | Split below; full slice remains open |
 | 7.P4b.1 | Nonblocking intervention and progress checkpoints | Indefinite explicit Continue/Cancel waits; independent jobs proceed at safe checkpoints. Trusted unlocked reobservation, revision/identity race guards, three unchanged-state evaluations after a baseline | User accepted for publication. Trusted backend only |
 | 7.P4b.2 | Persistent logical recovery | Content-free restart metadata and explicit Continue/replanning after fresh observation; no historical payload restoration or blind replay | User accepted; committed 959a64f, not pushed. Trusted-host API only, no public Continue control |
-| 7.P4b.3 | Operation deadlines and safe read retry | Explicit per-operation time bounds, at most one read-only transient retry, no automatic side-effect retry; actual outcome remains authoritative | Implemented/auto verified; acceptance pending. Host opt-in only; legacy registrations unchanged and no hard thread kill |
-| 7.P2b | Authorization UI and lifecycle binding | Trusted user decisions, scope expansion, physical-input preference and task end/Stop/scope-change revocation. Bind real references from 7.P3 and logical tasks from 7.P4; a Live turn is not the whole task | Planned after 7.P3/P4; full 7.P2 remains open |
+| 7.P4b.3 | Operation deadlines and safe read retry | Explicit per-operation time bounds, at most one read-only transient retry, no automatic side-effect retry; actual outcome remains authoritative | User accepted; committed ac3e6e1, not pushed. Host opt-in only; legacy registrations unchanged and no hard thread kill |
+| 7.P2b | Authorization UI and lifecycle binding | Parent slice: common permission decisions and logical task lifecycle, not one Live turn | Split below; full UI/real-driver integration remains open |
+| 7.P2b.1 | Managed scope/target lifetime | Bind existing scope/reference owners to TaskManager; release on completion/Stop/close/UNKNOWN, validate task ownership and safe scope replacement; preserve in-flight outcomes | Implemented/auto verified; acceptance pending. Opt-in host composition only |
+| 7.P2b.2 | Trusted decisions and desktop wiring | Real pending scope expansion/high-impact/input decisions, physical-input setting, logical task IDs/progress/Continue and correct conversation Stop/Disconnect binding; bind actual resources with 7.P3b | Planned next; no dummy approval prompt or pretend GUI control |
 | 7.P5 | Read-only Plugins screen | Built-in capability metadata from existing registration/owners; System default badge, no delete/toggle, separate from learned Skills. No runtime auto-import or speculative third-party plugin framework | Planned |
 | 7.0a | Selected local files and text/code/CSV reading | Real scoped file references, type/size/path/link checks, encoding and changed-file detection; temporary files first, no unrestricted filesystem exploration | Planned |
 | 7.0b | File context and controlled text/code/CSV writes | Deliberately supplied context is untrusted and bounded; explicit destination, expected original snapshot, atomic write/readback and recoverable original where applicable. No silent scope expansion or blind overwrite | Planned |
@@ -280,8 +277,8 @@ Stop and UNKNOWN gates are checked again before admission. Historical UNKNOWN is
 never relabelled success, even if later remaining steps succeed. Legacy receipts
 without logical metadata cannot reconstruct a lost old plan.
 
-Public UI/model task creation, progress/Continue and scope/target cleanup remain
-7.P2b. Actual pre-existing user-profile migration, real-provider/hardware acceptance
+Public UI/model task creation and progress/Continue remain 7.P2b.2.
+Configured host workflows now receive scope/target cleanup in 7.P2b.1. Actual pre-existing user-profile migration, real-provider/hardware acceptance
 and a rebuilt demo remain unverified. [Checks](../logs/reports/workflow-recovery-checks.json).
 
 ### 7.P4b.3 — explicit operation policy
@@ -303,6 +300,24 @@ with its deadline; no new worker/watchdog force-kills it. Real late success/fail
 remains authoritative. Terminal telemetry freezes its deadline outcome, while
 historical receipt telemetry is explicitly unavailable. No new public UI/model
 operation setting or command is enabled. [Checks](../logs/reports/operation-policy-checks.json).
+
+### 7.P2b.1 — lifecycle boundary
+
+TaskManager accepts optional task_scopes and target_references. A target store must
+use the same scope owner; bad composition fails before worker startup. A scoped
+workflow must bind a live scope for its logical workflow ID, principal and desktop
+source, not another task's grant. Review stubs never own the proposed grant.
+
+Completion, Stop, close and UNKNOWN revoke the bound scope and clear its reference
+cache. In-flight actual effects still finish normally/cooperatively. Planning/human
+waits retain task-duration authority. Safe checkpoint replacement binds a fresh
+host-issued same-task scope, drops old refs/approvals/input handover, increments
+revision and performs no granting. Restart recovery validates fresh scope before
+observation and again before admission; no persisted grant is restored.
+
+Desktop composition/decision UI and Disconnect mapping remain 7.P2b.2. Existing
+unscoped local tools are unchanged. Real target/capture/input adapter acceptance
+remains 7.P3b. [Checks](../logs/reports/workflow-resources-checks.json).
 
 ### Gates and deferred scope
 

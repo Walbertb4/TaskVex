@@ -98,8 +98,9 @@ No UIA/DOM/visual automation driver is installed. Host-only logical recovery now
 retains content-free restart metadata and requires explicit fresh replanning;
 there is no public task Continue control. Cooperative operation deadlines and one
 safe-read retry are available as host registration primitives; existing tools keep
-their defaults. Production adapter policies, task permission dialogs and automatic
-scope/target cleanup remain planned. Existing per-tool durable replay protection is separate
+their defaults. Configured host workflows now clean up their existing task grants/target refs
+on completion, Stop and close. Production adapter policies, actual desktop task
+issuance and permission dialogs remain planned. Existing per-tool durable replay protection is separate
 from whole-task recovery; historical receipts do not restore private arguments.
 
 ## Not implemented yet
@@ -198,14 +199,14 @@ Model availability, network conditions and hardware affect behavior.
 
 ## Verification and documentation
 
-Latest Stage 7 operation-policy validation passed **1,438 Python tests**,
-including **315 focused checks**, Pyright with zero errors/warnings, and all eleven
-synthetic native phases. [Backend checks](logs/reports/operation-policy-checks.json) ·
-[Native evidence](logs/reports/operation-policy-native.json).
-These checks use temporary profiles, fake clocks and synthetic transports, not paid
-APIs or real user tasks. They validate opt-in backend policy and legacy compatibility;
-actual adapter budgets and public task UI remain pending. Successful native checks
-do not eliminate earlier intermittent startup/teardown issues.
+Latest Stage 7 managed-resource validation passed **1,460 Python tests**,
+including **238 focused checks**, Pyright with zero errors/warnings, and eleven
+native legacy-compatibility phases. [Backend checks](logs/reports/workflow-resources-checks.json) ·
+[Native evidence](logs/reports/workflow-resources-native.json).
+These checks use temporary profiles and synthetic tools/adapters, not paid APIs,
+real user tasks or actual GUI control. Managed task scope cleanup is host-only;
+real permission UI, conversation task binding and driver acceptance remain pending.
+Successful native checks do not eliminate earlier intermittent startup/teardown issues.
 
 Earlier camera/permission and startup evidence follows; its test counts belong
 to those changes and are not a new rerun of every hardware/provider scenario.

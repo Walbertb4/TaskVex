@@ -18,7 +18,8 @@ An external browser host does not automatically gain native permissions.
 Backend task authorization (7.P2a) adds no public UI event or setting yet.
 authorization_id is host-selected core/ModelTools metadata, never a field the model
 or UI can use to grant itself authority. Scope expansion, approval dialogs, physical
-input preference and task lifecycle revocation remain 7.P2b integration work.
+input preference and desktop lifecycle mapping remain 7.P2b.2 integration work.
+Opt-in host workflows now receive automatic scope/reference cleanup in 7.P2b.1.
 
 Target-reference backend (7.P3a) likewise adds no UI event, capture driver or model
 tool. Refresh callbacks, lifetime/document generations, geometry and frame-age
@@ -28,8 +29,8 @@ Live JPEG envelopes are unchanged and do not themselves prove target geometry.
 Logical workflows (7.P4a) are currently a trusted backend API, not UI events or
 model declarations. Their completed/requires_review/stop_requested fields are
 separate from one Live/REST turn's completed flag. Existing Stop targets its current
-turn; logical-task Stop/progress, message classification and scope cleanup require
-7.P2b binding. Do not render these backend APIs as working spoken commands.
+turn; logical-task Stop/progress, message classification and desktop issuance
+require 7.P2b.2 binding. Do not render these backend APIs as working spoken commands.
 
 7.P4b.1 adds backend wait_requested/waiting_for_user states and wait_reason /
 no_progress_count metadata. These are separate from turn completion. No public
@@ -52,6 +53,13 @@ results carry evidence.operation_policy with actual attempts, retry_blocked and
 frozen deadline_exceeded. Historical receipt telemetry is unavailable. Host-only
 registration selects deadlines/read-only/transient codes; model arguments cannot.
 Existing built-ins are not automatically opted in; actual adapter values remain open.
+
+7.P2b.1 binds scope/target lifetime only for explicitly composed host workflows.
+TaskManager completion/Stop/close revokes grants and references without claiming
+in-flight effects were undone. Scope replacement requires a safe checkpoint,
+fresh host grant and matching revision; it does not grant user consent itself.
+No new UI event, dialog, setting, model field or Disconnect behavior is added here.
+Real desktop decisions/physical-input preference remain 7.P2b.2.
 
 `window.vex === window.jarvis` is a compatibility alias. ui_ready is sent once
 bridge setters exist. Host readiness does not prove model connectivity. Mutations

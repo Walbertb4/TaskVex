@@ -360,7 +360,8 @@ fallback/replay. This predicate is not a router or authority to execute another 
 This foundation is tested with synthetic adapters. Current Notepad observation is
 not upgraded to lifetime-safe GUI targeting, passive Live frames are not an input
 driver, and no UIA/DOM/visual library is installed. Actual bindings/OS acceptance
-belong to 7.P3b with 7.1/7.3. Task/Stop cleanup wiring remains 7.P4/7.P2b.
+belong to 7.P3b with 7.1/7.3. Opt-in logical TaskManager cleanup is bound in 7.P2b.1; real desktop
+Stop/Disconnect wiring remains 7.P2b.2.
 Read deadlines/cooperative cancellation belong to those adapters and the logical
 task lifecycle. This store does not force-stop synchronous readers or add a worker.
 
@@ -413,9 +414,9 @@ and logical checkpoint. Missing/mismatched referenced receipts fail closed.
 A lost plan is never reconstructed or dispatched from disk. Per-operation deadlines and safe-read retry use explicit host registration
 policy as described below; synchronous I/O is not force-killed.
 
-Conversation classification, UI progress/Stop binding, model-plan validation and
-scope/target teardown on logical completion are not wired in this slice; those
-remain 7.P2b and later skill/routine integration. Existing Live/REST turn and
+Conversation classification, UI progress/Stop binding and model-plan validation
+remain 7.P2b.2 and later skill/routine integration. Opt-in host TaskManager
+composition now revokes scope/target lifetime on logical end/Stop/close. Existing Live/REST turn and
 audio owners are unchanged. Plan-size/admission/context budgets must be selected
 before exposing untrusted long-plan input; there is no arbitrary total task timeout.
 
@@ -452,7 +453,7 @@ state. No screenshots/message/file content from observations enter disk receipts
 These APIs are backend foundations. The planner/adapters must supply meaningful
 checkpoints and renew references as needed; there is no automatic GUI detection,
 public Continue dialog or new model tool. Production operation policy values
-and host scope/target teardown remain follow-up work. A synchronous handler must finish/yield cooperatively; this layer does
+and desktop task/permission wiring remain follow-up work. A synchronous handler must finish/yield cooperatively; this layer does
 not force-release a worker while its effect is still running.
 
 ### Persistent logical restart recovery
@@ -539,3 +540,52 @@ Historical disk receipts have unavailable telemetry, not invented zero attempts.
 These are backend primitives. Production time/error/read-only policies must be
 selected and bound with the actual drivers/provider adapters. No public UI event,
 model tool or new timeout setting is added here; Live/REST Stop ownership is unchanged.
+
+### Managed logical task resource lifetime
+
+TaskManager can receive the existing TaskScopes owner and optionally a matching
+TargetReferences owner. uses_scopes verifies reference composition before any worker
+starts. No new permission store, executor, resource resolver or model tool is added.
+Default composition remains unchanged; the desktop bootstrap does not yet issue
+logical task grants. Trusted host callers must bind the same owners to their policy.
+
+For managed workflows, a supplied authorization_id must be active for that logical
+workflow ID/principal and desktop source. Another task's or principal's scope is
+rejected before admission; rejected proposals remain the host's cleanup responsibility.
+History-review placeholders never own/revoke a caller-supplied proposed grant.
+Scopes with no registered logical task are not implicitly adopted by TaskManager.
+
+A scope spans planning updates and human waits, not individual conversation turns.
+Terminal completion (success/failure/unknown), explicit logical Stop, global UNKNOWN
+and manager close revoke its resource grants, exact-operation approvals and physical
+input handover, then drop cached target references. Stop revokes immediately while
+accepted operations still report their actual later result; already-started effects
+are never described as undone. Readers outside the target lock fail their final
+cancellation/scope/reference recheck after cleanup. Unrelated jobs retain their scopes.
+
+replace_workflow_scope requires a safe checkpoint with no accepted active child and
+an expected revision. The trusted host pauses, ends the old scope, obtains a fresh
+same-task scope after the actual user/resource decision, then binds it. The method
+only validates ownership, cleans old refs and increments revision; it neither expands
+resources nor approves input/high-impact work. New scopes carry no old approvals or
+handover. A paused job still requires resume/reobservation; old revision responses
+cannot continue it. Direct child completion never ends an unsealed parent scope.
+
+Planning updates and trusted observation/Continue callbacks require a current
+managed scope; revocation before or during an unlocked callback leaves the plan
+unchanged. Restart recovery also checks the supplied fresh scope before its
+observation callback and again at admission. Normal close can retain content-free recovery metadata but
+releases all bound RAM authority/references. No authority, approval or reference is
+restored from journal history. Real policy checks still apply on every operation.
+
+Cleanup failure keeps actual effects/results intact, attempts cleanup of other jobs
+and locks new work. Host scope_cleanup_failed distinguishes this fault from an
+uncertain external effect. UNKNOWN acknowledgement cannot clear this RAM cleanup fault;
+restart is required. Built-in target readers run outside locks so cancellation does
+not wait for an external observation callback. Existing synchronous I/O still must
+finish/cooperate; no force-kill or second worker is introduced.
+
+Public decision dialogs, physical-input preference, trusted user-task creation,
+conversation Stop/Disconnect mapping and actual driver/capture/input binding remain
+7.P2b.2/7.P3b. Manual camera/screen sharing stays in its existing owner; it is not
+silently reclassified as task-scoped automation capture by this backend wiring.

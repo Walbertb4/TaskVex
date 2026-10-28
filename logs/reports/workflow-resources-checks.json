@@ -1,0 +1,55 @@
+{
+  "date": "2026-10-28",
+  "stage": "7.P2b.1",
+  "status": "automatically_verified_user_acceptance_pending",
+  "accepted_previous_commit": "ac3e6e1",
+  "previous_commit_pushed": false,
+  "validation": {
+    "focused_passed": 238,
+    "pyright_errors": 0,
+    "pyright_warnings": 0,
+    "initial_full_pytest_passed": 1456,
+    "native_phases": [
+      "save",
+      "reopen",
+      "notes",
+      "persistence",
+      "export_cancel",
+      "credentials",
+      "chat",
+      "unknown",
+      "corrupt",
+      "schema_invalid",
+      "future"
+    ],
+    "native_all_passed": true,
+    "native_scope": "Unchanged unscoped legacy desktop compatibility; no real permission UI/GUI driver acceptance",
+    "full_pytest_passed": 1460,
+    "full_pytest_seconds": 136.97,
+    "final_managed_scope_observer_checks_passed": true,
+    "native_sequence_note": "Native phases cover unchanged default unscoped desktop compatibility. Final managed observer guards were subsequently checked by focused tests and the complete final Python regression; no native permission UI/driver path is claimed.",
+    "compileall": true,
+    "documentation_tests_passed": 3,
+    "diff_whitespace_check": true
+  },
+  "limits": [
+    "Opt-in host composition only; desktop bootstrap still uses its established unscoped local-tool policy",
+    "No public permission/input setting or task UI; actual conversation Stop/Disconnect mapping remains 7.P2b.2",
+    "Actual UIA/DOM/visual target/capture/input proof remains 7.P3b; no new driver installed",
+    "In-flight effects cannot be undone by revoking grants; synchronous I/O must cooperate",
+    "Host owns cleanup of rejected/unbound proposed scopes",
+    "No real user profile, paid provider, real GUI adapter acceptance or demo rebuild",
+    "Current slice awaits acceptance; no commit/push"
+  ],
+  "covered": [
+    "Matching scope/target composition validated before worker startup",
+    "Exact logical task/principal/desktop scope binding; foreign/revoked grants rejected",
+    "Terminal success/failure/unknown, logical Stop and close release permissions and cached references",
+    "Planning/human waits retain task-duration scope; unrelated jobs and history stubs cannot revoke another task",
+    "In-flight actual effects preserved; reader outside target lock invalidated by Stop without blocking cleanup",
+    "Safe scope replacement requires no accepted active child and fresh same-task scope; no approval/input inheritance",
+    "Stale revision callbacks cannot Continue; revoked scopes rejected before/during trusted observation and resume",
+    "Restart metadata restores no scope; fresh recovery scope checked before observation and admission",
+    "Cleanup fault preserves real success, locks admission and cannot be cleared as UNKNOWN acknowledgement"
+  ]
+}

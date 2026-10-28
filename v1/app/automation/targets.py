@@ -135,6 +135,10 @@ class TargetReferences:
         self._lock = Lock()
         self._references: dict[str, _Reference] = {}
 
+    def uses_scopes(self, scopes: TaskScopes) -> bool:
+        """Composition check only; no authority or access to stored grants."""
+        return self._scopes is scopes
+
     def issue(self, authorization_id: str, principal: str, snapshot: TargetSnapshot,
               reader: Callable[[Event], TargetSnapshot]) -> str:
         """Register trusted observation/refresh only; do not grant control of it."""
