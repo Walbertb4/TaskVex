@@ -13,6 +13,8 @@ import sqlite3
 
 from app.core.contracts import Task, TaskStatus, ToolError, ToolRequest, ToolResult, request_fingerprint
 from app.storage.instance_lock import SingleInstance
+from app.tasks.workflow import TERMINAL, validate_record
+from hashlib import sha256
 
 
 class JournalError(RuntimeError):
@@ -89,7 +91,7 @@ class TaskJournal:
             fresh = not self.path.exists()
             with self._connect(create=fresh) as db:
                 version = db.execute('PRAGMA user_version').fetchone()[0]
-                if not fresh and version not in (1, 2):
+                if not fresh and version not in (1, 2, 3):
                     raise ValueError('Unsupported journal version')
                 if db.execute('PRAGMA quick_check').fetchone()[0] != 'ok':
                     raise ValueError('Corrupt journal')
@@ -112,6 +114,12 @@ class TaskJournal:
                                'needs_vacuum INTEGER NOT NULL CHECK(needs_vacuum IN (0,1)))')
                     db.execute('INSERT INTO privacy_state VALUES (1,?)', (int(not fresh),))
                     db.execute('PRAGMA user_version=2')
+                if fresh or version in (1, 2):
+                    db.execute('CREATE TABLE workflows (principal TEXT NOT NULL, workflow_id TEXT NOT NULL, '
+                               'status TEXT NOT NULL, revision INTEGER NOT NULL, document TEXT NOT NULL, '
+                               'PRIMARY KEY(principal,workflow_id))')
+                    db.execute('CREATE INDEX workflows_recovery ON workflows(principal,status,workflow_id)')
+                    db.execute('PRAGMA user_version=3')
                 state = db.execute('SELECT id,needs_vacuum FROM privacy_state').fetchall()
                 if state not in ([(1, 0)], [(1, 1)]):
                     raise ValueError('Invalid privacy state')
@@ -134,6 +142,27 @@ class TaskJournal:
                         task = replace(task, status=status, result=result)
                         db.execute('UPDATE tasks SET status=?, document=? WHERE task_id=?',
                                    (status.value, _encode(task), task.task_id))
+                for row in db.execute('SELECT principal,workflow_id,status,revision,document FROM workflows'):
+                    record = self._decode_workflow(row)
+                    # Reconcile the receipt/metadata crash window without restoring a plan.
+                    prefix = 'workflow:' + sha256(record['workflow_id'].encode()).hexdigest() + ':'
+                    for step in record['steps'] + record['history']:
+                        receipt = db.execute('SELECT task_id,status,document FROM tasks WHERE principal=? AND request_id=?',
+                            (record['principal'], prefix + sha256(step['step_id'].encode()).hexdigest())).fetchone()
+                        if receipt is not None:
+                            request = json.loads(receipt[2])['request']
+                            if ((step['task_id'] is not None and step['task_id'] != receipt[0])
+                                    or step['tool'] != request['tool'] or record['source'] != request['source']):
+                                raise ValueError('Workflow receipt identity mismatch')
+                            step['task_id'], step['status'] = receipt[:2]
+                        elif step['task_id'] is not None:
+                            raise ValueError('Missing workflow receipt')
+                    if record['status'] not in TERMINAL | {'recovery_required'}:
+                        record['status'] = 'recovery_required'
+                        record['revision'] += 1
+                    db.execute('UPDATE workflows SET status=?,revision=?,document=? WHERE principal=? AND workflow_id=?',
+                        (record['status'], record['revision'], self._encode_workflow(record),
+                         record['principal'], record['workflow_id']))
                 self.uncertain = db.execute('SELECT 1 FROM tasks t WHERE status=? AND NOT EXISTS '
                     '(SELECT 1 FROM task_acknowledgements a WHERE a.task_id=t.task_id) LIMIT 1',
                     (TaskStatus.UNKNOWN.value,)).fetchone() is not None
@@ -213,6 +242,49 @@ class TaskJournal:
                         task.status.value, _encode(task), request_fingerprint(task.request)))
             if changed.rowcount != 1:
                 raise ValueError('Journal identity/content conflict')
+
+    @staticmethod
+    def _encode_workflow(record: dict) -> str:
+        return json.dumps(validate_record(record), sort_keys=True, ensure_ascii=True, allow_nan=False)
+
+    @classmethod
+    def _decode_workflow(cls, row) -> dict:
+        principal, workflow_id, status, revision, document = row
+        record = validate_record(json.loads(document))
+        if ((record['principal'], record['workflow_id'], record['status'], record['revision']) !=
+                (principal, workflow_id, status, revision) or cls._encode_workflow(record) != document):
+            raise ValueError('Invalid workflow receipt')
+        return record
+
+    def workflow(self, principal: str, workflow_id: str) -> dict | None:
+        with self._connect() as db:
+            row = db.execute('SELECT principal,workflow_id,status,revision,document FROM workflows '
+                             'WHERE principal=? AND workflow_id=?', (principal, workflow_id)).fetchone()
+            return self._decode_workflow(row) if row is not None else None
+
+    def recoverable_workflows(self, principal: str, after: str, limit: int) -> list[dict]:
+        """Bounded keyset page; no lifetime history or private bodies loaded into RAM."""
+        with self._connect() as db:
+            return [self._decode_workflow(row) for row in db.execute(
+                'SELECT principal,workflow_id,status,revision,document FROM workflows '
+                'WHERE principal=? AND status=? AND workflow_id>? ORDER BY workflow_id LIMIT ?',
+                (principal, 'recovery_required', after, limit))]
+
+    def save_workflow(self, record: dict, *, expected_revision: int | None = None) -> None:
+        document = self._encode_workflow(record)
+        with self._connect() as db:
+            if expected_revision is None:
+                changed = db.execute('INSERT INTO workflows VALUES (?,?,?,?,?) ON CONFLICT(principal,workflow_id) '
+                    'DO UPDATE SET status=excluded.status,revision=excluded.revision,document=excluded.document '
+                    'WHERE workflows.revision<=excluded.revision',
+                    (record['principal'], record['workflow_id'], record['status'], record['revision'], document))
+            else:
+                changed = db.execute('UPDATE workflows SET status=?,revision=?,document=? '
+                    'WHERE principal=? AND workflow_id=? AND revision=? AND status=?',
+                    (record['status'], record['revision'], document, record['principal'], record['workflow_id'],
+                     expected_revision, 'recovery_required'))
+            if changed.rowcount != 1:
+                raise ValueError('Workflow recovery conflict')
 
     def close(self) -> None:
         """Release the lock after the worker actually stops; deleting files."""

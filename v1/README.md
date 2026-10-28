@@ -47,9 +47,11 @@ Credentials the key. Skills/routines use localStorage; clocks/chat context use R
 Profile OS locks prevent a second native app or persistent core worker on the same
 profile. Distinct profiles are independent; direct scripts must respect ownership.
 
-The unencrypted tasks/tasks.sqlite3 schema-2 journal retains IDs/status and request
+The unencrypted tasks/tasks.sqlite3 schema-3 journal retains IDs/status and request
 fingerprints, not note/message/file/proposal contents. Disk reads explicitly lack
-historical payloads; bounded current RAM results remain available. Schema 1 migrates
+historical payloads; bounded current RAM results remain available. Logical restart
+metadata also remains content-free; host Continue requires fresh replanning and
+restores no scopes/targets. The public task UI is not connected. Schemas 1/2 migrate
 before execution without losing replay keys or UNKNOWN review; older builds cannot
 open migrated profiles. External backups/provider history are not erased.
 The 256-record limit bounds active work/RAM, not

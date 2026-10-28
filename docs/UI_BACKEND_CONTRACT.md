@@ -36,7 +36,14 @@ no_progress_count metadata. These are separate from turn completion. No public
 pause/Continue event exists yet. Trusted host callbacks reobserve outside locks;
 UI/model assertions cannot supply validation or revive stopped/replaced jobs.
 Waiting has no automatic expiry; three unchanged planning observations after a
-baseline produce a no_progress wait. Restart recovery is not implemented here.
+baseline produce a no_progress wait.
+
+7.P4b.2 adds host-only recoverable_workflows / recover_workflow / cancel_recovery.
+They expose content-free, principal-scoped restart metadata and require explicit
+fresh replanning/revision checks before continuing. No public UI/model event is
+added. Schema-3 history cannot restore private parameters, targets or approvals;
+historical_steps is read-only outcome metadata, not a fresh result/context grant.
+Normal close differs from explicit Stop; UNKNOWN still requires separate review.
 
 `window.vex === window.jarvis` is a compatibility alias. ui_ready is sent once
 bridge setters exist. Host readiness does not prove model connectivity. Mutations

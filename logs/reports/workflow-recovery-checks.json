@@ -1,0 +1,52 @@
+{
+  "date": "2026-10-28",
+  "stage": "7.P4b.2",
+  "status": "automatically_verified_user_acceptance_pending",
+  "scope": "Schema-3 content-free logical recovery, explicit host reobservation/replanning",
+  "validation": {
+    "focused_passed": 146,
+    "pyright_errors": 0,
+    "pyright_warnings": 0,
+    "full_pytest_passed": 1410,
+    "full_pytest_seconds": 110.23,
+    "native_phases": [
+      "save",
+      "reopen",
+      "notes",
+      "persistence",
+      "export_cancel",
+      "credentials",
+      "chat",
+      "unknown",
+      "corrupt",
+      "schema_invalid",
+      "future"
+    ],
+    "native_all_passed": true,
+    "native_synthetic_only": true,
+    "compileall": true,
+    "documentation_tests_passed": 3,
+    "diff_whitespace_check": true
+  },
+  "limits": [
+    "Trusted host API only; no public UI/model Continue or task planner binding",
+    "Per-operation deadlines/read retry remain 7.P4b.3; scope/target cleanup remains 7.P2b",
+    "Old schema-2 receipts without logical metadata cannot reconstruct former plans",
+    "No real user profile, paid API or actual driver acceptance; demo not rebuilt",
+    "Schema-1/2 builds reject schema 3; deleting history is not downgrade/recovery",
+    "Current slice not committed or pushed"
+  ],
+  "covered": [
+    "Atomic schema-1/2 migration to schema 3; migration failure rollback and retry",
+    "Normal close versus explicit Stop across actual synthetic process exit",
+    "Actual per-tool receipt reconciles effect/result versus logical-checkpoint crash window",
+    "No automatic scheduling or historical payload/authority restoration",
+    "Explicit fresh replanning outside lock; failure and delayed Continue after cancellation do not dispatch",
+    "Historical IDs cannot be reused; stable logical ID survives multiple recoveries",
+    "Revoked/missing scope still denied through ordinary worker policy",
+    "Historical unknown retained after explicit acknowledgement and later successful remaining steps",
+    "Principal-scoped bounded recovery pagination and empty-task tombstones",
+    "Fixed-field private metadata validation, receipt identity consistency and profile lock release",
+    "Metadata storage failure before dispatch and after actual synthetic success fails closed; worker cleanup survives"
+  ]
+}

@@ -219,10 +219,9 @@ def test_close_cancels_waiting_metadata_and_observers_are_not_called_after_stop(
 
 
 @pytest.mark.parametrize('operation', ['resume', 'observe'])
-def test_callback_cannot_apply_to_recreated_same_id_after_cache_eviction(operation, tmp_path):
+def test_callback_cannot_apply_to_recreated_same_id_after_cache_eviction(operation):
     entered, release = Event(), Event()
-    with TaskManager(registry_with(lambda a, c: done(c)), authorize=allow,
-                     capacity=1, journal_home=tmp_path) as core:
+    with TaskManager(registry_with(lambda a, c: done(c)), authorize=allow, capacity=1) as core:
         def prepare():
             core.submit_workflow('job', (), sealed=False)
             if operation == 'resume':

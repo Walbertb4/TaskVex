@@ -78,7 +78,7 @@ def test_legacy_migration_preserves_replay_review_and_removes_raw_content(tmp_pa
         for task in tasks:
             assert_history(core.submit(task.request), task)
         with closing(sqlite3.connect(path)) as db:
-            assert db.execute('PRAGMA user_version').fetchone()[0] == 2
+            assert db.execute('PRAGMA user_version').fetchone()[0] == 3
             assert db.execute('SELECT needs_vacuum FROM privacy_state').fetchone()[0] == 0
             assert db.execute('SELECT task_id FROM task_acknowledgements').fetchall() == [('unknown',)]
     assert_no_private_bytes(tmp_path)

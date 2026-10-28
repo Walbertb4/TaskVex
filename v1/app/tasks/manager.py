@@ -10,6 +10,7 @@ is rejected. Thread does not force cancellation; The handler must manage its own
 """
 
 from collections import deque
+from copy import deepcopy
 from dataclasses import dataclass, field, replace
 from inspect import iscoroutine, iscoroutinefunction
 import math
@@ -202,15 +203,18 @@ class TaskManager:
             if self._journal is not None:
                 try:
                     history |= self._journal.has_requests(principal, job.prefix)
+                    history |= self._journal.workflow(principal, workflow_id) is not None
                 except JournalError:
                     self._journal_error()
             # Lost plan/context is not proof that a previous step can be repeated,
             # nor permission to continue its dependents from a historical success.
             if history:
                 job.status = 'review_required'
+                job.recovery_stub = True
             else:
                 self._workflow_order.append(workflow_id)
             self._workflows[workflow_id] = job
+            self._save_workflows()
             self._advance_workflows()
             self._condition.notify_all()
             return job.snapshot(safety_locked=self._uncertain)
@@ -264,6 +268,7 @@ class TaskManager:
             if sealed is not None:
                 job.sealed = sealed
             job.revision += 1
+            self._save_workflows()
             self._advance_workflows()
             self._condition.notify_all()
             return job.snapshot(safety_locked=self._uncertain)
@@ -278,6 +283,98 @@ class TaskManager:
         if self._closing or self._uncertain or job.stop_requested or job.status in TERMINAL | {'review_required'}:
             raise TaskManagerError('workflow_closed', 'Logical task cannot accept this decision')
         return job
+
+    def recoverable_workflows(self, *, principal: str = 'local-user', after: str = '', limit: int = 256) -> list[dict]:
+        """Page private restart metadata without loading plans, grants or scheduling."""
+        if (type(principal) is not str or not principal.strip() or type(after) is not str
+                or type(limit) is not int or not 1 <= limit <= 256):
+            raise TaskManagerError('invalid_recovery', 'Expected principal, cursor and bounded page size')
+        with self._condition:
+            if self._journal is None or self._journal_failed:
+                raise TaskManagerError('recovery_unavailable', 'Persistent task history is required')
+            try:
+                return self._journal.recoverable_workflows(principal, after, limit)
+            except JournalError:
+                self._journal_error()
+
+    def _recovery_record(self, workflow_id: str, principal: str, expected_revision: int, *, dismiss: bool = False) -> dict:
+        if (type(expected_revision) is not int or expected_revision < 0
+                or type(workflow_id) is not str or not workflow_id.strip()
+                or type(principal) is not str or not principal.strip()):
+            raise TaskManagerError('invalid_recovery', 'Expected workflow identity and revision')
+        if self._closing or (self._uncertain and not dismiss) or self._journal_failed or self._journal is None:
+            raise TaskManagerError('recovery_unavailable', 'Resolve safety locks before continuing')
+        try:
+            record = self._journal.workflow(principal, workflow_id)
+        except JournalError:
+            self._journal_error()
+        if record is None or record['status'] != 'recovery_required' or (record['stop_requested'] and not dismiss):
+            raise TaskManagerError('not_recoverable', 'Logical task is not awaiting restart recovery')
+        if record['revision'] != expected_revision:
+            raise TaskManagerError('workflow_changed', 'Read the current recovery revision')
+        current = self._workflows.get(workflow_id)
+        if current is not None and not current.recovery_stub:
+            raise TaskManagerError('workflow_active', 'Logical task already belongs to this process')
+        return record
+
+    def recover_workflow(self, workflow_id: str, *, expected_revision: int,
+                         replan: Callable[[dict], tuple[WorkflowStep, ...]], principal: str = 'local-user',
+                         authorization_id: str | None = None, sealed: bool = True) -> dict:
+        """Explicit trusted-host Continue: reobserve/replan outside locks, never restore payloads.
+
+        The host must obtain missing intent/parameters and current permission itself.
+        Past steps are metadata only; every new operation needs a fresh step ID.
+        """
+        if not callable(replan):
+            raise TaskManagerError('invalid_observer', 'Expected a trusted fresh-state replanner')
+        with self._condition:
+            record = self._recovery_record(workflow_id, principal, expected_revision)
+        try:
+            steps = validate_steps(replan(deepcopy(record)))
+        except Exception:
+            raise TaskManagerError('reobservation_required', 'Fresh remaining work could not be planned') from None
+        job = _Workflow(workflow_id, steps, principal, record['source'], authorization_id, sealed)
+        job.history = record['history'] + record['steps']
+        if {s.step_id for s in steps} & {s['step_id'] for s in job.history}:
+            raise TaskManagerError('step_locked', 'Historical step IDs cannot be dispatched again')
+        for step in steps:
+            self._registry.validate_request(job.request(step))
+        job.revision = expected_revision + 1
+        job.creation_key = record['creation_key']
+        with self._condition:
+            if self._recovery_record(workflow_id, principal, expected_revision) != record:
+                raise TaskManagerError('workflow_changed', 'Recovery state changed during reobservation')
+            for key, old in list(self._workflows.items()):
+                if len(self._workflows) < self._capacity or workflow_id in self._workflows:
+                    break
+                if old.status in TERMINAL:
+                    del self._workflows[key]
+            if len(self._workflows) >= self._capacity and workflow_id not in self._workflows:
+                raise TaskManagerError('capacity_exceeded', 'Active logical task capacity reached')
+            try:
+                assert self._journal is not None
+                self._journal.save_workflow(job.record(), expected_revision=expected_revision)
+            except JournalError:
+                self._journal_error()
+            job.saved_key = definition_key(job.record())
+            self._workflows[workflow_id] = job
+            self._workflow_order.append(workflow_id)
+            self._advance_workflows()
+            self._condition.notify_all()
+            return job.snapshot(safety_locked=self._uncertain)
+
+    def cancel_recovery(self, workflow_id: str, *, expected_revision: int,
+                        principal: str = 'local-user') -> dict:
+        """Explicitly dismiss a restart task without rewriting any effect receipt."""
+        with self._condition:
+            record = self._recovery_record(workflow_id, principal, expected_revision, dismiss=True)
+            record.update(status='cancelled', stop_requested=True, revision=expected_revision + 1)
+            try:
+                assert self._journal is not None
+                self._journal.save_workflow(record, expected_revision=expected_revision)
+            except JournalError:
+                self._journal_error()
+            return record
 
     def pause_workflow(self, workflow_id: str, *, expected_revision: int, reason: str) -> dict:
         """Host-requested intervention; finish any accepted operation before yielding."""
@@ -336,6 +433,7 @@ class TaskManager:
             job.no_progress_count = 0
             job.revision += 1
             job.status = 'queued'
+            self._save_workflows()
             self._workflow_order.append(workflow_id)
             self._advance_workflows()
             self._condition.notify_all()
@@ -374,6 +472,7 @@ class TaskManager:
             if job.no_progress_count >= 3:
                 job.wait_reason = 'no_progress'
                 self._advance_workflows()
+            self._save_workflows()
             self._condition.notify_all()
             return job.snapshot(safety_locked=self._uncertain)
 
@@ -382,6 +481,13 @@ class TaskManager:
         with self._condition:
             job = self._workflow(workflow_id)
             if job.status not in TERMINAL:
+                if job.recovery_stub and self._journal is not None:
+                    try:
+                        record = self._journal.workflow(job.principal, workflow_id)
+                    except JournalError:
+                        self._journal_error()
+                    if record is not None and record['status'] == 'recovery_required':
+                        self.cancel_recovery(workflow_id, principal=job.principal, expected_revision=record['revision'])
                 self._stop_workflow(job, 'workflow_stopped')
                 self._advance_workflows()
                 self._condition.notify_all()
@@ -408,6 +514,8 @@ class TaskManager:
         """Aggregate metadata without erasing successful effects or private receipts."""
         states = set(job.states.values())
         if 'unknown' in states:
+            job.status = 'unknown'
+        elif any(s['status'] == 'unknown' for s in job.history):
             job.status = 'unknown'
         elif job.status == 'review_required' or (job.stop_requested and (not job.sealed or states - {'succeeded'})):
             job.status = 'cancelled'
@@ -438,6 +546,28 @@ class TaskManager:
             job.status = 'cancel_requested'
 
     def _advance_workflows(self) -> None:
+        try:
+            self._advance_workflow_queue()
+        finally:
+            self._save_workflows()
+
+    def _save_workflows(self) -> None:
+        """Checkpoint only changed metadata before the lock can release queued work."""
+        if self._journal is None or self._journal_failed:
+            return
+        try:
+            for job in self._workflows.values():
+                if job.recovery_stub or job.suspended_on_close:
+                    continue
+                record = job.record()
+                key = definition_key(record)
+                if key != job.saved_key:
+                    self._journal.save_workflow(record)
+                    job.saved_key = key
+        except JournalError:
+            self._journal_error()
+
+    def _advance_workflow_queue(self) -> None:
         """Admit one ready step to the existing queue; never call/wait on a handler."""
         if self._closing or self._uncertain:
             for job in list(self._workflows.values()):
@@ -638,6 +768,16 @@ class TaskManager:
             raise TaskManagerError("worker_wait", "Worker cannot close itself synchronously")
         with self._condition:
             self._closing = True
+            if self._journal is not None and not self._journal_failed:
+                try:
+                    for job in self._workflows.values():
+                        if job.status not in TERMINAL and not job.stop_requested and not job.recovery_stub and not job.suspended_on_close:
+                            record = job.record()
+                            record.update(status='recovery_required', revision=job.revision + 1)
+                            self._journal.save_workflow(record)
+                            job.suspended_on_close = True
+                except JournalError:
+                    self._journal_failed = self._uncertain = True
             self._cancel_pending("Manager is closing")
             for entry in self._entries.values():
                 if not entry.task.status.terminal:
@@ -753,5 +893,9 @@ class TaskManager:
                     # We do not start the next handler considering the common resource is safe.
                     self._uncertain = True
                     self._cancel_pending("Earlier operation has unknown outcome")
-                self._advance_workflows()
+                try:
+                    self._advance_workflows()
+                except TaskManagerError:
+                    # Failed recovery metadata locks admission; keep the worker alive for cleanup.
+                    self._cancel_pending('Task history unavailable')
                 self._condition.notify_all()

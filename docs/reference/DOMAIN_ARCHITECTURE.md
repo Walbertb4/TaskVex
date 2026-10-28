@@ -405,12 +405,13 @@ success, even if the last operation finishes after Stop. A stopped incomplete
 plan can retain successful steps without claiming they were undone. Close applies
 the same rule and never claims an unfinished worker has stopped.
 
-Logical metadata is process-memory only in the current backend. Per-step private receipts remain
-durable; a prefix-index history probe makes a lost/evicted plan review_required
-before any new step, regardless of step order. It cannot blindly restart or use
-historical success as fresh context. Persistent logical recovery/manual Continue remains 7.P4b.2; per-operation
-deadlines/read retry remain 7.P4b.3. Intervention/progress checkpoints are below. Per-handler
-deadlines remain the handlers' responsibility; synchronous I/O is not force-killed.
+Full executable plans and results stay in bounded process RAM. Schema 3 persists
+only logical identity/status/revision and step identities/outcomes alongside the
+private per-tool receipts. Before dispatch, new/revised plan metadata is committed;
+startup reconciles receipt status/task IDs to cover a crash between effect completion
+and logical checkpoint. Missing/mismatched referenced receipts fail closed.
+A lost plan is never reconstructed or dispatched from disk. Per-operation deadlines
+and safe-read retry remain 7.P4b.3; synchronous I/O is not force-killed.
 
 Conversation classification, UI progress/Stop binding, model-plan validation and
 scope/target teardown on logical completion are not wired in this slice; those
@@ -450,7 +451,51 @@ state. No screenshots/message/file content from observations enter disk receipts
 
 These APIs are backend foundations. The planner/adapters must supply meaningful
 checkpoints and renew references as needed; there is no automatic GUI detection,
-public Continue dialog or new model tool. Whole-plan restart recovery and operation
-retry/deadline binding remain separate planned steps, as does host scope/target
+public Continue dialog or new model tool. Operation retry/deadline binding
+remains planned, as does host scope/target
 teardown. A synchronous handler must finish/yield cooperatively; this layer does
 not force-release a worker while its effect is still running.
+
+### Persistent logical restart recovery
+
+TaskJournal schema 3 atomically migrates schema 1/2, preserving per-tool fingerprints,
+UNKNOWN acknowledgements and the schema-1 privacy cleanup gate. It adds one indexed
+workflows table; no second database/executor, payload backup or persisted authority.
+Strict fixed-field records contain IDs/source/revision, status/sealed/stop flags,
+a creation equality digest and current/historical step IDs/tool names/status/task IDs.
+They exclude arguments, result/error bodies, observation content and authorization
+IDs. A digest is not encryption; identifier metadata remains plaintext.
+
+Startup validates records and reconciles actual tool receipts by stable request ID.
+Nonterminal logical work becomes recovery_required, with no scheduling or in-memory
+plan rehydration. Per-tool queued/running recovery still yields cancelled/unknown;
+unknown outcomes retain the existing global gate. Existing schema-2 receipts without
+logical metadata cannot reconstruct their former task. Older schema-1/2 builds reject
+schema 3; do not delete history to downgrade. No real user profile is migrated by tests.
+
+Normal close checkpoints unfinished logical work for explicit future review before
+cooperative child cancellation; real late results still belong to the tool receipts.
+Explicit logical Stop is persisted and cannot be resumed. Metadata-only cancellation
+of a restart record never rewrites tool outcomes or clears UNKNOWN. Terminal logical
+records also prevent reusing an empty/evicted task ID after restart.
+
+recoverable_workflows returns a principal-scoped keyset page (after workflow ID,
+limit 1..256), not all history. recover_workflow is an explicit trusted-host Continue:
+read current revision, reobserve/replan outside the Condition, then recheck current
+record, lifecycle, capacity and UNKNOWN before an atomic revision-checked checkpoint.
+The trusted callback must obtain missing intent/parameters, fresh targets and current
+authority from permitted sources; disk summaries do not supply those. No effect is
+submitted while it runs. Errors/invalid plans leave recovery pending; cancellation
+or a competing Continue invalidates the late result.
+
+New remaining work uses fresh step IDs and the same logical ID. Earlier step identities
+and real outcomes remain read-only historical_steps. Fresh steps cannot depend on
+historical successes as if they were fresh observations. Current policy applies to
+each dispatch; authorization_id is supplied anew by the host or left absent, never
+restored. Historical unknown remains unknown in the aggregate even after remaining
+steps succeed; explicit acknowledgement is not proof that the old effect succeeded.
+
+Recovery is a backend API, not a public Continue event/model tool. Conversation and
+permission/lifecycle UI remain 7.P2b. Checkpoint failure locks new work but preserves
+actual completed results and worker cleanup. Tool-result and logical-checkpoint writes
+are separate transactions; recovery reconciliation handles this boundary conservatively.

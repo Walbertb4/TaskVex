@@ -80,7 +80,7 @@ microphone On/Off and Stop remain local lifecycle operations.
 | Optional task grants (backend foundation) | `app/policy/task_scope.py`; host-issued RAM-only scope/resource/input/approval state, checked by PolicyEngine when explicitly configured; desktop UI/lifecycle issuance is not connected yet |
 | GUI target references (backend foundation) | `app/automation/targets.py`; one task-bound RAM reference owner, trusted refresh callbacks and geometry/status contracts; real adapters/discovery/input remain planned |
 | Tool queue, logical jobs, cancellation and replay | `app/tasks/manager.py`; one worker/Condition and per-step receipts; `app/tasks/workflow.py` holds only plan/progress contracts; intervention waits yield intake at safe checkpoints, trusted observation callbacks run outside its lock |
-| Persistent task records | `app/storage/task_journal.py`; SQLite journal |
+| Persistent task records | `app/storage/task_journal.py`; schema-3 SQLite private tool receipts and content-free logical recovery metadata; never restored grants or execution plans |
 | Personal memory | `app/tools/local/personal_memory.py`; shared settings store and short storage lock |
 | Notes | `app/tools/local/notes.py`; stable IDs, dates, selection snapshots and atomic writes |
 | Timers and stopwatches | `app/tools/local/clocks.py`; shared process-memory state and monotonic time |
@@ -132,7 +132,7 @@ cancelled and unknown. Cancellation acceptance is not completion. A completed,
 verified side effect is not rolled back by Stop or a late result.
 
 The same request ID and payload retrieve the current RAM result or a private
-historical receipt; changed payload is a conflict. Schema 2 stores a versioned
+historical receipt; changed payload is a conflict. Schema 3 preserves a versioned
 SHA256 request fingerprint, IDs/tool/source/principal/status and a content-free
 result. No argument values, result bodies, free-form errors or evidence content
 are persisted. A digest is not encryption; low-entropy guesses are possible.
@@ -203,7 +203,7 @@ TaskManager rejects active work and validates each actual UNKNOWN ID. SQLite's
 `task_acknowledgements` table records review separately from historical
 outcomes and replay keys. Migration preserves its entries; a new unknown
 still blocks work. This is acceptance of uncertainty, not outcome reconciliation,
-verified success, compensation or replay. Older schema-1 apps reject schema 2;
+verified success, compensation or replay. Older schema-1/2 apps reject schema 3;
 do not downgrade a migrated profile or delete its journal to force old versions open.
 Storage errors remain locked and are never repaired by clearing history.
 Deleting the journal removes replay protection and is not a recovery procedure.

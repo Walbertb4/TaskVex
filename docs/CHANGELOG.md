@@ -6,6 +6,32 @@ Older entries remain part of this record through the dated snapshot below.
 
 ## Unreleased
 
+### 2026-10-28 — Persistent logical task recovery (7.P4b.2)
+
+- Added schema-3 content-free logical records in the existing task journal, with
+  atomic schema-1/2 migration preserving private tool receipts and UNKNOWN review.
+  Old schema-1/2 builds reject the new schema; no downgrade by deleting history.
+- Checkpointed plan identities before dispatch. Startup reconciles private tool
+  receipts across the result/checkpoint crash window without restoring executable
+  arguments, result bodies, resources, approvals or scopes.
+- Normal close preserves unfinished logical work for explicit recovery; explicit
+  Stop remains stopped. Added bounded principal-scoped recovery pages, revision-
+  checked cancellation and trusted-host Continue with unlocked fresh replanning.
+- Preserved logical IDs and historical call identities/outcomes; remaining work
+  requires fresh step IDs. Failed/stale replanning cannot dispatch, and historical
+  UNKNOWN is never upgraded to success after later steps finish.
+- 146 focused checks, 1,410 full pytest and Pyright with zero errors/warnings passed.
+  All eleven synthetic native phases also passed, including save/reopen, chat/Stop,
+  UNKNOWN/recovery and invalid settings.
+  [Native evidence](../logs/reports/workflow-recovery-native.json).
+  Tests include actual synthetic process exits, migration rollback, late Continue,
+  metadata corruption, storage failure after real synthetic success and replay
+  protection. [Evidence](../logs/reports/workflow-recovery-checks.json).
+- Public task/Continue UI and host scope cleanup remain 7.P2b. Deadlines/read retry
+  remain 7.P4b.3. Legacy receipts without logical metadata cannot recover a lost
+  plan. Real user-profile/provider acceptance and demo rebuild remain open.
+  Current slice awaits acceptance; no commit/push or paid API use.
+
 ### 2026-10-27 — README and prerequisite publication
 
 - Updated README with the accepted Stage 7 backend foundations and latest

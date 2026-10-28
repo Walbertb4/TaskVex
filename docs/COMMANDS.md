@@ -344,7 +344,7 @@ Native tool requests keep IDs/status and a request fingerprint in a local journa
 across restarts. A repeated request returns its current RAM result or a historical
 receipt with content unavailable, rather than running again. Schema 1 migrates
 without replay before tools start; do not downgrade the migrated profile. Note,
-message, file and proposal bodies are not stored in schema-2 receipts. Unfinished started actions become unknown and block new tools;
+message, file and proposal bodies are not stored in schema-3 receipts. Unfinished started actions become unknown and block new tools;
 restarting does not clear that uncertainty. This is separate from conversation
 memory and does not restore timers. There is no lifetime 256-task limit in the
 native app; active work and in-memory records remain bounded. Do not delete the

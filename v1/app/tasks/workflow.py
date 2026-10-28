@@ -8,6 +8,7 @@ from collections import deque
 from dataclasses import dataclass, field
 from hashlib import sha256
 import json
+import re
 from typing import Any
 
 from app.core.contracts import ContractError, ToolRequest
@@ -106,6 +107,10 @@ class _Workflow:
     wait_reason: str | None = None
     no_progress_count: int = 0
     observation_key: str | None = None
+    history: list[dict] = field(default_factory=list)
+    saved_key: str | None = None
+    recovery_stub: bool = False
+    suspended_on_close: bool = False
 
     def __post_init__(self) -> None:
         if not isinstance(self.workflow_id, str) or not self.workflow_id.strip() or type(self.sealed) is not bool:
@@ -131,8 +136,52 @@ class _Workflow:
         """Return progress metadata only, never a second copy of private plan bodies."""
         return {'workflow_id': self.workflow_id, 'revision': self.revision, 'status': self.status,
             'completed': self.status in TERMINAL, 'stop_requested': self.stop_requested,
-            'sealed': self.sealed, 'requires_review': safety_locked or self.status in {'unknown', 'review_required'},
+            'sealed': self.sealed, 'requires_review': safety_locked or self.status in {'unknown', 'review_required'}
+                or any(s['status'] == 'unknown' for s in self.history),
             'wait_reason': self.wait_reason, 'no_progress_count': self.no_progress_count,
+            'historical_steps': [dict(s) for s in self.history],
             'steps': [{'step_id': s.step_id, 'tool': s.tool, 'status': self.states[s.step_id],
                        'task_id': self.task_ids.get(s.step_id), 'error_code': self.codes.get(s.step_id),
                        'blocked_by': list(self.blocked_by.get(s.step_id, ()))} for s in self.steps]}
+
+    def record(self) -> dict:
+        """Content-free recovery metadata; no arguments, errors, grants or targets."""
+        return {'workflow_id': self.workflow_id, 'principal': self.principal, 'source': self.source,
+                'revision': self.revision, 'status': self.status, 'sealed': self.sealed,
+                'stop_requested': self.stop_requested, 'creation_key': self.creation_key,
+                'history': [dict(s) for s in self.history],
+                'steps': [{'step_id': s.step_id, 'tool': s.tool, 'status': self.states[s.step_id],
+                           'task_id': self.task_ids.get(s.step_id)} for s in self.steps]}
+
+
+def validate_record(value: dict) -> dict:
+    """Reject extra/private fields and malformed stored identities before recovery."""
+    fields = {'workflow_id', 'principal', 'source', 'revision', 'status', 'sealed',
+              'stop_requested', 'creation_key', 'history', 'steps'}
+    if type(value) is not dict or value.keys() != fields:
+        raise ValueError('Invalid workflow record')
+    ToolRequest(request_id=value['workflow_id'], principal=value['principal'],
+                source=value['source'], tool='workflow.validation')
+    if (type(value['revision']) is not int or value['revision'] < 0
+            or type(value['sealed']) is not bool or type(value['stop_requested']) is not bool
+            or type(value['creation_key']) is not str
+            or re.fullmatch(r'[0-9a-f]{64}', value['creation_key']) is None
+            or value['status'] not in TERMINAL | {'queued', 'running', 'planning', 'wait_requested',
+                'waiting_for_user', 'cancel_requested', 'review_required', 'recovery_required'}):
+        raise ValueError('Invalid workflow state')
+    ids = set()
+    for name in ('steps', 'history'):
+        if type(value[name]) is not list:
+            raise ValueError('Invalid workflow steps')
+        for step in value[name]:
+            if type(step) is not dict or step.keys() != {'step_id', 'tool', 'status', 'task_id'}:
+                raise ValueError('Invalid workflow step')
+            ToolRequest(request_id=step['step_id'], principal=value['principal'],
+                        source=value['source'], tool=step['tool'])
+            if (step['step_id'] in ids or step['status'] not in STEP_TERMINAL |
+                    {'pending', 'queued', 'running', 'cancel_requested'}
+                    or (step['task_id'] is not None and
+                        (type(step['task_id']) is not str or not step['task_id'].strip()))):
+                raise ValueError('Invalid workflow step state')
+            ids.add(step['step_id'])
+    return json.loads(json.dumps(value, allow_nan=False))

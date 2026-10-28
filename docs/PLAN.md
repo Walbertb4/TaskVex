@@ -8,10 +8,11 @@ Stage 6's agreed functional scope is accepted. Stage 7 choices are recorded;
 7.P3a was accepted and committed as `dd586a1`.
 7.P4a was accepted by continuation and committed as `57a49d3`.
 7.P4b.1 was accepted for publication with the updated README.
-**Next: 7.P4b.2, persistent logical recovery. Not started.**
-The approved behavior choices are recorded below. 7.P4b.1 implementation and
-automatic checks passed; persistent recovery and operation deadline/retry binding
-remain 7.P4b.2/7.P4b.3 follow-ups.
+**Current: 7.P4b.2, persistent logical recovery. Automatically verified; acceptance pending.**
+The approved behavior choices are recorded below. Accepted prerequisites through
+7.P4b.1 were published as 7c1001a. Persistent recovery is implemented at the host
+backend in 7.P4b.2; operation deadline/retry binding
+remains 7.P4b.3. Public task UI/Continue binding remains 7.P2b.
 Conversation UI and scope teardown bindings remain follow-up work, not
 capabilities enabled by this backend API.
 Real driver bindings (7.P3b) accompany their UIA/DOM/visual steps; those libraries
@@ -35,7 +36,8 @@ Read Now, open limits and the current step; search other sections only as needed
 - A synthetic Live timing test with a 60 ms deadline failed once under concurrent
   validation, passed in isolation and in the next full run. Timing-test stability
   remains a limit; no provider timeout behavior was changed or proven faulty.
-- Schema-2 receipts omit arguments/result contents and migrate schema 1 before
+- Schema-3 storage preserves private per-tool receipts and adds content-free
+  logical restart metadata. Schema 1/2 migrate before
   tools start; actual pre-existing user-profile migration was not exercised.
   Metadata/history grows on disk and is unencrypted. Fingerprints are not secret
   storage. Old external backups/OS/forensic copies are outside migration cleanup.
@@ -65,6 +67,7 @@ Read Now, open limits and the current step; search other sections only as needed
 | 7.P3a backend targets | 168 targeted/regression tests and Pyright 0 with synthetic adapters; [checks](../logs/reports/targets-checks.json). User accepted; committed dd586a1. No real driver/UI/capture/input or full/native rerun |
 | 7.P4a logical task backend | 107 focused tests, 1,371 full pytest, Pyright 0 and two synthetic native compatibility phases. [Checks](../logs/reports/workflow-checks.json), [native](../logs/reports/workflow-native.json). User accepted; committed 57a49d3. No public UI/model workflow binding |
 | 7.P4b.1 intervention/progress backend | 127 focused tests, 1,391 full pytest, Pyright 0 and two synthetic native compatibility phases. [Checks](../logs/reports/workflow-waits-checks.json), [native](../logs/reports/workflow-waits-native.json). User accepted for publication; no UI/model binding or restart restoration |
+| 7.P4b.2 persistent recovery backend | 146 focused tests, 1,410 full pytest, Pyright 0 and eleven synthetic native phases. [Checks](../logs/reports/workflow-recovery-checks.json), [native](../logs/reports/workflow-recovery-native.json). Acceptance pending; no public UI/model task recovery binding |
 
 ## Roadmap
 
@@ -72,7 +75,7 @@ Read Now, open limits and the current step; search other sections only as needed
 |---|---|---|
 | 0–5 | Functional baseline accepted with open limits above | Core/host, notes, conversation, Stop, wake/sleep, persistent task/replay protection |
 | 6 | Agreed functional scope accepted | Memory, measurements, media/weather, camera and screen sharing |
-| 7 | 7.P1/7.P2a/7.P3a/7.P4a accepted; 7.P4b.1 accepted; 7.P4b.2 next | Remaining: driver-backed targets, lifecycle/permission UI, L0–L4 desktop/file/browser work, Plugins and learned skills |
+| 7 | 7.P1/7.P2a/7.P3a/7.P4a accepted; 7.P4b.1 accepted; 7.P4b.2 auto verified | Remaining: driver-backed targets, lifecycle/permission UI, L0–L4 desktop/file/browser work, Plugins and learned skills |
 | 8 | Planned | Routines, scheduler, persistent background lifecycle, maintenance and packaging |
 | 9 | Deferred integrations | Official external services/channels and additional audio sharing |
 | 10 | Planned after functional stages | Final provider-adapter migration |
@@ -82,7 +85,7 @@ existing coupling is migrated in 10. No new provider framework is authorized.
 
 ## Stage 7 — General desktop operation, local files and learned skills
 
-**Status: 7.P1/7.P2a/7.P3a/7.P4a accepted; 7.P4b.1 accepted; 7.P4b.2 next; real drivers remain planned.**
+**Status: 7.P1/7.P2a/7.P3a/7.P4a accepted; 7.P4b.1 accepted; 7.P4b.2 auto verified; real drivers remain planned.**
 This replaces the earlier narrow-app/format draft. The goal is operation and
 learning across previously unknown applications, not a fixed supported-app list.
 Netflix, WhatsApp, YouTube, Discord and music playlists were illustrative tasks,
@@ -168,7 +171,7 @@ requires it. Tests accompany every slice, not only stage closure.
 | 7.P4a | Logical tasks and dependency-aware progress | Task/step identities separate from Live turns; same worker/registry/policy path, cancellation, queued logical tasks and revision-checked unsent-step corrections. Immediate text-only questions need not hold the worker. No model workflow tool or UI classifier yet | User accepted; committed 57a49d3. Host backend API only, not conversation integration |
 | 7.P4b | Human intervention, recovery and progress limits | Parent slice; preserve UNKNOWN, completed effects and no total task cutoff | Split below; full slice remains open |
 | 7.P4b.1 | Nonblocking intervention and progress checkpoints | Indefinite explicit Continue/Cancel waits; independent jobs proceed at safe checkpoints. Trusted unlocked reobservation, revision/identity race guards, three unchanged-state evaluations after a baseline | User accepted for publication. Trusted backend only |
-| 7.P4b.2 | Persistent logical recovery | Content-free restart metadata and explicit Continue/replanning after fresh observation; no historical payload restoration or blind replay | Planned next; separate storage/recovery change |
+| 7.P4b.2 | Persistent logical recovery | Content-free restart metadata and explicit Continue/replanning after fresh observation; no historical payload restoration or blind replay | Implemented/auto verified; acceptance pending. Trusted-host API only, no public Continue control |
 | 7.P4b.3 | Operation deadlines and safe read retry | Explicit per-operation time bounds, at most one read-only transient retry, no automatic side-effect retry; actual outcome remains authoritative | Planned after recovery; no generic timeout falsely kills synchronous handlers |
 | 7.P2b | Authorization UI and lifecycle binding | Trusted user decisions, scope expansion, physical-input preference and task end/Stop/scope-change revocation. Bind real references from 7.P3 and logical tasks from 7.P4; a Live turn is not the whole task | Planned after 7.P3/P4; full 7.P2 remains open |
 | 7.P5 | Read-only Plugins screen | Built-in capability metadata from existing registration/owners; System default badge, no delete/toggle, separate from learned Skills. No runtime auto-import or speculative third-party plugin framework | Planned |
@@ -254,9 +257,29 @@ accepted after the corresponding automation route is available.
 
 7.P4b.1 implements host callbacks/checkpoints, not an automatic model planner or
 public UI command. Reobservation failure preserves the wait; callbacks cannot
-revive stopped, replaced or revised jobs. Restart/manual Continue and retry/deadline
-execution remain 7.P4b.2/7.P4b.3. Current evidence:
+revive stopped, replaced or revised jobs. Host restart/manual Continue is
+implemented in 7.P4b.2; retry/deadline execution remains 7.P4b.3. Current evidence:
 [checks](../logs/reports/workflow-waits-checks.json).
+
+### 7.P4b.2 — recovery boundary
+
+Schema 3 adds content-free workflow IDs/revisions/source/status and step identity /
+outcome metadata to the existing journal. Startup reconciles actual private tool
+receipts but never schedules a recovered plan. Normal close preserves unfinished
+logical work for review; explicit Stop remains a durable stop. Recovery pages are
+principal-scoped and bounded (keyset pagination, at most 256 rows).
+
+Explicit trusted-host recover_workflow invokes fresh observation/replanning outside
+locks. It restores no arguments, result bodies, targets, scopes or approvals; missing
+intent/parameters must come from the user/current permitted sources. Remaining work
+uses fresh step IDs; prior identities/results stay read-only history. Revision/CAS,
+Stop and UNKNOWN gates are checked again before admission. Historical UNKNOWN is
+never relabelled success, even if later remaining steps succeed. Legacy receipts
+without logical metadata cannot reconstruct a lost old plan.
+
+Public UI/model task creation, progress/Continue and scope/target cleanup remain
+7.P2b. Actual pre-existing user-profile migration, real-provider/hardware acceptance
+and a rebuilt demo remain unverified. [Checks](../logs/reports/workflow-recovery-checks.json).
 
 ### Gates and deferred scope
 
@@ -270,7 +293,8 @@ Every implemented slice updates the current contract/architecture only where
 changed, COMMANDS for working capabilities, PLAN for status and CHANGELOG for
 changes. No future directory tree, dependency set or provider framework is created
 in advance. Commit/push require the current user authorization; the accepted stage 6 baseline
-was published as `79b5a04`. No stage 7 implementation has been committed.
+was published as `79b5a04`; accepted prerequisites through 7.P4b.1 were
+published as `7c1001a`. This slice is not committed or pushed.
 
 Out of stage 7: persistent routine triggers/scheduler/background lifecycle (8),
 new frequent-app code plugins in later agreed slices, official Google/channel API

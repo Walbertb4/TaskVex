@@ -94,9 +94,10 @@ cannot revive stopped or replaced tasks. Three unchanged planning observations
 after a baseline produce a no-progress wait; only a RAM digest is retained.
 
 These are backend APIs, not connected desktop controls or a general GUI agent.
-No UIA/DOM/visual automation driver is installed. Logical restart recovery,
-operation deadlines/read retry, task permission dialogs and automatic scope/target
-cleanup remain planned. Existing per-tool durable replay protection is separate
+No UIA/DOM/visual automation driver is installed. Host-only logical recovery now
+retains content-free restart metadata and requires explicit fresh replanning;
+there is no public task Continue control. Operation deadlines/read retry, task
+permission dialogs and automatic scope/target cleanup remain planned. Existing per-tool durable replay protection is separate
 from whole-task recovery; historical receipts do not restore private arguments.
 
 ## Not implemented yet
@@ -180,11 +181,11 @@ explicit local review. Startup lists the affected tool/task IDs; after checking
 the effects, users can acknowledge uncertainty and continue. This does not turn
 an unknown result into success, undo it or repeat the old action. Settings repair
 is offered for damaged preferences, not unknown tasks.
-Schema 2 retains IDs/status and a request fingerprint, not note/file/message bodies
+Schema 3 retains IDs/status and a request fingerprint, not note/file/message bodies
 or personal proposal/source text. Original results remain in bounded RAM; disk
-reads explicitly report unavailable historical content. Existing schema 1 profiles
+reads explicitly report unavailable historical content. Existing schema 1/2 profiles
 migrate before tools start; replay keys and UNKNOWN review remain intact. Do not
-downgrade migrated profiles to schema-1 builds. Metadata is unencrypted, digests
+downgrade migrated profiles to schema-1/2 builds. Metadata is unencrypted, digests
 are not secret storage, and history grows with usage. Migration cannot erase old
 external backups, provider requests or OS/forensic copies. This is not an
 exactly-once guarantee for external services. Native and
@@ -195,15 +196,15 @@ Model availability, network conditions and hardware affect behavior.
 
 ## Verification and documentation
 
-Latest Stage 7 intervention/progress validation passed **1,391 Python tests**,
-including **127 focused checks**, Pyright with zero errors/warnings, and two
-synthetic native compatibility phases covering chat/Stop and UNKNOWN recovery.
-[Backend checks](logs/reports/workflow-waits-checks.json) ·
-[Native evidence](logs/reports/workflow-waits-native.json).
-The initial temporary native launcher did not collect the child report; it was
-corrected and both phases were repeated successfully. These checks used temporary
-profiles and synthetic transports, not paid APIs or real user tasks. They do not
-prove actual GUI-driver support or resolve earlier intermittent native issues.
+Latest Stage 7 logical recovery validation passed **1,410 Python tests**,
+including **146 focused checks**, Pyright with zero errors/warnings, and all eleven
+synthetic native phases covering save/reopen, chat/Stop, UNKNOWN recovery and
+invalid settings. [Backend checks](logs/reports/workflow-recovery-checks.json) ·
+[Native evidence](logs/reports/workflow-recovery-native.json).
+Tests used temporary profiles and synthetic transports, including actual synthetic
+process exits; no paid API or real user profile was used. Public task recovery UI
+and user acceptance remain pending. These checks do not prove GUI-driver support
+or eliminate earlier intermittent native issues.
 
 Earlier camera/permission and startup evidence follows; its test counts belong
 to those changes and are not a new rerun of every hardware/provider scenario.
