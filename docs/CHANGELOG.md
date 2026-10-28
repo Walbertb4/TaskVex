@@ -6,6 +6,26 @@ Older entries remain part of this record through the dated snapshot below.
 
 ## Unreleased
 
+### 2026-10-28 — Explicit operation deadlines and safe read retry (7.P4b.3)
+
+- Accepted 7.P4b.2 was committed as 959a64f; no push.
+- Added validated host-only ToolSpec timeout/read-only/transient-code metadata.
+  A configured read may retry once after a definite allowlisted failure, through
+  the existing worker, registry/policy and same request ID/deadline/cancel Event.
+- Rechecked authority, Stop and time before every handler delivery. Mutations,
+  preflight failures, UNKNOWN and unconfirmed exceptions never retry. No handler
+  was force-killed and no production timeout/classification was silently selected.
+- Added honest host operation telemetry and configured-result evidence. Deadline
+  expiry while I/O runs does not imply completion; late real success/failure is
+  retained. Frozen terminal and unavailable historical telemetry avoid false claims.
+- 315 focused tests, 1,438 full pytest, Pyright with zero errors/warnings,
+  compileall and three documentation checks passed. All eleven synthetic native
+  phases passed; [native evidence](../logs/reports/operation-policy-native.json).
+- Existing registrations/evidence and Live/REST lifecycle remain unchanged.
+  [Validation](../logs/reports/operation-policy-checks.json). Production adapter
+  values and public task/permission UI remain follow-up work. Current slice
+  awaits acceptance; no current-step commit/push or paid API use.
+
 ### 2026-10-28 — Persistent logical task recovery (7.P4b.2)
 
 - Added schema-3 content-free logical records in the existing task journal, with

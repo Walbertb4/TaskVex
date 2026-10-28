@@ -16,6 +16,7 @@ from inspect import iscoroutine, iscoroutinefunction
 import math
 from pathlib import Path
 from threading import Condition, Event, Thread, current_thread
+from time import monotonic
 from typing import Callable, NoReturn
 from uuid import uuid4
 
@@ -43,6 +44,8 @@ class _Entry:
     task: Task
     fingerprint: str
     cancel_event: Event = field(default_factory=Event)
+    deadline: float | None = None
+    attempts: int = 0
 
 
 def _copy_request(request: ToolRequest) -> ToolRequest:
@@ -720,6 +723,21 @@ class TaskManager:
         with self._condition:
             return _snapshot(self._entry(task_id).task)
 
+    def operation_progress(self, task_id: str) -> dict:
+        """Host telemetry; elapsed deadline is not cancellation or actual completion."""
+        with self._condition:
+            entry = self._entry(task_id)
+            available = task_id in self._entries
+            metadata = entry.task.result.evidence.get('operation_policy') if entry.task.result is not None else None
+            exceeded = (bool(metadata.get('deadline_exceeded')) if entry.deadline is not None and isinstance(metadata, dict)
+                        else False) if entry.task.result is not None else (
+                        entry.deadline is not None and monotonic() >= entry.deadline)
+            return {'task_id': task_id, 'status': entry.task.status.value,
+                    'completed': entry.task.status.terminal, 'telemetry_available': available,
+                    'attempts': entry.attempts if available else None,
+                    'deadline_exceeded': exceeded if available else None,
+                    'cancel_requested': entry.cancel_event.is_set() if available else None}
+
     def wait(self, task_id: str, timeout: float | None = None) -> Task:
         """Wait for terminal result; If wait time expires, throw TimeoutError.
 
@@ -828,7 +846,40 @@ class TaskManager:
                 self._finish(entry, self._result(entry, TaskStatus.CANCELLED, "cancelled", reason))
 
     def _execute(self, entry: _Entry) -> ToolResult:
-        """Worker's single handler call; Leaking user data from exception message."""
+        """At most one safe read retry, inside the same worker/request/deadline."""
+        started_at = monotonic()
+        try:
+            policy = self._registry.get(entry.task.request.tool)
+        except RegistryError as error:
+            return self._result(entry, TaskStatus.FAILED, error.code, 'Tool is unavailable')
+        except BaseException:
+            return self._result(entry, TaskStatus.FAILED, 'preflight_error', 'Tool policy could not be verified')
+        with self._condition:
+            entry.deadline = started_at + policy.timeout_seconds if policy.timeout_seconds is not None else None
+        result = self._execute_once(entry)
+        blocked = None
+        if (entry.attempts == 1 and policy.read_only and result.status == TaskStatus.FAILED and result.error is not None
+                and result.error.code in policy.transient_errors):
+            with self._condition:
+                blocked = ('cancelled' if entry.cancel_event.is_set() or self._closing else
+                           'uncertain_state' if self._uncertain or self._journal_failed else
+                           'operation_deadline' if entry.deadline is not None and monotonic() >= entry.deadline else None)
+            if blocked is None:
+                previous_attempts = entry.attempts
+                retried = self._execute_once(entry)
+                if entry.attempts > previous_attempts:
+                    result = retried
+                else:
+                    # No new handler ran: keep the actual failed read, not a fake second result.
+                    blocked = retried.error.code if retried.error is not None else 'preflight_failed'
+        if policy.timeout_seconds is not None:
+            result = replace(result, evidence={**result.evidence, 'operation_policy': {
+                'attempts': entry.attempts, 'retry_blocked': blocked,
+                'deadline_exceeded': entry.deadline is not None and monotonic() >= entry.deadline}})
+        return result
+
+    def _execute_once(self, entry: _Entry) -> ToolResult:
+        """One authorized handler delivery; unconfirmed delivery outcomes stay UNKNOWN."""
         started = False
         try:
             request = self._registry.validate_request(entry.task.request)
@@ -842,14 +893,21 @@ class TaskManager:
             with self._condition:
                 if entry.cancel_event.is_set():
                     return self._result(entry, TaskStatus.CANCELLED, "cancelled", "Cancelled before execution")
+                if self._closing or self._uncertain or self._journal_failed:
+                    return self._result(entry, TaskStatus.FAILED, 'uncertain_state', 'Execution is not currently safe')
+                if entry.deadline is not None and monotonic() >= entry.deadline:
+                    return self._result(entry, TaskStatus.FAILED, 'operation_deadline', 'Operation deadline elapsed before dispatch')
                 # There is no delivery to the tool until the transaction is completed. Crash from this recording
                 # If it happens later, the restart result is counted as UNKNOWN.
                 self._persist(entry.task)
+                if entry.deadline is not None and monotonic() >= entry.deadline:
+                    return self._result(entry, TaskStatus.FAILED, 'operation_deadline', 'Operation deadline elapsed before dispatch')
                 # After this point, it is deemed to be delivered to the handler. later
                 # Incoming cancellation is seen with Event; It has not started yet, no guarantee is given.
                 started = True
+                entry.attempts += 1
             context = ToolContext(task_id=entry.task.task_id, request=_copy_request(request),
-                                  cancel_event=entry.cancel_event)
+                                  cancel_event=entry.cancel_event, deadline=entry.deadline)
             raw = spec.handler(request.arguments, context)
             if not isinstance(raw, ToolResult):
                 # If the sync function accidentally returned a coroutine, start it without initializing it.

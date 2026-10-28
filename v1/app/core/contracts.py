@@ -347,6 +347,9 @@ class ToolSpec:
     required_capabilities required powers, exclusive_resources in concurrent use
     are resources to be protected. Declaring these does not grant authority or resource lock;
     policy and TaskManager will do the implementation.
+    read_only/timeout_seconds/transient_errors are trusted registration policy:
+    one cooperative operation budget and at most one definite transient read retry.
+    They do not grant capabilities and are not fields supplied by the model.
     """
     name: str
     description: str
@@ -354,6 +357,10 @@ class ToolSpec:
     handler: Callable[[dict[str, Any], ToolContext], ToolResult]
     required_capabilities: tuple[str, ...] = ()
     exclusive_resources: tuple[str, ...] = ()
+    # Host registration only; model arguments cannot grant safe retry or more time.
+    read_only: bool = False
+    timeout_seconds: float | None = None
+    transient_errors: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         """Check notification format; Performs full parameter schema checking in the registry."""
@@ -368,7 +375,14 @@ class ToolSpec:
             # callable indicates that it can be called, such as a function; his signature
             # or does not prove here that it will actually return ToolResult.
             raise ContractError("handler must be callable")
-        for name in ("required_capabilities", "exclusive_resources"):
+        if type(self.read_only) is not bool:
+            raise ContractError('read_only must be boolean')
+        if self.timeout_seconds is not None and (type(self.timeout_seconds) not in (int, float)
+                or not math.isfinite(self.timeout_seconds) or self.timeout_seconds <= 0):
+            raise ContractError('timeout_seconds must be finite and positive')
+        if self.transient_errors and (not self.read_only or self.timeout_seconds is None):
+            raise ContractError('Transient retry requires read-only classification and an explicit timeout')
+        for name in ("required_capabilities", "exclusive_resources", "transient_errors"):
             # Notification lists must be tuples: mistakenly substituted insertion/deletion
             # A new notification is created. Empty and duplicate values ​​are not accepted.
             values = getattr(self, name)

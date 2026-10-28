@@ -410,8 +410,8 @@ only logical identity/status/revision and step identities/outcomes alongside the
 private per-tool receipts. Before dispatch, new/revised plan metadata is committed;
 startup reconciles receipt status/task IDs to cover a crash between effect completion
 and logical checkpoint. Missing/mismatched referenced receipts fail closed.
-A lost plan is never reconstructed or dispatched from disk. Per-operation deadlines
-and safe-read retry remain 7.P4b.3; synchronous I/O is not force-killed.
+A lost plan is never reconstructed or dispatched from disk. Per-operation deadlines and safe-read retry use explicit host registration
+policy as described below; synchronous I/O is not force-killed.
 
 Conversation classification, UI progress/Stop binding, model-plan validation and
 scope/target teardown on logical completion are not wired in this slice; those
@@ -451,9 +451,8 @@ state. No screenshots/message/file content from observations enter disk receipts
 
 These APIs are backend foundations. The planner/adapters must supply meaningful
 checkpoints and renew references as needed; there is no automatic GUI detection,
-public Continue dialog or new model tool. Operation retry/deadline binding
-remains planned, as does host scope/target
-teardown. A synchronous handler must finish/yield cooperatively; this layer does
+public Continue dialog or new model tool. Production operation policy values
+and host scope/target teardown remain follow-up work. A synchronous handler must finish/yield cooperatively; this layer does
 not force-release a worker while its effect is still running.
 
 ### Persistent logical restart recovery
@@ -499,3 +498,44 @@ Recovery is a backend API, not a public Continue event/model tool. Conversation 
 permission/lifecycle UI remain 7.P2b. Checkpoint failure locks new work but preserves
 actual completed results and worker cleanup. Tool-result and logical-checkpoint writes
 are separate transactions; recovery reconciliation handles this boundary conservatively.
+
+### Operation deadlines and safe read retry
+
+ToolSpec.read_only, timeout_seconds and transient_errors are host-owned registration
+metadata, not model arguments, resource grants or a sandbox. Default false/None/()
+preserves existing registrations; no built-in provider/OS timeout is reconfigured.
+Timeouts must be finite/positive. Nonempty transient_errors must be a unique tuple,
+require read_only=True and an explicit timeout. ToolRegistry retains/revalidates
+these fields with its existing owned copies; declarations still expose only schemas.
+Correct read-only classification and transient-code selection are host obligations.
+
+TaskManager computes one absolute monotonic deadline at worker execution start,
+including preflight time, and passes it as ToolContext.deadline. Both attempts use
+the same deadline, request/task ID and cancellation Event. Before each actual
+handler delivery it validates schema, authorizes with current policy, checks
+Stop/close/UNKNOWN and time, durably records RUNNING, then checks time again.
+Only an actual handler's definite FAILED result with an allowlisted code permits
+one retry. Mutations, preflight failures, CANCELLED/UNKNOWN, invalid results and
+handler exceptions never retry. There is no second executor, delayed scheduler,
+retry ID or whole-logical-task duration cutoff. A crash during/between reads still
+recovers the running receipt as UNKNOWN; restart never automatically retries it.
+
+If a second handler never starts (permission revoked, Stop, expired deadline or
+preflight failure), the first actual read outcome remains the result, with a fixed
+retry_blocked diagnostic. Late verified success remains success even after Stop
+or deadline expiry. An elapsed deadline never fabricates a cancelled/unknown effect.
+Handlers must bound their own SDK/OS calls using remaining context time; synchronous
+work that ignores the deadline can still hold the one worker until it returns.
+
+For configured operations, terminal ToolResult.evidence.operation_policy contains
+actual handler attempts, deadline_exceeded and retry_blocked. Core telemetry replaces
+any handler claim for that reserved key. Default registrations retain their original
+evidence. Host-only operation_progress shows actual status/completed/cancel_requested
+and available attempt/deadline telemetry without scheduling anything. During blocked
+I/O it can show deadline_exceeded=True with completed=False; the result remains
+pending. Terminal deadline telemetry is frozen, not recomputed long after success.
+Historical disk receipts have unavailable telemetry, not invented zero attempts.
+
+These are backend primitives. Production time/error/read-only policies must be
+selected and bound with the actual drivers/provider adapters. No public UI event,
+model tool or new timeout setting is added here; Live/REST Stop ownership is unchanged.

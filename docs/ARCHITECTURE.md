@@ -103,6 +103,12 @@ numbers. Policy admits only explicit principal/source/tool/capability combinatio
 Parameters and results cross a copied JSON boundary; secrets and raw exceptions
 are not logged.
 
+ToolSpec can opt into host-owned timeout/read-only/transient-error policy. The
+single worker supplies one cooperative deadline and permits at most one allowlisted
+failed-read retry, rechecking schema/policy/Stop. Existing registrations keep their
+defaults. Elapsed time is not actual completion; late real results are preserved.
+See the domain reference for telemetry and production-binding limits.
+
 ToolRequest optionally carries a host-issued authorization_id outside tool arguments.
 Its default None is omitted from serialization, preserving existing request digests.
 The ID is provenance, not permission: only an active TaskScopes record plus existing

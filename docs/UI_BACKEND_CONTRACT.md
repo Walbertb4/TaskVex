@@ -45,6 +45,14 @@ added. Schema-3 history cannot restore private parameters, targets or approvals;
 historical_steps is read-only outcome metadata, not a fresh result/context grant.
 Normal close differs from explicit Stop; UNKNOWN still requires separate review.
 
+7.P4b.3 operation_progress is host telemetry only, not a new UI/model event.
+A configured operation can expose deadline_exceeded=True while completed=False;
+never unlock controls or claim cancellation from that flag. Terminal configured
+results carry evidence.operation_policy with actual attempts, retry_blocked and
+frozen deadline_exceeded. Historical receipt telemetry is unavailable. Host-only
+registration selects deadlines/read-only/transient codes; model arguments cannot.
+Existing built-ins are not automatically opted in; actual adapter values remain open.
+
 `window.vex === window.jarvis` is a compatibility alias. ui_ready is sent once
 bridge setters exist. Host readiness does not prove model connectivity. Mutations
 remain blocked until initialization; corrupt settings require explicit recovery.

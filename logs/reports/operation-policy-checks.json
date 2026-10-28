@@ -1,0 +1,53 @@
+{
+  "date": "2026-10-28",
+  "stage": "7.P4b.3",
+  "status": "automatically_verified_user_acceptance_pending",
+  "accepted_previous_commit": "959a64f",
+  "previous_commit_pushed": false,
+  "validation": {
+    "focused_passed": 315,
+    "pyright_errors": 0,
+    "pyright_warnings": 0,
+    "full_pytest_passed": 1438,
+    "full_pytest_seconds": 112.99,
+    "native_all_passed": true,
+    "native_phases": [
+      "save",
+      "reopen",
+      "notes",
+      "persistence",
+      "export_cancel",
+      "credentials",
+      "chat",
+      "unknown",
+      "corrupt",
+      "schema_invalid",
+      "future"
+    ],
+    "native_synthetic_only": true,
+    "compileall": true,
+    "documentation_tests_passed": 3,
+    "diff_whitespace_check": true
+  },
+  "limits": [
+    "Host opt-in only; existing tools retain defaults, actual driver/provider policies and values remain pending",
+    "Deadlines are cooperative; synchronous I/O cannot be force-interrupted",
+    "Host telemetry only; no UI/model operation event or setting",
+    "Historical per-tool receipt telemetry is unavailable; no automatic restart retry",
+    "No real account/API/hardware acceptance; no demo rebuild",
+    "Current slice awaits acceptance; no commit/push"
+  ],
+  "covered": [
+    "Strict host-only registration validation; defaults preserve existing tool evidence",
+    "One actual failed read may retry once under same request/task ID, Event and absolute deadline",
+    "Each attempt revalidates schema and policy; revoked authority blocks new handler delivery",
+    "Stop/close gates, including cancellation between retry gate and second authorization",
+    "No retry for mutation, permanent failure, preflight denial or UNKNOWN/unconfirmed exception",
+    "Deadline checked before and after durable RUNNING checkpoint",
+    "Live elapsed-deadline telemetry does not fabricate terminal status or cancellation",
+    "Late verified success survives deadline/Stop; prior actual failed read survives blocked retry",
+    "Terminal deadline telemetry frozen; disk historical telemetry explicitly unavailable",
+    "Retry receives fresh detached arguments and shares remaining budget",
+    "Existing workflow dependency/worker/journal path; replay and restart do not reread effects"
+  ]
+}
