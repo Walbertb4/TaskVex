@@ -51,7 +51,8 @@ The unencrypted tasks/tasks.sqlite3 schema-3 journal retains IDs/status and requ
 fingerprints, not note/message/file/proposal contents. Disk reads explicitly lack
 historical payloads; bounded current RAM results remain available. Logical restart
 metadata also remains content-free; host Continue requires fresh replanning and
-restores no scopes/targets. The public task UI is not connected. Schemas 1/2 migrate
+restores no scopes/targets. Concrete native permission decisions are connected;
+normal conversation task creation/Continue is not. Schemas 1/2 migrate
 before execution without losing replay keys or UNKNOWN review; older builds cannot
 open migrated profiles. External backups/provider history are not erased.
 The 256-record limit bounds active work/RAM, not

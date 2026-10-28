@@ -699,6 +699,8 @@ def child(home: Path, phase: str, debug: bool = False) -> None:
                 wait_until(lambda:window.evaluate_js("document.getElementById('wT').textContent")=='0°')
                 outcome['native_weather_location_restored_without_geolocation']=True
             if phase == "chat":
+                from native_task_permissions import check_native_task_permissions
+                check_native_task_permissions(window, api, js, wait_until, outcome)
                 # The new autostart should never reach the physical microphone.
                 # Each permission call receives a fresh, quiet synth track.
                 js("window.defaultMicContext=new AudioContext();window.defaultMicTracks=[];"

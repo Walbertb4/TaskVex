@@ -648,3 +648,17 @@ audio-source/recording sharing is deferred to stage 9.4 and is not available tod
 Permissions can remain blocked by OS/browser policy; the app cannot force a grant.
 Use Camera On/Microphone On for ongoing input and Weather Auto for an explicitly
 approved saved weather location. Their existing lifecycle/consent rules remain.
+
+
+## Task permission controls (UI only)
+
+- Settings > System > Ask before keyboard/mouse control -> Save whether task-scoped
+  physical-input handover asks first (default on). This never grants resource access
+  or bypasses separate high-impact approval.
+- Approve / Reject in a task permission panel -> Decide only the displayed host
+  request. Approval needs host rechecking before continuation; rejection leaves the
+  task paused. Unknown delivery locks controls without retry.
+
+The panel is hidden without a real pending host request. Normal conversation task
+creation, task Continue/recovery and general desktop control are not connected yet.
+No spoken command grants permission on the user's behalf.

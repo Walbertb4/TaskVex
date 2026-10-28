@@ -105,6 +105,14 @@ class TaskScopes:
                 raise ContractError('No active task scope for input handover')
             scope.input_approved = True
 
+    def resources(self, request: ToolRequest) -> frozenset[tuple[str, str, str]]:
+        """Trusted host view of exact grants, never a grant operation."""
+        with self._lock:
+            scope = self._owner(request)
+            if scope is None:
+                raise ContractError('No active task scope')
+            return scope.resources
+
     def end(self, authorization_id: str) -> bool:
         """Revoke references, input handover and operation approvals together."""
         with self._lock:

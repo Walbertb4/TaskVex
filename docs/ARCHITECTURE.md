@@ -77,7 +77,7 @@ microphone On/Off and Stop remain local lifecycle operations.
 | Live socket and I/O loop | `app/session/live_session.py`; connection scope, resume and GoAway |
 | Tool catalog and parameter schemas | `app/session/tool_registry.py`; explicit registration, no automatic plugin imports |
 | Permissions | `app/policy/engine.py`; explicit local-user/desktop capability checks |
-| Optional task grants (backend foundation) | `app/policy/task_scope.py`; host-issued RAM-only scope/resource/input/approval state, checked by PolicyEngine when explicitly configured; optional TaskManager binding releases accepted logical tasks on end/Stop/close; desktop issuance/decision UI remains unconnected |
+| Optional task grants (backend foundation) | `app/policy/task_scope.py`; host-issued RAM-only scope/resource/input/approval state, checked by PolicyEngine when explicitly configured; TaskManager releases accepted logical tasks on end/Stop/close; native consent consumes real pending host requests; conversation task issuance remains planned |
 | GUI target references (backend foundation) | `app/automation/targets.py`; one task-bound RAM reference owner, trusted refresh callbacks and geometry/status contracts; real adapters/discovery/input remain planned |
 | Tool queue, logical jobs, cancellation and replay | `app/tasks/manager.py`; one worker/Condition and per-step receipts; `app/tasks/workflow.py` holds only plan/progress contracts; intervention waits yield intake at safe checkpoints, trusted observation callbacks run outside its lock |
 | Persistent task records | `app/storage/task_journal.py`; schema-3 SQLite private tool receipts and content-free logical recovery metadata; never restored grants or execution plans |
@@ -123,12 +123,15 @@ operation ID and arguments. Physical-input handover is separate and lasts only
 until that task scope ends; disabling its question never bypasses resource/risk
 checks. Neither grants nor approvals survive restart or come from journal history.
 Revocation denies subsequent checks; already dispatched effects require normal
-TaskManager cancellation and cannot be claimed undone. Actual desktop issuance,
-Opt-in TaskManager binding now handles logical end/Stop/close and scope replacement;
-actual desktop issuance/input preference/Disconnect and real adapter freshness
-remain 7.P2b.2/P3b.
-The existing desktop composition still uses its established capability policy;
-this foundation adds no public file/GUI control or automatic task grants.
+TaskManager cancellation and cannot be claimed undone. TaskManager handles logical
+end/Stop/close, scope replacement and concrete permission decisions. create_core
+composes the existing scope/reference owners; missing trusted requirements deny
+scoped work. Its legacy local tools retain their unscoped capability policy.
+ui/js/task_permissions.js is a decision consumer, not an executor: it sends only
+a host nonce and boolean, and distinguishes permission acceptance from completion.
+Settings saves askBeforeInput (default true); false never bypasses scope/risk checks.
+Conversation task issuance/Continue/Disconnect and real adapter freshness remain
+7.P2b.2b/P3b. This adds no public file/GUI control or automatic task grants.
 Host task IDs identify logical work, not a Live turn or one worker execution.
 Resolve pending approval before submitting an effect; a policy-denied request is
 terminal and replaying that same ID cannot resurrect it after a later approval.

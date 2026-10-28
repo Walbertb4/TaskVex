@@ -863,5 +863,36 @@ try {
     assert.equal(await p.locator('#locIn').isDisabled(),false);
     assert.equal(await p.evaluate(()=>geoPayloads.length),1);
   });
+  await test('task consent is text-only, nonce-bound, separate from effect completion; input preference persists',async()=>{
+    const p=await setup();
+    await p.evaluate(()=>{const c=document.getElementById('askBeforeInput');c.checked=false;c.dispatchEvent(new Event('change'));});
+    await p.reload();await p.waitForFunction(()=>!!window.vex);await p.waitForTimeout(500);
+    assert.equal(await p.locator('#askBeforeInput').isChecked(),false);
+    await p.evaluate(async()=>{
+      const {validateAndNormalizeSnapshot}=await import('/js/schema.js');
+      if(validateAndNormalizeSnapshot({askBeforeInput:'false'}).candidate.askBeforeInput!==undefined)throw Error('Invalid consent preference accepted');
+      window.permissionFixture={pending:[{id:'browser-consent',task_id:'fixture-task',step_id:'one',kind:'operation',tool:'fixture.read',
+        arguments:{text:'<img src=x onerror=alert(1)>'},resources:[['window','fixture','read']]}],decisions:[]};
+      window.permissionPayloads=[];
+      window.pywebview={api:{event:async(name,data)=>{
+        if(name==='query_task_permissions')return {ok:true,data:permissionFixture};
+        if(name==='task_permission_decision'){
+          permissionPayloads.push(data);
+          permissionFixture={pending:[],decisions:[{id:data.id,outcome:data.approve?'approved':'denied',task_completed:false}]};
+          return {ok:true,id:data.id,accepted:true,outcome:'approved',task_completed:false};
+        }
+        return {ok:true};
+      }}};
+      const consent=await import('/js/task_permissions.js');consent.startTaskPermissions();await consent.refreshTaskPermissions();
+    });
+    assert.equal(await p.locator('#taskPermission').isVisible(),true);
+    assert.equal(await p.locator('#taskPermissionDetails img').count(),0);
+    assert.ok((await p.locator('#taskPermissionDetails').textContent()).includes('<img'));
+    const rect=await p.locator('#taskPermission').boundingBox();assert.ok(rect.width>0&&rect.width<=460);
+    await p.locator('#taskPermissionApprove').click();
+    await p.waitForFunction(()=>document.getElementById('taskPermissionStatus').textContent.includes('host recheck'));
+    assert.deepEqual(await p.evaluate(()=>permissionPayloads),[{id:'browser-consent',approve:true}]);
+    assert.equal(await p.locator('#taskPermissionApprove').isDisabled(),true);
+  });
   console.log(`${results.length} browser cleanup groups passed`);
 } finally { await browser.close(); await new Promise(resolve=>server.close(resolve)); }

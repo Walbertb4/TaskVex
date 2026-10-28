@@ -3,7 +3,7 @@
 export function defaultInterfaceSettings() {
   // New object on every call: mutable fields such as colors should not pollute the default.
   return { theme: '#a78bfa', colors: {}, sfx: true, vol: 0.8, replyVolume: 1, wake: 50, sleepDelay: 10,
-    noise: 420, onTop: false, cmp: 'auto', tab: 'theme', layout: null };
+    noise: 420, onTop: false, askBeforeInput: true, cmp: 'auto', tab: 'theme', layout: null };
 }
 
 export const store = { ...defaultInterfaceSettings(), devs: {}, prof: {}, conn: {} };

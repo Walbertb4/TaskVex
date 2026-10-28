@@ -6,6 +6,30 @@ Older entries remain part of this record through the dated snapshot below.
 
 ## Unreleased
 
+### 2026-10-29 - Concrete task permission UI (7.P2b.2a)
+
+- Accepted 7.P2b.1 was committed as 8365d55; no push.
+- Added actual pending-step permission decisions to the existing TaskManager:
+  separate scope expansion, task-duration physical input and exact high-impact
+  approval. Nonces bind revision, current requirements and request fingerprints.
+  Stop/changes invalidate old decisions; repeated identical outcomes add no grant.
+- Added native plain-text Approve/Reject UI, ready-gated queries and explicit
+  acceptance versus completion. Unknown delivery stays locked without retry;
+  denial stays paused even if input questioning is subsequently switched off.
+- Added verified saved askBeforeInput, default true, under Settings > System.
+  It affects physical-input questioning only. Bootstrap shares scope/reference
+  owners and denies scoped work without a trusted resolver. Legacy model tools
+  retain their existing unscoped behavior.
+- Browser regression caught and fixed both initial checkbox restoration and the
+  snapshot field allowlist. No new dependency, executor, phrase router or model
+  permission-grant tool. Normal conversation task production/Continue/recovery
+  and Stop/Disconnect mapping remain 7.P2b.2b; actual drivers remain 7.P3b.
+- Passed 132 focused/documentation tests, 1,474 full pytest, Pyright 0, ten JS
+  suites, 30 browser groups and eleven native phases. Validation is in [checks](../logs/reports/task-permissions-checks.json)
+  and [native evidence](../logs/reports/task-permissions-native.json). Synthetic
+  transports/temporary profiles only, no real user data or paid API. This slice
+  awaits manual acceptance; no current-step commit or push.
+
 ### 2026-10-28 — Managed task scope and target lifetime (7.P2b.1)
 
 - Accepted 7.P4b.3 was committed as ac3e6e1; no push.

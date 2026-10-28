@@ -214,7 +214,7 @@ function validateAdditionalFields(candidate) {
       }
     }
   }
-  for (const key of ['sfx', 'onTop']) {
+  for (const key of ['sfx', 'onTop', 'askBeforeInput']) {
     if (!optional(candidate[key], v => typeof v === 'boolean')) {
       logToUI(`Skipped invalid ${key}`);
       delete candidate[key];
@@ -499,7 +499,7 @@ export function validateAndNormalizeSnapshot(data) {
 
   // Optional pass-throughs
   [
-    'sfx', 'vol', 'replyVolume', 'wake', 'sleepDelay', 'noise', 'onTop', 'cmp', 'tab',
+    'sfx', 'vol', 'replyVolume', 'wake', 'sleepDelay', 'noise', 'onTop', 'askBeforeInput', 'cmp', 'tab',
     'calendar', 'reminders', 'weather', 'telemetry', 'tokens',
     'network', 'media', 'googleStatus', 'timeline', 'devices', 'catalog'
   ].forEach(k => {

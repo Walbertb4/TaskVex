@@ -1603,3 +1603,7 @@ input[type=color] {
 /* Permission controls use the same theme and wrap inside the settings modal. */
 .permission-row {flex-wrap:wrap; gap:8px;}
 .permission-row .sub {display:block; margin-top:3px;}
+
+.taskPermission {border:1px solid var(--gold); padding:12px; max-width:460px; text-align:left;}
+.taskPermission[hidden] {display:none;}
+.taskPermission pre {white-space:pre-wrap; overflow-wrap:anywhere; max-height:220px; overflow:auto; font:inherit; font-size:11px;}

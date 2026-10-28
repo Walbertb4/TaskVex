@@ -494,6 +494,20 @@ class NativeBridge:
             return {'ok':False,'completed':name!='weather_location','unknown':name=='weather_location',
                     'error':'Weather request could not be verified'}
 
+    def _task_permission_event(self, name: str, data) -> dict:
+        if not self._ready:
+            if name == 'query_task_permissions' and data is None:
+                return {'ok': True, 'ready': False, 'data': {'pending': [], 'decisions': []}}
+            return {'ok': False, 'error': 'Native bridge is not ready'}
+        try:
+            if name == 'query_task_permissions' and data is None:
+                return {'ok': True, 'data': self._core.permission_view()}
+            if name == 'task_permission_decision' and type(data) is dict and set(data) == {'id', 'approve'}:
+                return {'ok': True, **self._core.decide_workflow_permission(data['id'], data['approve'])}
+            return {'ok': False, 'error': 'Invalid permission decision payload'}
+        except (ContractError, TaskManagerError) as error:
+            return {'ok': False, 'code': getattr(error, 'code', 'invalid_permission'), 'error': str(error)}
+
     def event(self, name: str, data=None) -> dict:
         """Give exact result to UI request; return secret payload/error detail.
 
@@ -501,6 +515,8 @@ class NativeBridge:
         does not reapply. save just saves the settings and reads them back. unsupported
         The event is not presented as completed. The error becomes visible to the UI emit.
         """
+        if name in ('query_task_permissions', 'task_permission_decision'):
+            return self._task_permission_event(name, data)
         if name == 'acknowledge_tasks':
             with self._lock:
                 return self._acknowledge_tasks(data)

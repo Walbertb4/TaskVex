@@ -182,6 +182,8 @@ export function saveAll(options = {}) {
   if (sleepDelay && sleepDelay.checkValidity()) store.sleepDelay = +sleepDelay.value;
   store.noise = thr ? +thr.value : 420;
   store.onTop = onTop ? onTop.checked : false;
+  const askBeforeInput = document.getElementById('askBeforeInput');
+  store.askBeforeInput = askBeforeInput ? askBeforeInput.checked : true;
   store.cmp = cmpSel ? cmpSel.value : 'auto';
 
   setSfxConfig(store.sfx, store.vol);
@@ -411,6 +413,7 @@ export function loadStore(o, options = {}) {
     'wake',
     'routines',
     'onTop',
+    'askBeforeInput',
     'noise',
     'sleepDelay'
   ].forEach(k => {
@@ -467,6 +470,8 @@ export function loadStore(o, options = {}) {
     if (wv) wv.textContent = wakeR.value;
   }
   if (onTop) onTop.checked = !!store.onTop;
+  const inputConsent = document.getElementById('askBeforeInput');
+  if (inputConsent) inputConsent.checked = store.askBeforeInput !== false;
   if (store.noise != null && thr) {
     thr.value = store.noise;
     if (nv) nv.textContent = store.noise;
@@ -682,6 +687,11 @@ export function initSettings(options = {}) {
   }
 
   // Window always on top
+  const inputConsent = document.getElementById('askBeforeInput');
+  if (inputConsent) {
+    inputConsent.checked = store.askBeforeInput !== false;
+    inputConsent.addEventListener('change', () => { store.askBeforeInput = inputConsent.checked; sfx.blip(); saveAll(); });
+  }
   const onTop = document.getElementById('onTop');
   if (onTop) {
     onTop.checked = !!store.onTop;

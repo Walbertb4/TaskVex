@@ -361,7 +361,7 @@ This foundation is tested with synthetic adapters. Current Notepad observation i
 not upgraded to lifetime-safe GUI targeting, passive Live frames are not an input
 driver, and no UIA/DOM/visual library is installed. Actual bindings/OS acceptance
 belong to 7.P3b with 7.1/7.3. Opt-in logical TaskManager cleanup is bound in 7.P2b.1; real desktop
-Stop/Disconnect wiring remains 7.P2b.2.
+Stop/Disconnect wiring remains 7.P2b.2b.
 Read deadlines/cooperative cancellation belong to those adapters and the logical
 task lifecycle. This store does not force-stop synchronous readers or add a worker.
 
@@ -415,7 +415,7 @@ A lost plan is never reconstructed or dispatched from disk. Per-operation deadli
 policy as described below; synchronous I/O is not force-killed.
 
 Conversation classification, UI progress/Stop binding and model-plan validation
-remain 7.P2b.2 and later skill/routine integration. Opt-in host TaskManager
+remain 7.P2b.2b and later skill/routine integration. Opt-in host TaskManager
 composition now revokes scope/target lifetime on logical end/Stop/close. Existing Live/REST turn and
 audio owners are unchanged. Plan-size/admission/context budgets must be selected
 before exposing untrusted long-plan input; there is no arbitrary total task timeout.
@@ -585,7 +585,29 @@ restart is required. Built-in target readers run outside locks so cancellation d
 not wait for an external observation callback. Existing synchronous I/O still must
 finish/cooperate; no force-kill or second worker is introduced.
 
-Public decision dialogs, physical-input preference, trusted user-task creation,
-conversation Stop/Disconnect mapping and actual driver/capture/input binding remain
-7.P2b.2/7.P3b. Manual camera/screen sharing stays in its existing owner; it is not
+Concrete decision UI and saved physical-input preference are implemented.
+Trusted conversation task creation/Continue/Stop/Disconnect remain 7.P2b.2b;
+actual driver/capture/input binding remains 7.P3b. Manual camera/screen sharing stays in its existing owner; it is not
 silently reclassified as task-scoped automation capture by this backend wiring.
+
+
+### Concrete host consent
+
+A trusted host submits start_paused=True, with a real scoped logical task, before
+request_workflow_permission for an unsent step at its current revision. The same
+metadata-only access_requirement callback is used by policy and consent; it must
+be quick and perform no external I/O or user prompts while the manager lock is held.
+Actual reobservation remains outside the lock in the existing continuation API.
+TaskManager owns the bounded RAM pending/result state. Nothing here persists tool
+arguments, screenshots or permission grants in the content-free workflow journal.
+
+The first missing scope/input/operation permission gets a host nonce. On decision,
+revision, lifecycle, actual request fingerprint and current trusted requirements
+must still match. Scope expansion obtains a fresh scope and invalidates prior
+references/approvals/input. Duplicate same decisions are idempotent; opposite or
+stale decisions are rejected. Denial blocks Continue, even if input questioning is
+later disabled. Changed plans, Stop and terminal outcomes invalidate pending nonces.
+The UI is a plain-text observer/decision source and cannot create tasks or resources.
+Permission acceptance never dispatches a child. Host continuation still requires
+fresh state and policy checks. Bootstrap shares these owners but existing model
+calls remain unscoped until the separate trusted conversation producer is bound.

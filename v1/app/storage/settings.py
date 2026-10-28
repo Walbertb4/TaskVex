@@ -30,7 +30,7 @@ _FIELDS = {
     "devs": {"type": "object", "properties": {k: {"type": ["string", "integer", "null"]}
              for k in ["dIn", "dOut", "dCam"]}, "additionalProperties": False},
     "conn": {"type": "object", "properties": {k: _TEXT for k in ["model", "voice"]}, "additionalProperties": False},
-    "sfx": {"type": "boolean"}, "onTop": {"type": "boolean"},
+    "sfx": {"type": "boolean"}, "onTop": {"type": "boolean"}, "askBeforeInput": {"type": "boolean"},
     "vol": {"type": "number", "minimum": 0, "maximum": 1},
     "replyVolume": {"type": "number", "minimum": 0, "maximum": 1},
     "sleepDelay": {"type": "integer", "minimum": 0, "maximum": 300},
@@ -49,7 +49,7 @@ _VALIDATOR = Draft202012Validator({"type": "object", "properties": _FIELDS, "add
 # collections are not available here. The default is preserved by making a copy with each use.
 INTERFACE_DEFAULTS = {"theme": "#a78bfa", "colors": {}, "sfx": True, "vol": 0.8, "replyVolume": 1,
                       "wake": 50, "sleepDelay": 10, "noise": 420, "onTop": False, "cmp": "auto",
-                      "tab": "theme", "layout": None}
+                      "tab": "theme", "layout": None, "askBeforeInput": True}
 
 
 def validate_settings(data: dict, *, from_ui: bool = False) -> dict:

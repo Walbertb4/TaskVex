@@ -15,10 +15,10 @@ and unknown outcomes. Promise rejection is caught and secrets are masked. Native
 onEvent is only an observer; its failure cannot resend a delivered command.
 An external browser host does not automatically gain native permissions.
 
-Backend task authorization (7.P2a) adds no public UI event or setting yet.
 authorization_id is host-selected core/ModelTools metadata, never a field the model
-or UI can use to grant itself authority. Scope expansion, approval dialogs, physical
-input preference and desktop lifecycle mapping remain 7.P2b.2 integration work.
+or UI can use to grant itself authority. Concrete task consent now has a native
+panel and saved physical-input preference; conversation task issuance and desktop
+lifecycle mapping remain 7.P2b.2b integration work.
 Opt-in host workflows now receive automatic scope/reference cleanup in 7.P2b.1.
 
 Target-reference backend (7.P3a) likewise adds no UI event, capture driver or model
@@ -30,7 +30,7 @@ Logical workflows (7.P4a) are currently a trusted backend API, not UI events or
 model declarations. Their completed/requires_review/stop_requested fields are
 separate from one Live/REST turn's completed flag. Existing Stop targets its current
 turn; logical-task Stop/progress, message classification and desktop issuance
-require 7.P2b.2 binding. Do not render these backend APIs as working spoken commands.
+require 7.P2b.2b binding. Do not render these backend APIs as working spoken commands.
 
 7.P4b.1 adds backend wait_requested/waiting_for_user states and wait_reason /
 no_progress_count metadata. These are separate from turn completion. No public
@@ -58,8 +58,18 @@ Existing built-ins are not automatically opted in; actual adapter values remain 
 TaskManager completion/Stop/close revokes grants and references without claiming
 in-flight effects were undone. Scope replacement requires a safe checkpoint,
 fresh host grant and matching revision; it does not grant user consent itself.
-No new UI event, dialog, setting, model field or Disconnect behavior is added here.
-Real desktop decisions/physical-input preference remain 7.P2b.2.
+7.P2b.2a adds query_task_permissions (no payload) and task_permission_decision
+(exactly {id: nonempty string, approve: boolean}). Native readiness gates polling.
+Queries return data.pending and data.decisions from the owner, never scope IDs.
+Pending entries include id/task_id/step_id/kind/tool/arguments/resources as plain
+text for review. Decisions expose id/task_id/outcome/task_completed. UI may not
+supply resources, requirements or authority. Bad/stale decisions fail closed.
+A receipt with accepted=True confirms a permission decision, not task completion.
+Unknown delivery stays locked without retry until a matching owner outcome exists;
+an absent prompt alone proves nothing. The host rechecks before Continue.
+askBeforeInput is a verified saved boolean (default true); false affects only the
+physical-input question. Consent payloads/outcomes stay in RAM, not the journal.
+Normal conversation task production and Stop/Disconnect mapping remain 7.P2b.2b.
 
 `window.vex === window.jarvis` is a compatibility alias. ui_ready is sent once
 bridge setters exist. Host readiness does not prove model connectivity. Mutations

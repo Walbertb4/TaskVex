@@ -1,3 +1,4 @@
+import {initTaskPermissions, startTaskPermissions, refreshTaskPermissions} from './task_permissions.js';
 /** Module startup, snapshot coordination and general UI bindings.
  * The sole owner of the talk/wake/Stop lifecycle is the assistant_session.js file. */
 import { initApi, emit, addLog, isBackendAvailable, sanitizeError } from './api.js';
@@ -107,6 +108,7 @@ export function applySnapshot(snapshot, options = {}) {
 document.addEventListener('DOMContentLoaded', () => {
   // 1. Settings & theme
   initSettings();
+  initTaskPermissions();
   initCredentials();
 
   registerCollectionGetters({
@@ -169,7 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   const finishNativeStartup = async () => {
-    startSystemView();startMediaView();startWeatherView();queryDevices();
+    startSystemView();startMediaView();startWeatherView();startTaskPermissions();queryDevices();
     await connectTimers();await connectNativeNotes();assistantReady();void loadLiveModels();
   };
   for (const [id, event] of [['retryStartup', 'retry_startup'], ['recoverSettings', 'recover_settings'], ['acknowledgeTasks','acknowledge_tasks']]) {
@@ -331,6 +333,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Start clock and start app
   tick();
-  setInterval(() => {tick(); void refreshSystem(); void refreshMedia(); void refreshWeather();}, 1000);
+  setInterval(() => {tick(); void refreshSystem(); void refreshMedia(); void refreshWeather(); void refreshTaskPermissions();}, 1000);
   start();
 });

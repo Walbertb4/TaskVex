@@ -1,0 +1,59 @@
+{
+  "date": "2026-10-29",
+  "stage": "7.P2b.2a",
+  "status": "automatically_verified_user_acceptance_pending",
+  "accepted_previous_commit": "8365d55",
+  "previous_commit_pushed": false,
+  "validation": {
+    "full_pytest_passed": 1474,
+    "full_pytest_seconds": 141.49,
+    "pyright_errors": 0,
+    "pyright_warnings": 0,
+    "javascript_suites_passed": 10,
+    "browser_groups_passed": 30,
+    "native_status": "passed",
+    "focused_including_documentation_passed": 132,
+    "focused_seconds": 9.13,
+    "documentation_tests_passed": 3,
+    "native_phases": [
+      "save",
+      "reopen",
+      "notes",
+      "persistence",
+      "export_cancel",
+      "credentials",
+      "chat",
+      "unknown",
+      "corrupt",
+      "schema_invalid",
+      "future"
+    ],
+    "native_all_passed": true,
+    "compileall": true,
+    "diff_whitespace_check": true,
+    "native_scope": "Actual WebView2/native bridge permission panel with synthetic scoped manager, no effects before host continuation; all legacy compatibility phases",
+    "browser_note": "First runs caught initial checkbox restoration and missing snapshot passthrough; both fixed and final 30-group run passed",
+    "sequence": "Final complete Python regression covers all backend changes. Final browser run covers snapshot/checkbox corrections; ten JS suites rerun after them. Native ran separately after browser; focused/docs final rerun afterward."
+  },
+  "covered": [
+    "Separate real scope/input/high-impact consent before dispatch",
+    "Nonce/revision/fingerprint and live requirement checks; changed work and Stop invalidate old prompts",
+    "Duplicate decisions grant nothing extra; rejection blocks Continue even after preference change",
+    "Native UI sends only nonce and boolean; plain-text rendering and unknown-result locks",
+    "Verified saved input preference defaults true; false never bypasses scope/high-impact",
+    "Existing single TaskManager owns decisions and effects; approval never dispatches or claims completion"
+  ],
+  "limits": [
+    "Normal conversation task production/classification, Continue/recovery and Stop/Disconnect mapping remain 7.P2b.2b",
+    "Real UIA/DOM/visual capture/input remains 7.P3b; no library or production budgets chosen",
+    "Existing local model tools remain unscoped; no dummy permission request or public GUI capability",
+    "Permission details/outcomes are RAM-only; absent history cannot resolve unknown delivery",
+    "No paid API, real account, user-profile migration, physical hardware acceptance or demo rebuild",
+    "Current slice uncommitted and not pushed; user acceptance pending"
+  ],
+  "manual_test": [
+    "In Settings > System, turn Ask before keyboard/mouse control off, save, restart and verify off; repeat with on",
+    "Confirm existing Live text/notes and Stop still work; no fabricated consent prompt should appear at startup",
+    "Real conversation-issued desktop approval and Continue are not yet available; native fixture acceptance is not general GUI acceptance"
+  ]
+}

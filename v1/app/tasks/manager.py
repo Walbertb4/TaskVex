@@ -25,7 +25,7 @@ from app.core.contracts import (
     ToolRequest, ToolResult, ToolSpec, request_fingerprint,
 )
 from app.session.tool_registry import RegistryError, ToolRegistry
-from app.policy.task_scope import TaskScopes
+from app.policy.task_scope import AccessRequirement, TaskScopes
 from app.automation.targets import TargetReferences
 from app.storage.task_journal import JournalError, TaskJournal
 from app.tasks.workflow import _Workflow, WorkflowStep, TERMINAL, STEP_TERMINAL, copy_steps, definition_key, validate_steps
@@ -90,7 +90,9 @@ class TaskManager:
                  authorize: Callable[[ToolRequest, ToolSpec], bool] | None = None,
                  capacity: int = 256, journal_home: Path | None = None,
                  task_scopes: TaskScopes | None = None,
-                 target_references: TargetReferences | None = None) -> None:
+                 target_references: TargetReferences | None = None,
+                 access_requirement: Callable[[ToolRequest], AccessRequirement | None] | None = None,
+                 input_preference: Callable[[], bool] | None = None) -> None:
         if not isinstance(registry, ToolRegistry):
             raise TaskManagerError("invalid_registry", "Expected ToolRegistry")
         if authorize is not None and not callable(authorize):
@@ -103,6 +105,10 @@ class TaskManager:
                     or not target_references.uses_scopes(task_scopes)))):
             raise TaskManagerError('invalid_scope_owner', 'Expected matching task scope and target owners')
         self._task_scopes, self._target_references = task_scopes, target_references
+        if (access_requirement is not None and (task_scopes is None or not callable(access_requirement))
+                or input_preference is not None and (task_scopes is None or not callable(input_preference))):
+            raise TaskManagerError('invalid_scope_owner', 'Permission callbacks require a scope owner')
+        self._access_requirement, self._input_preference = access_requirement, input_preference
         self._scope_cleanup_failed = False
         self._registry = registry
         self._authorize = authorize
@@ -142,6 +148,11 @@ class TaskManager:
         """Distinguish a resource cleanup fault from an uncertain tool outcome."""
         with self._condition:
             return self._scope_cleanup_failed
+
+    @property
+    def task_scopes(self) -> TaskScopes | None:
+        """Trusted host composition only; never serialized to UI/model payloads."""
+        return self._task_scopes
 
     def unresolved_tasks(self) -> list[dict]:
         """Expose IDs/tool names for local review, without private arguments/results."""
@@ -195,13 +206,19 @@ class TaskManager:
 
     def submit_workflow(self, workflow_id: str, steps: tuple[WorkflowStep, ...], *,
                         principal: str = 'local-user', source: str = 'desktop',
-                        authorization_id: str | None = None, sealed: bool = True) -> dict:
+                        authorization_id: str | None = None, sealed: bool = True,
+                        start_paused: bool = False) -> dict:
         """Accept a host plan without holding a conversation turn or running handlers.
 
         This is not model exposure: the later host binding must enforce ModelTools
         visibility/domain gates. Actual steps still use registry/policy/this worker.
         """
         job = _Workflow(workflow_id, validate_steps(steps), principal, source, authorization_id, sealed)
+        if type(start_paused) is not bool:
+            raise TaskManagerError('invalid_workflow', 'Expected a boolean initial pause')
+        job.creation_key = definition_key([job.creation_key, start_paused])
+        if start_paused:
+            job.wait_reason = 'user_action'
         for step in job.steps:
             self._registry.validate_request(job.request(step))
         with self._condition:
@@ -268,7 +285,7 @@ class TaskManager:
                 raise TaskManagerError('workflow_changed', 'Read the current logical task revision')
             if self._closing or self._uncertain or job.stop_requested or job.status in TERMINAL | {'review_required'}:
                 raise TaskManagerError('workflow_closed', 'Logical task cannot accept this correction')
-            if job.wait_reason is not None:
+            if job.wait_reason is not None and job.permission is None and job.permission_result is None:
                 raise TaskManagerError('workflow_waiting', 'Reobserve and continue before changing this plan')
             self._check_workflow_scope(job)
             incoming = {s.step_id: s for s in patches}
@@ -292,6 +309,7 @@ class TaskManager:
             if sealed is not None:
                 job.sealed = sealed
             job.revision += 1
+            self._invalidate_permission(job)
             self._save_workflows()
             self._advance_workflows()
             self._condition.notify_all()
@@ -330,6 +348,114 @@ class TaskManager:
             # Keep cleaning other jobs, but no further dispatch/review can clear this fault.
             self._scope_cleanup_failed = self._uncertain = True
 
+    def _invalidate_permission(self, job: _Workflow) -> None:
+        if job.permission is not None:
+            job.permission_result = {'id': job.permission['id'], 'task_id': job.workflow_id, 'outcome': 'invalidated'}
+            job.permission = None
+
+    def permission_view(self) -> dict:
+        """RAM-only review data; no authority IDs, callbacks or persistent request bodies."""
+        with self._condition:
+            pending, decisions = [], []
+            for job in self._workflows.values():
+                prompt = job.permission
+                if prompt is not None:
+                    pending.append({'id': prompt['id'], 'task_id': job.workflow_id, 'kind': prompt['kind'],
+                        'step_id': prompt['step_id'], 'tool': prompt['request'].tool,
+                        'arguments': deepcopy(prompt['request'].arguments),
+                        'resources': sorted(prompt['requirement'].resources)})
+                if job.permission_result is not None:
+                    decisions.append({**job.permission_result, 'task_completed': job.status in TERMINAL})
+            return {'pending': pending, 'decisions': decisions}
+
+    def _permission_requirement(self, request: ToolRequest) -> AccessRequirement:
+        try:
+            requirement = self._access_requirement(_copy_request(request)) if self._access_requirement else None
+        except Exception:
+            requirement = None
+        if not isinstance(requirement, AccessRequirement):
+            raise TaskManagerError('permission_unavailable', 'Trusted operation requirements are unavailable')
+        return requirement
+
+    def request_workflow_permission(self, workflow_id: str, step_id: str, *, expected_revision: int) -> dict:
+        """Host asks for one unmet concrete permission before accepting any effect."""
+        with self._condition:
+            job = self._check_workflow_revision(workflow_id, expected_revision)
+            self._check_workflow_scope(job)
+            if self._task_scopes is None or job.authorization_id is None or job.active_step is not None or job.status != 'waiting_for_user':
+                raise TaskManagerError('permission_unavailable', 'Pause a scoped task before requesting consent')
+            step = next((s for s in job.steps if s.step_id == step_id), None)
+            if step is None or job.states[step_id] != 'pending':
+                raise TaskManagerError('step_locked', 'Consent requires an unsent step')
+            request = self._registry.validate_request(job.request(step))
+            requirement = self._permission_requirement(request)
+            ask = self._input_preference() if self._input_preference else True
+            if type(ask) is not bool:
+                raise TaskManagerError('permission_unavailable', 'Physical input preference is invalid')
+            grants = self._task_scopes.resources(request)
+            kind = ('scope' if not requirement.resources <= grants else
+                    'input' if requirement.physical_input and ask and not self._task_scopes.allows(
+                        request, AccessRequirement(physical_input=True), ask_before_input=True) else
+                    'operation' if requirement.high_impact and not self._task_scopes.allows(
+                        request, AccessRequirement(high_impact=True), ask_before_input=True) else None)
+            if kind is None:
+                self._invalidate_permission(job)
+                return {'required': False, 'task_id': workflow_id}
+            previous = job.permission
+            if previous is None or request_fingerprint(previous['request']) != request_fingerprint(request) or previous['requirement'] != requirement or previous['kind'] != kind:
+                self._invalidate_permission(job)
+                job.permission = {'id': uuid4().hex, 'kind': kind, 'revision': job.revision,
+                    'step_id': step_id, 'request': request, 'requirement': requirement}
+            assert job.permission is not None
+            return {'required': True, 'id': job.permission['id'], 'task_id': workflow_id}
+
+    def decide_workflow_permission(self, decision_id: str, approve: bool) -> dict:
+        """Consume a concrete UI nonce; acceptance does not run or complete the task."""
+        if type(decision_id) is not str or not decision_id.strip() or type(approve) is not bool:
+            raise TaskManagerError('invalid_permission', 'Expected a decision ID and boolean approval')
+        with self._condition:
+            job = next((j for j in self._workflows.values() if j.permission and j.permission['id'] == decision_id), None)
+            if job is None:
+                previous = next((j.permission_result for j in self._workflows.values()
+                    if j.permission_result and j.permission_result['id'] == decision_id), None)
+                if previous is not None and previous['outcome'] == ('approved' if approve else 'denied'):
+                    return {**previous, 'accepted': True,
+                            'task_completed': self._workflows[previous['task_id']].status in TERMINAL}
+                raise TaskManagerError('stale_permission', 'Permission request is no longer current')
+            prompt = job.permission
+            assert prompt is not None
+            self._check_workflow_revision(job.workflow_id, prompt['revision'])
+            self._check_workflow_scope(job)
+            step = next(s for s in job.steps if s.step_id == prompt['step_id'])
+            current = job.request(step)
+            try:
+                live_requirement = self._permission_requirement(current)
+            except TaskManagerError:
+                self._invalidate_permission(job)
+                raise
+            if (job.active_step is not None or job.status != 'waiting_for_user'
+                    or request_fingerprint(current) != request_fingerprint(prompt['request'])
+                    or live_requirement != prompt['requirement']):
+                self._invalidate_permission(job)
+                raise TaskManagerError('stale_permission', 'Operation changed; request fresh consent')
+            if approve:
+                assert self._task_scopes is not None
+                scope_id = job.authorization_id
+                assert scope_id is not None
+                if prompt['kind'] == 'scope':
+                    resources = self._task_scopes.resources(current) | prompt['requirement'].resources
+                    self._task_scopes.end(scope_id)
+                    fresh = self._task_scopes.begin(task_id=job.workflow_id, principal=job.principal, resources=resources)
+                    self.replace_workflow_scope(job.workflow_id, expected_revision=job.revision, authorization_id=fresh)
+                elif prompt['kind'] == 'input':
+                    self._task_scopes.grant_input(scope_id)
+                else:
+                    self._task_scopes.approve(current)
+            job.permission = None
+            job.permission_result = {'id': decision_id, 'task_id': job.workflow_id,
+                                     'outcome': 'approved' if approve else 'denied'}
+            return {**job.permission_result, 'accepted': True, 'task_completed': False}
+
     def replace_workflow_scope(self, workflow_id: str, *, expected_revision: int,
                                authorization_id: str) -> dict:
         """Bind a fresh host-approved scope only at a safe checkpoint, never grant it.
@@ -351,6 +477,7 @@ class TaskManager:
                 self._task_scopes.end(authorization_id)
                 raise TaskManagerError('scope_cleanup_failed', 'Restart after resource cleanup failure')
             job.authorization_id = authorization_id
+            self._invalidate_permission(job)
             job.scope_released = False
             job.revision += 1
             self._save_workflows()
@@ -494,6 +621,10 @@ class TaskManager:
             job = self._check_workflow_revision(workflow_id, expected_revision)
             if job.status != 'waiting_for_user':
                 raise TaskManagerError('not_waiting', 'Wait for the current operation to finish')
+            if job.permission is not None:
+                raise TaskManagerError('permission_pending', 'Resolve the pending UI decision before continuing')
+            if job.permission_result is not None and job.permission_result['outcome'] == 'denied':
+                raise TaskManagerError('permission_denied', 'The user denied this task permission')
             self._check_workflow_scope(job)
             observed_job = job
         try:
@@ -593,6 +724,7 @@ class TaskManager:
 
     def _complete_workflow(self, job: _Workflow) -> None:
         """Aggregate metadata without erasing successful effects or private receipts."""
+        self._invalidate_permission(job)
         states = set(job.states.values())
         if 'unknown' in states:
             job.status = 'unknown'
@@ -616,6 +748,7 @@ class TaskManager:
 
     def _stop_workflow(self, job: _Workflow, reason: str) -> None:
         job.stop_requested = True
+        self._invalidate_permission(job)
         self._release_workflow_scope(job)
         for step in job.steps:
             if job.states[step.step_id] == 'pending':

@@ -37,6 +37,7 @@ fonts fall back to system fonts.
 | reactor.js / sfx.js | Visual states/animation and local effects |
 | live_mic.js / pcm_worklet.js | One AudioWorklet PCM source, VAD and level |
 | live_video.js | One opt-in camera or screen source, local preview, bounded JPEGs and request-scoped Live input |
+| task_permissions.js | Plain-text host consent, exact nonce decisions and unknown-result locks; no executor |
 | permissions.js | Explicit short camera/microphone/location probes; no saved grants |
 | live_audio.js / live_transcript.js | Request-scoped playback and transcript rendering |
 | clocks.js / timers.js | Native multi-clock view / separate standalone fallback |

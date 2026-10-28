@@ -120,6 +120,13 @@
       <button class="cb" id="sleep" title="Sleep until the local wake word; Wake exits sleep">Sleep</button>
       </div>
   <div id="memoryProposal" class="memoryReview" role="group" aria-label="Memory suggestion" hidden aria-live="polite"><label>Suggested memory — not saved</label><div id="memoryProposalText" class="sub"></div><div id="memoryProposalSource" class="sub"></div><button class="cb" id="memoryAccept">Save</button> <button class="cb" id="memoryDismiss">Dismiss</button><div class="sub" id="memoryProposalStatus" role="status"></div></div>
+  <section id="taskPermission" class="taskPermission" aria-label="Task permission request" hidden>
+    <span class="lbl" id="taskPermissionTitle">Task permission</span>
+    <pre id="taskPermissionDetails" tabindex="0" aria-label="Exact operation and resources"></pre>
+    <button class="cb" id="taskPermissionApprove">Approve</button>
+    <button class="cb" id="taskPermissionReject">Reject</button>
+    <div class="sub" id="taskPermissionStatus" role="status" aria-live="polite"></div>
+  </section>
     </div>
   </div>
 
@@ -185,6 +192,8 @@
   <div class="row permission-row"><span>Camera <span class="sub" id="permission-camera" role="status">Not checked</span></span><span><button class="cb" data-request-permission="camera" aria-label="Request camera access">Request access</button> <button class="cb" data-permission-windows="camera" aria-label="Open Windows camera privacy settings">Windows settings</button></span></div>
   <div class="row permission-row"><span>Microphone <span class="sub" id="permission-microphone" role="status">Not checked</span></span><span><button class="cb" data-request-permission="microphone" aria-label="Request microphone access">Request access</button> <button class="cb" data-permission-windows="microphone" aria-label="Open Windows microphone privacy settings">Windows settings</button></span></div>
   <div class="row permission-row"><span>Location <span class="sub" id="permission-geolocation" role="status">Not checked</span></span><span><button class="cb" data-request-permission="geolocation" aria-label="Request location access">Request access</button> <button class="cb" data-permission-windows="geolocation" aria-label="Open Windows location privacy settings">Windows settings</button></span></div>
+  <div class="row"><label for="askBeforeInput">Ask before keyboard/mouse control</label><input type="checkbox" id="askBeforeInput" checked></div>
+  <div class="sub">Applies to task-scoped desktop control. Turning this off never grants resources or bypasses high-impact approval.</div>
   <button class="cb" id="refreshPermissions">Refresh permissions</button>
   <div class="sub" id="permissionMessage" role="status" aria-live="polite">Permissions belong to browser/Windows; Save Settings does not grant or revoke them.</div></section>
   <span class="lbl sec">Context Token Capacity</span>

@@ -112,6 +112,8 @@ class _Workflow:
     recovery_stub: bool = False
     suspended_on_close: bool = False
     scope_released: bool = False
+    permission: dict | None = None
+    permission_result: dict | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.workflow_id, str) or not self.workflow_id.strip() or type(self.sealed) is not bool:

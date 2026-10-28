@@ -93,14 +93,16 @@ or Cancel without occupying the worker. Continue requires fresh reobservation an
 cannot revive stopped or replaced tasks. Three unchanged planning observations
 after a baseline produce a no-progress wait; only a RAM digest is retained.
 
-These are backend APIs, not connected desktop controls or a general GUI agent.
+These foundations do not yet form a general GUI agent.
 No UIA/DOM/visual automation driver is installed. Host-only logical recovery now
 retains content-free restart metadata and requires explicit fresh replanning;
 there is no public task Continue control. Cooperative operation deadlines and one
 safe-read retry are available as host registration primitives; existing tools keep
 their defaults. Configured host workflows now clean up their existing task grants/target refs
 on completion, Stop and close. Production adapter policies, actual desktop task
-issuance and permission dialogs remain planned. Existing per-tool durable replay protection is separate
+issuance remains planned. A native permission panel now handles real host-issued
+requests, with a saved ask-before-physical-input setting. Acceptance requires host
+rechecking before continuation; normal chat does not yet create desktop tasks. Existing per-tool durable replay protection is separate
 from whole-task recovery; historical receipts do not restore private arguments.
 
 ## Not implemented yet
