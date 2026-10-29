@@ -1,4 +1,4 @@
-# TaskVex
+# TaskVex [![Hits](https://hits.sh/github.com/Walbertb4/TaskVex.svg)](https://hits.sh/github.com/Walbertb4/TaskVex/)
 
 TaskVex is an early-stage Windows desktop assistant built with Python,
 PyWebView/WebView2 and a vanilla JavaScript interface. It uses Google's Gemini
